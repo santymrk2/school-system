@@ -1,0 +1,14 @@
+FROM maven:3.9-eclipse-temurin-21 AS base
+WORKDIR /app
+
+# Descarga de dependencias (cache)
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copia fuentes
+COPY src ./src
+
+EXPOSE 8080
+
+# Ejecuta Spring Boot DevTools
+CMD ["mvn", "spring-boot:run", "-Dspring-boot.run.profiles=dev"]

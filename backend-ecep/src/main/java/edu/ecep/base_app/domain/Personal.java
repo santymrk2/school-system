@@ -16,6 +16,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Personal extends Persona {
+    @Column(length = 11, unique = true)
+    private String cuil;
 
     @Column
     private LocalDate fechaIngreso;
@@ -35,25 +37,13 @@ public class Personal extends Persona {
     @Column(length = 1000)
     private String observacionesGenerales;
 
-    @OneToMany(mappedBy = "docente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<AsignacionDocente> asignaciones = new HashSet<>();
-
     @OneToMany(mappedBy = "personal")
     private Set<Licencia> licencias = new HashSet<>();
 
     @OneToMany(mappedBy = "personal")
     private Set<ReciboSueldo> recibosSueldo = new HashSet<>();
 
-    public Set<Materia> getMateriasImpartidas() {
-        return asignaciones.stream()
-                .filter(a -> a.getMateria() != null)
-                .map(AsignacionDocente::getMateria)
-                .collect(Collectors.toSet());
-    }
+    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = false)
+    private Set<FormacionAcademica> formaciones = new HashSet<>();
 
-    public Set<Seccion> getSeccionesAsignadas() {
-        return asignaciones.stream()
-                .map(AsignacionDocente::getSeccion)
-                .collect(Collectors.toSet());
-    }
 }

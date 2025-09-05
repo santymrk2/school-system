@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 
 public interface InformeInicialRepository extends JpaRepository<InformeInicial, Long> {
+    boolean existsByTrimestreIdAndMatriculaId(Long trimestreId, Long matriculaId);
 }

@@ -26,12 +26,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "licencias")
-@EntityListeners(AuditingEntityListener.class)
-
-@Filter(name = "activoFilter", condition = "activo = :activo")
 @SQLDelete(sql = "UPDATE licencias SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-
-
 @Getter
 @Setter
 public class Licencia extends BaseEntity{

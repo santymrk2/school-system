@@ -1,13 +1,7 @@
 package edu.ecep.base_app.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -23,10 +17,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "formaciones_academicas")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
 @SQLDelete(sql = "UPDATE formaciones_academicas SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-
 @Getter
 @Setter
 public class FormacionAcademica extends BaseEntity{
@@ -45,4 +36,9 @@ public class FormacionAcademica extends BaseEntity{
 
     @Column
     private LocalDate fechaFin;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "personal_id", nullable = false)
+    private Personal personal;
+
 }

@@ -1,8 +1,8 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Familiar;
-import edu.ecep.base_app.mappers.FamiliarMapper;
 import edu.ecep.base_app.dtos.FamiliarDTO;
+import edu.ecep.base_app.mappers.FamiliarMapper;
 import edu.ecep.base_app.repos.AlumnoFamiliarRepository;
 import edu.ecep.base_app.repos.AspiranteFamiliarRepository;
 import edu.ecep.base_app.repos.FamiliarRepository;
@@ -50,7 +50,7 @@ public class FamiliarService {
 
     public void update(Long id, FamiliarDTO dto) {
         Familiar entity = familiarRepository.findById(id).orElseThrow(NotFoundException::new);
-        mapper.updateEntityFromDto(dto, entity);
+        mapper.update(entity, dto);
         familiarRepository.save(entity);
     }
 

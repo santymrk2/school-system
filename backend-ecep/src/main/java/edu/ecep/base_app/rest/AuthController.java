@@ -1,5 +1,6 @@
 package edu.ecep.base_app.rest;
 
+import edu.ecep.base_app.dtos.LoginRequest;
 import edu.ecep.base_app.dtos.UsuarioBusquedaDTO;
 import edu.ecep.base_app.repos.UsuarioRepository;
 import edu.ecep.base_app.service.JwtService;
@@ -13,7 +14,6 @@ import java.util.Map;
 
 import edu.ecep.base_app.domain.Usuario;
 import edu.ecep.base_app.dtos.AuthResponse;
-import edu.ecep.base_app.dtos.LoginRequest;
 import edu.ecep.base_app.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

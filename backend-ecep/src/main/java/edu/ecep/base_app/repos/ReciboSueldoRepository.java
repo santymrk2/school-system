@@ -6,6 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 
 public interface ReciboSueldoRepository extends JpaRepository<ReciboSueldo, Long> {
-
     boolean existsByPersonalId(Long id);
 }

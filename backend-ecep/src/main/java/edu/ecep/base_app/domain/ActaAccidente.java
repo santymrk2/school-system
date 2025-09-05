@@ -1,8 +1,11 @@
 package edu.ecep.base_app.domain;
 
+import edu.ecep.base_app.domain.enums.EstadoActaAccidente;
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -12,39 +15,19 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-@Entity
-@Table(name = "actas_accidente")
-@EntityListeners(AuditingEntityListener.class)
-@Getter
-@Setter
-@Filter(name = "activoFilter", condition = "activo = :activo")
+@Entity @Table(name="actas_accidente")
 @SQLDelete(sql = "UPDATE actas_accidente SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-public class ActaAccidente extends BaseEntity{
+@Getter @Setter
+public class ActaAccidente extends BaseEntity {
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Alumno alumno; // o Matricula si querés anclar al año
+    @Column(nullable=false) private LocalDate fechaSuceso;
+    @Column(nullable=false, length=4000) private String descripcion;
 
-    @Column(nullable = false)
-    private OffsetDateTime fechaAccidente;
+    // debe ser editable hasta suceso + 2 días
+    @Enumerated(EnumType.STRING) @Column(nullable=false) private EstadoActaAccidente estado = EstadoActaAccidente.BORRADOR;
 
-    @Column
-    private String lugar;
+    private String creadoPor; // usuario
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String descripcion;
-
-    @Column(columnDefinition = "text")
-    private String accionesTomadas;
-
-    @ManyToOne()
-    @JoinColumn(name = "matricula_id")
-    private Matricula matricula;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "creado_por_id")
-    private Usuario creadoPor;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "alumno_involucrado_id")
-    private Alumno alumnoInvolucrado;
-
-
-
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private Personal informante;  // quien reportó el accidente (obligatorio)
 }

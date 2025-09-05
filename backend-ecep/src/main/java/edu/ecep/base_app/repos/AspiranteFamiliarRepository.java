@@ -12,4 +12,6 @@ public interface AspiranteFamiliarRepository extends JpaRepository<AspiranteFami
     boolean existsByAspiranteId(Long id);
 
     boolean existsByFamiliarId(Long id);
+
+    boolean existsByAspiranteIdAndFamiliarId(Long id, Long id1);
 }

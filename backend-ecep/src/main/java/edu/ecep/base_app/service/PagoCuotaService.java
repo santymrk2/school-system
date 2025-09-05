@@ -1,44 +1,33 @@
 package edu.ecep.base_app.service;
 
+import edu.ecep.base_app.domain.Cuota;
 import edu.ecep.base_app.domain.PagoCuota;
-import edu.ecep.base_app.mappers.PagoCuotaMapper;
+import edu.ecep.base_app.dtos.PagoCuotaCreateDTO;
 import edu.ecep.base_app.dtos.PagoCuotaDTO;
+import edu.ecep.base_app.dtos.PagoCuotaEstadoUpdateDTO;
+import edu.ecep.base_app.mappers.PagoCuotaMapper;
 import edu.ecep.base_app.repos.*;
 import edu.ecep.base_app.util.NotFoundException;
 import java.util.List;
+
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 
-@Service
+@Service @RequiredArgsConstructor
 public class PagoCuotaService {
-    private final PagoCuotaRepository repository;
-    private final PagoCuotaMapper mapper;
-
-    public PagoCuotaService(PagoCuotaRepository repository, PagoCuotaMapper mapper) {
-        this.repository = repository;
-        this.mapper = mapper;
+    private final PagoCuotaRepository repo; private final PagoCuotaMapper mapper; private final CuotaRepository cuotaRepo;
+    public List<PagoCuotaDTO> findAll(){ return repo.findAll(Sort.by("id")).stream().map(mapper::toDto).toList(); }
+    public Long crearPago(PagoCuotaCreateDTO dto){
+        // ejemplo de validación simple: código de pago existente
+        Cuota c = cuotaRepo.findById(dto.getCuotaId()).orElseThrow(() -> new NotFoundException("No encontrado"));
+        return repo.save(mapper.toEntity(dto)).getId();
     }
-
-    public List<PagoCuotaDTO> findAll() {
-        return repository.findAll(Sort.by("id")).stream().map(mapper::toDto).toList();
-    }
-
-    public PagoCuotaDTO get(Long id) {
-        return repository.findById(id).map(mapper::toDto).orElseThrow(NotFoundException::new);
-    }
-
-    public Long create(PagoCuotaDTO dto) {
-        return repository.save(mapper.toEntity(dto)).getId();
-    }
-
-    public void update(Long id, PagoCuotaDTO dto) {
-        PagoCuota entity = repository.findById(id).orElseThrow(NotFoundException::new);
-        mapper.updateEntityFromDto(dto, entity);
-        repository.save(entity);
-    }
-
-    public void delete(Long id) {
-        repository.deleteById(id);
+    @Transactional
+    public void actualizarEstado(Long id, PagoCuotaEstadoUpdateDTO dto){
+        PagoCuota p = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
+        mapper.updateEstado(p, dto);
     }
 }

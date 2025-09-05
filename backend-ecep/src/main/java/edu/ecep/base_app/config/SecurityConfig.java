@@ -57,6 +57,8 @@ public class SecurityConfig {
                                 "/api/users/search"
                         ).permitAll()
 
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/aspirantes",

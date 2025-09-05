@@ -1,13 +1,20 @@
 package edu.ecep.base_app.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/* ========== DÍA NO HÁBIL ========== */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class DiaNoHabilDTO {
-    private Long id;
-    private LocalDate fecha;
-    private String descripcion;
+    Long id;
+    @NotNull
+    LocalDate fecha;
+    @NotBlank
+    String motivo;
 }

@@ -1,16 +1,7 @@
 package edu.ecep.base_app.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.SequenceGenerator;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,8 +11,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 
 @Entity
-@Table(name = "alumno_familiar")
-@EntityListeners(AuditingEntityListener.class)
+@Table(name = "alumno_familiar",
+        uniqueConstraints=@UniqueConstraint(columnNames={"alumno_id","familiar_id"}))
 @Getter
 @Setter
 public class AlumnoFamiliar extends BaseEntity{

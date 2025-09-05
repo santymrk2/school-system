@@ -1,95 +1,81 @@
 package edu.ecep.base_app.service;
 
-import edu.ecep.base_app.domain.*;
-import edu.ecep.base_app.mappers.PersonalMapper;
 import edu.ecep.base_app.dtos.PersonalDTO;
+import edu.ecep.base_app.mappers.PersonalMapper;
 import edu.ecep.base_app.repos.*;
+import edu.ecep.base_app.util.DuplicateDniException;
 import edu.ecep.base_app.util.NotFoundException;
 import java.util.List;
-
 import edu.ecep.base_app.util.ReferencedException;
 import edu.ecep.base_app.util.ReferencedWarning;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-
+import edu.ecep.base_app.domain.Personal;
+import lombok.RequiredArgsConstructor;
+import edu.ecep.base_app.dtos.PersonalCreateDTO;
+import edu.ecep.base_app.dtos.PersonalUpdateDTO;
 
 @Service
+@RequiredArgsConstructor
 public class PersonalService {
-    private final PersonalRepository repository;
-    private final AsignacionDocenteRepository asignacionDocenteRepository;
-    private final PersonalRepository personalRepository;
-    private final ReciboSueldoRepository reciboSueldoRepository;
-    private final LicenciaRepository licenciaRepository;
-    private final AsistenciaPersonalRepository asistenciaPersonalRepository;
+
+    private final PersonalRepository repo;
+    private final AsignacionDocenteSeccionRepository adsRepo;
+    private final AsignacionDocenteMateriaRepository admRepo;
+    private final ReciboSueldoRepository reciboRepo;
+    private final LicenciaRepository licenciaRepo;
+    private final AsistenciaPersonalRepository asistenciaRepo;
     private final PersonalMapper mapper;
 
-    public PersonalService(
-            PersonalRepository repository,
-            AsignacionDocenteRepository asignacionDocenteRepository,
-            PersonalRepository personalRepository,
-            ReciboSueldoRepository reciboSueldoRepository,
-            LicenciaRepository licenciaRepository,
-            AsistenciaPersonalRepository asistenciaPersonalRepository,
-            PersonalMapper mapper
-    ) {
-        this.repository = repository;
-        this.asignacionDocenteRepository = asignacionDocenteRepository;
-        this.personalRepository = personalRepository;
-        this.reciboSueldoRepository = reciboSueldoRepository;
-        this.licenciaRepository = licenciaRepository;
-        this.asistenciaPersonalRepository = asistenciaPersonalRepository;
-        this.mapper = mapper;
-    }
-
     public List<PersonalDTO> findAll() {
-        return repository.findAll(Sort.by("id")).stream().map(mapper::toDto).toList();
+        return repo.findAll(Sort.by("id")).stream().map(mapper::toDto).toList();
     }
 
     public PersonalDTO get(Long id) {
-        return repository.findById(id).map(mapper::toDto).orElseThrow(NotFoundException::new);
+        return repo.findById(id).map(mapper::toDto)
+                .orElseThrow(() -> new NotFoundException("No encontrado"));
     }
 
-    public Long create(PersonalDTO dto) {
-        return repository.save(mapper.toEntity(dto)).getId();
+    public Long create(PersonalCreateDTO dto) {
+        if (dto.getDni()!=null && repo.existsByDni(dto.getDni()))
+            throw new DuplicateDniException("DNI ya registrado");
+        if (dto.getCuil()!=null && repo.existsByCuil(dto.getCuil()))
+            throw new IllegalArgumentException("CUIL ya registrado");
+        Personal e = mapper.toEntity(dto);
+        return repo.save(e).getId();
     }
 
-    public void update(Long id, PersonalDTO dto) {
-        Personal entity = repository.findById(id).orElseThrow(NotFoundException::new);
-        mapper.updateEntityFromDto(dto, entity);
-        repository.save(entity);
+    public void update(Long id, PersonalUpdateDTO dto) {
+        Personal e = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
+        // Validaciones de unicidad solo si cambia el valor
+        if (dto.getDni()!=null && !dto.getDni().equals(e.getDni()) && repo.existsByDni(dto.getDni()))
+            throw new DuplicateDniException("DNI ya registrado");
+        if (dto.getCuil()!=null && !dto.getCuil().equals(e.getCuil()) && repo.existsByCuil(dto.getCuil()))
+            throw new IllegalArgumentException("CUIL ya registrado");
+
+        mapper.update(e, dto);   // <-- ahora compila: existe en el mapper
+        repo.save(e);
     }
 
     @Transactional
     public void delete(Long id) {
-        ReferencedWarning warning = getReferencedWarning(id);
-        if (warning != null) throw new ReferencedException(warning);
-        if (!personalRepository.existsById(id)) throw new NotFoundException("Personal no encontrado: " + id);
-        personalRepository.deleteById(id);
+        ReferencedWarning w = getReferencedWarning(id);
+        if (w != null) throw new ReferencedException(w);
+        if (!repo.existsById(id)) throw new NotFoundException("Personal no encontrado: " + id);
+        repo.deleteById(id);
     }
 
     public ReferencedWarning getReferencedWarning(Long id) {
-        if (asignacionDocenteRepository.existsByDocenteId(id)) {
-            ReferencedWarning w = new ReferencedWarning("personal.referenciado.asignaciones");
-            w.addParam(id);
-            return w;
-        }
-        if (licenciaRepository.existsByPersonalId(id)) {
-            ReferencedWarning w = new ReferencedWarning("personal.referenciado.licencias");
-            w.addParam(id);
-            return w;
-        }
-        if (reciboSueldoRepository.existsByPersonalId(id)) {
-            ReferencedWarning w = new ReferencedWarning("personal.referenciado.recibosSueldo");
-            w.addParam(id);
-            return w;
-        }
-        if (asistenciaPersonalRepository.existsByPersonalId(id)) {
-            ReferencedWarning w = new ReferencedWarning("personal.referenciado.asistencias");
-            w.addParam(id);
-            return w;
-        }
+        // Si usás estos métodos, asegurate que existen en los repos:
+        if (licenciaRepo.existsByPersonalId(id))
+            return new ReferencedWarning("personal.referenciado.licencias");
+        if (reciboRepo.existsByPersonalId(id))
+            return new ReferencedWarning("personal.referenciado.recibos");
+        if (asistenciaRepo.existsByPersonalId(id))
+            return new ReferencedWarning("personal.referenciado.asistencia");
+        // (Opcional) si querés validar asignaciones:
+        // if (adsRepo.existsByPersonalId(id) || admRepo.existsByPersonalId(id)) ...
         return null;
     }
 }
-

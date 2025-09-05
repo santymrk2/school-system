@@ -1,16 +1,21 @@
 package edu.ecep.base_app.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
-/* ========== INFORME INICIAL ========== */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class InformeInicialDTO {
-    private Long id;
-    private String trimestre;
-    private LocalDate fecha;
-    private String contenido;
-    private Long matriculaId;
-    private Long reportadoPorId;
+    Long id;
+    @NotNull
+    Long trimestreId;
+    @NotNull
+    Long matriculaId;
+    @NotBlank
+    String descripcion;
+    boolean publicado;
 }

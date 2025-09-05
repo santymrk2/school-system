@@ -1,8 +1,8 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Aspirante;
-import edu.ecep.base_app.mappers.AspiranteMapper;
 import edu.ecep.base_app.dtos.AspiranteDTO;
+import edu.ecep.base_app.mappers.AspiranteMapper;
 import edu.ecep.base_app.repos.AspiranteFamiliarRepository;
 import edu.ecep.base_app.repos.AspiranteRepository;
 import edu.ecep.base_app.repos.SolicitudAdmisionRepository;
@@ -57,7 +57,7 @@ public class AspiranteService {
 
     public void update(Long id, AspiranteDTO dto) {
         Aspirante entity = aspiranteRepository.findById(id).orElseThrow(NotFoundException::new);
-        mapper.updateEntityFromDto(dto, entity);
+        mapper.update(entity, dto);   // <-- antes: mapper.updateEntityFromDto(dto, entity)
         aspiranteRepository.save(entity);
     }
 

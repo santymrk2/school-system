@@ -3,16 +3,13 @@ package edu.ecep.base_app.mappers;
 import edu.ecep.base_app.domain.Aspirante;
 import edu.ecep.base_app.dtos.AspiranteDTO;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
+import org.mapstruct.*;
 
-/* ========== ASPIRANTE ========== */
-@Mapper(componentModel = "spring")
+@Mapper(config = ModelMapperConfig.class)
 public interface AspiranteMapper {
-    AspiranteDTO toDto(Aspirante entity);
-
+    AspiranteDTO toDto(Aspirante e);
     Aspirante toEntity(AspiranteDTO dto);
 
     @Mapping(target = "id", ignore = true)
-    void updateEntityFromDto(AspiranteDTO dto, @MappingTarget Aspirante entity);
+    void update(@MappingTarget Aspirante e, AspiranteDTO dto);
 }

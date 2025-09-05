@@ -1,8 +1,8 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.DiaNoHabil;
-import edu.ecep.base_app.mappers.DiaNoHabilMapper;
 import edu.ecep.base_app.dtos.DiaNoHabilDTO;
+import edu.ecep.base_app.mappers.DiaNoHabilMapper;
 import edu.ecep.base_app.repos.DiaNoHabilRepository;
 import edu.ecep.base_app.util.NotFoundException;
 import java.util.List;
@@ -34,9 +34,10 @@ public class DiaNoHabilService {
 
     public void update(Long id, DiaNoHabilDTO dto) {
         DiaNoHabil entity = repository.findById(id).orElseThrow(NotFoundException::new);
-        mapper.updateEntityFromDto(dto, entity);
+        mapper.update(entity, dto);   // <-- antes: updateEntityFromDto(dto, entity)
         repository.save(entity);
     }
+
 
     public void delete(Long id) {
         repository.deleteById(id);

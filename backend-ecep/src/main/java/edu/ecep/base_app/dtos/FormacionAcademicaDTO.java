@@ -1,16 +1,22 @@
 package edu.ecep.base_app.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/* ========== FORMACION ACADEMICA ========== */
-@Data
+@Data @NoArgsConstructor @AllArgsConstructor
 public class FormacionAcademicaDTO {
     private Long id;
+    @NotNull
+    private Long personalId;    // <- agregado (FK)
+    @NotBlank
     private String nivel;
-    private String institucion;
-    private String titulo;
-    private LocalDate fechaInicio;
+    @NotBlank private String institucion;
+    @NotBlank private String tituloObtenido;
+    @NotNull private LocalDate fechaInicio;
     private LocalDate fechaFin;
 }

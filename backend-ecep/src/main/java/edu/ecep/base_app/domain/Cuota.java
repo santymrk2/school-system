@@ -1,52 +1,36 @@
 package edu.ecep.base_app.domain;
 
-import edu.ecep.base_app.domain.enums.Turno;
+import edu.ecep.base_app.domain.enums.ConceptoCuota;
+import edu.ecep.base_app.domain.enums.EstadoCuota;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-
-@Entity
-@Table(name = "cuotas")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
+@Entity @Table(name="cuotas")
 @SQLDelete(sql = "UPDATE cuotas SET activo = false, fecha_eliminacion = now() WHERE id = ?")
+@Getter @Setter
+public class Cuota extends BaseEntity {
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Matricula matricula;
+    @ManyToOne(fetch=FetchType.LAZY) private EmisionCuota emision; // nullable
 
-@Getter
-@Setter
-public class Cuota extends BaseEntity{
+    @Enumerated(EnumType.STRING) @Column(nullable=false) private ConceptoCuota concepto;
+    private String subconcepto; // solo MATERIALES/OTROS
 
-    @Column(nullable = false)
-    private String nombre;
+    @Column(nullable=false) private Integer anio;
+    private Integer mes; // solo si MENSUALIDAD
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal monto;
+    @Column(nullable=false) private BigDecimal importe;
+    @Column(nullable=false) private LocalDate fechaVencimiento;
+    @Column(nullable=false) private BigDecimal porcentajeRecargo = BigDecimal.ZERO;
 
-    @Column(nullable = false)
-    private LocalDate fechaEmision;
+    @Enumerated(EnumType.STRING) @Column(nullable=false) private EstadoCuota estado = EstadoCuota.PENDIENTE;
 
-    @Column(nullable = false)
-    private LocalDate fechaVencimiento;
+    @Column(nullable=false, unique=true, length=60)
+    private String codigoPago;
 
-    @Column(length = 50)
-    private String nivelAcademico;
-
-    @ManyToOne
-    @JoinColumn(name = "seccion_id")
-    private Seccion seccion;
-
-    @Column
-    @Enumerated(EnumType.STRING)
-    private Turno turno;
-
-    @OneToMany(mappedBy = "cuota")
-    private Set<PagoCuota> cuotaPagoCuotas = new HashSet<>();
+    private String observaciones;
 }

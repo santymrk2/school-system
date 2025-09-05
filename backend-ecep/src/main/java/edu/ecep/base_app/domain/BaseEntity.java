@@ -3,6 +3,7 @@ package edu.ecep.base_app.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
 import org.springframework.data.annotation.CreatedBy;
@@ -17,12 +18,14 @@ import java.time.OffsetDateTime;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @FilterDef(name = "activoFilter", parameters = @ParamDef(name = "activo", type = Boolean.class))
+@Filter(name = "activoFilter", condition = "activo = :activo")
 @Getter
 @Setter
 public abstract class BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq")
+    @Column(unique = true)
     private Long id;
 
     @CreatedDate

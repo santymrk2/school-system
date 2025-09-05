@@ -1,16 +1,9 @@
 package edu.ecep.base_app.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.SequenceGenerator;
-import jakarta.persistence.Table;
+import edu.ecep.base_app.domain.enums.AlcanceComunicado;
+import edu.ecep.base_app.domain.enums.NivelAcademico;
+import jakarta.persistence.*;
+
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,30 +18,18 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "comunicados")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
 @SQLDelete(sql = "UPDATE comunicados SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-@Getter
-@Setter
-public class Comunicado extends BaseEntity{
-    @Column(nullable = false)
-    private String titulo;
+@Getter @Setter
+public class Comunicado extends BaseEntity {
+    @Enumerated(EnumType.STRING) @Column(nullable=false)
+    private AlcanceComunicado alcance;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String cuerpoMensaje;
+    @ManyToOne(fetch=FetchType.LAZY) private Seccion seccion; // solo si POR_SECCION
+    @Enumerated(EnumType.STRING) private NivelAcademico nivel; // solo si POR_NIVEL
 
-    @Column(nullable = false, length = 50)
-    private String tipoComunicacion;
-
-    @Column(length = 50)
-    private String nivelDestino;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seccion_destino_id")
-    private Seccion seccionDestino;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "publicador_id", nullable = false)
-    private Usuario publicador;
-
+    @Column(nullable=false) private String titulo;
+    @Column(nullable=false, length=5000) private String cuerpo;
+    private OffsetDateTime fechaProgPublicacion;
+    @Column(nullable=false) private boolean publicado = false;
 }
+

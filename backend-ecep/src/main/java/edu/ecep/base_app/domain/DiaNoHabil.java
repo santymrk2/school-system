@@ -16,9 +16,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 
 @Entity
-@Table(name = "dias_no_habiles")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
+@Table(name = "dias_no_habiles",
+        uniqueConstraints=@UniqueConstraint(columnNames={"fecha"}))
 @SQLDelete(sql = "UPDATE dias_no_habiles SET activo = false, fecha_eliminacion = now() WHERE id = ?")
 @Getter
 @Setter

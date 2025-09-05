@@ -18,12 +18,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 
 @Entity
-@EntityListeners(AuditingEntityListener.class)
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "tipo", discriminatorType = DiscriminatorType.STRING)
-@Filter(name = "activoFilter", condition = "activo = :activo")
 @SQLDelete(sql = "UPDATE persona SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-
 @Getter
 @Setter
 public abstract class Persona extends BaseEntity{

@@ -1,21 +1,23 @@
 package edu.ecep.base_app.mappers;
 
 import edu.ecep.base_app.domain.Licencia;
+import edu.ecep.base_app.dtos.LicenciaCreateDTO;
 import edu.ecep.base_app.dtos.LicenciaDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
 
-/* ========== LICENCIA ========== */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = RefMapper.class, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface LicenciaMapper {
-    @Mapping(source = "personal.id", target = "personalId")
-    LicenciaDTO toDto(Licencia entity);
 
-    @Mapping(target = "personal", ignore = true)
-    Licencia toEntity(LicenciaDTO dto);
+    @Mapping(target = "personalId", source = "personal.id")
+    LicenciaDTO toDto(Licencia e);
 
+    @Mapping(target = "personal", source = "personalId")
+    Licencia toEntity(LicenciaCreateDTO dto);
+
+    @Mapping(target = "personal", source = "personalId")
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "personal", ignore = true)
-    void updateEntityFromDto(LicenciaDTO dto, @MappingTarget Licencia entity);
+    void update(@MappingTarget Licencia e, LicenciaDTO dto);
 }

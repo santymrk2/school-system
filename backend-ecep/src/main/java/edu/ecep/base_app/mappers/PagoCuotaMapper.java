@@ -1,24 +1,23 @@
 package edu.ecep.base_app.mappers;
 
 import edu.ecep.base_app.domain.PagoCuota;
+import edu.ecep.base_app.dtos.PagoCuotaCreateDTO;
 import edu.ecep.base_app.dtos.PagoCuotaDTO;
+import edu.ecep.base_app.dtos.PagoCuotaEstadoUpdateDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-/* ========== PAGO CUOTA ========== */
-@Mapper(componentModel = "spring")
+@Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface PagoCuotaMapper {
-    @Mapping(source = "cuota.id", target = "cuotaId")
-    @Mapping(source = "matricula.id", target = "matriculaId")
-    PagoCuotaDTO toDto(PagoCuota entity);
+    @Mapping(target = "cuotaId", source = "cuota.id")
+    PagoCuotaDTO toDto(PagoCuota e);
 
-    @Mapping(target = "cuota", ignore = true)
-    @Mapping(target = "matricula", ignore = true)
-    PagoCuota toEntity(PagoCuotaDTO dto);
+    @Mapping(target = "cuota", source = "cuotaId")
+    PagoCuota toEntity(PagoCuotaCreateDTO dto);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "cuota", ignore = true)
-    @Mapping(target = "matricula", ignore = true)
-    void updateEntityFromDto(PagoCuotaDTO dto, @MappingTarget PagoCuota entity);
+    default void updateEstado(@MappingTarget PagoCuota e, PagoCuotaEstadoUpdateDTO dto) {
+        e.setEstadoPago(dto.getEstadoPago());
+        e.setFechaAcreditacion(dto.getFechaAcreditacion());
+    }
 }

@@ -1,24 +1,23 @@
 package edu.ecep.base_app.mappers;
 
 import edu.ecep.base_app.domain.InformeInicial;
+import edu.ecep.base_app.dtos.InformeInicialCreateDTO;
 import edu.ecep.base_app.dtos.InformeInicialDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-/* ========== INFORME INICIAL ========== */
-@Mapper(componentModel = "spring")
+@Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface InformeInicialMapper {
-    @Mapping(source = "matricula.id", target = "matriculaId")
-    @Mapping(source = "reportadoPor.id", target = "reportadoPorId")
-    InformeInicialDTO toDto(InformeInicial entity);
+    @Mapping(target = "trimestreId", source = "trimestre.id")
+    @Mapping(target = "matriculaId", source = "matricula.id")
+    InformeInicialDTO toDto(InformeInicial e);
 
-    @Mapping(target = "matricula", ignore = true)
-    @Mapping(target = "reportadoPor", ignore = true)
-    InformeInicial toEntity(InformeInicialDTO dto);
+    @Mapping(target = "trimestre", source = "trimestreId")
+    @Mapping(target = "matricula", source = "matriculaId")
+    InformeInicial toEntity(InformeInicialCreateDTO dto);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "matricula", ignore = true)
-    @Mapping(target = "reportadoPor", ignore = true)
-    void updateEntityFromDto(InformeInicialDTO dto, @MappingTarget InformeInicial entity);
+    @Mapping(target = "trimestre", source = "trimestreId")
+    @Mapping(target = "matricula", source = "matriculaId")
+    void update(@MappingTarget InformeInicial e, InformeInicialDTO dto);
 }

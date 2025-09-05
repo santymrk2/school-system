@@ -1,11 +1,16 @@
 package edu.ecep.base_app.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-/* ========== MATERIA ========== */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class MateriaDTO {
-    private Long id;
-    private String nombre;
-    private String nivelAcademico;
+    Long id;
+    String codigo;
+    @NotBlank
+    String nombre;
 }

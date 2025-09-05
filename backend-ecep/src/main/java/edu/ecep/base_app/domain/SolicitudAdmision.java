@@ -29,10 +29,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "solicitudes_admisiones")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
 @SQLDelete(sql = "UPDATE solicitudes_admisiones SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-
 @Getter
 @Setter
 public class SolicitudAdmision extends BaseEntity{

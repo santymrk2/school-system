@@ -5,14 +5,17 @@ import edu.ecep.base_app.dtos.FormacionAcademicaDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
 
-/* ========== FORMACION ACADEMICA ========== */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface FormacionAcademicaMapper {
+    @Mapping(source = "personal.id", target = "personalId")
     FormacionAcademicaDTO toDto(FormacionAcademica entity);
 
+    @Mapping(target = "personal", ignore = true) // lo setea el service por id
     FormacionAcademica toEntity(FormacionAcademicaDTO dto);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "personal", ignore = true)
     void updateEntityFromDto(FormacionAcademicaDTO dto, @MappingTarget FormacionAcademica entity);
 }

@@ -1,0 +1,555 @@
+package edu.ecep.base_app.repos;
+
+
+
+
+public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
+
+    // Obtener conversación entre dos usuarios ordenada por fecha
+    @Query("""
+        SELECT m FROM Mensaje m 
+        WHERE (m.emisor.id = :userId AND m.receptor.id = :otherUserId) 
+           OR (m.emisor.id = :otherUserId AND m.receptor.id = :userId)
+        ORDER BY m.fechaEnvio ASC
+        """)
+    List<Mensaje> findConversation(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+
+    // Marcar mensajes como leídos
+    @Modifying
+    @Query("""
+        UPDATE Mensaje m 
+        SET m.leido = true 
+        WHERE m.emisor.id = :otherUserId 
+          AND m.receptor.id = :userId 
+          AND m.leido = false
+        """)
+    void markAsRead(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+
+    // Obtener conteo de mensajes no leídos por emisor
+    @Query("""
+        SELECT m.emisor.id, COUNT(m) 
+        FROM Mensaje m 
+        WHERE m.receptor.id = :userId 
+          AND m.leido = false 
+        GROUP BY m.emisor.id
+        """)
+    List<Object[]> getUnreadCounts(@Param("userId") Long userId);
+
+    // Obtener usuarios con los que se ha tenido conversación
+    @Query("""
+        SELECT DISTINCT 
+        CASE 
+            WHEN m.emisor.id = :userId THEN m.receptor.id 
+            ELSE m.emisor.id 
+        END
+        FROM Mensaje m 
+        WHERE m.emisor.id = :userId OR m.receptor.id = :userId
+        """)
+    List<Long> getActiveChatUserIds(@Param("userId") Long userId);
+
+    // Obtener contactos de un usuario (redundante con el anterior)
+    @Query("""
+        SELECT DISTINCT 
+        CASE 
+            WHEN m.emisor.id = :userId THEN m.receptor.id 
+            ELSE m.emisor.id 
+        END
+        FROM Mensaje m 
+        WHERE m.emisor.id = :userId OR m.receptor.id = :userId
+        """)
+    List<Long> getUserContacts(@Param("userId") Long userId);
+
+    // Obtener último mensaje entre dos usuarios
+    @Query("""
+        SELECT m FROM Mensaje m 
+        WHERE (m.emisor.id = :userId AND m.receptor.id = :otherUserId) 
+           OR (m.emisor.id = :otherUserId AND m.receptor.id = :userId)
+        ORDER BY m.fechaEnvio DESC
+        """)
+    List<Mensaje> findLastMessage(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId, Pageable pageable);
+
+
+    // Obtener mensajes no leídos de una conversación específica
+    @Query("""
+        SELECT m FROM Mensaje m 
+        WHERE m.emisor.id = :otherUserId 
+          AND m.receptor.id = :userId 
+          AND m.leido = false
+        ORDER BY m.fechaEnvio ASC
+        """)
+    List<Mensaje> findUnreadMessages(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+
+    // Verificar si hay mensajes no leídos entre dos usuarios
+    @Query("""
+        SELECT COUNT(m) > 0 
+        FROM Mensaje m 
+        WHERE m.emisor.id = :otherUserId 
+          AND m.receptor.id = :userId 
+          AND m.leido = false
+        """)
+    boolean hasUnreadMessagesFrom(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+
+    // Obtener estadísticas de mensajes
+    @Query("""
+        SELECT 
+            COUNT(m),
+            SUM(CASE WHEN m.leido = false AND m.receptor.id = :userId THEN 1 ELSE 0 END),
+            MAX(m.fechaEnvio)
+        FROM Mensaje m 
+        WHERE m.emisor.id = :userId OR m.receptor.id = :userId
+        """)
+    Object[] getMessageStats(@Param("userId") Long userId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface LicenciaRepository extends JpaRepository<Licencia, Long> {
+    boolean existsByPersonalId(Long id);
+}
+package edu.ecep.base_app.repos;
+
+
+
+
+
+public interface PersonalRepository extends JpaRepository<Personal, Long> {
+
+    boolean existsByUsuarioId(Long id);
+
+    Optional<Personal> findByUsuario(Usuario usuario);
+
+    boolean existsByUsuario(Usuario u);
+
+
+    boolean existsByDni(String dni);
+
+    boolean existsByCuil(@NotBlank String cuil);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface AsignacionDocenteMateriaRepository extends JpaRepository<AsignacionDocenteMateria, Long> {
+    boolean existsByPersonalId(Long personalId); // +++
+    @Query("""
+      select (count(a) > 0) from AsignacionDocenteMateria a
+      where a.seccionMateria.id = :smId and a.rol = edu.ecep.base_app.domain.enums.RolMateria.TITULAR
+        and a.vigenciaDesde <= :hasta
+        and (a.vigenciaHasta is null or a.vigenciaHasta >= :desde)
+        and (:excludeId is null or a.id <> :excludeId)
+    """)
+    boolean hasTitularOverlap(@Param("smId") Long seccionMateriaId,
+                              @Param("desde") LocalDate desde,
+                              @Param("hasta") LocalDate hasta,
+                              @Param("excludeId") Long excludeId);
+}package edu.ecep.base_app.repos;
+
+
+
+
+public interface AsignacionDocenteSeccionRepository extends JpaRepository<AsignacionDocenteSeccion, Long> {
+    boolean existsByPersonalId(Long personalId);
+
+    List<AsignacionDocenteSeccion> findByPersonal_Id(Long personalId);
+    @Query("""
+      select (count(a) > 0) from AsignacionDocenteSeccion a
+      where a.seccion.id = :seccionId and a.rol = edu.ecep.base_app.domain.enums.RolSeccion.MAESTRO_TITULAR
+        and a.vigenciaDesde <= :hasta
+        and (a.vigenciaHasta is null or a.vigenciaHasta >= :desde)
+        and (:excludeId is null or a.id <> :excludeId)
+    """)
+    boolean hasTitularOverlap(@Param("seccionId") Long seccionId,
+                              @Param("desde") LocalDate desde,
+                              @Param("hasta") LocalDate hasta,
+                              @Param("excludeId") Long excludeId);
+    @Query("""
+        select a
+        from AsignacionDocenteSeccion a
+        where a.personal.id = :personalId
+          and a.vigenciaDesde <= :fecha
+          and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
+    """)
+    List<AsignacionDocenteSeccion> findVigentesByPersonal(@Param("personalId") Long personalId,
+                                                          @Param("fecha") LocalDate fecha);
+
+    @Query("""
+           select a.seccion
+           from AsignacionDocenteSeccion a
+           where a.personal.id = :personalId
+             and a.vigenciaDesde <= :fecha
+             and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
+           order by a.seccion.nivel, a.seccion.gradoSala, a.seccion.division
+           """)
+    List<Seccion> findSeccionesVigentesByPersonal(@Param("personalId") Long personalId,
+                                                  @Param("fecha") LocalDate fecha);
+}
+
+package edu.ecep.base_app.repos;
+
+
+
+public interface AspiranteRepository extends JpaRepository<Aspirante, Long> {
+    boolean existsByUsuarioId(Long id);
+
+    boolean existsByDni(String dni);
+}
+package edu.ecep.base_app.repos;
+
+
+public interface PeriodoEscolarRepository extends JpaRepository<PeriodoEscolar, Long> {
+    boolean existsByAnio(Integer anio);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface TrimestreRepository extends JpaRepository<Trimestre, Long> {
+    boolean existsByPeriodoEscolarIdAndOrden(Long periodoEscolarId, Integer orden);
+    // trimestre que contiene la fecha (el más “reciente” por inicio)
+    Optional<Trimestre> findTopByInicioLessThanEqualAndFinGreaterThanEqualOrderByInicioDesc(
+            LocalDate fecha1, LocalDate fecha2
+    );
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface AspiranteFamiliarRepository extends JpaRepository<AspiranteFamiliar, Long> {
+
+
+    boolean existsByAspiranteId(Long id);
+
+    boolean existsByFamiliarId(Long id);
+
+    boolean existsByAspiranteIdAndFamiliarId(Long id, Long id1);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface AlumnoRepository extends JpaRepository<Alumno, Long> {
+    boolean existsByUsuarioId(Long id);
+}
+package edu.ecep.base_app.repos;
+
+
+public interface CalificacionTrimestralRepository extends JpaRepository<CalificacionTrimestral, Long> {
+    boolean existsByTrimestreIdAndSeccionMateriaIdAndMatriculaId(Long trimestreId, Long seccionMateriaId, Long matriculaId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface ComunicadoRepository extends JpaRepository<Comunicado, Long> {
+}
+package edu.ecep.base_app.repos;
+
+
+public interface PagoCuotaRepository extends JpaRepository<PagoCuota, Long> {}
+package edu.ecep.base_app.repos;
+
+
+
+public interface ActaAccidenteRepository extends JpaRepository<ActaAccidente, Long> {
+
+}
+package edu.ecep.base_app.repos;
+
+
+public interface SolicitudBajaAlumnoRepository extends JpaRepository<SolicitudBajaAlumno, Long> {}
+
+package edu.ecep.base_app.repos;
+
+
+
+public interface JornadaAsistenciaRepository extends JpaRepository<JornadaAsistencia, Long> {
+    boolean existsBySeccionIdAndFecha(Long seccionId, LocalDate fecha);
+    Optional<JornadaAsistencia> findBySeccionIdAndFecha(Long seccionId, LocalDate fecha);
+
+    List<JornadaAsistencia> findBySeccionIdAndFechaBetween(Long seccionId, LocalDate from, LocalDate to);
+    List<JornadaAsistencia> findBySeccionId(Long seccionId);
+
+    @Query("SELECT j FROM JornadaAsistencia j WHERE j.trimestre.id = :trimestreId")
+    List<JornadaAsistencia> findByTrimestreId(@Param("trimestreId") Long trimestreId);
+
+    @Query("""
+        select new edu.ecep.base_app.dtos.asistencia.AsistenciaDiaDTO(
+            j.fecha,
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
+            count(d.id)
+        )
+        from JornadaAsistencia j
+             left join DetalleAsistencia d on d.jornada.id = j.id
+        where j.seccion.id = :seccionId
+          and j.fecha between :from and :to
+        group by j.fecha
+        order by j.fecha desc
+    """)
+    List<AsistenciaDiaDTO> resumenDiario(@Param("seccionId") Long seccionId,
+                                         @Param("from") LocalDate from,
+                                         @Param("to") LocalDate to);
+}
+package edu.ecep.base_app.repos;
+
+
+public interface AsistenciaPersonalRepository extends JpaRepository<AsistenciaPersonal, Long> {
+    boolean existsByPersonalId(Long personalId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface DetalleAsistenciaRepository extends JpaRepository<DetalleAsistencia, Long> {
+    boolean existsByJornadaIdAndMatriculaId(Long jornadaId, Long matriculaId);
+
+    List<DetalleAsistencia> findByJornadaId(Long jornadaId);
+
+    @Query("SELECT d FROM DetalleAsistencia d " +
+            "WHERE d.matricula.id = :matriculaId " +
+            "AND d.jornada.fecha BETWEEN :from AND :to")
+    List<DetalleAsistencia> findByMatriculaInRange(@Param("matriculaId") Long matriculaId,
+                                                   @Param("from") LocalDate from,
+                                                   @Param("to") LocalDate to);
+
+    List<DetalleAsistencia> findByMatriculaIdAndJornada_FechaBetween(Long matriculaId, LocalDate from, LocalDate to);
+
+    @Query("""
+        select new edu.ecep.base_app.dtos.asistencia.AsistenciaAcumuladoDTO(
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
+            count(d.id)
+        )
+        from DetalleAsistencia d
+             join d.jornada j
+        where j.seccion.id = :seccionId
+          and j.fecha between :from and :to
+    """)
+    AsistenciaAcumuladoDTO acumuladoSeccion(@Param("seccionId") Long seccionId,
+                                            @Param("from") LocalDate from,
+                                            @Param("to") LocalDate to);
+
+    @Query("""
+        select new edu.ecep.base_app.dtos.asistencia.AsistenciaAlumnoResumenDTO(
+            m.id, a.id, a.apellido, a.nombre,
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
+            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
+            count(d.id)
+        )
+        from DetalleAsistencia d
+             join d.matricula m
+             join m.alumno a
+             join d.jornada j
+        where j.seccion.id = :seccionId
+          and j.fecha between :from and :to
+        group by m.id, a.id, a.nombre, a.apellido
+        order by a.apellido, a.nombre
+    """)
+    List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(@Param("seccionId") Long seccionId,
+                                                      @Param("from") LocalDate from,
+                                                      @Param("to") LocalDate to);
+}
+package edu.ecep.base_app.repos;
+
+
+
+
+public interface EvaluacionRepository extends JpaRepository<Evaluacion, Long> {
+    //List<Evaluacion> findBySeccionMateriaIdAndTrimestreId(Long seccionMateriaId, Long trimestreId);
+}
+
+package edu.ecep.base_app.repos;
+
+
+
+
+public interface CuotaRepository extends JpaRepository<Cuota, Long> {
+    boolean existsByMatriculaIdAndAnioAndMesAndConcepto(Long matriculaId, Integer anio, Integer mes, ConceptoCuota concepto);
+    boolean existsByMatriculaIdAndAnioAndConcepto(Long matriculaId, Integer anio, ConceptoCuota concepto);
+    Optional<Cuota> findByCodigoPago(String codigoPago);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface SolicitudAdmisionRepository extends JpaRepository<SolicitudAdmision, Long> {
+
+    boolean existsByAspiranteId(Long id);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+    Optional<Usuario> findByEmail(String email);
+    Boolean existsByEmail(String email);
+
+
+
+    /*
+    @Query("""
+        SELECT 
+            u.id as idUsuario,
+            u.email as email,
+            u.roles as roles,
+            p.id as idPersona,
+            CONCAT(p.nombre, ' ', p.apellido) as nombreCompleto,
+            p.dni as dni,
+            TYPE(p).name as tipoPersona
+        FROM Usuario u
+        LEFT JOIN u.persona p
+        WHERE u.id <> :currentId
+          AND (
+              LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))
+           OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :q, '%'))
+           OR LOWER(p.apellido) LIKE LOWER(CONCAT('%', :q, '%'))
+           OR LOWER(p.dni) LIKE LOWER(CONCAT('%', :q, '%'))
+          )
+        ORDER BY u.email
+    """)
+    List<UsuarioBusquedaProjection> buscarUsuariosConTipo(@Param("q") String q,
+                                                          @Param("currentId") Long currentId);
+
+    @Query("""
+SELECT DISTINCT
+    u.id AS id,
+    u.email AS email,
+    u.roles AS roles,
+    p.id AS personaId,
+    CONCAT(p.nombre, ' ', p.apellido) AS nombreCompleto,
+    p.dni AS dni,
+    TYPE(p).name AS tipoPersona
+FROM Usuario u
+LEFT JOIN u.persona p
+WHERE u.email = :email
+""")
+    List<UsuarioBusquedaProjection> buscarUsuarioBusquedaPorEmail(@Param("email") String email);
+*/
+
+}
+
+package edu.ecep.base_app.repos;
+
+
+public interface EmisionCuotaRepository extends JpaRepository<EmisionCuota, Long> {}
+package edu.ecep.base_app.repos;
+
+
+
+public interface MatriculaSeccionHistorialRepository extends JpaRepository<MatriculaSeccionHistorial, Long> {
+    boolean existsBySeccionId(Long seccionId);
+
+    @Query("""
+        select h from MatriculaSeccionHistorial h
+        where h.matricula.id = :matriculaId
+          and h.desde <= :fecha
+          and (h.hasta is null or h.hasta >= :fecha)
+    """)
+    List<MatriculaSeccionHistorial> findVigente(@Param("matriculaId") Long matriculaId,
+                                                @Param("fecha") java.time.LocalDate fecha);
+    List<MatriculaSeccionHistorial> findByMatriculaIdOrderByDesdeDesc(Long matriculaId);
+
+
+    @Query("""
+         select msh 
+         from MatriculaSeccionHistorial msh
+         where msh.seccion.id = :seccionId
+           and msh.desde <= :fecha
+           and (msh.hasta is null or msh.hasta >= :fecha)
+         """)
+    List<MatriculaSeccionHistorial> findActivosBySeccionOnDate(@Param("seccionId") Long seccionId,
+                                                               @Param("fecha") LocalDate fecha);}
+package edu.ecep.base_app.repos;
+
+
+public interface FormacionAcademicaRepository extends JpaRepository<FormacionAcademica, Long> {}
+package edu.ecep.base_app.repos;
+
+
+
+
+public interface FamiliarRepository extends JpaRepository<Familiar, Long> {
+    List<Familiar> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCase(String n, String a);
+    boolean existsByUsuarioId(Long id);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
+    boolean existsByAlumnoIdAndPeriodoEscolarId(Long alumnoId, Long periodoEscolarId);
+    boolean existsByAlumnoId(Long id);
+    Optional<Matricula> findByAlumnoIdAndPeriodoEscolarId(Long alumnoId, Long periodoEscolarId);
+
+    List<Matricula> findByAlumnoId(@Param("alumnoId") Long alumnoId);
+}package edu.ecep.base_app.repos;
+
+
+
+public interface ReciboSueldoRepository extends JpaRepository<ReciboSueldo, Long> {
+    boolean existsByPersonalId(Long id);
+}
+package edu.ecep.base_app.repos;
+
+
+
+
+public interface SeccionRepository extends JpaRepository<Seccion, Long> {
+    boolean existsByPeriodoEscolarIdAndNivelAndGradoSalaAndDivisionAndTurno(Long periodoId, NivelAcademico nivel, String gradoSala, String division, Turno turno);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface InformeInicialRepository extends JpaRepository<InformeInicial, Long> {
+    boolean existsByTrimestreIdAndMatriculaId(Long trimestreId, Long matriculaId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface SeccionMateriaRepository extends JpaRepository<SeccionMateria, Long> {
+    boolean existsBySeccionIdAndMateriaId(Long seccionId, Long materiaId);
+    List<SeccionMateria> findBySeccionId(Long seccionId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+
+public interface AlumnoFamiliarRepository extends JpaRepository<AlumnoFamiliar, Long> {
+    boolean existsByAlumnoIdAndFamiliarId(Long alumnoId, Long familiarId);
+    boolean existsByFamiliarId(Long id);
+    boolean existsByAlumnoId(Long id);
+
+    @Query("""
+         select af.alumno
+         from AlumnoFamiliar af
+         where af.familiar.id = :familiarId
+         """)
+    List<Alumno> findAlumnosByFamiliar(@Param("familiarId") Long familiarId);}
+package edu.ecep.base_app.repos;
+
+
+
+public interface MateriaRepository extends JpaRepository<Materia, Long> {
+    boolean existsByNombreIgnoreCase(String nombre);
+}package edu.ecep.base_app.repos;
+
+
+public interface ResultadoEvaluacionRepository extends JpaRepository<ResultadoEvaluacion, Long> {
+    boolean existsByEvaluacionIdAndMatriculaId(Long evaluacionId, Long matriculaId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface DiaNoHabilRepository extends JpaRepository<DiaNoHabil, Long> {
+}

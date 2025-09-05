@@ -5,12 +5,10 @@ import edu.ecep.base_app.domain.Materia;
 import edu.ecep.base_app.domain.Seccion;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 
 public interface EvaluacionRepository extends JpaRepository<Evaluacion, Long> {
-
-
-    boolean existsBySeccionId(Long id);
-
-    boolean existsByMateriaId(Long id);
+    //List<Evaluacion> findBySeccionMateriaIdAndTrimestreId(Long seccionMateriaId, Long trimestreId);
 }
 

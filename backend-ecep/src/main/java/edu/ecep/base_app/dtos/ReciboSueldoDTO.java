@@ -1,15 +1,30 @@
 package edu.ecep.base_app.dtos;
 
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
-/* ========== RECIBO SUELDO ========== */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ReciboSueldoDTO {
-    private Long id;
-    private LocalDate fecha;
-    private BigDecimal monto;
-    private Long personalId;
+    Long id;
+    @NotNull
+    Long personalId;
+    @NotNull
+    Integer anio;
+    @NotNull
+    Integer mes;
+    @NotNull
+    BigDecimal bruto;
+    @NotNull
+    BigDecimal neto;
+    boolean recibiConforme;
+    OffsetDateTime fechaConfirmacion;
+    String obsConfirmacion;
+    String comprobanteArchivoId;
 }

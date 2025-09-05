@@ -1,1 +1,989 @@
-@RestController@RequestMapping(value = "/api/alumno-familiar", produces = MediaType.APPLICATION_JSON_VALUE)public class AlumnoFamiliarResource {    private final AlumnoFamiliarService alumnoFamiliarService;    public AlumnoFamiliarResource(final AlumnoFamiliarService alumnoFamiliarService) {        this.alumnoFamiliarService = alumnoFamiliarService;    }    @GetMapping    public ResponseEntity<List<AlumnoFamiliarDTO>> getAllAlumnoFamiliars() {        return ResponseEntity.ok(alumnoFamiliarService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AlumnoFamiliarDTO> getAlumnoFamiliar(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(alumnoFamiliarService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAlumnoFamiliar(            @RequestBody @Valid final AlumnoFamiliarDTO alumnoFamiliarDTO) {        final Long createdId = alumnoFamiliarService.create(alumnoFamiliarDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAlumnoFamiliar(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final AlumnoFamiliarDTO alumnoFamiliarDTO) {        alumnoFamiliarService.update(id, alumnoFamiliarDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAlumnoFamiliar(@PathVariable(name = "id") final Long id) {        alumnoFamiliarService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/matriculas", produces = MediaType.APPLICATION_JSON_VALUE)public class MatriculaResource {    private final MatriculaService matriculaService;    public MatriculaResource(final MatriculaService matriculaService) {        this.matriculaService = matriculaService;    }    @GetMapping    public ResponseEntity<List<MatriculaDTO>> getAllMatriculas() {        return ResponseEntity.ok(matriculaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<MatriculaDTO> getMatricula(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(matriculaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createMatricula(@RequestBody @Valid final MatriculaDTO matriculaDTO) {        final Long createdId = matriculaService.create(matriculaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateMatricula(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final MatriculaDTO matriculaDTO) {        matriculaService.update(id, matriculaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteMatricula(@PathVariable(name = "id") final Long id) {        matriculaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/recibos-sueldo", produces = MediaType.APPLICATION_JSON_VALUE)public class ReciboSueldoResource {    private final ReciboSueldoService reciboSueldoService;    public ReciboSueldoResource(final ReciboSueldoService reciboSueldoService) {        this.reciboSueldoService = reciboSueldoService;    }    @GetMapping    public ResponseEntity<List<ReciboSueldoDTO>> getAllReciboSueldos() {        return ResponseEntity.ok(reciboSueldoService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<ReciboSueldoDTO> getReciboSueldo(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(reciboSueldoService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createReciboSueldo(            @RequestBody @Valid final ReciboSueldoDTO reciboSueldoDTO) {        final Long createdId = reciboSueldoService.create(reciboSueldoDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateReciboSueldo(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final ReciboSueldoDTO reciboSueldoDTO) {        reciboSueldoService.update(id, reciboSueldoDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteReciboSueldo(@PathVariable(name = "id") final Long id) {        reciboSueldoService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/informes-inicial", produces = MediaType.APPLICATION_JSON_VALUE)public class InformeInicialResource {    private final InformeInicialService informeInicialService;    public InformeInicialResource(            final InformeInicialService informeInicialService) {        this.informeInicialService = informeInicialService;    }    @GetMapping    public ResponseEntity<List<InformeInicialDTO>> getAllInformeTrimestralInicials() {        return ResponseEntity.ok(informeInicialService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<InformeInicialDTO> getInformeTrimestralInicial(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(informeInicialService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createInformeTrimestralInicial(            @RequestBody @Valid final InformeInicialDTO informeInicialDTO) {        final Long createdId = informeInicialService.create(informeInicialDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateInformeTrimestralInicial(            @PathVariable(name = "id") final Long id,            @RequestBody @Valid final InformeInicialDTO informeInicialDTO) {        informeInicialService.update(id, informeInicialDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteInformeTrimestralInicial(            @PathVariable(name = "id") final Long id) {        informeInicialService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/asignacion-docente", produces = MediaType.APPLICATION_JSON_VALUE)public class AsignacionDocenteResource {    private final AsignacionDocenteService asistenciaDiaService;    public AsignacionDocenteResource(final AsignacionDocenteService asistenciaDiaService) {        this.asistenciaDiaService = asistenciaDiaService;    }    @GetMapping    public ResponseEntity<List<AsignacionDocenteDTO>> getAllAsignacionDocentes() {        return ResponseEntity.ok(asistenciaDiaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AsignacionDocenteDTO> getAsignacionDocente(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(asistenciaDiaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAsignacionDocente(            @RequestBody @Valid final AsignacionDocenteDTO asistenciaDiaDTO) {        final Long createdId = asistenciaDiaService.create(asistenciaDiaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAsignacionDocente(@PathVariable(name = "id") final Long id,                                                    @RequestBody @Valid final AsignacionDocenteDTO asistenciaDiaDTO) {        asistenciaDiaService.update(id, asistenciaDiaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAsignacionDocente(@PathVariable(name = "id") final Long id) {        asistenciaDiaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/secciones", produces = MediaType.APPLICATION_JSON_VALUE)public class SeccionResource {    private final SeccionService seccionService;    public SeccionResource(final SeccionService seccionService) {        this.seccionService = seccionService;    }    @GetMapping    public ResponseEntity<List<SeccionDTO>> getAllSeccions() {        return ResponseEntity.ok(seccionService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<SeccionDTO> getSeccion(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(seccionService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createSeccion(@RequestBody @Valid final SeccionDTO seccionDTO) {        final Long createdId = seccionService.create(seccionDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateSeccion(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final SeccionDTO seccionDTO) {        seccionService.update(id, seccionDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteSeccion(@PathVariable(name = "id") final Long id) {        seccionService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/alumnos", produces = MediaType.APPLICATION_JSON_VALUE)public class AlumnoResource {    private final AlumnoService alumnoService;    public AlumnoResource(final AlumnoService alumnoService) {        this.alumnoService = alumnoService;    }    @GetMapping    public ResponseEntity<List<AlumnoDTO>> getAllAlumnos() {        return ResponseEntity.ok(alumnoService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AlumnoDTO> getAlumno(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(alumnoService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAlumno(@RequestBody @Valid final AlumnoDTO alumnoDTO) {        final Long createdId = alumnoService.create(alumnoDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAlumno(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final AlumnoDTO alumnoDTO) {        alumnoService.update(id, alumnoDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAlumno(@PathVariable(name = "id") final Long id) {        alumnoService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/comunicados", produces = MediaType.APPLICATION_JSON_VALUE)public class ComunicadoResource {    private final ComunicadoService comunicadoService;    public ComunicadoResource(final ComunicadoService comunicadoService) {        this.comunicadoService = comunicadoService;    }    @GetMapping    public ResponseEntity<List<ComunicadoDTO>> getAllComunicados() {        return ResponseEntity.ok(comunicadoService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<ComunicadoDTO> getComunicado(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(comunicadoService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createComunicado(            @RequestBody @Valid final ComunicadoDTO comunicadoDTO) {        final Long createdId = comunicadoService.create(comunicadoDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateComunicado(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final ComunicadoDTO comunicadoDTO) {        comunicadoService.update(id, comunicadoDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteComunicado(@PathVariable(name = "id") final Long id) {        comunicadoService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/pagos-cuota", produces = MediaType.APPLICATION_JSON_VALUE)public class PagoCuotaResource {    private final PagoCuotaService pagoCuotaService;    public PagoCuotaResource(final PagoCuotaService pagoCuotaService) {        this.pagoCuotaService = pagoCuotaService;    }    @GetMapping    public ResponseEntity<List<PagoCuotaDTO>> getAllPagoCuotas() {        return ResponseEntity.ok(pagoCuotaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<PagoCuotaDTO> getPagoCuota(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(pagoCuotaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createPagoCuota(            @RequestBody @Valid final PagoCuotaDTO pagoCuotaDTO) {        final Long createdId = pagoCuotaService.create(pagoCuotaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updatePagoCuota(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final PagoCuotaDTO pagoCuotaDTO) {        pagoCuotaService.update(id, pagoCuotaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deletePagoCuota(@PathVariable(name = "id") final Long id) {        pagoCuotaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping("/api/auth")public class AuthController {    @Autowired    private UsuarioRepository usuarioRepository;    @Autowired    private AuthService authService;    @Autowired    private JwtService jwtService;    @Autowired    private UsuarioService usuarioService;    @PostMapping("/login")    public ResponseEntity<?> login(@RequestBody LoginRequest req) {        AuthResponse data = authService.login(req.getEmail(), req.getPassword());        ResponseCookie cookie = ResponseCookie                .from("token", data.getToken())                .httpOnly(true)                .secure(false)   // true en prod con HTTPS                .path("/")                .maxAge(Duration.ofDays(1))                .sameSite("Lax")                .build();        return ResponseEntity.ok()                .header(HttpHeaders.SET_COOKIE, cookie.toString())                .body(Map.of("email", data.getEmail(), "roles", data.getRoles()));    }    @PostMapping("/register")    public ResponseEntity<AuthResponse> register(@RequestBody Usuario request) {        return ResponseEntity.ok(authService.register(request));    }    @PostMapping("/logout")    public ResponseEntity<?> logout(HttpServletResponse response) {        ResponseCookie deleteCookie = ResponseCookie                .from("token", "")                .path("/")                .maxAge(0)                .build();        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());        return ResponseEntity.ok(Map.of("message", "logout ok"));    }    @GetMapping("/me")    public ResponseEntity<UsuarioBusquedaDTO> getCurrentUser(            @CookieValue(name = "token", required = false) String token,            Authentication auth) {        String email = (token != null)                ? jwtService.extractUsername(token)                : (auth != null ? auth.getName() : null);        if (email == null) {            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();        }        return authService.getCurrentUserDTO(email)                .map(ResponseEntity::ok)                .orElse(ResponseEntity.notFound().build());    }}@RestController@RequestMapping(value = "/api/formacion-academica", produces = MediaType.APPLICATION_JSON_VALUE)public class FormacionAcademicaResource {    private final FormacionAcademicaService formacionAcademicaService;    public FormacionAcademicaResource(final FormacionAcademicaService formacionAcademicaService) {        this.formacionAcademicaService = formacionAcademicaService;    }    @GetMapping    public ResponseEntity<List<FormacionAcademicaDTO>> getAllFormacionAcademicas() {        return ResponseEntity.ok(formacionAcademicaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<FormacionAcademicaDTO> getFormacionAcademica(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(formacionAcademicaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createFormacionAcademica(            @RequestBody @Valid final FormacionAcademicaDTO formacionAcademicaDTO) {        final Long createdId = formacionAcademicaService.create(formacionAcademicaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateFormacionAcademica(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final FormacionAcademicaDTO formacionAcademicaDTO) {        formacionAcademicaService.update(id, formacionAcademicaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteFormacionAcademica(@PathVariable(name = "id") final Long id) {        formacionAcademicaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/no-habiles", produces = MediaType.APPLICATION_JSON_VALUE)public class DiaNoHabilResource {    private final DiaNoHabilService diaNoHabilService;    public DiaNoHabilResource(final DiaNoHabilService diaNoHabilService) {        this.diaNoHabilService = diaNoHabilService;    }    @GetMapping    public ResponseEntity<List<DiaNoHabilDTO>> getAllDiaNoHabils() {        return ResponseEntity.ok(diaNoHabilService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<DiaNoHabilDTO> getDiaNoHabil(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(diaNoHabilService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createDiaNoHabil(            @RequestBody @Valid final DiaNoHabilDTO diaNoHabilDTO) {        final Long createdId = diaNoHabilService.create(diaNoHabilDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateDiaNoHabil(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final DiaNoHabilDTO diaNoHabilDTO) {        diaNoHabilService.update(id, diaNoHabilDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteDiaNoHabil(@PathVariable(name = "id") final Long id) {        diaNoHabilService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/users", produces = MediaType.APPLICATION_JSON_VALUE)public class UsuarioResource {    private final UsuarioService usuarioService;    public UsuarioResource(final UsuarioService usuarioService) {        this.usuarioService = usuarioService;    }    @GetMapping    public ResponseEntity<List<UsuarioDTO>> getAllUsuarios() {        return ResponseEntity.ok(usuarioService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<UsuarioDTO> getUsuario(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(usuarioService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createUsuario(@RequestBody @Valid final UsuarioDTO usuarioDTO) {        final Long createdId = usuarioService.create(usuarioDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateUsuario(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final UsuarioDTO usuarioDTO) {        usuarioService.update(id, usuarioDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteUsuario(@PathVariable(name = "id") final Long id) {        usuarioService.delete(id);        return ResponseEntity.noContent().build();    }    @GetMapping("/search")    public ResponseEntity<?> search(@RequestParam(required = false) String q) {        Usuario me = usuarioService.getCurrent();        return ResponseEntity.ok(                usuarioService.buscarUsuariosConTipo(q, me.getId())        );    }}@RestController@RequestMapping(value = "/api/actas-accidente", produces = MediaType.APPLICATION_JSON_VALUE)public class ActaAccidenteResource {    private final ActaAccidenteService actaAccidenteService;    public ActaAccidenteResource(final ActaAccidenteService actaAccidenteService) {        this.actaAccidenteService = actaAccidenteService;    }    @GetMapping    public ResponseEntity<List<ActaAccidenteDTO>> getAllActaAccidentes() {        return ResponseEntity.ok(actaAccidenteService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<ActaAccidenteDTO> getActaAccidente(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(actaAccidenteService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createActaAccidente(            @RequestBody @Valid final ActaAccidenteDTO actaAccidenteDTO) {        final Long createdId = actaAccidenteService.create(actaAccidenteDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateActaAccidente(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final ActaAccidenteDTO actaAccidenteDTO) {        actaAccidenteService.update(id, actaAccidenteDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteActaAccidente(@PathVariable(name = "id") final Long id) {        actaAccidenteService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/personal", produces = MediaType.APPLICATION_JSON_VALUE)public class PersonalResource {    private final PersonalService personalService;    public PersonalResource(final PersonalService personalService) {        this.personalService = personalService;    }    @GetMapping    public ResponseEntity<List<PersonalDTO>> getAllPersonals() {        return ResponseEntity.ok(personalService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<PersonalDTO> getPersonal(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(personalService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createPersonal(@RequestBody @Valid final PersonalDTO personalDTO) {        final Long createdId = personalService.create(personalDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updatePersonal(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final PersonalDTO personalDTO) {        personalService.update(id, personalDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deletePersonal(@PathVariable(name = "id") final Long id) {        personalService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/materias", produces = MediaType.APPLICATION_JSON_VALUE)public class MateriasResource {    private final MateriaService materiaService;    public MateriasResource(final MateriaService materiaService) {        this.materiaService = materiaService;    }    @GetMapping    public ResponseEntity<List<MateriaDTO>> getAllMateriass() {        return ResponseEntity.ok(materiaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<MateriaDTO> getMaterias(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(materiaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createMaterias(@RequestBody @Valid final MateriaDTO materiasDTO) {        final Long createdId = materiaService.create(materiasDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateMaterias(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final MateriaDTO materiasDTO) {        materiaService.update(id, materiasDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteMaterias(@PathVariable(name = "id") final Long id) {        materiaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/calificaciones", produces = MediaType.APPLICATION_JSON_VALUE)public class CalificacionResource {    private final CalificacionService calificacionService;    public CalificacionResource(final CalificacionService calificacionService) {        this.calificacionService = calificacionService;    }    @GetMapping    public ResponseEntity<List<CalificacionDTO>> getAllCalificacions() {        return ResponseEntity.ok(calificacionService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<CalificacionDTO> getCalificacion(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(calificacionService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createCalificacion(            @RequestBody @Valid final CalificacionDTO calificacionDTO) {        final Long createdId = calificacionService.create(calificacionDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateCalificacion(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final CalificacionDTO calificacionDTO) {        calificacionService.update(id, calificacionDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteCalificacion(@PathVariable(name = "id") final Long id) {        calificacionService.delete(id);        return ResponseEntity.noContent().build();    }}@Controller@RequiredArgsConstructor@Slf4jpublic class ChatSocketController {    private final ChatService chatService;    private final UsuarioService userService;    @MessageMapping("/chat.send")    @SendToUser("/queue/ack")    public ChatMessageDTO send(            @Payload SendMessageRequest req,            Principal principal    ) {        Usuario em = userService.findById(Long.valueOf(principal.getName()));        Mensaje saved = chatService.saveAndSend(req, em);        return chatService.toDto(saved);    }}@RestController@RequestMapping(value = "/api/evaluaciones", produces = MediaType.APPLICATION_JSON_VALUE)public class EvaluacionResource {    private final EvaluacionService evaluacionService;    public EvaluacionResource(final EvaluacionService evaluacionService) {        this.evaluacionService = evaluacionService;    }    @GetMapping    public ResponseEntity<List<EvaluacionDTO>> getAllEvaluacions() {        return ResponseEntity.ok(evaluacionService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<EvaluacionDTO> getEvaluacion(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(evaluacionService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createEvaluacion(            @RequestBody @Valid final EvaluacionDTO evaluacionDTO) {        final Long createdId = evaluacionService.create(evaluacionDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateEvaluacion(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final EvaluacionDTO evaluacionDTO) {        evaluacionService.update(id, evaluacionDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteEvaluacion(@PathVariable(name = "id") final Long id) {        evaluacionService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping("/api/chat")@RequiredArgsConstructor@Slf4jpublic class ChatController {    private final ChatService chatService;    private final UsuarioService usuarioService;    private final SimpMessagingTemplate messagingTemplate;    @GetMapping("/history/{otherUserId}")    public ResponseEntity<List<ChatMessageDTO>> history(@PathVariable Long otherUserId) {        try {            Usuario me = usuarioService.getCurrent();            List<ChatMessageDTO> messages = chatService.getHistory(me.getId(), otherUserId);            return ResponseEntity.ok(messages);        } catch (ResponseStatusException ex) {            return ResponseEntity.status(ex.getStatusCode()).build();        }    }    @PostMapping("/mark-read/{otherUserId}")    public ResponseEntity<Void> markRead(@PathVariable Long otherUserId) {        try {            Usuario me = usuarioService.getCurrent();            chatService.markRead(me.getId(), otherUserId);            // Notificar al otro usuario que los mensajes fueron leídos            messagingTemplate.convertAndSendToUser(                    String.valueOf(otherUserId),                    "/queue/read-receipts",                    Map.of(                            "readerId", me.getId(),                            "timestamp", System.currentTimeMillis()                    )            );            return ResponseEntity.noContent().build();        } catch (ResponseStatusException ex) {            return ResponseEntity.status(ex.getStatusCode()).build();        }    }    @GetMapping("/active-chats")    public ResponseEntity<List<UsuarioBusquedaDTO>> getActiveChats() {        Usuario me = usuarioService.getCurrent();        List<Usuario> activeUsers = chatService.getActiveChatUsers(me.getId());        List<UsuarioBusquedaDTO> dtos = activeUsers.stream()                .map(u -> usuarioService.buscarUsuarioBusquedaPorId(u.getId()))                .toList();        return ResponseEntity.ok(dtos);    }    // Nuevo endpoint para obtener mensajes no leídos    @GetMapping("/unread-count")    public ResponseEntity<Map<Long, Long>> getUnreadCounts() {        try {            Usuario me = usuarioService.getCurrent();            Map<Long, Long> unreadCounts = chatService.getUnreadCounts(me.getId());            return ResponseEntity.ok(unreadCounts);        } catch (ResponseStatusException ex) {            return ResponseEntity.status(ex.getStatusCode()).build();        }    }    // Endpoint para obtener estado de conexión de usuarios    @GetMapping("/online-status")    public ResponseEntity<Map<Long, Boolean>> getOnlineStatus(@RequestParam List<Long> userIds) {        try {            Map<Long, Boolean> onlineStatus = chatService.getOnlineStatus(userIds);            return ResponseEntity.ok(onlineStatus);        } catch (Exception ex) {            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();        }    }}package edu.ecep.base_app.rest;@RestController@RequestMapping(value = "/api/registros-asistencia", produces = MediaType.APPLICATION_JSON_VALUE)public class RegistroAsistenciaResource {    private final RegistroAsistenciaService registroAsistenciaService;    public RegistroAsistenciaResource(final RegistroAsistenciaService registroAsistenciaService) {        this.registroAsistenciaService = registroAsistenciaService;    }    @GetMapping    public ResponseEntity<List<RegistroAsistenciaDTO>> getAllRegistroAsistencias() {        return ResponseEntity.ok(registroAsistenciaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<RegistroAsistenciaDTO> getRegistroAsistencia(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(registroAsistenciaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createRegistroAsistencia(            @RequestBody @Valid final RegistroAsistenciaDTO registroAsistenciaDTO) {        final Long createdId = registroAsistenciaService.create(registroAsistenciaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateRegistroAsistencia(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final RegistroAsistenciaDTO registroAsistenciaDTO) {        registroAsistenciaService.update(id, registroAsistenciaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteRegistroAsistencia(@PathVariable(name = "id") final Long id) {        registroAsistenciaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/asistencia-dias", produces = MediaType.APPLICATION_JSON_VALUE)public class AsistenciaDiaResource {    private final AsistenciaDiaService asistenciaDiaService;    public AsistenciaDiaResource(final AsistenciaDiaService asistenciaDiaService) {        this.asistenciaDiaService = asistenciaDiaService;    }    @GetMapping    public ResponseEntity<List<AsistenciaDiaDTO>> getAllAsistenciaDias() {        return ResponseEntity.ok(asistenciaDiaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AsistenciaDiaDTO> getAsistenciaDia(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(asistenciaDiaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAsistenciaDia(            @RequestBody @Valid final AsistenciaDiaDTO asistenciaDiaDTO) {        final Long createdId = asistenciaDiaService.create(asistenciaDiaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAsistenciaDia(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final AsistenciaDiaDTO asistenciaDiaDTO) {        asistenciaDiaService.update(id, asistenciaDiaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAsistenciaDia(@PathVariable(name = "id") final Long id) {        asistenciaDiaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/cuotas", produces = MediaType.APPLICATION_JSON_VALUE)public class CuotaResource {    private final CuotaService cuotaService;    public CuotaResource(final CuotaService cuotaService) {        this.cuotaService = cuotaService;    }    @GetMapping    public ResponseEntity<List<CuotaDTO>> getAllCuotas() {        return ResponseEntity.ok(cuotaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<CuotaDTO> getCuota(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(cuotaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createCuota(@RequestBody @Valid final CuotaDTO cuotaDTO) {        final Long createdId = cuotaService.create(cuotaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateCuota(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final CuotaDTO cuotaDTO) {        cuotaService.update(id, cuotaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteCuota(@PathVariable(name = "id") final Long id) {        cuotaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/aspirantes", produces = MediaType.APPLICATION_JSON_VALUE)public class AspiranteResource {    private final AspiranteService aspiranteService;    public AspiranteResource(final AspiranteService aspiranteService) {        this.aspiranteService = aspiranteService;    }    @GetMapping    public ResponseEntity<List<AspiranteDTO>> getAllAspirantes() {        return ResponseEntity.ok(aspiranteService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AspiranteDTO> getAspirante(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(aspiranteService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAspirante(            @RequestBody @Valid final AspiranteDTO aspiranteDTO) {        final Long createdId = aspiranteService.create(aspiranteDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAspirante(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final AspiranteDTO aspiranteDTO) {        aspiranteService.update(id, aspiranteDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAspirante(@PathVariable(name = "id") final Long id) {        aspiranteService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/asistencia-personal", produces = MediaType.APPLICATION_JSON_VALUE)public class AsistenciaPersonalResource {    private final AsistenciaPersonalService asistenciaPersonalService;    public AsistenciaPersonalResource(final AsistenciaPersonalService asistenciaPersonalService) {        this.asistenciaPersonalService = asistenciaPersonalService;    }    @GetMapping    public ResponseEntity<List<AsistenciaPersonalDTO>> getAllAsistenciaPersonals() {        return ResponseEntity.ok(asistenciaPersonalService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AsistenciaPersonalDTO> getAsistenciaPersonal(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(asistenciaPersonalService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAsistenciaPersonal(            @RequestBody @Valid final AsistenciaPersonalDTO asistenciaPersonalDTO) {        final Long createdId = asistenciaPersonalService.create(asistenciaPersonalDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAsistenciaPersonal(@PathVariable(name = "id") final Long id,                                                    @RequestBody @Valid final AsistenciaPersonalDTO asistenciaPersonalDTO) {        asistenciaPersonalService.update(id, asistenciaPersonalDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAsistenciaPersonal(@PathVariable(name = "id") final Long id) {        asistenciaPersonalService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/solicitudes-admision", produces = MediaType.APPLICATION_JSON_VALUE)public class SolicitudAdmisionResource {    private final SolicitudAdmisionService solicitudAdmisionService;    public SolicitudAdmisionResource(final SolicitudAdmisionService solicitudAdmisionService) {        this.solicitudAdmisionService = solicitudAdmisionService;    }    @GetMapping    public ResponseEntity<List<SolicitudAdmisionDTO>> getAllSolicitudAdmisions() {        return ResponseEntity.ok(solicitudAdmisionService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<SolicitudAdmisionDTO> getSolicitudAdmision(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(solicitudAdmisionService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createSolicitudAdmision(            @RequestBody @Valid final SolicitudAdmisionDTO solicitudAdmisionDTO) {        final Long createdId = solicitudAdmisionService.create(solicitudAdmisionDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateSolicitudAdmision(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final SolicitudAdmisionDTO solicitudAdmisionDTO) {        solicitudAdmisionService.update(id, solicitudAdmisionDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteSolicitudAdmision(@PathVariable(name = "id") final Long id) {        solicitudAdmisionService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/aspirante-familiar", produces = MediaType.APPLICATION_JSON_VALUE)public class AspiranteFamiliarResource {    private final AspiranteFamiliarService aspiranteFamiliarService;    public AspiranteFamiliarResource(final AspiranteFamiliarService aspiranteFamiliarService) {        this.aspiranteFamiliarService = aspiranteFamiliarService;    }    @GetMapping    public ResponseEntity<List<AspiranteFamiliarDTO>> getAllAspiranteFamiliars() {        return ResponseEntity.ok(aspiranteFamiliarService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<AspiranteFamiliarDTO> getAspiranteFamiliar(            @PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(aspiranteFamiliarService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createAspiranteFamiliar(            @RequestBody @Valid final AspiranteFamiliarDTO aspiranteFamiliarDTO) {        final Long createdId = aspiranteFamiliarService.create(aspiranteFamiliarDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateAspiranteFamiliar(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final AspiranteFamiliarDTO aspiranteFamiliarDTO) {        aspiranteFamiliarService.update(id, aspiranteFamiliarDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteAspiranteFamiliar(@PathVariable(name = "id") final Long id) {        aspiranteFamiliarService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/licencias", produces = MediaType.APPLICATION_JSON_VALUE)public class LicenciaResource {    private final LicenciaService licenciaService;    public LicenciaResource(final LicenciaService licenciaService) {        this.licenciaService = licenciaService;    }    @GetMapping    public ResponseEntity<List<LicenciaDTO>> getAllLicencias() {        return ResponseEntity.ok(licenciaService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<LicenciaDTO> getLicencia(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(licenciaService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createLicencia(@RequestBody @Valid final LicenciaDTO licenciaDTO) {        final Long createdId = licenciaService.create(licenciaDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateLicencia(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final LicenciaDTO licenciaDTO) {        licenciaService.update(id, licenciaDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteLicencia(@PathVariable(name = "id") final Long id) {        licenciaService.delete(id);        return ResponseEntity.noContent().build();    }}@RestController@RequestMapping(value = "/api/familiares", produces = MediaType.APPLICATION_JSON_VALUE)public class FamiliarResource {    private final FamiliarService familiarService;    public FamiliarResource(final FamiliarService familiarService) {        this.familiarService = familiarService;    }    @GetMapping    public ResponseEntity<List<FamiliarDTO>> getAllFamiliars() {        return ResponseEntity.ok(familiarService.findAll());    }    @GetMapping("/{id}")    public ResponseEntity<FamiliarDTO> getFamiliar(@PathVariable(name = "id") final Long id) {        return ResponseEntity.ok(familiarService.get(id));    }    @PostMapping    @ApiResponse(responseCode = "201")    public ResponseEntity<Long> createFamiliar(@RequestBody @Valid final FamiliarDTO familiarDTO) {        final Long createdId = familiarService.create(familiarDTO);        return new ResponseEntity<>(createdId, HttpStatus.CREATED);    }    @PutMapping("/{id}")    public ResponseEntity<Long> updateFamiliar(@PathVariable(name = "id") final Long id,            @RequestBody @Valid final FamiliarDTO familiarDTO) {        familiarService.update(id, familiarDTO);        return ResponseEntity.ok(id);    }    @DeleteMapping("/{id}")    @ApiResponse(responseCode = "204")    public ResponseEntity<Void> deleteFamiliar(@PathVariable(name = "id") final Long id) {        familiarService.delete(id);        return ResponseEntity.noContent().build();    }}
+package edu.ecep.base_app.rest;
+
+
+@RestController
+@RequestMapping("/api/periodos")
+@RequiredArgsConstructor
+@Validated
+public class PeriodoEscolarController {
+    private final PeriodoEscolarService service;
+
+    @GetMapping
+    public List<PeriodoEscolarDTO> list() { return service.findAll(); }
+
+    @GetMapping("/{id}")
+    public PeriodoEscolarDTO get(@PathVariable Long id) { return service.get(id); }
+
+    @PostMapping
+    public ResponseEntity<Long> create(@RequestBody @Valid PeriodoEscolarCreateDTO dto) {
+        Long id = service.create(dto);
+        return new ResponseEntity<>(id, HttpStatus.CREATED);
+    }
+}package edu.ecep.base_app.rest;
+
+
+
+
+
+
+@RestController
+@RequestMapping("/api/trimestres")
+@RequiredArgsConstructor
+public class TrimestreController {
+
+    private final TrimestreService service;
+
+    @GetMapping
+    public List<TrimestreDTO> list() {
+        return service.list();
+    }
+
+    @GetMapping("/{id}")
+    public TrimestreDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+
+    @PostMapping
+    public Long create(@Valid @RequestBody TrimestreCreateDTO dto) {
+        return service.create(dto);
+    }
+
+    @PutMapping("/{id}")
+    public void update(@PathVariable Long id,
+                       @Valid @RequestBody TrimestreDTO dto) {
+        service.update(id, dto);
+    }
+
+    @PostMapping("/{id}/cerrar")
+    public void cerrar(@PathVariable Long id) {
+        service.cerrar(id);
+    }
+
+    @PostMapping("/{id}/reabrir")
+    public void reabrir(@PathVariable Long id) {
+        service.reabrir(id);
+    }
+}
+package edu.ecep.base_app.rest;
+
+
+@RestController @RequestMapping("/api/asignaciones/materia")
+@RequiredArgsConstructor @Validated
+public class AsignacionDocenteMateriaController {
+    private final AsignacionDocenteMateriaService service;
+    @GetMapping public List<AsignacionDocenteMateriaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid AsignacionDocenteMateriaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/asignaciones/seccion")
+@RequiredArgsConstructor
+@Validated
+public class AsignacionDocenteSeccionController {
+    private final AsignacionDocenteSeccionService service;
+    private final AsignacionDocenteSeccionRepository repo;
+
+    @GetMapping public List<AsignacionDocenteSeccionDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid AsignacionDocenteSeccionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @GetMapping("/by-docente")
+    public List<AsignacionDocenteSeccion> byDocente(@RequestParam Long personalId,
+                                                    @RequestParam(required=false)
+                                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        LocalDate f = fecha != null ? fecha : LocalDate.now();
+        return repo.findVigentesByPersonal(personalId, f);
+    }
+
+}package edu.ecep.base_app.rest;
+
+
+
+
+@RestController @RequestMapping("/api/aspirantes")
+@RequiredArgsConstructor @Validated
+public class AspiranteController {
+    private final AspiranteService service;
+    @GetMapping public List<AspiranteDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public AspiranteDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid AspiranteDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid AspiranteDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+
+@RestController
+@RequestMapping("/api/licencias")
+@RequiredArgsConstructor
+@Validated
+public class LicenciaController {
+    private final LicenciaService service;
+    @GetMapping
+    public List<LicenciaDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public LicenciaDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid LicenciaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid LicenciaDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+}package edu.ecep.base_app.rest;
+
+
+@RestController @RequestMapping("/api/personal")
+@RequiredArgsConstructor @Validated
+public class PersonalController {
+    private final PersonalService service;
+    @GetMapping public List<PersonalDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public PersonalDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid PersonalCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid PersonalUpdateDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+}
+package edu.ecep.base_app.rest;
+
+
+
+
+
+@RestController @RequestMapping("/api/calificaciones-trimestrales")
+@RequiredArgsConstructor @Validated
+public class CalificacionTrimestralController {
+    private final CalificacionTrimestralService service;
+    @GetMapping public List<CalificacionTrimestralDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid CalificacionTrimestralCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}
+package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/comunicados")
+@RequiredArgsConstructor
+@Validated
+public class ComunicadoController{
+    private final ComunicadoService service;
+    @GetMapping public List<ComunicadoDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid ComunicadoCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}
+package edu.ecep.base_app.rest;
+
+
+
+
+
+
+@RestController
+@RequestMapping("/api/pagos")
+@RequiredArgsConstructor
+@Validated
+public class PagoCuotaController {
+    private final PagoCuotaService service;
+    @GetMapping public List<PagoCuotaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid PagoCuotaCreateDTO dto){ return new ResponseEntity<>(service.crearPago(dto), HttpStatus.CREATED); }
+    @PatchMapping("/{id}/estado") public ResponseEntity<Void> actualizarEstado(@PathVariable Long id, @RequestBody @Valid PagoCuotaEstadoUpdateDTO dto){ service.actualizarEstado(id, dto); return ResponseEntity.noContent().build(); }
+}
+package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping(value = "/api/aspirante-familiar", produces = MediaType.APPLICATION_JSON_VALUE)
+public class AspiranteFamiliarController {
+
+    private final AspiranteFamiliarService aspiranteFamiliarService;
+
+    public AspiranteFamiliarController(final AspiranteFamiliarService aspiranteFamiliarService) {
+        this.aspiranteFamiliarService = aspiranteFamiliarService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<AspiranteFamiliarDTO>> getAllAspiranteFamiliars() {
+        return ResponseEntity.ok(aspiranteFamiliarService.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AspiranteFamiliarDTO> getAspiranteFamiliar(
+            @PathVariable(name = "id") final Long id) {
+        return ResponseEntity.ok(aspiranteFamiliarService.get(id));
+    }
+
+    @PostMapping
+    @ApiResponse(responseCode = "201")
+    public ResponseEntity<Long> createAspiranteFamiliar(
+            @RequestBody @Valid final AspiranteFamiliarDTO aspiranteFamiliarDTO) {
+        final Long createdId = aspiranteFamiliarService.create(aspiranteFamiliarDTO);
+        return new ResponseEntity<>(createdId, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Long> updateAspiranteFamiliar(@PathVariable(name = "id") final Long id,
+            @RequestBody @Valid final AspiranteFamiliarDTO aspiranteFamiliarDTO) {
+        aspiranteFamiliarService.update(id, aspiranteFamiliarDTO);
+        return ResponseEntity.ok(id);
+    }
+
+    @DeleteMapping("/{id}")
+    @ApiResponse(responseCode = "204")
+    public ResponseEntity<Void> deleteAspiranteFamiliar(@PathVariable(name = "id") final Long id) {
+        aspiranteFamiliarService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+}
+package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/alumnos")
+@RequiredArgsConstructor
+@Validated
+public class AlumnoController {
+    private final AlumnoService service;
+    @GetMapping public List<AlumnoDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public AlumnoDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid AlumnoDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid AlumnoDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private UsuarioService usuarioService;
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+        AuthResponse data = authService.login(req.getEmail(), req.getPassword());
+        ResponseCookie cookie = ResponseCookie
+                .from("token", data.getToken())
+                .httpOnly(true)
+                .secure(false)   // true en prod con HTTPS
+                .path("/")
+                .maxAge(Duration.ofDays(1))
+                .sameSite("Lax")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(Map.of("email", data.getEmail(), "roles", data.getUserRoles()));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@RequestBody Usuario request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        ResponseCookie deleteCookie = ResponseCookie
+                .from("token", "")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+        return ResponseEntity.ok(Map.of("message", "logout ok"));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioBusquedaDTO> getCurrentUser(
+            @CookieValue(name = "token", required = false) String token,
+            Authentication auth) {
+
+        String email = (token != null)
+                ? jwtService.extractUsername(token)
+                : (auth != null ? auth.getName() : null);
+
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return authService.getCurrentUserDTO(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+
+}
+package edu.ecep.base_app.rest;
+
+
+
+
+
+@RestController
+@RequestMapping("/api/asistencias/detalles")
+@RequiredArgsConstructor
+@Validated
+public class DetalleAsistenciaController {
+
+    private final DetalleAsistenciaService service;
+
+    @GetMapping
+    public List<DetalleAsistenciaDTO> list() {
+        return service.findAll();
+    }
+
+    @PostMapping
+    public ResponseEntity<Long> marcar(@RequestBody @Validated DetalleAsistenciaCreateDTO dto) {
+        return new ResponseEntity<>(service.marcar(dto), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/search")
+    @Transactional(readOnly = true)
+    public List<DetalleAsistenciaDTO> search(
+            @RequestParam(required = false) Long jornadaId,
+            @RequestParam(required = false) Long matriculaId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return service.search(jornadaId, matriculaId, from, to);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','TEACHER')")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build(); // 204
+    }
+}
+package edu.ecep.base_app.rest;
+
+
+
+
+@RestController @RequestMapping("/api/evaluaciones")
+@RequiredArgsConstructor @Validated
+public class EvaluacionController {
+    private final EvaluacionService service;
+    @GetMapping public List<EvaluacionDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid EvaluacionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}
+package edu.ecep.base_app.rest;
+
+
+
+
+@RestController
+@RequestMapping("/api/dias-no-habiles")
+@RequiredArgsConstructor
+@Validated
+public class DiaNoHabilResource {
+    private final DiaNoHabilService service;
+    @GetMapping public List<DiaNoHabilDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public DiaNoHabilDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid DiaNoHabilDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid DiaNoHabilDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping(value = "/api/users", produces = MediaType.APPLICATION_JSON_VALUE)
+public class UsuarioResource {
+
+    private final UsuarioService usuarioService;
+
+    public UsuarioResource(final UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UsuarioDTO>> getAllUsuarios() {
+        return ResponseEntity.ok(usuarioService.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UsuarioDTO> getUsuario(@PathVariable(name = "id") final Long id) {
+        return ResponseEntity.ok(usuarioService.get(id));
+    }
+
+    @PostMapping
+    @ApiResponse(responseCode = "201")
+    public ResponseEntity<Long> createUsuario(@RequestBody @Valid final UsuarioDTO usuarioDTO) {
+        final Long createdId = usuarioService.create(usuarioDTO);
+        return new ResponseEntity<>(createdId, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Long> updateUsuario(@PathVariable(name = "id") final Long id,
+            @RequestBody @Valid final UsuarioDTO usuarioDTO) {
+        usuarioService.update(id, usuarioDTO);
+        return ResponseEntity.ok(id);
+    }
+
+    @DeleteMapping("/{id}")
+    @ApiResponse(responseCode = "204")
+    public ResponseEntity<Void> deleteUsuario(@PathVariable(name = "id") final Long id) {
+        usuarioService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> search(@RequestParam(required = false) String q) {
+        Usuario me = usuarioService.getCurrent();
+        return ResponseEntity.ok(
+                usuarioService.buscarUsuariosConTipo(q, me.getId())
+        );
+    }
+}
+package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/asistencias")
+@RequiredArgsConstructor
+public class AsistenciaQueryController {
+
+    private final AsistenciaQueryService service;
+
+    // Docente → secciones vigentes (reusa SeccionDTO)
+    @GetMapping("/docentes/{personalId}/secciones")
+    public List<SeccionDTO> seccionesVigentesDocente(
+            @PathVariable Long personalId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
+    ) {
+        return service.seccionesVigentesDocente(personalId, fecha != null ? fecha : LocalDate.now());
+    }
+
+    // Historial diario agregado de una sección
+    @GetMapping("/secciones/{seccionId}/historial")
+    public List<AsistenciaDiaDTO> historialSeccion(
+            @PathVariable Long seccionId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return service.historialSeccion(seccionId, from, to);
+    }
+
+    // Acumulado/porcentaje en rango
+    @GetMapping("/secciones/{seccionId}/acumulado")
+    public AsistenciaAcumuladoDTO acumuladoSeccion(
+            @PathVariable Long seccionId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return service.acumuladoSeccion(seccionId, from, to);
+    }
+
+    // Resumen por alumno (para la tabla)
+    @GetMapping("/secciones/{seccionId}/alumnos-resumen")
+    public List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(
+            @PathVariable Long seccionId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return service.resumenPorAlumno(seccionId, from, to);
+    }
+}
+package edu.ecep.base_app.rest;
+
+
+@Controller
+@RequiredArgsConstructor
+@Slf4j
+public class ChatSocketController {
+
+    private final ChatService chatService;
+    private final UsuarioService userService;
+
+    @MessageMapping("/chat.send")
+    @SendToUser("/queue/ack")
+    public ChatMessageDTO send(
+            @Payload SendMessageRequest req,
+            Principal principal
+    ) {
+        Usuario em = userService.findById(Long.valueOf(principal.getName()));
+        Mensaje saved = chatService.saveAndSend(req, em);
+        return chatService.toDto(saved);
+    }
+}
+package edu.ecep.base_app.rest;
+
+
+@RestController
+@RequestMapping("/api/actas-accidente")
+@RequiredArgsConstructor
+@Validated
+public class ActaAccidenteController {
+    private final ActaAccidenteService service;
+    @GetMapping public List<ActaAccidenteDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid ActaAccidenteCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(
+            @PathVariable Long id,
+            @RequestBody @Valid ActaAccidenteUpdateDTO dto
+    ) {
+        service.update(id, dto);
+        return ResponseEntity.noContent().build(); // 204
+    }
+
+    // ELIMINAR
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build(); // 204
+    }
+
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController @RequestMapping("/api/bajas")
+@RequiredArgsConstructor @Validated
+public class SolicitudBajaAlumnoController {
+    private final SolicitudBajaAlumnoService service;
+    @GetMapping public List<SolicitudBajaAlumnoDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SolicitudBajaAlumnoCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+@RestController
+@RequestMapping("/api/asistencias/jornadas")
+@RequiredArgsConstructor
+@Validated
+public class JornadaAsistenciaController {
+
+    private final JornadaAsistenciaService service;
+
+    // Listado simple
+    @GetMapping
+    public List<JornadaAsistenciaDTO> list() {
+        return service.findAll();
+    }
+
+    // Búsqueda por sección + rango de fechas
+    @GetMapping(params = {"seccionId","from","to"})
+    public List<JornadaAsistenciaDTO> porSeccionYRango(
+            @RequestParam Long seccionId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return service.findBySeccionBetween(seccionId, from, to);
+    }
+
+    @GetMapping(params = {"seccionId","fecha"})
+    public ResponseEntity<JornadaAsistenciaDTO> bySeccionFecha(
+            @RequestParam Long seccionId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return service.findBySeccionAndFecha(seccionId, fecha)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+
+    // Búsqueda por sección
+    @GetMapping(params = "seccionId")
+    public List<JornadaAsistenciaDTO> porSeccion(@RequestParam Long seccionId) {
+        return service.findBySeccion(seccionId);
+    }
+
+    // Búsqueda por trimestre
+    @GetMapping(params = "trimestreId")
+    public List<JornadaAsistenciaDTO> porTrimestre(@RequestParam Long trimestreId) {
+        return service.findByTrimestre(trimestreId);
+    }
+
+    // Abrir jornada
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','TEACHER')")
+    @PostMapping
+    public ResponseEntity<Long> abrir(@RequestBody @Valid JornadaAsistenciaCreateDTO dto) {
+        return new ResponseEntity<>(service.abrir(dto), HttpStatus.CREATED);
+    }
+
+
+    @GetMapping("/{id}")
+    public JornadaAsistenciaDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+}
+package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/chat")
+@RequiredArgsConstructor
+@Slf4j
+public class ChatController {
+
+    private final ChatService chatService;
+    private final UsuarioService usuarioService;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @GetMapping("/history/{otherUserId}")
+    public ResponseEntity<List<ChatMessageDTO>> history(@PathVariable Long otherUserId) {
+        try {
+            Usuario me = usuarioService.getCurrent();
+            List<ChatMessageDTO> messages = chatService.getHistory(me.getId(), otherUserId);
+            return ResponseEntity.ok(messages);
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).build();
+        }
+    }
+
+    @PostMapping("/mark-read/{otherUserId}")
+    public ResponseEntity<Void> markRead(@PathVariable Long otherUserId) {
+        try {
+            Usuario me = usuarioService.getCurrent();
+            chatService.markRead(me.getId(), otherUserId);
+
+            // Notificar al otro usuario que los mensajes fueron leídos
+            messagingTemplate.convertAndSendToUser(
+                    String.valueOf(otherUserId),
+                    "/queue/read-receipts",
+                    Map.of(
+                            "readerId", me.getId(),
+                            "timestamp", System.currentTimeMillis()
+                    )
+            );
+
+            return ResponseEntity.noContent().build();
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).build();
+        }
+    }
+
+    @GetMapping("/active-chats")
+    public ResponseEntity<List<UsuarioBusquedaDTO>> getActiveChats() {
+        Usuario me = usuarioService.getCurrent();
+        List<Usuario> activeUsers = chatService.getActiveChatUsers(me.getId());
+
+        List<UsuarioBusquedaDTO> dtos = activeUsers.stream()
+                .map(u -> usuarioService.buscarUsuarioBusquedaPorId(u.getId()))
+                .toList();
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    // Nuevo endpoint para obtener mensajes no leídos
+    @GetMapping("/unread-count")
+    public ResponseEntity<Map<Long, Long>> getUnreadCounts() {
+        try {
+            Usuario me = usuarioService.getCurrent();
+            Map<Long, Long> unreadCounts = chatService.getUnreadCounts(me.getId());
+            return ResponseEntity.ok(unreadCounts);
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).build();
+        }
+    }
+
+    // Endpoint para obtener estado de conexión de usuarios
+    @GetMapping("/online-status")
+    public ResponseEntity<Map<Long, Boolean>> getOnlineStatus(@RequestParam List<Long> userIds) {
+        try {
+            Map<Long, Boolean> onlineStatus = chatService.getOnlineStatus(userIds);
+            return ResponseEntity.ok(onlineStatus);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController @RequestMapping("/api/resultados")
+@RequiredArgsConstructor @Validated
+public class ResultadoEvaluacionController {
+    private final ResultadoEvaluacionService service;
+    @GetMapping public List<ResultadoEvaluacionDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid ResultadoEvaluacionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+
+
+
+@RestController
+@RequestMapping("/api/informes-inicial")
+@RequiredArgsConstructor
+@Validated
+public class InformeInicialController {
+    private final InformeInicialService service;
+    @GetMapping public List<InformeInicialDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid InformeInicialCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+
+
+@RestController @RequestMapping("/api/secciones")
+@RequiredArgsConstructor @Validated
+public class SeccionController {
+    private final SeccionService service;
+    private final MatriculaRepository matriculaRepository;
+    private final AlumnoRepository alumnoRepository;
+    private final MatriculaSeccionHistorialRepository mshRepo;
+
+    @GetMapping public List<SeccionDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SeccionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @GetMapping("/{id}/alumnos")
+    public List<AlumnoLiteDTO> alumnosActivos(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+
+        LocalDate f = (fecha != null) ? fecha : LocalDate.now();
+        var activos = mshRepo.findActivosBySeccionOnDate(id, f);
+
+        return activos.stream().map(m -> {
+            var matricula = matriculaRepository.findById(m.getMatricula().getId()).orElseThrow();
+            var alumno = alumnoRepository.findById(matricula.getAlumno().getId()).orElseThrow();
+            String nombre = alumno.getApellido() + ", " + alumno.getNombre();
+            return new AlumnoLiteDTO(matricula.getId(), alumno.getId(), nombre);
+        }).toList();
+    }
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController
+@RequestMapping("/api/alumnos-familiares")
+@RequiredArgsConstructor
+@Validated
+public class AlumnoFamiliarController {
+
+    private final AlumnoFamiliarService service;
+
+    @GetMapping
+    public List<AlumnoFamiliarDTO> list() {
+        return service.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public AlumnoFamiliarDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+
+    @PostMapping
+    public ResponseEntity<Long> create(@RequestBody @Valid AlumnoFamiliarCreateDTO dto) {
+        Long id = service.create(dto);
+        return new ResponseEntity<>(id, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid AlumnoFamiliarDTO dto) {
+        service.update(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}package edu.ecep.base_app.rest;
+
+
+
+
+@RestController
+@RequestMapping(value = "/api/asistencia-personal", produces = MediaType.APPLICATION_JSON_VALUE)
+public class AsistenciaPersonalResource {
+
+    private final AsistenciaPersonalService asistenciaPersonalService;
+
+    public AsistenciaPersonalResource(final AsistenciaPersonalService asistenciaPersonalService) {
+        this.asistenciaPersonalService = asistenciaPersonalService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<AsistenciaPersonalDTO>> getAllAsistenciaPersonals() {
+        return ResponseEntity.ok(asistenciaPersonalService.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AsistenciaPersonalDTO> getAsistenciaPersonal(
+            @PathVariable(name = "id") final Long id) {
+        return ResponseEntity.ok(asistenciaPersonalService.get(id));
+    }
+
+    @PostMapping
+    @ApiResponse(responseCode = "201")
+    public ResponseEntity<Long> createAsistenciaPersonal(
+            @RequestBody @Valid final AsistenciaPersonalDTO asistenciaPersonalDTO) {
+        final Long createdId = asistenciaPersonalService.create(asistenciaPersonalDTO);
+        return new ResponseEntity<>(createdId, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Long> updateAsistenciaPersonal(@PathVariable(name = "id") final Long id,
+                                                    @RequestBody @Valid final AsistenciaPersonalDTO asistenciaPersonalDTO) {
+        asistenciaPersonalService.update(id, asistenciaPersonalDTO);
+        return ResponseEntity.ok(id);
+    }
+
+    @DeleteMapping("/{id}")
+    @ApiResponse(responseCode = "204")
+    public ResponseEntity<Void> deleteAsistenciaPersonal(@PathVariable(name = "id") final Long id) {
+        asistenciaPersonalService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+}
+package edu.ecep.base_app.rest;
+
+
+@RestController
+@RequestMapping("/api/secciones-materias")
+@RequiredArgsConstructor
+@Validated
+public class SeccionMateriaController {
+    private final SeccionMateriaService service;
+    @GetMapping public List<SeccionMateriaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SeccionMateriaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+@RestController @RequestMapping("/api/materias")
+@RequiredArgsConstructor @Validated
+public class MateriaController {
+    private final MateriaService service;
+    @GetMapping public List<MateriaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid MateriaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+@RestController @RequestMapping("/api/matriculas/historial")
+@RequiredArgsConstructor @Validated
+public class MatriculaSeccionHistorialController {
+    private final MatriculaSeccionHistorialService service;
+    @GetMapping public List<MatriculaSeccionHistorialDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> asignar(@RequestBody @Valid MatriculaSeccionHistorialCreateDTO dto){ return new ResponseEntity<>(service.asignar(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+@RestController @RequestMapping("/api/formaciones")
+@RequiredArgsConstructor @Validated
+public class FormacionAcademicaController {
+    private final FormacionAcademicaService service;
+    @GetMapping
+    public List<FormacionAcademicaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid FormacionAcademicaDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid FormacionAcademicaDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+}package edu.ecep.base_app.rest;
+
+
+@RestController
+@RequestMapping("/api/matriculas")
+@RequiredArgsConstructor
+@Validated
+public class MatriculaController {
+    private final MatriculaService service;
+    @GetMapping public List<MatriculaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid MatriculaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+
+
+@RestController
+@RequestMapping("/api/recibos-sueldo")
+@RequiredArgsConstructor
+@Validated
+public class ReciboSueldoController {
+    private final ReciboSueldoService service;
+    @GetMapping public List<ReciboSueldoDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid ReciboSueldoCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}
+package edu.ecep.base_app.rest;
+
+
+
+
+@RestController
+@RequestMapping("/api/familiares")
+@RequiredArgsConstructor
+@Validated
+public class FamiliarController {
+    private final FamiliarService service;
+    private final AlumnoFamiliarRepository repoFam;
+    private final MatriculaRepository matriculaRepo;
+
+    @GetMapping public List<FamiliarDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public FamiliarDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid FamiliarDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid FamiliarDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+    @GetMapping("/{familiarId}/alumnos")
+    public List<AlumnoLiteDTO> alumnos(@PathVariable Long familiarId) {
+        var alumnos = repoFam.findAlumnosByFamiliar(familiarId);
+
+        // mapear a (matriculaId, alumnoId, nombre)
+        return alumnos.stream().flatMap(al -> {
+            var mats = matriculaRepo.findByAlumnoId(al.getId());
+            String nombre = al.getApellido() + ", " + al.getNombre();
+            return mats.stream().map(m -> new AlumnoLiteDTO(m.getId(), al.getId(), nombre));
+        }).toList();
+    }
+}
+
+package edu.ecep.base_app.rest;
+
+
+
+
+
+
+
+@RestController
+@RequestMapping("/api/cuotas")
+@RequiredArgsConstructor
+@Validated
+public class CuotaController {
+    private final CuotaService service;
+    @GetMapping public List<CuotaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid CuotaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+@RestController
+@RequestMapping("/api/emisiones-cuota")
+@RequiredArgsConstructor
+@Validated
+public class EmisionCuotaController {
+    private final EmisionCuotaService service;
+    @GetMapping public List<EmisionCuotaDTO> list(){ return service.findAll(); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid EmisionCuotaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+}package edu.ecep.base_app.rest;
+
+
+
+
+@RestController
+@RequestMapping("/api/solicitudes-admision")
+@RequiredArgsConstructor
+@Validated
+public class SolicitudAdmisionController {
+    private final SolicitudAdmisionService service;
+    @GetMapping public List<SolicitudAdmisionDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public SolicitudAdmisionDTO get(@PathVariable Long id){ return service.get(id); }
+    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SolicitudAdmisionDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid SolicitudAdmisionDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+}

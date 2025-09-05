@@ -7,8 +7,6 @@ import java.util.List;
 
 
 public interface FamiliarRepository extends JpaRepository<Familiar, Long> {
-
     List<Familiar> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCase(String n, String a);
-
     boolean existsByUsuarioId(Long id);
 }

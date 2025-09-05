@@ -1,0 +1,616 @@
+// types.ts — Frontend types (Next.js 15 / TS)
+// -------------------------------------------------------------
+// Convenciones
+// - ID numéricos -> number
+// - Fechas Java (LocalDate, OffsetDateTime, LocalDateTime) -> string (ISO 8601)
+// - Enums con mismos literales que el backend
+// -------------------------------------------------------------
+
+// Helpers
+export type ID = number;
+export type ISODate = string; // 'YYYY-MM-DD'
+export type ISODateTime = string; // 'YYYY-MM-DDTHH:mm:ss[.SSS]Z'
+export type ISOTime = string; // 'HH:mm:ss'
+
+// =============================================================
+// Enums (copian los literales del backend)
+// =============================================================
+export enum UserRole {
+  USER = "USER",
+  ADMIN = "ADMIN",
+  STUDENT = "STUDENT",
+  FAMILY = "FAMILY",
+  TEACHER = "TEACHER",
+  DIRECTOR = "DIRECTOR",
+  SECRETARY = "SECRETARY",
+  COORDINATOR = "COORDINATOR",
+  ALTERNATE = "ALTERNATE",
+}
+
+export enum RolMateria {
+  TITULAR = "TITULAR",
+  SUPLENTE = "SUPLENTE",
+}
+export enum RolSeccion {
+  MAESTRO_TITULAR = "MAESTRO_TITULAR",
+  SUPLENTE = "SUPLENTE",
+  PRECEPTOR = "PRECEPTOR",
+  AUXILIAR = "AUXILIAR",
+}
+
+export enum EstadoMatricula {
+  REGULAR = "REGULAR",
+  REPITE = "REPITE",
+  EGRESO = "EGRESO",
+  BAJA = "BAJA",
+  EN_CURSO = "EN_CURSO",
+}
+export enum MedioPago {
+  EFECTIVO = "EFECTIVO",
+  TRANSFERENCIA = "TRANSFERENCIA",
+  TARJETA = "TARJETA",
+  MERCADO_PAGO = "MERCADO_PAGO",
+  OTRO = "OTRO",
+}
+export enum ConceptoCuota {
+  MENSUALIDAD = "MENSUALIDAD",
+  MATRICULA = "MATRICULA",
+  MATERIALES = "MATERIALES",
+  OTROS = "OTROS",
+}
+export enum EstadoCuota {
+  PENDIENTE = "PENDIENTE",
+  VENCIDA = "VENCIDA",
+  PAGADA = "PAGADA",
+  PARCIAL = "PARCIAL",
+}
+export enum EstadoPago {
+  EN_REVISION = "EN_REVISION",
+  ACREDITADO = "ACREDITADO",
+  RECHAZADO = "RECHAZADO",
+}
+
+export enum Turno {
+  MANANA = "MANANA",
+  TARDE = "TARDE",
+}
+export enum NivelAcademico {
+  INICIAL = "INICIAL",
+  PRIMARIO = "PRIMARIO",
+}
+export enum EstadoAsistencia {
+  PRESENTE = "PRESENTE",
+  AUSENTE = "AUSENTE",
+  TARDE = "TARDE",
+  RETIRO_ANTICIPADO = "RETIRO_ANTICIPADO",
+}
+export enum AlcanceComunicado {
+  INSTITUCIONAL = "INSTITUCIONAL",
+  POR_NIVEL = "POR_NIVEL",
+  POR_SECCION = "POR_SECCION",
+}
+
+export enum CalificacionConceptual {
+  EXCELENTE = "EXCELENTE",
+  MUY_BUENO = "MUY_BUENO",
+  BUENO = "BUENO",
+  REGULAR = "REGULAR",
+  INSUFICIENTE = "INSUFICIENTE",
+}
+export enum EstadoActaAccidente {
+  BORRADOR = "BORRADOR",
+  CERRADA = "CERRADA",
+}
+export enum EstadoSolicitudBaja {
+  PENDIENTE = "PENDIENTE",
+  APROBADA = "APROBADA",
+  RECHAZADA = "RECHAZADA",
+}
+
+export enum Curso {
+  PRIMERO = "PRIMERO",
+  SEGUNDO = "SEGUNDO",
+  TERCERO = "TERCERO",
+  CUARTO = "CUARTO",
+  QUINTO = "QUINTO",
+  SEXTO = "SEXTO",
+  SALA_4 = "SALA_4",
+  SALA_5 = "SALA_5",
+}
+// src/types/api-generated.ts
+
+// ===== Auth / Usuario (sin cambios) =====
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+export interface AuthResponse {
+  token: string;
+  usuarioId: ID;
+  roles: string[];
+}
+export interface Usuario {
+  id: ID;
+  email: string;
+  personaId?: ID | null;
+}
+export interface UsuarioBusquedaDTO {
+  id: ID;
+  email: string;
+  roles: string[];
+  personaId?: ID | null;
+  personaNombre?: string | null;
+  personaDni?: string | null;
+  personaTipo?: string | null;
+}
+
+// ===== Calendario =====
+export interface PeriodoEscolarDTO {
+  id: ID;
+  anio: number;
+}
+export interface PeriodoEscolarCreateDTO {
+  anio: number;
+}
+
+export interface TrimestreDTO {
+  id: ID;
+  periodoEscolarId: ID;
+  orden: number;
+  cerrado: boolean;
+  fechaInicio?: ISODate | null;
+  fechaFin?: ISODate | null;
+}
+export interface TrimestreCreateDTO {
+  periodoEscolarId: ID;
+  orden: number;
+  fechaInicio?: ISODate | null;
+  fechaFin?: ISODate | null;
+}
+
+// ===== Estructura =====
+export interface SeccionDTO {
+  id: ID;
+  periodoEscolarId: ID;
+  nivel: NivelAcademico;
+  gradoSala: string;
+  division: string;
+  turno: Turno;
+}
+export interface SeccionCreateDTO extends Omit<SeccionDTO, "id"> {}
+
+export interface MateriaDTO {
+  id: ID;
+  nombre: string;
+  codigo?: string | null;
+}
+export interface MateriaCreateDTO {
+  nombre: string;
+  codigo?: string | null;
+}
+
+export interface SeccionMateriaDTO {
+  id: ID;
+  seccionId: ID;
+  materiaId: ID;
+}
+export interface SeccionMateriaCreateDTO
+  extends Omit<SeccionMateriaDTO, "id"> {}
+
+// ===== Docencia =====
+export interface AsignacionDocenteSeccionDTO {
+  id: ID;
+  seccionId: ID;
+  personalId: ID;
+  rol: RolSeccion;
+  vigenciaDesde: ISODate;
+  vigenciaHasta?: ISODate | null;
+}
+export interface AsignacionDocenteSeccionCreateDTO
+  extends Omit<AsignacionDocenteSeccionDTO, "id"> {}
+
+export interface AsignacionDocenteMateriaDTO {
+  id: ID;
+  seccionMateriaId: ID;
+  docenteId: ID;
+  rol: RolMateria;
+  vigenciaDesde: ISODate;
+  vigenciaHasta?: ISODate | null;
+}
+export interface AsignacionDocenteMateriaCreateDTO
+  extends Omit<AsignacionDocenteMateriaDTO, "id"> {}
+
+// ===== Personas =====
+export interface AlumnoDTO {
+  id: ID;
+  nombre: string;
+  apellido: string;
+  dni?: string | null;
+  email?: string | null;
+}
+export interface AlumnoCreateDTO extends Omit<AlumnoDTO, "id"> {}
+
+export interface FamiliarDTO {
+  id: ID;
+  nombre: string;
+  apellido: string;
+  dni?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+}
+export interface FamiliarCreateDTO extends Omit<FamiliarDTO, "id"> {}
+
+export interface AlumnoFamiliarDTO {
+  id: ID;
+  alumnoId: ID;
+  familiarId: ID;
+  parentesco: string;
+  esTitular: boolean;
+}
+export interface AlumnoFamiliarCreateDTO
+  extends Omit<AlumnoFamiliarDTO, "id"> {}
+
+// ===== Matrícula =====
+export interface MatriculaDTO {
+  id: ID;
+  alumnoId: ID;
+  periodoEscolarId: ID;
+}
+export interface MatriculaCreateDTO extends Omit<MatriculaDTO, "id"> {}
+
+export interface MatriculaSeccionHistorialDTO {
+  id: ID;
+  matriculaId: ID;
+  seccionId: ID;
+  desde: ISODate;
+  hasta?: ISODate | null;
+}
+export interface MatriculaSeccionHistorialCreateDTO
+  extends Omit<MatriculaSeccionHistorialDTO, "id"> {}
+
+export interface SolicitudBajaAlumnoDTO {
+  id: ID;
+  matriculaId: ID;
+  fecha: ISODate;
+  motivo?: string | null;
+}
+export interface SolicitudBajaAlumnoCreateDTO
+  extends Omit<SolicitudBajaAlumnoDTO, "id"> {}
+
+// ===== Académico =====
+export interface EvaluacionDTO {
+  id: ID;
+  seccionMateriaId: ID;
+  trimestreId: ID;
+  fecha: ISODate;
+  titulo?: string | null;
+  descripcion?: string | null;
+}
+export interface EvaluacionCreateDTO extends Omit<EvaluacionDTO, "id"> {}
+
+export interface ResultadoEvaluacionDTO {
+  id: ID;
+  evaluacionId: ID;
+  matriculaId: ID;
+  nota?: number | null;
+  observacion?: string | null; // <-- antes 'observaciones'
+}
+export interface ResultadoEvaluacionCreateDTO
+  extends Omit<ResultadoEvaluacionDTO, "id"> {}
+
+export interface CalificacionTrimestralDTO {
+  id: ID;
+  trimestreId: ID;
+  seccionMateriaId: ID;
+  matriculaId: ID;
+  nota: number;
+}
+export interface CalificacionTrimestralCreateDTO
+  extends Omit<CalificacionTrimestralDTO, "id"> {}
+
+export interface InformeInicialDTO {
+  id: ID;
+  trimestreId: ID;
+  matriculaId: ID;
+  texto: string;
+  reportadoPorId?: ID | null;
+}
+export interface InformeInicialCreateDTO
+  extends Omit<InformeInicialDTO, "id"> {}
+
+// ===== Asistencias (nuevo) =====
+export interface JornadaAsistenciaDTO {
+  id: ID;
+  seccionId: ID;
+  fecha: ISODate;
+  trimestreId: ID;
+}
+export interface JornadaAsistenciaCreateDTO
+  extends Omit<JornadaAsistenciaDTO, "id"> {}
+
+export interface DetalleAsistenciaDTO {
+  id: ID;
+  jornadaId: ID;
+  matriculaId: ID;
+  estado: EstadoAsistencia;
+  observacion?: string | null;
+}
+export interface DetalleAsistenciaCreateDTO
+  extends Omit<DetalleAsistenciaDTO, "id"> {}
+
+export interface DiaNoHabilDTO {
+  id: ID;
+  fecha: ISODate;
+  motivo: string;
+}
+export interface DiaNoHabilCreateDTO extends Omit<DiaNoHabilDTO, "id"> {}
+
+// ===== Comunicaciones =====
+export interface ComunicadoDTO {
+  id: ID;
+  alcance: AlcanceComunicado; // INSTITUCIONAL | POR_NIVEL | POR_SECCION
+  seccionId?: ID | null; // solo si POR_SECCION
+  nivel?: NivelAcademico | null; // solo si POR_NIVEL
+  titulo: string;
+  cuerpo: string; // <-- antes 'contenido'
+  fechaProgPublicacion?: ISODateTime | null; // <-- antes 'fechaPublicacion' y tipo date simple
+  publicado: boolean; // <-- nuevo según tu DTO de backend
+}
+
+export interface ComunicadoCreateDTO {
+  alcance: AlcanceComunicado;
+  seccionId?: ID | null;
+  nivel?: NivelAcademico | null;
+  titulo: string;
+  cuerpo: string; // <-- igual al DTO
+  fechaProgPublicacion?: ISODateTime | null;
+}
+
+// ===== Finanzas =====
+export interface EmisionCuotaDTO {
+  id: ID;
+  fechaEmision: ISODateTime;
+  descripcion?: string | null;
+  recargoPorDefecto?: number | null;
+}
+export interface EmisionCuotaCreateDTO extends Omit<EmisionCuotaDTO, "id"> {}
+
+export interface CuotaDTO {
+  id: ID;
+  matriculaId: ID;
+  anio: number;
+  mes?: number | null;
+  concepto: ConceptoCuota;
+  importe: number;
+  emisionId?: ID | null;
+  codigoPago?: string | null;
+}
+export interface CuotaCreateDTO extends Omit<CuotaDTO, "id" | "codigoPago"> {}
+
+export interface PagoCuotaDTO {
+  id: ID;
+  cuotaId: ID;
+  fechaPago: ISODate;
+  monto: number;
+  estado: EstadoCuota;
+  comprobante?: string | null;
+}
+export interface PagoCuotaCreateDTO
+  extends Omit<PagoCuotaDTO, "id" | "estado"> {}
+export interface PagoCuotaEstadoUpdateDTO {
+  estado: EstadoCuota;
+}
+
+// ===== RRHH =====
+export interface PersonalDTO {
+  id: ID;
+  nombre: string;
+  apellido: string;
+  cuil: string;
+  dni?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  fechaIngreso?: ISODate | null;
+  cargo?: string | null;
+}
+export interface PersonalCreateDTO extends Omit<PersonalDTO, "id"> {}
+export interface PersonalUpdateDTO extends Partial<PersonalCreateDTO> {}
+
+export interface FormacionAcademicaDTO {
+  id: ID;
+  personalId: ID;
+  titulo: string;
+  institucion: string;
+  desde?: ISODate | null;
+  hasta?: ISODate | null;
+  observaciones?: string | null;
+}
+export interface LicenciaDTO {
+  id: ID;
+  personalId: ID;
+  desde: ISODate;
+  hasta?: ISODate | null;
+  motivo: string;
+  observaciones?: string | null;
+}
+export interface LicenciaCreateDTO extends Omit<LicenciaDTO, "id"> {}
+
+// ===== Otros =====
+export interface ActaAccidenteDTO {
+  id: ID;
+  alumnoId: ID;
+  fechaSuceso: ISODate;
+  descripcion: string;
+  estado: EstadoActaAccidente;
+  creadoPor?: string | null;
+  informanteId: ID;
+}
+export interface ActaAccidenteCreateDTO extends Omit<ActaAccidenteDTO, "id"> {}
+
+// ===== Chat (sin cambios) =====
+export interface ChatMessageDTO {
+  id: ID;
+  fromUserId: ID;
+  toUserId: ID;
+  message: string;
+  sentAt: ISODateTime;
+  read?: boolean;
+}
+
+// ===== Aspirantes / Solicitud Admision (opcionales si usás esos screens) =====
+export interface Aspirante {
+  id: ID;
+  nombre: string;
+  apellido: string;
+  email?: string | null;
+  dni?: string | null;
+}
+export interface SolicitudAdmision {
+  id: ID;
+  aspiranteId: ID;
+  fecha: ISODate;
+  estado: string;
+  comentario?: string | null;
+}
+
+// ====================== ASISTENCIAS: DTOs NUEVOS ======================
+
+// Tarjeta/resumen por sección (docentes / dirección)
+export interface AsistenciaSeccionResumenDTO {
+  seccionId: ID;
+  nombreSeccion: string;
+  totalAlumnos: number;
+  promedioAsistencia: number; // 0..100
+  ultimaAsistencia?: ISODate | null;
+}
+
+// Resumen completo para anillo + lista diaria (familias / alumnos)
+export interface AsistenciaAlumnoDiaDTO {
+  fecha: ISODate;
+  estado: EstadoAsistencia;
+  observacion?: string | null;
+  jornadaId?: ID | null;
+  detalleId?: ID | null;
+}
+
+export interface AsistenciaAlumnoResumenDetalladoDTO {
+  alumnoId: ID;
+  matriculaId: ID;
+  nombreCompleto: string;
+  presentes: number;
+  ausentes: number;
+  tardanzas?: number;
+  retirosAnticipados?: number;
+  totalDiasHabiles: number;
+  porcentajeAsistencia: number; // 0..100
+  historial: AsistenciaAlumnoDiaDTO[];
+}
+
+// --- más abajo, mantené este nombre para el resumen compacto:
+export interface AsistenciaAlumnoResumenDTO {
+  matriculaId: ID;
+  alumnoId: ID;
+  nombreCompleto: string;
+  presentes: number;
+  ausentes: number;
+  tarde: number;
+  retiroAnticipado: number;
+  total: number;
+  porcentaje: number;
+}
+
+// Lista de alumnos para “toma de asistencia” (step o tabla)
+export interface TomaAsistenciaAlumnoDTO {
+  matriculaId: ID;
+  alumnoId: ID;
+  nombreCompleto: string;
+  estadoActual?: EstadoAsistencia | null; // si ya hay registro ese día
+  observacionActual?: string | null;
+}
+
+// Cierre mensual por sección (dirección)
+export interface CierreMensualAlumnoDTO {
+  matriculaId: ID;
+  alumnoId: ID;
+  nombreCompleto: string;
+  presentes: number;
+  ausentes: number;
+  tardanzas?: number;
+  retirosAnticipados?: number;
+  porcentajeAsistencia: number; // 0..100
+}
+
+export interface CierreMensualSeccionDTO {
+  seccionId: ID;
+  nombreSeccion: string;
+  anio: number;
+  mes: number; // 1..12
+  diasHabiles: number;
+  promedioGeneral: number; // 0..100
+  alumnos: CierreMensualAlumnoDTO[];
+}
+
+// Cierre trimestral por sección (dirección)
+export interface CierreTrimestralAlumnoDTO {
+  matriculaId: ID;
+  alumnoId: ID;
+  nombreCompleto: string;
+  presentes: number;
+  ausentes: number;
+  tardanzas?: number;
+  retirosAnticipados?: number;
+  porcentajeAsistencia: number; // 0..100
+}
+
+export interface CierreTrimestralSeccionDTO {
+  seccionId: ID;
+  nombreSeccion: string;
+  trimestreId: ID;
+  promedioGeneral: number; // 0..100
+  // opcional: resumen por mes del trimestre
+  meses?: Array<{ anio: number; mes: number; promedio: number }>;
+  alumnos: CierreTrimestralAlumnoDTO[];
+}
+
+export interface AsistenciaDiaDTO {
+  fecha: ISODate;
+  presentes: number;
+  ausentes: number;
+  tarde: number;
+  retiroAnticipado: number;
+  total: number;
+  porcentaje: number;
+}
+export interface AsistenciaAcumuladoDTO {
+  desde: ISODate;
+  hasta: ISODate;
+  presentes: number;
+  ausentes: number;
+  tarde: number;
+  retiroAnticipado: number;
+  total: number;
+  porcentaje: number;
+}
+export interface AsistenciaAlumnoResumenDTO {
+  matriculaId: ID;
+  alumnoId: ID;
+  nombreCompleto: string;
+  presentes: number;
+  ausentes: number;
+  tarde: number;
+  retiroAnticipado: number;
+  total: number;
+  porcentaje: number;
+}
+export interface AspiranteFamiliarDTO {
+  id: number | null;
+  aspiranteId: number;
+  familiarId: number;
+  parentesco: string;
+}
+
+export interface AlumnoLiteDTO {
+  matriculaId: ID;
+  alumnoId: ID;
+  nombreCompleto: string; // "Apellido, Nombre"
+}

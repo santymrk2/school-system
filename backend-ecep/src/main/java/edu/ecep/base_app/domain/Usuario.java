@@ -20,10 +20,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 @Entity
 @Table(name = "usuarios")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
 @SQLDelete(sql = "UPDATE usuarios SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-
 @Getter
 @Setter
 public class Usuario extends BaseEntity implements UserDetails  {
@@ -38,12 +35,6 @@ public class Usuario extends BaseEntity implements UserDetails  {
     @Column(name = "role")
     @Enumerated(EnumType.STRING)
     private Set<UserRole> userRoles = new HashSet<>();
-
-    @OneToMany(mappedBy = "publicador")
-    private Set<Comunicado> comunicadosPublicados = new HashSet<>();
-
-    @OneToMany(mappedBy = "reportadoPor")
-    private Set<InformeInicial> reportadoPorInformeInicial = new HashSet<>();
 
     @OneToOne(mappedBy = "usuario", fetch = FetchType.LAZY)
     private Persona persona;

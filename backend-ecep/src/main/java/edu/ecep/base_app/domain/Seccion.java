@@ -1,5 +1,6 @@
 package edu.ecep.base_app.domain;
 
+import edu.ecep.base_app.domain.enums.NivelAcademico;
 import edu.ecep.base_app.domain.enums.Turno;
 import jakarta.persistence.*;
 
@@ -17,55 +18,25 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 
 @Entity
-@Table(name = "secciones")
-@EntityListeners(AuditingEntityListener.class)
-@Filter(name = "activoFilter", condition = "activo = :activo")
+@Table(name = "secciones",
+        uniqueConstraints=@UniqueConstraint(columnNames={
+                "periodo_escolar_id","nivel","grado_sala","division","turno"
+        }))
 @SQLDelete(sql = "UPDATE secciones SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-
-
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-public class Seccion extends BaseEntity{
-    @Column(nullable = false)
-    private Integer anioLectivo;
+public class Seccion extends BaseEntity {
+    @ManyToOne(optional=false, fetch=FetchType.LAZY)
+    private PeriodoEscolar periodoEscolar;
 
-    @Column(nullable = false)
-    private String nombre;
+    @Enumerated(EnumType.STRING) @Column(nullable=false)
+    private NivelAcademico nivel;
 
-    @Column(nullable = false, length = 50)
-    private String nivelAcademico;
+    @Column(nullable=false) private String gradoSala;
+    @Column(nullable=false) private String division;
 
-    @Column
-    private Integer grado;
-
-    @Column
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING) @Column(nullable=false)
     private Turno turno;
-
-    @OneToMany(mappedBy = "seccion", fetch = FetchType.LAZY)
-    private Set<AsignacionDocente> asignaciones = new HashSet<>();
-
-    @OneToMany(mappedBy = "seccion", fetch = FetchType.LAZY)
-    private Set<Matricula> matriculas = new HashSet<>();
-
-    @OneToMany(mappedBy = "seccionDestino")
-    private Set<Comunicado> seccionDestinoComunicados = new HashSet<>();
-
-    @OneToMany(mappedBy = "seccion")
-    private Set<Evaluacion> seccionEvaluaciones = new HashSet<>();
-
-    @OneToMany(mappedBy = "seccion")
-    private Set<AsistenciaDia> seccionAsistenciaDias = new HashSet<>();
-
-    @OneToMany(mappedBy = "seccion")
-    private Set<Cuota> cuotas = new HashSet<>();
-
-    public Set<Materia> getMaterias() {
-        return asignaciones.stream()
-                .filter(a -> a.getMateria() != null)
-                .map(AsignacionDocente::getMateria)
-                .collect(Collectors.toSet());
-    }
 }

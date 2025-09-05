@@ -1,18 +1,15 @@
 package edu.ecep.base_app.dtos;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
-/* ========== SOLICITUD ADMISIÓN ========== */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SolicitudAdmisionDTO {
-    private Long id;
-    private String estado;
-    private String motivoRechazo;
-    private LocalDate fechaEntrevista;
-    private Boolean entrevistaRealizada;
-    private Boolean emailConfirmacionEnviado;
-    private Boolean autorizadoComunicacionesEmail;
-    private Long aspiranteId;
+    Long id;
+    Long aspiranteId;
+    String estado;
+    String observaciones;
 }

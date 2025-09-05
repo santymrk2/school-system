@@ -1,13 +1,15 @@
 package edu.ecep.base_app.dtos;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-/* ========== ASPIRANTE FAMILIAR ========== */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AspiranteFamiliarDTO {
-    private Long id;
-    private String tipoRelacion;
-    private Boolean viveConAlumno;
-    private Long aspiranteId;
-    private Long familiarId;
+    Long id;
+    Long aspiranteId;
+    Long familiarId;
+    String parentesco;
 }

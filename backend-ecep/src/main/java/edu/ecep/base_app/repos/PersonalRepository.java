@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 import edu.ecep.base_app.domain.Usuario;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 
@@ -19,4 +20,9 @@ public interface PersonalRepository extends JpaRepository<Personal, Long> {
     Optional<Personal> findByUsuario(Usuario usuario);
 
     boolean existsByUsuario(Usuario u);
+
+
+    boolean existsByDni(String dni);
+
+    boolean existsByCuil(@NotBlank String cuil);
 }

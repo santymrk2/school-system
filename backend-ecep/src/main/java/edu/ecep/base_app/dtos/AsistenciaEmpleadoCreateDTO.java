@@ -7,10 +7,10 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AsistenciaPersonalCreateDTO {
+public class AsistenciaEmpleadoCreateDTO {
 
     @NotNull
-    private Long personalId;
+    private Long empleadoId;
 
     @NotNull
     private LocalDate fecha;

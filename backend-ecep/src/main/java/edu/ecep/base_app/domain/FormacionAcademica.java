@@ -3,16 +3,10 @@ package edu.ecep.base_app.domain;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.SQLDelete;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 
 @Entity
@@ -38,7 +32,7 @@ public class FormacionAcademica extends BaseEntity{
     private LocalDate fechaFin;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "personal_id", nullable = false)
-    private Personal personal;
+    @JoinColumn(name = "empleado_id", nullable = false)
+    private Empleado empleado;
 
 }

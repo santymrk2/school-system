@@ -9,13 +9,13 @@ import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface FormacionAcademicaMapper {
-    @Mapping(source = "personal.id", target = "personalId")
+    @Mapping(source = "empleado.id", target = "empleadoId")
     FormacionAcademicaDTO toDto(FormacionAcademica entity);
 
-    @Mapping(target = "personal", ignore = true) // lo setea el service por id
+    @Mapping(target = "empleado", ignore = true) // lo setea el service por id
     FormacionAcademica toEntity(FormacionAcademicaDTO dto);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "personal", ignore = true)
+    @Mapping(target = "empleado", ignore = true)
     void updateEntityFromDto(FormacionAcademicaDTO dto, @MappingTarget FormacionAcademica entity);
 }

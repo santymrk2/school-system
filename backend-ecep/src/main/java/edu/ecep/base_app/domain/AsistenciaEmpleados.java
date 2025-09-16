@@ -8,12 +8,12 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "asistencia_personal")
+@Table(name = "asistencia_empleados")
 @Getter
 @Setter
-public class AsistenciaPersonal extends BaseEntity {
+public class AsistenciaEmpleados extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private Personal personal;
+    private Empleado empleado;
 
     @Column(nullable = false)
     private LocalDate fecha;

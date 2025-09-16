@@ -15,6 +15,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
+import static jakarta.persistence.GenerationType.IDENTITY;
+
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @FilterDef(name = "activoFilter", parameters = @ParamDef(name = "activo", type = Boolean.class))
@@ -23,10 +25,7 @@ import java.time.OffsetDateTime;
 @Setter
 public abstract class BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq")
-    @Column(unique = true)
-    private Long id;
+    @Id @GeneratedValue(strategy=IDENTITY) Long id;
 
     @CreatedDate
     @Column(nullable = false, updatable = false, columnDefinition = "timestamptz")

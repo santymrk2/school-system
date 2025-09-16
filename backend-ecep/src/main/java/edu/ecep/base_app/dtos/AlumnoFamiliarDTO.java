@@ -1,5 +1,8 @@
 package edu.ecep.base_app.dtos;
 
+import edu.ecep.base_app.domain.enums.RolVinculo;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -16,6 +19,7 @@ public class AlumnoFamiliarDTO {
     @NotNull
     Long familiarId;
     @NotBlank
-    String rolVinculo;
+    @Enumerated(EnumType.STRING)
+    RolVinculo rolVinculo;
     boolean esTutorLegal;
 }

@@ -1,18 +1,19 @@
 package edu.ecep.base_app.mappers;
 
-import edu.ecep.base_app.domain.Familiar;
-import edu.ecep.base_app.dtos.FamiliarCreateDTO;
-import edu.ecep.base_app.dtos.FamiliarDTO;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
-
 import org.mapstruct.*;
+import edu.ecep.base_app.domain.Familiar;
+import edu.ecep.base_app.dtos.FamiliarDTO;
 
-@Mapper(config = ModelMapperConfig.class)
+@Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface FamiliarMapper {
+
+    @Mapping(target = "personaId", source = "persona.id")
     FamiliarDTO toDto(Familiar e);
+
+    @Mapping(target = "persona", source = "personaId")
     Familiar toEntity(FamiliarDTO dto);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "persona", source = "personaId")
     void update(@MappingTarget Familiar e, FamiliarDTO dto);
 }

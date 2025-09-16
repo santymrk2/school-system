@@ -1,6 +1,25 @@
 package edu.ecep.base_app.dtos;
 
 
+@Data @NoArgsConstructor @AllArgsConstructor
+public class PersonaUpdateDTO {
+    String nombre;
+    String apellido;
+    String dni;
+
+    LocalDate fechaNacimiento;
+    String genero;
+    String estadoCivil;
+    String nacionalidad;
+
+    String domicilio;
+    String telefono;
+    String celular;
+    String email;
+}
+package edu.ecep.base_app.dtos;
+
+
 
 @Data
 @NoArgsConstructor
@@ -27,6 +46,26 @@ public class CuotaCreateDTO {
 package edu.ecep.base_app.dtos;
 
 
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class EmpleadoDTO {
+    Long id;
+    @NotNull
+    Long personaId;
+
+    private String cuil;
+    private LocalDate fechaIngreso;
+    private String condicionLaboral;
+    private String cargo;
+    private String situacionActual;
+    private String antecedentesLaborales;
+    private String observacionesGenerales;
+
+}package edu.ecep.base_app.dtos;
+
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,10 +73,25 @@ package edu.ecep.base_app.dtos;
 @Setter
 public class AspiranteDTO {
     Long id;
-    String nombre;
-    String apellido;
-    String email;
-    String dni;
+    @NotNull
+    Long personaId;
+
+    @Enumerated(EnumType.STRING)
+    Turno turnoPreferido;
+    String escuelaActual;
+    String conectividadInternet;
+    String dispositivosDisponibles;
+    String idiomasHabladosHogar;
+    String enfermedadesAlergias;
+    String medicacionHabitual;
+    String limitacionesFisicas;
+    String tratamientosTerapeuticos;
+    Boolean usoAyudasMovilidad;
+    String coberturaMedica;
+    String observacionesSalud;
+    @Enumerated(EnumType.STRING)
+    Curso cursoSolicitado;
+
 }
 package edu.ecep.base_app.dtos;
 
@@ -88,6 +142,25 @@ package edu.ecep.base_app.dtos;
 
 
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class EmpleadoUpdateDTO {
+
+    private Long personaId;
+
+    // ---- Campos laborales de Empelado (opcionales en update) ----
+    private String condicionLaboral;
+    private String cargo;
+    private String situacionActual;
+    private LocalDate fechaIngreso;
+    private String antecedentesLaborales;
+}
+package edu.ecep.base_app.dtos;
+
+
+
 
 @Data
 @AllArgsConstructor
@@ -117,6 +190,25 @@ package edu.ecep.base_app.dtos;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+public class AsistenciaEmpleadoCreateDTO {
+
+    @NotNull
+    private Long empleadoId;
+
+    @NotNull
+    private LocalDate fecha;
+
+    @NotBlank
+    private String estado;
+
+    private String observaciones;
+}
+package edu.ecep.base_app.dtos;
+
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AspiranteFamiliarDTO {
     Long id;
     Long aspiranteId;
@@ -124,24 +216,6 @@ public class AspiranteFamiliarDTO {
     String parentesco;
 }
 package edu.ecep.base_app.dtos;
-
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class PersonalCreateDTO {
-    @NotBlank
-    private String nombre;
-    @NotBlank private String apellido;
-    @NotBlank private String cuil;
-    private String dni;
-    private String email;
-    private String telefono;
-    private LocalDate fechaIngreso;
-    private String cargo;
-
-}package edu.ecep.base_app.dtos;
 
 
 
@@ -220,6 +294,28 @@ public class MatriculaDTO {
 package edu.ecep.base_app.dtos;
 
 
+
+@Data@NoArgsConstructor
+@AllArgsConstructor @Builder
+public class PersonaDTO {
+    Long id;
+    @NotBlank String nombre;
+    @NotBlank String apellido;
+    @NotBlank
+    String dni;
+
+    LocalDate fechaNacimiento;
+    String genero;
+    String estadoCivil;
+    String nacionalidad;
+
+    String domicilio;
+    String telefono;
+    String celular;
+    String email;
+}package edu.ecep.base_app.dtos;
+
+
 public record JornadaSearchDTO(Long seccionId, Long trimestreId, LocalDate from, LocalDate to) {}
 package edu.ecep.base_app.dtos;
 
@@ -251,7 +347,7 @@ public class AsignacionDocenteSeccionDTO {
     @NotNull
     Long seccionId;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     RolSeccion rol;
     @NotNull
@@ -286,7 +382,7 @@ package edu.ecep.base_app.dtos;
 public class ReciboSueldoDTO {
     Long id;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     Integer anio;
     @NotNull
@@ -299,30 +395,6 @@ public class ReciboSueldoDTO {
     OffsetDateTime fechaConfirmacion;
     String obsConfirmacion;
     String comprobanteArchivoId;
-}
-package edu.ecep.base_app.dtos;
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class AsistenciaPersonalDTO {
-    private Long id;
-
-    @NotNull
-    private Long personalId;
-
-    @NotNull
-    private LocalDate fecha;
-
-    /**
-     * Estados sugeridos: PRESENTE | AUSENTE | TARDANZA | RETIRO_ANTICIPADO | OTRO
-     * (dejado como String para no obligarte a crear un enum ahora)
-     */
-    @NotBlank
-    private String estado;
-
-    private String observaciones;
 }
 package edu.ecep.base_app.dtos;
 
@@ -392,7 +464,7 @@ public class AsignacionDocenteMateriaDTO {
     @NotNull
     Long seccionMateriaId;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     RolMateria rol;
     @NotNull
@@ -516,7 +588,7 @@ public class DetalleAsistenciaDTO {
     Long matriculaId;
     @NotNull
     EstadoAsistencia estado;
-    String obs;
+    String observacion;
 }
 package edu.ecep.base_app.dtos;
 
@@ -536,32 +608,6 @@ public class TrimestreCreateDTO {
     LocalDate inicio;
     @NotNull
     LocalDate fin;
-}
-package edu.ecep.base_app.dtos;
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class AlumnoCreateDTO {
-    @NotBlank
-    String nombre;
-    @NotBlank
-    String apellido;
-    String documento;
-}
-package edu.ecep.base_app.dtos;
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class FamiliarCreateDTO {
-    @NotBlank
-    String nombre;
-    @NotBlank
-    String apellido;
-    String documento;
 }
 package edu.ecep.base_app.dtos;
 
@@ -653,7 +699,7 @@ public class AsignacionDocenteSeccionCreateDTO {
     @NotNull
     Long seccionId;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     RolSeccion rol;
     @NotNull
@@ -820,6 +866,30 @@ public class CuotaDTO {
 package edu.ecep.base_app.dtos;
 
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AsistenciaEmpleadoDTO {
+    private Long id;
+
+    @NotNull
+    private Long empleadoId;
+
+    @NotNull
+    private LocalDate fecha;
+
+    /**
+     * Estados sugeridos: PRESENTE | AUSENTE | TARDANZA | RETIRO_ANTICIPADO | OTRO
+     * (dejado como String para no obligarte a crear un enum ahora)
+     */
+    @NotBlank
+    private String estado;
+
+    private String observaciones;
+}
+package edu.ecep.base_app.dtos;
+
+
 
 @Data
 @AllArgsConstructor
@@ -884,11 +954,10 @@ package edu.ecep.base_app.dtos;
 @AllArgsConstructor
 public class FamiliarDTO {
     Long id;
-    @NotBlank
-    String nombre;
-    @NotBlank
-    String apellido;
-    String documento;
+    @NotNull
+    Long personaId;
+
+    String ocupacion;
 }
 package edu.ecep.base_app.dtos;
 
@@ -931,7 +1000,7 @@ package edu.ecep.base_app.dtos;
 @AllArgsConstructor
 public class LicenciaCreateDTO {
     @NotNull
-    private Long personalId;
+    private Long empleadoId;
     @NotNull private LocalDate desde;
     private LocalDate hasta;
     @NotBlank
@@ -962,7 +1031,8 @@ public class AlumnoFamiliarDTO {
     @NotNull
     Long familiarId;
     @NotBlank
-    String rolVinculo;
+    @Enumerated(EnumType.STRING)
+    RolVinculo rolVinculo;
     boolean esTutorLegal;
 }
 package edu.ecep.base_app.dtos;
@@ -1037,12 +1107,31 @@ public class AsignacionDocenteMateriaCreateDTO {
     @NotNull
     Long seccionMateriaId;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     RolMateria rol;
     @NotNull
     LocalDate vigenciaDesde;
     LocalDate vigenciaHasta;
+}
+package edu.ecep.base_app.dtos;
+
+
+@Data @NoArgsConstructor @AllArgsConstructor
+public class PersonaCreateDTO {
+    @NotBlank String nombre;
+    @NotBlank String apellido;
+    @NotBlank String dni;
+
+    LocalDate fechaNacimiento;
+    String genero;
+    String estadoCivil;
+    String nacionalidad;
+
+    String domicilio;
+    String telefono;
+    String celular;
+    @Email String email;
 }
 package edu.ecep.base_app.dtos;
 
@@ -1110,7 +1199,7 @@ package edu.ecep.base_app.dtos;
 @AllArgsConstructor
 public class ReciboSueldoCreateDTO {
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     Integer anio;
     @NotNull
@@ -1133,7 +1222,7 @@ package edu.ecep.base_app.dtos;
 public class LicenciaDTO {
     private Long id;
     @NotNull
-    private Long personalId;
+    private Long empleadoId;
     @NotNull private LocalDate desde;  // <- renombrado
     private LocalDate hasta;           // <- renombrado
     @NotBlank
@@ -1143,21 +1232,20 @@ public class LicenciaDTO {
 package edu.ecep.base_app.dtos;
 
 
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AsistenciaPersonalCreateDTO {
+@Builder
+public class EmpleadoCreateDTO {
 
-    @NotNull
-    private Long personalId;
+    private Long personaId;
 
-    @NotNull
-    private LocalDate fecha;
-
-    @NotBlank
-    private String estado;
-
-    private String observaciones;
+    private String condicionLaboral;
+    private String cargo;
+    private String situacionActual;
+    private LocalDate fechaIngreso;
+    private String antecedentesLaborales;
 }
 package edu.ecep.base_app.dtos;
 
@@ -1167,7 +1255,7 @@ package edu.ecep.base_app.dtos;
 public class FormacionAcademicaDTO {
     private Long id;
     @NotNull
-    private Long personalId;    // <- agregado (FK)
+    private Long empleadoId;    // <- agregado (FK)
     @NotBlank
     private String nivel;
     @NotBlank private String institucion;
@@ -1181,31 +1269,15 @@ public class FormacionAcademicaDTO {
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PersonalUpdateDTO {
-    private String nombre;
-    private String apellido;
-    private String cuil;
-    private String dni;
-    private String email;
-    private String telefono;
-    private LocalDate fechaIngreso;
-    private String cargo;
-}package edu.ecep.base_app.dtos;
-
-
-// =============================================================
-// 3) Personas, vínculos y matrícula
-// =============================================================
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class AlumnoDTO {
     Long id;
-    @NotBlank
-    String nombre;
-    @NotBlank
-    String apellido;
-    String documento;
+    @NotNull
+    Long personaId;
+
+    LocalDate fechaInscripcion;
+    String observacionesGenerales;
+    String motivoRechazoBaja;
+
 }
 package edu.ecep.base_app.dtos;
 
@@ -1335,19 +1407,3 @@ public class UsuarioBusquedaDTO {
 }
 
 
-package edu.ecep.base_app.dtos;
-
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class PersonalDTO {
-    Long id;
-    String nombre; String apellido; String dni;
-    LocalDate fechaNacimiento;
-    String genero; String domicilio; String telefono; String email;
-    String cuil; LocalDate fechaIngreso;
-    String condicionLaboral; String cargo; String situacionActual;
-    String antecedentesLaborales; String observacionesGenerales;
-}

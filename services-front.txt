@@ -49,10 +49,12 @@ import * as academico from "./modules/academico";
 import * as asistencias from "./modules/asistencias";
 import * as comunicados from "./modules/comunicados";
 import * as finanzas from "./modules/finanzas";
-import * as rrhh from "./modules/rrhh";
+import * as empleados from "./modules/empleados";
 import * as actasAccidente from "./modules/actasAccidente";
 import * as chat from "./modules/chat";
 import * as aspirantes from "./modules/aspirantes";
+import * as personasCore from "./modules/personas-core";
+import * as secciones from "./modules/secciones";
 
 export const api = {
   // auth “planos”
@@ -69,10 +71,10 @@ export const api = {
   trimestres: calendario.trimestres,
 
   // estructura
-  secciones: estructura.secciones,
+  secciones: secciones.secciones,
   materias: estructura.materias,
   seccionMaterias: estructura.seccionMaterias,
-  seccionesAlumnos: estructura.seccionesAlumnos,
+  seccionesAlumnos: secciones.seccionesAlumnos,
 
   // docencia
   asignacionDocenteSeccion: docencia.asignacionDocenteSeccion,
@@ -110,10 +112,10 @@ export const api = {
   pagosCuota: finanzas.pagosCuota,
   recibos: finanzas.recibos,
 
-  // rrhh
-  personal: rrhh.personal,
-  licencias: rrhh.licencias,
-  formaciones: rrhh.formaciones,
+  // empleados
+  empleados: empleados.empleados,
+  licencias: empleados.licencias,
+  formaciones: empleados.formaciones,
 
   // actas
   actasAccidente: actasAccidente.actasAccidente,
@@ -124,6 +126,8 @@ export const api = {
   // aspirantes
   aspirantes: aspirantes.aspirantes,
   solicitudesAdmision: aspirantes.solicitudesAdmision,
+
+  personasCore: personasCore.personasCore,
 };
 import { http } from '../http';
 import type * as DTO from '@/types/api-generated';
@@ -186,14 +190,18 @@ export const informes = {
       "/api/informes-inicial?matriculaId=" + matriculaId,
     ),
 };
-import { http } from '../http';
-import type * as DTO from '@/types/api-generated';
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
 
 export const chat = {
-  history: (otherUserId: number) => http.get<DTO.ChatMessageDTO[]>('/api/chat/history/' + otherUserId),
-  markRead: (otherUserId: number) => http.post('/api/chat/mark-read/' + otherUserId),
-  getActiveChats: () => http.get<DTO.UsuarioBusquedaDTO[]>('/api/chat/active-chats'),
-  getUnreadCounts: () => http.get<Record<number, number>>('/api/chat/unread-count'),
+  history: (userId: number, params?: { limit?: number }) =>
+    http.get<any[]>(`/api/chat/history/${userId}`, { params }),
+  markRead: (otherUserId: number) =>
+    http.post("/api/chat/mark-read/" + otherUserId),
+  getActiveChats: () =>
+    http.get<DTO.UsuarioBusquedaDTO[]>("/api/chat/active-chats"),
+  getUnreadCounts: () =>
+    http.get<Record<number, number>>("/api/chat/unread-count"),
 };
 import { http } from '../http';
 import type * as DTO from '@/types/api-generated';
@@ -240,62 +248,151 @@ export const trimestres = {
   cerrar: (id: number) => http.post<void>('/api/trimestres/' + id + '/cerrar', {}),
   reabrir: (id: number) => http.post<void>('/api/trimestres/' + id + '/reabrir', {}),
 };
-import { http } from '../http';
-import type * as DTO from '@/types/api-generated';
-
-export const personal = {
-  list: () => http.get<DTO.PersonalDTO[]>('/api/personal'),
-  byId: (id: number) => http.get<DTO.PersonalDTO>('/api/personal/' + id),
-  create: (body: DTO.PersonalCreateDTO) => http.post<number>('/api/personal', body),
-  update: (id: number, body: DTO.PersonalUpdateDTO) => http.put<number>('/api/personal/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/personal/' + id),
-};
-
-export const licencias = {
-  list: () => http.get<DTO.LicenciaDTO[]>('/api/licencias'),
-  byId: (id: number) => http.get<DTO.LicenciaDTO>('/api/licencias/' + id),
-  create: (body: DTO.LicenciaCreateDTO) => http.post<number>('/api/licencias', body),
-  update: (id: number, body: Partial<DTO.LicenciaCreateDTO>) => http.put<number>('/api/licencias/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/licencias/' + id),
-  byPersonalId: (personalId: number) => http.get<DTO.LicenciaDTO[]>('/api/licencias', { params: { personalId } }),
-};
-
-export const formaciones = {
-  list: () => http.get<DTO.FormacionAcademicaDTO[]>('/api/formacion-academica'),
-  byId: (id: number) => http.get<DTO.FormacionAcademicaDTO>('/api/formacion-academica/' + id),
-  create: (body: Omit<DTO.FormacionAcademicaDTO, 'id'>) => http.post<number>('/api/formacion-academica', body),
-  update: (id: number, body: Partial<DTO.FormacionAcademicaDTO>) => http.put<number>('/api/formacion-academica/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/formacion-academica/' + id),
-};
-import { http } from '../http';
-import type * as DTO from '@/types/api-generated';
-
-export const secciones = {
-  list: () => http.get<DTO.SeccionDTO[]>('/api/secciones'),
-  byId: (id: number) => http.get<DTO.SeccionDTO>('/api/secciones/' + id),
-  create: (body: DTO.SeccionCreateDTO) => http.post<number>('/api/secciones', body),
-  update: (id: number, body: Partial<DTO.SeccionCreateDTO>) => http.put<number>('/api/secciones/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/secciones/' + id),
-  alumnos: (id: number, fecha?: string) =>
-    http.get<DTO.AlumnoLiteDTO[]>('/api/secciones/' + id + '/alumnos', { params: { fecha } }),
-};
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
 
 export const materias = {
-  list: () => http.get<DTO.MateriaDTO[]>('/api/materias'),
-  byId: (id: number) => http.get<DTO.MateriaDTO>('/api/materias/' + id),
-  create: (body: DTO.MateriaCreateDTO) => http.post<number>('/api/materias', body),
-  update: (id: number, body: Partial<DTO.MateriaCreateDTO>) => http.put<number>('/api/materias/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/materias/' + id),
+  list: () => http.get<DTO.MateriaDTO[]>("/api/materias"),
+  byId: (id: number) => http.get<DTO.MateriaDTO>("/api/materias/" + id),
+  create: (body: DTO.MateriaCreateDTO) =>
+    http.post<number>("/api/materias", body),
+  update: (id: number, body: Partial<DTO.MateriaCreateDTO>) =>
+    http.put<number>("/api/materias/" + id, body),
+  delete: (id: number) => http.delete<void>("/api/materias/" + id),
 };
 
 export const seccionMaterias = {
-  list: () => http.get<DTO.SeccionMateriaDTO[]>('/api/secciones-materias'),
-  create: (body: DTO.SeccionMateriaCreateDTO) => http.post<number>('/api/secciones-materias', body),
+  list: () => http.get<DTO.SeccionMateriaDTO[]>("/api/secciones-materias"),
+  create: (body: DTO.SeccionMateriaCreateDTO) =>
+    http.post<number>("/api/secciones-materias", body),
+};
+// services/api/modules/secciones.ts
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
+
+const isLazyOr500 = (e: any) =>
+  e?.code === "LAZY_INITIALIZATION" || e?.status === 500;
+
+// Fallback SIN /{id} (evita 403) y usando campos correctos: 'desde'/'hasta'
+async function rosterViaHistorial(seccionId: number) {
+  // 1) Traer sección para conocer periodoEscolarId
+  const seccion = await http
+    .get<DTO.SeccionDTO>(`/api/secciones/${seccionId}`)
+    .then((r) => r.data);
+
+  const periodoId =
+    (seccion as any)?.periodoEscolarId ?? (seccion as any)?.periodoEscolar?.id;
+
+  // 2) Historial completo → vigentes en esta sección (hasta == null)
+  const historial = await http
+    .get<DTO.MatriculaSeccionHistorialDTO[]>("/api/matriculas/historial")
+    .then((r) => r.data ?? []);
+
+  const vigentes = (historial as any[]).filter(
+    (h) => (h.seccionId ?? h.seccion?.id) === seccionId && h.hasta == null, // ← campo correcto
+  );
+
+  const matriculaIds = Array.from(
+    new Set(
+      vigentes.map((h) => h.matriculaId ?? h.matricula?.id).filter(Boolean),
+    ),
+  ) as number[];
+
+  if (matriculaIds.length === 0) return [] as DTO.AlumnoLiteDTO[];
+
+  // 3) Traer TODAS las matrículas (list) y filtrar por ids + período de la sección
+  const mats = await http
+    .get<DTO.MatriculaDTO[]>("/api/matriculas")
+    .then((r) => r.data ?? []);
+
+  const matsOk = (mats as any[]).filter(
+    (m) =>
+      matriculaIds.includes(m.id) &&
+      (m.periodoEscolarId ?? m.periodoEscolar?.id) === periodoId,
+  );
+
+  if (matsOk.length === 0) return [] as DTO.AlumnoLiteDTO[];
+
+  // 4) Traer TODOS los alumnos (list) y mapear alumnoId -> personaId
+  const alumnosAll = await http
+    .get<DTO.AlumnoDTO[]>("/api/alumnos")
+    .then((r) => r.data ?? []);
+
+  const alumnoToPersona = new Map<number, number>();
+  for (const a of alumnosAll as any[]) {
+    if (a?.id != null && a?.personaId != null)
+      alumnoToPersona.set(a.id, a.personaId);
+  }
+
+  // 5) Resolver nombres por persona (si existe endpoint; si no, vacío)
+  const personaCache = new Map<number, { nombre: string; apellido: string }>();
+  async function nombre(pid?: number) {
+    if (!pid) return "";
+    if (personaCache.has(pid)) {
+      const p = personaCache.get(pid)!;
+      return `${p.apellido}, ${p.nombre}`.trim();
+    }
+    try {
+      const p = await http
+        .get<DTO.PersonaDTO>(`/api/personas/${pid}`)
+        .then((r) => r.data);
+      const out = {
+        nombre: (p as any)?.nombre ?? "",
+        apellido: (p as any)?.apellido ?? "",
+      };
+      personaCache.set(pid, out);
+      return `${out.apellido}, ${out.nombre}`.trim();
+    } catch {
+      return ""; // si tu back no tiene GET /api/personas/{id}, no rompemos
+    }
+  }
+
+  // 6) Componer AlumnoLiteDTO[]
+  const out: DTO.AlumnoLiteDTO[] = [];
+  for (const m of matsOk as any[]) {
+    const alumnoId = m.alumnoId ?? m.alumno?.id;
+    if (!alumnoId) continue;
+    const personaId = alumnoToPersona.get(alumnoId);
+    const nombreCompleto = (await nombre(personaId)) || `Alumno #${alumnoId}`;
+    out.push({
+      matriculaId: m.id,
+      alumnoId,
+      nombreCompleto,
+    });
+  }
+  return out;
+}
+
+export const secciones = {
+  list: () => http.get<DTO.SeccionDTO[]>("/api/secciones"),
+  byId: (id: number) => http.get<DTO.SeccionDTO>("/api/secciones/" + id),
+  create: (body: DTO.SeccionCreateDTO) =>
+    http.post<number>("/api/secciones", body),
+  update: (id: number, body: Partial<DTO.SeccionCreateDTO>) =>
+    http.put<number>("/api/secciones/" + id, body),
+  delete: (id: number) => http.delete<void>("/api/secciones/" + id),
+
+  // ✅ sin 'fecha'. Si 500/LAZY o viene [], reconstruimos por historial+matricula+alumno.
+  alumnos: async (id: number) => {
+    try {
+      const res = await http.get<DTO.AlumnoLiteDTO[]>(
+        `/api/secciones/${id}/alumnos`,
+      );
+      if (Array.isArray(res.data) && res.data.length > 0) return res;
+      const data = await rosterViaHistorial(id);
+      return { data } as { data: DTO.AlumnoLiteDTO[] };
+    } catch (e: any) {
+      if (isLazyOr500(e)) {
+        const data = await rosterViaHistorial(id);
+        return { data } as { data: DTO.AlumnoLiteDTO[] };
+      }
+      throw e;
+    }
+  },
 };
 
 export const seccionesAlumnos = {
-  bySeccionId: (id: number, fecha?: string) =>
-    http.get<DTO.AlumnoLiteDTO[]>('/api/secciones/' + id + '/alumnos', { params: { fecha } }),
+  bySeccionId: (id: number) => secciones.alumnos(id),
 };
 import { http } from '../http';
 import type * as DTO from '@/types/api-generated';
@@ -358,49 +455,102 @@ export const diasNoHabiles = {
   create: (body: DTO.DiaNoHabilCreateDTO) => http.post<DTO.DiaNoHabilDTO>('/api/dias-no-habiles', body),
   delete: (id: number) => http.delete<void>('/api/dias-no-habiles/' + id),
 };
-import { http } from '../http';
-import type * as DTO from '@/types/api-generated';
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
 
 export const asignacionDocenteSeccion = {
-  list: () => http.get<DTO.AsignacionDocenteSeccionDTO[]>('/api/asignaciones/seccion'),
-  create: (body: DTO.AsignacionDocenteSeccionCreateDTO) => http.post<number>('/api/asignaciones/seccion', body),
-  byPersonalVigentes: (personalId: number, fecha?: string) =>
-    http.get<DTO.AsignacionDocenteSeccionDTO[]>('/api/asignaciones/seccion/vigentes', { params: { personalId, fecha } }),
-  byPersonal: (personalId: number) =>
-    http.get<DTO.AsignacionDocenteSeccionDTO[]>('/api/asignaciones/seccion/by-personal', { params: { personalId } }),
+  list: () =>
+    http.get<DTO.AsignacionDocenteSeccionDTO[]>("/api/asignaciones/seccion"),
+  create: (body: DTO.AsignacionDocenteSeccionCreateDTO) =>
+    http.post<number>("/api/asignaciones/seccion", body),
+  byEmpleado: (empleadoId: number, fecha?: string) =>
+    http.get<DTO.AsignacionDocenteSeccionDTO[]>(
+      "/api/asignaciones/seccion/by-docente",
+      { params: { empleadoId, ...(fecha ? { fecha } : {}) } },
+    ),
 };
 
 export const asignacionDocenteMateria = {
-  list: () => http.get<DTO.AsignacionDocenteMateriaDTO[]>('/api/asignaciones/materia'),
-  create: (body: DTO.AsignacionDocenteMateriaCreateDTO) => http.post<number>('/api/asignaciones/materia', body),
+  list: () =>
+    http.get<DTO.AsignacionDocenteMateriaDTO[]>("/api/asignaciones/materia"),
+  create: (body: DTO.AsignacionDocenteMateriaCreateDTO) =>
+    http.post<number>("/api/asignaciones/materia", body),
 };
-import { http } from '../http';
-import type * as DTO from '@/types/api-generated';
+// services/api/modules/empleados.ts
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
+
+/** ================= Empleados ================= */
+export const empleados = {
+  list: () => http.get<DTO.EmpleadoDTO[]>("/api/empleados"),
+  byId: (id: number) => http.get<DTO.EmpleadoDTO>("/api/empleados/" + id),
+  create: (body: DTO.EmpleadoCreateDTO) =>
+    http.post<number>("/api/empleados", body),
+  update: (id: number, body: DTO.EmpleadoUpdateDTO) =>
+    http.put<number>("/api/empleados/" + id, body),
+  delete: (id: number) => http.delete<void>("/api/empleados/" + id),
+};
+
+/** ================= Licencias (RRHH) ================= */
+export const licencias = {
+  list: () => http.get<DTO.LicenciaDTO[]>("/api/licencias"),
+  byId: (id: number) => http.get<DTO.LicenciaDTO>("/api/licencias/" + id),
+  create: (body: DTO.LicenciaCreateDTO) =>
+    http.post<number>("/api/licencias", body),
+  update: (id: number, body: Partial<DTO.LicenciaCreateDTO>) =>
+    http.put<number>("/api/licencias/" + id, body),
+  delete: (id: number) => http.delete<void>("/api/licencias/" + id),
+
+  // 🔁 Parametro actualizado: antes "personalId", ahora "empleadoId"
+  byEmpleadoId: (empleadoId: number) =>
+    http.get<DTO.LicenciaDTO[]>("/api/licencias", { params: { empleadoId } }),
+};
+
+export const formaciones = {
+  list: () => http.get<DTO.FormacionAcademicaDTO[]>("/api/formaciones"),
+  create: (body: DTO.FormacionAcademicaCreateDTO) =>
+    http.post<number>("/api/formaciones", body),
+  update: (id: number, body: Partial<DTO.FormacionAcademicaCreateDTO>) =>
+    http.put<number>("/api/formaciones/" + id, body),
+  byId: (id: number) =>
+    http.get<DTO.FormacionAcademicaDTO>("/api/formaciones/" + id),
+  delete: (id: number) => http.delete<void>("/api/formaciones/" + id),
+};
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
 
 export const user = {
-  getById: (id: number) => http.get<DTO.Usuario>('/api/users/' + id),
+  getById: (id: number) => http.get<DTO.UsuarioDTO>("/api/users/" + id),
 };
 
 export const searchUsers = (q: string) =>
-  http.get<DTO.UsuarioBusquedaDTO[]>('/api/users/search', { params: { q } });
-import { http } from '../http';
-import type * as DTO from '@/types/api-generated';
+  http.get<DTO.UsuarioBusquedaDTO[]>("/api/users/search", { params: { q } });
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
 
 export const aspirantes = {
-  list: () => http.get<DTO.Aspirante[]>('/api/aspirantes'),
-  byId: (id: number) => http.get<DTO.Aspirante>('/api/aspirantes/' + id),
-  create: (body: Omit<DTO.Aspirante, 'id'>) => http.post<number>('/api/aspirantes', body),
-  update: (id: number, body: Partial<DTO.Aspirante>) => http.put<number>('/api/aspirantes/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/aspirantes/' + id),
+  list: () => http.get<DTO.AspiranteDTO[]>("/api/aspirantes"),
+  byId: (id: number) => http.get<DTO.AspiranteDTO>("/api/aspirantes/" + id),
+  create: (body: Omit<DTO.AspiranteDTO, "id">) =>
+    http.post<number>("/api/aspirantes", body),
+  update: (id: number, body: Partial<DTO.AspiranteDTO>) =>
+    http.put<number>("/api/aspirantes/" + id, body),
+  delete: (id: number) => http.delete<void>("/api/aspirantes/" + id),
 };
 
 export const solicitudesAdmision = {
-  list: () => http.get<DTO.SolicitudAdmision[]>('/api/solicitudes-admision'),
-  byId: (id: number) => http.get<DTO.SolicitudAdmision>('/api/solicitudes-admision/' + id),
-  create: (body: Omit<DTO.SolicitudAdmision, 'id'>) => http.post<number>('/api/solicitudes-admision', body),
-  update: (id: number, body: Partial<DTO.SolicitudAdmision>) => http.put<number>('/api/solicitudes-admision/' + id, body),
-  delete: (id: number) => http.delete<void>('/api/solicitudes-admision/' + id),
-  byAspiranteId: (aspiranteId: number) => http.get<DTO.SolicitudAdmision[]>('/api/solicitudes-admision', { params: { aspiranteId } }),
+  list: () => http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision"),
+  byId: (id: number) =>
+    http.get<DTO.SolicitudAdmisionDTO>("/api/solicitudes-admision/" + id),
+  create: (body: Omit<DTO.SolicitudAdmisionDTO, "id">) =>
+    http.post<number>("/api/solicitudes-admision", body),
+  update: (id: number, body: Partial<DTO.SolicitudAdmisionDTO>) =>
+    http.put<number>("/api/solicitudes-admision/" + id, body),
+  delete: (id: number) => http.delete<void>("/api/solicitudes-admision/" + id),
+  byAspiranteId: (aspiranteId: number) =>
+    http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision", {
+      params: { aspiranteId },
+    }),
 };
 import { http } from '../http';
 import type * as DTO from '@/types/api-generated';
@@ -411,6 +561,21 @@ export const comunicados = {
   create: (body: DTO.ComunicadoCreateDTO) => http.post<number>('/api/comunicados', body),
   update: (id: number, body: Partial<DTO.ComunicadoCreateDTO>) => http.put<number>('/api/comunicados/' + id, body),
   delete: (id: number) => http.delete<void>('/api/comunicados/' + id),
+};
+// services/api/modules/personas-core.ts (o dejalo en el mismo archivo)
+import { http } from "../http";
+import type * as DTO from "@/types/api-generated";
+
+export const personasCore = {
+  getById: (id: number) => http.get<DTO.PersonaDTO>(`/api/personas/${id}`),
+  update: (id: number, patch: Partial<DTO.PersonaUpdateDTO>) =>
+    http.put<void>(`/api/personas/${id}`, patch),
+
+  // link/unlink de usuario a Persona
+  linkUsuario: (personaId: number, usuarioId: number) =>
+    http.post<void>(`/api/personas/${personaId}/link-usuario`, { usuarioId }),
+  unlinkUsuario: (personaId: number) =>
+    http.post<void>(`/api/personas/${personaId}/unlink-usuario`, {}),
 };
 import { http } from '../http';
 import type * as DTO from '@/types/api-generated';

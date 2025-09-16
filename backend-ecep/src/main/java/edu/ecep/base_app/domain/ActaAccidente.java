@@ -4,16 +4,11 @@ import edu.ecep.base_app.domain.enums.EstadoActaAccidente;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.Set;
 
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity @Table(name="actas_accidente")
 @SQLDelete(sql = "UPDATE actas_accidente SET activo = false, fecha_eliminacion = now() WHERE id = ?")
@@ -29,5 +24,5 @@ public class ActaAccidente extends BaseEntity {
     private String creadoPor; // usuario
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    private Personal informante;  // quien reportó el accidente (obligatorio)
+    private Empleado informante;  // quien reportó el accidente (obligatorio)
 }

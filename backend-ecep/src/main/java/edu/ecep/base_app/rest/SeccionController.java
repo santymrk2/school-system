@@ -10,11 +10,13 @@ import edu.ecep.base_app.service.SeccionService;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -32,6 +34,7 @@ public class SeccionController {
     @GetMapping public List<SeccionDTO> list(){ return service.findAll(); }
     @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SeccionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
     @GetMapping("/{id}/alumnos")
+    @Transactional(readOnly=true)
     public List<AlumnoLiteDTO> alumnosActivos(
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
@@ -42,7 +45,11 @@ public class SeccionController {
         return activos.stream().map(m -> {
             var matricula = matriculaRepository.findById(m.getMatricula().getId()).orElseThrow();
             var alumno = alumnoRepository.findById(matricula.getAlumno().getId()).orElseThrow();
-            String nombre = alumno.getApellido() + ", " + alumno.getNombre();
+            String nombre = Optional.ofNullable(alumno.getPersona())
+                    .map(p -> (p.getApellido() != null ? p.getApellido() : "") +
+                            ", " +
+                            (p.getNombre() != null ? p.getNombre() : ""))
+                    .orElse("#" + alumno.getId());
             return new AlumnoLiteDTO(matricula.getId(), alumno.getId(), nombre);
         }).toList();
     }

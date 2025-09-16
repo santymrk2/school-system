@@ -18,6 +18,30 @@ public class DetalleAsistencia extends BaseEntity {
 
 
 @Entity
+@Table(name = "asistencia_empleados")
+@Getter
+@Setter
+public class AsistenciaEmpleados extends BaseEntity {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    private Empleado empleado;
+
+    @Column(nullable = false)
+    private LocalDate fecha;
+
+    @Column
+    private LocalTime horaEntrada;
+
+    @Column
+    private LocalTime horaSalida;
+
+    private Boolean falta;
+    private Boolean justificada;
+    private String motivo;
+}package edu.ecep.base_app.domain;
+
+
+
+@Entity
 @Table(name = "matriculas",
         uniqueConstraints=@UniqueConstraint(columnNames={"alumno_id","periodo_escolar_id"}))
 @SQLDelete(sql = "UPDATE matriculas SET activo = false, fecha_eliminacion = now() WHERE id = ?")
@@ -72,48 +96,6 @@ package edu.ecep.base_app.domain;
 public class PeriodoEscolar extends BaseEntity {
     @Column(nullable=false, unique=true)
     private Integer anio;
-}
-package edu.ecep.base_app.domain;
-
-
-
-
-
-@Entity
-@DiscriminatorValue("PERSONAL")
-@Getter
-@Setter
-public class Personal extends Persona {
-    @Column(length = 11, unique = true)
-    private String cuil;
-
-    @Column
-    private LocalDate fechaIngreso;
-
-    @Column(length = 50)
-    private String condicionLaboral;
-
-    @Column(length = 50)
-    private String cargo;
-
-    @Column(length = 50)
-    private String situacionActual;
-
-    @Column(length = 1000)
-    private String antecedentesLaborales;
-
-    @Column(length = 1000)
-    private String observacionesGenerales;
-
-    @OneToMany(mappedBy = "personal")
-    private Set<Licencia> licencias = new HashSet<>();
-
-    @OneToMany(mappedBy = "personal")
-    private Set<ReciboSueldo> recibosSueldo = new HashSet<>();
-
-    @OneToMany(mappedBy = "personal", cascade = CascadeType.ALL, orphanRemoval = false)
-    private Set<FormacionAcademica> formaciones = new HashSet<>();
-
 }
 package edu.ecep.base_app.domain;
 
@@ -187,27 +169,21 @@ package edu.ecep.base_app.domain;
 
 
 @Entity
-@DiscriminatorValue("ALUMNO")
-@Getter
-@Setter
-public class Alumno extends Persona {
+@Table(name="personas_alumno")
+@Getter @Setter
+public class Alumno {
+    @Id Long id;
 
-    @Column
-    private LocalDate fechaInscripcion;
+    @MapsId
+    @OneToOne(fetch=LAZY) @JoinColumn(name="id", foreignKey=@ForeignKey(name="fk_alumno_persona"))
+    Persona persona;
 
-    @Column(length = 500)
-    private String observacionesGenerales;
+    LocalDate fechaInscripcion;
+    String observacionesGenerales;
+    String motivoRechazoBaja;
 
-    @Column
-    private String motivoRechazoBaja;
-
-
-    @OneToMany(mappedBy = "alumno")
-    private Set<Matricula> matriculas = new HashSet<>();
-
-    @OneToMany(mappedBy = "alumno")
-    private Set<AlumnoFamiliar> familiares = new HashSet<>();
-
+    @OneToMany(mappedBy="alumno") Set<Matricula> matriculas = new HashSet<>();
+    @OneToMany(mappedBy="alumno") Set<AlumnoFamiliar> familiares = new HashSet<>();
 }
 package edu.ecep.base_app.domain;
 
@@ -275,6 +251,7 @@ package edu.ecep.base_app.domain;
 
 
 
+
 @Entity
 @Table(name = "aspirantes_familiares")
 @EntityListeners(AuditingEntityListener.class)
@@ -282,11 +259,11 @@ package edu.ecep.base_app.domain;
 @Setter
 public class AspiranteFamiliar extends BaseEntity {
 
-    @Column(nullable = false, length = 50)
-    private String tipoRelacion;
+    @Enumerated(EnumType.STRING) @Column(nullable=false)
+    RolVinculo rolVinculo;
 
     @Column(nullable = false)
-    private Boolean viveConAlumno;
+    private Boolean convive;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "aspirante_id", nullable = false)
@@ -337,6 +314,9 @@ public enum CalificacionConceptual {
 }
 package edu.ecep.base_app.domain.enums;
 
+public enum RolEmpleado { DIRECCION, ADMINISTRACION, SECRETARIA, DOCENTE }
+package edu.ecep.base_app.domain.enums;
+
 public enum EstadoPago {EN_REVISION, ACREDITADO, RECHAZADO}
 package edu.ecep.base_app.domain.enums;
 
@@ -344,6 +324,9 @@ public enum EstadoActaAccidente { BORRADOR, CERRADA }package edu.ecep.base_app.d
 
 public enum EstadoSolicitudBaja { PENDIENTE, APROBADA, RECHAZADA }package edu.ecep.base_app.domain.enums;
 public enum RolSeccion { MAESTRO_TITULAR, SUPLENTE, PRECEPTOR, AUXILIAR }
+package edu.ecep.base_app.domain.enums;
+
+public enum RolVinculo {PADRE, MADRE, TUTOR, OTRO}
 package edu.ecep.base_app.domain.enums;
 
 
@@ -366,6 +349,7 @@ public enum EstadoAsistencia { PRESENTE, AUSENTE, TARDE, RETIRO_ANTICIPADO }pack
 
 
 
+
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @FilterDef(name = "activoFilter", parameters = @ParamDef(name = "activo", type = Boolean.class))
@@ -374,10 +358,7 @@ public enum EstadoAsistencia { PRESENTE, AUSENTE, TARDE, RETIRO_ANTICIPADO }pack
 @Setter
 public abstract class BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq")
-    @Column(unique = true)
-    private Long id;
+    @Id @GeneratedValue(strategy=IDENTITY) Long id;
 
     @CreatedDate
     @Column(nullable = false, updatable = false, columnDefinition = "timestamptz")
@@ -444,59 +425,33 @@ package edu.ecep.base_app.domain;
 
 
 @Entity
-@DiscriminatorValue("ASPIRANTE")
-@Getter
-@Setter
-public class Aspirante extends Persona {
+@Table(name="personas_aspirante")
+@Getter @Setter
+public class Aspirante {
+    @Id Long id;
 
-    @Column
-    @Enumerated(EnumType.STRING)
-    private Turno turnoPreferido;
+    @MapsId
+    @OneToOne(fetch=LAZY) @JoinColumn(name="id", foreignKey=@ForeignKey(name="fk_aspirante_persona"))
+    Persona persona;
 
-    @Column
-    private String escuelaActual;
+    @Enumerated(EnumType.STRING) Turno turnoPreferido;
+    String escuelaActual;
+    String conectividadInternet;
+    String dispositivosDisponibles;
+    String idiomasHabladosHogar;
+    String enfermedadesAlergias;
+    String medicacionHabitual;
+    String limitacionesFisicas;
+    String tratamientosTerapeuticos;
+    Boolean usoAyudasMovilidad;
+    String coberturaMedica;
+    String observacionesSalud;
+    @Enumerated(EnumType.STRING) Curso cursoSolicitado;
 
-    @Column(length = 50)
-    private String conectividadInternet;
-
-    @Column
-    private String dispositivosDisponibles;
-
-    @Column
-    private String idiomasHabladosHogar;
-
-    @Column(length = 1000)
-    private String enfermedadesAlergias;
-
-    @Column
-    private String medicacionHabitual;
-
-    @Column
-    private String limitacionesFisicas;
-
-    @Column
-    private String tratamientosTerapeuticos;
-
-    @Column
-    private Boolean usoAyudasMovilidad;
-
-    @Column
-    private String coberturaMedica;
-
-    @Column(length = 1000)
-    private String observacionesSalud;
-
-    @Column
-    @Enumerated(EnumType.STRING)
-    private Curso cursoSolicitado;
-
-    @OneToMany(mappedBy = "aspirante")
-    private Set<AspiranteFamiliar> familiares = new HashSet<>();
-
-    @OneToMany(mappedBy = "aspirante")
-    private Set<SolicitudAdmision> solicitudes = new HashSet<>();
-
+    @OneToMany(mappedBy="aspirante") Set<AspiranteFamiliar> familiares = new HashSet<>();
+    @OneToMany(mappedBy="aspirante") Set<SolicitudAdmision> solicitudes = new HashSet<>();
 }
+
 package edu.ecep.base_app.domain;
 
 
@@ -525,7 +480,7 @@ public class Trimestre extends BaseEntity {
 @Setter
 public class AsignacionDocenteMateria extends BaseEntity {
     @ManyToOne(optional=false, fetch= FetchType.LAZY) private SeccionMateria seccionMateria;
-    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Personal personal;
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Empleado empleado;
 
     @Enumerated(EnumType.STRING) @Column(nullable=false) private RolMateria rol;
     @Column(nullable=false) private LocalDate vigenciaDesde;
@@ -551,88 +506,34 @@ public class Evaluacion extends BaseEntity {
 
 
 
-@Entity
-@Table(name = "asistencia_personal")
-@Getter
-@Setter
-public class AsistenciaPersonal extends BaseEntity {
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private Personal personal;
-
-    @Column(nullable = false)
-    private LocalDate fecha;
-
-    @Column
-    private LocalTime horaEntrada;
-
-    @Column
-    private LocalTime horaSalida;
-
-    private Boolean falta;
-    private Boolean justificada;
-    private String motivo;
-}package edu.ecep.base_app.domain;
 
 
 
-
-
-@Entity
-@Table(name = "usuarios")
+@Entity @Table(name = "usuarios")
 @SQLDelete(sql = "UPDATE usuarios SET activo = false, fecha_eliminacion = now() WHERE id = ?")
 @Getter
 @Setter
-public class Usuario extends BaseEntity implements UserDetails  {
-    @Column(unique = true, nullable = false)
-    private String email;
-
-    @Column(nullable = false)
-    private String password;
-
-    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
-    @CollectionTable(name = "usuario_roles", joinColumns = @JoinColumn(name = "usuario_id"))
-    @Column(name = "role")
-    @Enumerated(EnumType.STRING)
-    private Set<UserRole> userRoles = new HashSet<>();
-
+public class Usuario extends BaseEntity  {
     @OneToOne(mappedBy = "usuario", fetch = FetchType.LAZY)
     private Persona persona;
 
-    @Override
+    @Column(unique = true, nullable = false) private String email;
+
+    @Column(nullable = false) private String password;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name="usuario_roles", joinColumns=@JoinColumn(name="usuario_id"))
+    @Column(name="rol")
+    @Enumerated(EnumType.STRING)
+    private Set<UserRole> roles = new HashSet<>();
+
+    public Set<UserRole> getUserRoles() { return getRoles(); }
+    public void setUserRoles(Set<UserRole> roles) { setRoles(roles); }
+
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return userRoles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
+        return this.roles.stream()
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
+                .toList();
     }
 }
 package edu.ecep.base_app.domain;
@@ -655,13 +556,14 @@ public class EmisionCuotaSeccion extends BaseEntity {
 @Getter @Setter
 public class AsignacionDocenteSeccion extends BaseEntity {
     @ManyToOne(optional=false, fetch=FetchType.LAZY) private Seccion seccion;
-    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Personal personal;
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Empleado empleado;
 
     @Enumerated(EnumType.STRING) @Column(nullable=false) private RolSeccion rol;
     @Column(nullable=false) private LocalDate vigenciaDesde;
     private LocalDate vigenciaHasta; // null = vigente
 }
 package edu.ecep.base_app.domain;
+
 
 
 
@@ -685,18 +587,18 @@ public class Licencia extends BaseEntity{
     private String motivo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "personal_id", nullable = false)
-    private Personal personal;
+    @JoinColumn(name = "empleado_id", nullable = false)
+    private Empleado empleado;
 }
 package edu.ecep.base_app.domain;
 
 
 @Entity @Table(name="recibos_sueldo",
-        uniqueConstraints=@UniqueConstraint(columnNames={"personal_id","anio","mes"}))
+        uniqueConstraints=@UniqueConstraint(columnNames={"empleado_id","anio","mes"}))
 @SQLDelete(sql = "UPDATE recibos_sueldo SET activo = false, fecha_eliminacion = now() WHERE id = ?")
 @Getter @Setter
 public class ReciboSueldo extends BaseEntity {
-    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Personal personal;
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Empleado empleado;
     @Column(nullable=false) private Integer anio;
     @Column(nullable=false) private Integer mes;
 
@@ -710,6 +612,47 @@ public class ReciboSueldo extends BaseEntity {
 }
 
 //vertigo ?package edu.ecep.base_app.domain;
+
+
+
+
+
+@Entity
+@Table(name = "personas_empleado")
+@Getter
+@Setter
+public class Empleado {
+    @Id Long id;
+
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id", foreignKey = @ForeignKey(name = "fk_empleado_persona"))
+    private Persona persona;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RolEmpleado rolEmpleado; // DIRECCION, ADMINISTRACION, SECRETARIA, DOCENTE
+
+    @Column(length = 11, unique = true)
+    private String cuil;
+
+    private LocalDate fechaIngreso;
+    private String condicionLaboral;
+    private String cargo;
+    private String situacionActual;
+    private String antecedentesLaborales;
+    private String observacionesGenerales;
+
+    @OneToMany(mappedBy = "empleado")
+    private Set<Licencia> licencias = new HashSet<>();
+
+    @OneToMany(mappedBy = "empleado")
+    private Set<ReciboSueldo> recibosSueldo = new HashSet<>();
+
+    @OneToMany(mappedBy = "empleado", cascade = CascadeType.ALL, orphanRemoval = false)
+    private Set<FormacionAcademica> formaciones = new HashSet<>();
+}
+package edu.ecep.base_app.domain;
 
 
 
@@ -772,6 +715,7 @@ package edu.ecep.base_app.domain;
 
 
 
+
 @Entity
 @Table(name = "alumno_familiar",
         uniqueConstraints=@UniqueConstraint(columnNames={"alumno_id","familiar_id"}))
@@ -779,21 +723,19 @@ package edu.ecep.base_app.domain;
 @Setter
 public class AlumnoFamiliar extends BaseEntity{
 
-    @Column(nullable = false, length = 50)
-    private String tipoRelacion;
+    @Enumerated(EnumType.STRING) @Column(nullable=false)
+    RolVinculo rolVinculo;
 
     @Column(nullable = false)
-    private Boolean viveConAlumno;
+    private Boolean convive;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "alumno_id", nullable = false)
-    private Alumno alumno;
+    @ManyToOne(fetch=LAZY) @JoinColumn(name="alumno_id", nullable=false)
+    Alumno alumno;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "familiar_id", nullable = false)
-    private Familiar familiar;
-}
-package edu.ecep.base_app.domain;
+    @ManyToOne(fetch=LAZY) @JoinColumn(name="familiar_id", nullable=false)
+    Familiar familiar;
+
+}package edu.ecep.base_app.domain;
 
 
 
@@ -812,7 +754,7 @@ public class ActaAccidente extends BaseEntity {
     private String creadoPor; // usuario
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    private Personal informante;  // quien reportó el accidente (obligatorio)
+    private Empleado informante;  // quien reportó el accidente (obligatorio)
 }package edu.ecep.base_app.domain;
 
 
@@ -835,23 +777,23 @@ public class SolicitudBajaAlumno extends BaseEntity {
 
 
 
-@Entity
-@DiscriminatorValue("FAMILIAR")
-@Getter
-@Setter
-public class Familiar extends Persona {
 
-    @Column
-    private String ocupacion;
+@Entity @Table(name="personas_familiar")
+@Getter @Setter
+public class Familiar {
+    @Id Long id;
 
-    @OneToMany(mappedBy = "familiar")
-    private Set<AlumnoFamiliar> familiarAlumnoFamiliares = new HashSet<>();
+    @MapsId
+    @OneToOne(fetch=LAZY) @JoinColumn(name="id", foreignKey=@ForeignKey(name="fk_familiar_persona"))
+    Persona persona;
 
-    @OneToMany(mappedBy = "familiar")
-    private Set<AspiranteFamiliar> familiarAspiranteFamiliares = new HashSet<>();
+    String ocupacion;
 
+    @OneToMany(mappedBy="familiar") Set<AlumnoFamiliar> familiarAlumnoFamiliares = new HashSet<>();
+    @OneToMany(mappedBy="familiar") Set<AspiranteFamiliar> familiarAspiranteFamiliares = new HashSet<>();
 }
 package edu.ecep.base_app.domain;
+
 
 
 
@@ -879,8 +821,8 @@ public class FormacionAcademica extends BaseEntity{
     private LocalDate fechaFin;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "personal_id", nullable = false)
-    private Personal personal;
+    @JoinColumn(name = "empleado_id", nullable = false)
+    private Empleado empleado;
 
 }
 package edu.ecep.base_app.domain;
@@ -918,55 +860,24 @@ public class Seccion extends BaseEntity {
 
 
 @Entity
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "tipo", discriminatorType = DiscriminatorType.STRING)
-@SQLDelete(sql = "UPDATE persona SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-@Getter
-@Setter
-public abstract class Persona extends BaseEntity{
+@Table(name="personas")
+@SQLDelete(sql = "UPDATE personas SET activo = false, fecha_eliminacion = now() WHERE id = ?")
+@Getter @Setter
+public class Persona extends BaseEntity {
+    @Column(nullable=false, unique=true, length=20) String dni;
+    String nombre; String apellido;
+    String email; String telefono; String domicilio;
+    LocalDate fechaNacimiento; String genero;
+    String estadoCivil; String nacionalidad; String celular;
+    @Email String emailContacto;
+    String fotoPerfilUrl;
 
-    @Column(nullable = false)
-    private String nombre;
-
-    @Column(nullable = false)
-    private String apellido;
-
-    @Column(nullable = false, unique = true, length = 20)
-    private String dni;
-
-    @Column
-    private LocalDate fechaNacimiento;
-
-    @Column
-    private String genero;
-
-    @Column
-    private String estadoCivil;
-
-    @Column
-    private String nacionalidad;
-
-    @Column(length = 500)
-    private String domicilio;
-
-    @Column
-    private String telefono;
-
-    @Column
-    private String celular;
-
-    @Email
-    @Column
-    private String emailContacto;
-
-    @Column
-    private String fotoPerfilUrl;
-
-    @OneToOne
-    @JoinColumn(name = "usuario_id")
-    private Usuario usuario;
-
+    @OneToOne(fetch=LAZY, optional=true)
+    @JoinColumn(name="usuario_id", unique=true, foreignKey=@ForeignKey(name="fk_persona_usuario"))
+    Usuario usuario;
 }
+
+
 package edu.ecep.base_app.domain;
 
 

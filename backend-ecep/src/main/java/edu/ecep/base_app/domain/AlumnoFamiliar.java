@@ -1,5 +1,6 @@
 package edu.ecep.base_app.domain;
 
+import edu.ecep.base_app.domain.enums.RolVinculo;
 import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
@@ -9,6 +10,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import static jakarta.persistence.FetchType.LAZY;
+
 
 @Entity
 @Table(name = "alumno_familiar",
@@ -17,17 +20,16 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Setter
 public class AlumnoFamiliar extends BaseEntity{
 
-    @Column(nullable = false, length = 50)
-    private String tipoRelacion;
+    @Enumerated(EnumType.STRING) @Column(nullable=false)
+    RolVinculo rolVinculo;
 
     @Column(nullable = false)
-    private Boolean viveConAlumno;
+    private Boolean convive;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "alumno_id", nullable = false)
-    private Alumno alumno;
+    @ManyToOne(fetch=LAZY) @JoinColumn(name="alumno_id", nullable=false)
+    Alumno alumno;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "familiar_id", nullable = false)
-    private Familiar familiar;
+    @ManyToOne(fetch=LAZY) @JoinColumn(name="familiar_id", nullable=false)
+    Familiar familiar;
+
 }

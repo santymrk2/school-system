@@ -1,20 +1,18 @@
+// src/hooks/useTeacherSecciones.ts
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/services/api";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import type {
   SeccionDTO,
   AsignacionDocenteSeccionDTO,
+  EmpleadoDTO,
 } from "@/types/api-generated";
 
-/**
- * Retorna las secciones asignadas al docente (usuario.personaId).
- * Filtra del endpoint de asignaciones y cruza con /secciones.
- */
 export function useTeacherSecciones() {
   const { user } = useAuth();
-  const personalId = user?.personaId ?? null;
+  const personaId = user?.personaId ?? null;
 
   const [loading, setLoading] = useState(true);
   const [secciones, setSecciones] = useState<SeccionDTO[]>([]);
@@ -23,7 +21,7 @@ export function useTeacherSecciones() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!personalId) {
+      if (!personaId) {
         setLoading(false);
         setSecciones([]);
         return;
@@ -31,19 +29,40 @@ export function useTeacherSecciones() {
       try {
         setLoading(true);
 
-        // 1) Traigo TODAS las asignaciones y me quedo con las del personalId
+        // 0) Resolver empleadoId a partir de personaId
+        const empleadosRes = await api.empleados
+          .list()
+          .catch(() => ({ data: [] as EmpleadoDTO[] }));
+        const empleado = (empleadosRes.data ?? []).find(
+          (e) => e.personaId === personaId,
+        );
+        const empleadoId = empleado?.id;
+        if (!empleadoId) {
+          if (mounted) {
+            setSecciones([]);
+            setError(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // 1) Traer asignaciones y filtrar por empleadoId
         const asigResp = await api.asignacionDocenteSeccion.list();
         const asignaciones = (asigResp.data ??
           []) as AsignacionDocenteSeccionDTO[];
 
-        // Ojo: tu DTO usa "docenteId". Si tu backend expone "personalId", cambiá la línea de abajo.
         const seccionIds = Array.from(
           new Set(
             asignaciones
-              .filter((a) => a.personalId === personalId)
-              .map((a) => a.seccionId),
+              // compat: empleadoId || personalId || docenteId
+              .filter(
+                (a: any) =>
+                  (a.empleadoId ?? a.personalId ?? a.docenteId) === empleadoId,
+              )
+              .map((a: any) => a.seccionId ?? a.seccion?.id)
+              .filter(Boolean),
           ),
-        );
+        ) as number[];
 
         if (seccionIds.length === 0) {
           if (mounted) {
@@ -53,7 +72,7 @@ export function useTeacherSecciones() {
           return;
         }
 
-        // 2) Para evitar muchos requests, traigo /secciones y filtro
+        // 2) Traer secciones y filtrar
         const secResp = await api.secciones.list();
         const todas = secResp.data ?? [];
         const mias = todas.filter((s) => seccionIds.includes(s.id));
@@ -71,9 +90,50 @@ export function useTeacherSecciones() {
     return () => {
       mounted = false;
     };
-  }, [personalId]);
+  }, [personaId]);
 
   return { loading, error, secciones };
+}
+// src/hooks/academico/useAlumnosActivosSeccion.ts
+"use client";
+
+import { useEffect, useState } from "react";
+import { api } from "@/services/api";
+import type { AlumnoLiteDTO } from "@/types/api-generated";
+
+export function useAlumnosActivosSeccion(seccionId?: number) {
+  const [alumnos, setAlumnos] = useState<AlumnoLiteDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        if (!seccionId) {
+          setAlumnos([]);
+          return;
+        }
+        // ❌ sin fecha; el servicio maneja fallback
+        const res = await api.seccionesAlumnos.bySeccionId(seccionId);
+        if (!alive) return;
+        setAlumnos(res.data ?? []);
+      } catch (e) {
+        if (!alive) return;
+        setAlumnos([]);
+        setError(e);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [seccionId]);
+
+  return { alumnos, loading, error };
 }
 // src/hooks/academico/useCatalogosCierre.ts
 "use client";
@@ -363,19 +423,24 @@ function useToast() {
 }
 
 export { useToast, toast }
+// src/hooks/useSeccionAlumnosFull.ts
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+import { useEffect, useState } from "react";
 import { api } from "@/services/api";
-import type { AlumnoLiteDTO, AlumnoDTO } from "@/types/api-generated";
+import type {
+  AlumnoLiteDTO,
+  AlumnoDTO,
+  PersonaDTO,
+} from "@/types/api-generated";
 
 export type StudentVM = {
   matriculaId: number;
   alumnoId: number;
   nombreCompleto: string;
-  documento?: string | null; // backend: "documento" ; fallback a "dni" si tu DTO FE lo tiene
+  documento?: string | null;
   email?: string | null;
   telefono?: string | null;
-  // agregá acá lo que tu backend exponga en AlumnoDTO/PersonaDTO
 };
 
 export function useSeccionAlumnosFull(seccionId: number, fechaISO: string) {
@@ -389,17 +454,15 @@ export function useSeccionAlumnosFull(seccionId: number, fechaISO: string) {
       setLoading(true);
       setError(null);
       try {
-        // 1) roster por sección/fecha (AlumnoLiteDTO)
         const { data: lite } = await api.seccionesAlumnos.bySeccionId(
           seccionId,
           fechaISO,
         );
 
-        // 2) detalle de cada alumno (AlumnoDTO)
         const uniqueAlumnoIds = Array.from(
           new Set((lite ?? []).map((l) => l.alumnoId)),
         );
-        const details = await Promise.all(
+        const alumnos = await Promise.all(
           uniqueAlumnoIds.map((id) =>
             api.alumnos
               .getById(id)
@@ -407,20 +470,36 @@ export function useSeccionAlumnosFull(seccionId: number, fechaISO: string) {
               .catch(() => null),
           ),
         );
-        const byId = new Map<number, AlumnoDTO | null>();
-        uniqueAlumnoIds.forEach((id, i) => byId.set(id, details[i]));
 
-        // 3) Componer VM
+        // persona por alumno
+        const personaCache = new Map<number, PersonaDTO>();
+        const personaByAlumnoId = new Map<number, PersonaDTO | null>();
+        for (const a of alumnos) {
+          if (!a) continue;
+          const pid = (a as any).personaId as number | undefined;
+          if (pid && !personaCache.has(pid)) {
+            const p = await api.personasCore
+              .getById(pid)
+              .then((r) => r.data)
+              .catch(() => null);
+            if (p) personaCache.set(pid, p);
+          }
+          personaByAlumnoId.set(
+            (a as any).id,
+            pid ? (personaCache.get(pid) ?? null) : null,
+          );
+        }
+
         const vm: StudentVM[] = (lite ?? []).map((l: AlumnoLiteDTO) => {
-          const d = byId.get(l.alumnoId) || null;
-          const documento = (d as any)?.documento ?? (d as any)?.dni ?? null;
+          const p = personaByAlumnoId.get(l.alumnoId) ?? null;
+          const documento = p?.dni ?? null;
           return {
             matriculaId: l.matriculaId,
             alumnoId: l.alumnoId,
             nombreCompleto: l.nombreCompleto,
             documento,
-            email: (d as any)?.emailContacto ?? (d as any)?.email ?? null,
-            telefono: (d as any)?.telefono ?? null,
+            email: p?.email ?? null,
+            telefono: p?.telefono ?? null,
           };
         });
 
@@ -439,15 +518,279 @@ export function useSeccionAlumnosFull(seccionId: number, fechaISO: string) {
   const count = items.length;
   return { loading, error, items, count };
 }
+// src/hooks/useVisibleMenu.ts
+"use client";
+import { useMemo } from "react";
+import { MENU, type MenuItem } from "@/lib/menu";
+import type { UserRole } from "@/types/api-generated";
+
+export function useVisibleMenu(role?: UserRole | null) {
+  return useMemo<MenuItem[]>(() => {
+    if (!role) return MENU.filter((i) => !i.roles);
+    return MENU.filter((i) => !i.roles || i.roles.includes(role));
+  }, [role]);
+}
+// src/hooks/useQuickStats.ts
+"use client";
+import { useEffect, useState } from "react";
+import { api } from "@/services/api";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+
+export type QuickStats = {
+  alumnosActivos: number;
+  docentesActivos: number;
+  postulacionesPendientes: number;
+  licenciasActivas: number;
+  actasSinFirmar: number;
+};
+
+function inRangeISO(
+  todayISO: string,
+  from?: string | null,
+  to?: string | null,
+) {
+  // Comparación lexicográfica segura para YYYY-MM-DD
+  const t = todayISO;
+  const okFrom = !from || t >= from;
+  const okTo = !to || t <= to;
+  return okFrom && okTo;
+}
+
+function getPeriodoIdSafe(s: any): number | undefined {
+  // Acepta varias formas según DTOs viejos/nuevos
+  return (
+    s?.periodoEscolarId ??
+    s?.periodoId ??
+    s?.periodoEscolar?.id ??
+    s?.periodo?.id
+  );
+}
+
+export function useQuickStats() {
+  const { periodoEscolarId, hoyISO } = useActivePeriod();
+  const [data, setData] = useState<QuickStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    if (!periodoEscolarId || !hoyISO) return;
+
+    (async () => {
+      try {
+        setLoading(true);
+
+        // ========= Alumnos activos (por secciones del período, deduplicando) =========
+        const seccionesRes = await api.secciones
+          .list()
+          .catch(() => ({ data: [] as any[] }));
+        const seccionesAll = seccionesRes.data ?? [];
+        const seccionesPeriodo = seccionesAll.filter(
+          (s) => getPeriodoIdSafe(s) === periodoEscolarId,
+        );
+
+        // OJO: acá estaba el fallo: ¡hay que usar seccionesAlumnos.bySeccionId!
+        const alumnosLists = await Promise.all(
+          seccionesPeriodo.map((s: any) =>
+            api.seccionesAlumnos
+              .bySeccionId(s.id, hoyISO) // <--- endpoint correcto de tu servicio
+              .then((r) => r.data ?? [])
+              .catch(() => []),
+          ),
+        );
+
+        const alumnosSet = new Set<number>();
+        for (const arr of alumnosLists) {
+          for (const a of arr as any[]) {
+            // Soporta AlumnoLiteDTO nuevo o algún DTO viejo
+            const id = a.alumnoId ?? a.id;
+            if (id != null) alumnosSet.add(id);
+          }
+        }
+
+        // ========= Docentes activos hoy (asignaciones vigentes) =========
+        const asigResp = await api.asignacionDocenteSeccion
+          .list()
+          .catch(() => ({ data: [] as any[] }));
+        const asigs = asigResp.data ?? [];
+        const docentes = new Set<number>();
+        for (const a of asigs as any[]) {
+          const vd = a.vigenciaDesde ?? a.desde;
+          const vh = a.vigenciaHasta ?? a.hasta;
+          if (inRangeISO(hoyISO, vd, vh)) {
+            const eid = a.empleadoId ?? a.personalId ?? a.docenteId;
+            if (eid != null) docentes.add(eid);
+          }
+        }
+
+        // ========= Postulaciones pendientes (si el módulo existe) =========
+        let postulPend = 0;
+        if (api.solicitudesAdmision?.list) {
+          const sol =
+            (await api.solicitudesAdmision.list().catch(() => ({ data: [] })))
+              .data ?? [];
+          postulPend = sol.filter((s: any) =>
+            String(s.estado ?? "")
+              .toUpperCase()
+              .includes("PEND"),
+          ).length;
+        }
+
+        // ========= Licencias activas hoy =========
+        const licRes = await api.licencias
+          .list()
+          .catch(() => ({ data: [] as any[] }));
+        const lic = licRes.data ?? [];
+        const licAct = lic.filter((l: any) => {
+          const d = l.desde ?? l.fechaInicio ?? l.inicio;
+          const h = l.hasta ?? l.fechaFin ?? l.fin;
+          return inRangeISO(hoyISO, d, h);
+        }).length;
+
+        // ========= Actas de accidente sin firmar (BORRADOR) =========
+        const actasRes = await api.actasAccidente
+          .list()
+          .catch(() => ({ data: [] as any[] }));
+        const actas = actasRes.data ?? [];
+        const sinFirmar = actas.filter(
+          (a: any) => String(a.estado ?? "").toUpperCase() === "BORRADOR",
+        ).length;
+
+        if (!alive) return;
+        setData({
+          alumnosActivos: alumnosSet.size,
+          docentesActivos: docentes.size,
+          postulacionesPendientes: postulPend,
+          licenciasActivas: licAct,
+          actasSinFirmar: sinFirmar,
+        });
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [periodoEscolarId, hoyISO]);
+
+  return { data, loading };
+}
+// src/hooks/admin/useMateriasAdminData.ts
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/services/api";
+import type { EmpleadoDTO, PersonaDTO } from "@/types/api-generated";
+
+export type Materia = { id: number; nombre: string };
+export type SeccionMateria = {
+  id: number;
+  seccionId: number;
+  materiaId: number;
+};
+export type Personal = { id: number; nombre: string; apellido: string };
+export type Asignacion = {
+  id: number;
+  seccionMateriaId: number;
+  personalId: number; // mantenemos nombre local pero ahora es empleadoId
+  rol: "TITULAR" | "SUPLENTE";
+  vigenciaDesde: string;
+  vigenciaHasta?: string | null;
+};
+
+export function useMateriasAdminData(canAdmin: boolean) {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [materias, setMaterias] = useState<Materia[]>([]);
+  const [seccionMaterias, setSeccionMaterias] = useState<SeccionMateria[]>([]);
+  const [personales, setPersonales] = useState<Personal[]>([]);
+  const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!canAdmin) {
+      setMaterias([]);
+      setSeccionMaterias([]);
+      setPersonales([]);
+      setAsignaciones([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const [matRes, smRes, empRes] = await Promise.all([
+        api.materias.list(),
+        api.seccionMaterias.list(),
+        api.empleados.list(),
+      ]);
+
+      setMaterias(matRes.data ?? []);
+      setSeccionMaterias(smRes.data ?? []);
+
+      const empleados = (empRes.data ?? []) as EmpleadoDTO[];
+      // Resolver nombres via Persona
+      const personasMap = new Map<number, PersonaDTO>();
+      for (const e of empleados) {
+        if (!e.personaId || personasMap.has(e.personaId)) continue;
+        const p = await api.personasCore
+          .getById(e.personaId)
+          .then((r) => r.data)
+          .catch(() => null);
+        if (p) personasMap.set(e.personaId, p);
+      }
+      const pers: Personal[] = empleados.map((e) => {
+        const p = e.personaId ? personasMap.get(e.personaId) : undefined;
+        return {
+          id: e.id,
+          nombre: p?.nombre ?? "",
+          apellido: p?.apellido ?? "",
+        };
+      });
+      setPersonales(pers);
+
+      // Asignaciones de materia
+      const asignList = await api.asignacionDocenteMateria.list();
+      // normalizamos campo personalId (empleadoId)
+      setAsignaciones(
+        (asignList.data ?? []).map((a: any) => ({
+          ...a,
+          personalId: a.empleadoId ?? a.personalId ?? a.docenteId,
+        })),
+      );
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo cargar materias/asignaciones.");
+    } finally {
+      setLoading(false);
+    }
+  }, [canAdmin]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return {
+    loading,
+    error,
+    materias,
+    seccionMaterias,
+    personales,
+    asignaciones,
+    refresh,
+  };
+}
+// src/hooks/useScopedSecciones.ts
+"use client";
+
+import { useEffect, useState } from "react";
 import { api } from "@/services/api";
 import { useViewerScope } from "./useViewerScope";
 import type {
   SeccionDTO,
   AsignacionDocenteSeccionDTO,
-  PersonalDTO,
+  EmpleadoDTO,
+  PersonaDTO,
 } from "@/types/api-generated";
 
 function vigente(
@@ -456,15 +799,13 @@ function vigente(
   hoyISO?: string,
 ) {
   const today = hoyISO ?? new Date().toISOString().slice(0, 10);
-  const okD = !desde || today >= desde;
-  const okH = !hasta || today <= hasta;
-  return okD && okH;
+  return (!desde || today >= desde) && (!hasta || today <= hasta);
 }
 
 export function useScopedSecciones(opts?: {
-  fecha?: string; // YYYY-MM-DD (default hoy)
-  periodoEscolarId?: number; // filtra por período activo si viene
-  includeTitular?: boolean; // si querés mapa de titular por sección
+  fecha?: string;
+  periodoEscolarId?: number;
+  includeTitular?: boolean;
 }) {
   const { type, personaId } = useViewerScope();
   const fecha = opts?.fecha ?? new Date().toISOString().slice(0, 10);
@@ -487,28 +828,32 @@ export function useScopedSecciones(opts?: {
 
         // STAFF → todas las secciones (opcional: filtrar por período)
         if (type === "staff") {
-          const [secs, asig, pers] = await Promise.all([
+          const [secs, asig, empleados] = await Promise.all([
             api.secciones.list().then((r) => r.data ?? []),
             includeTitular
               ? api.asignacionDocenteSeccion.list().then((r) => r.data ?? [])
               : Promise.resolve([]),
             includeTitular
-              ? api.personal.list().then((r) => r.data ?? [])
+              ? api.empleados.list().then((r) => r.data ?? [])
               : Promise.resolve([]),
           ]);
-          const filtradas =
-            periodoEscolarId == null
-              ? secs
-              : secs.filter(
-                  (s: any) =>
-                    (s.periodoEscolarId ??
-                      s.periodoId ??
-                      s.periodoEscolar?.id) === periodoEscolarId,
-                );
 
+          // Si pedimos titular, mapear empleadoId -> nombre completo (via Persona)
           if (includeTitular) {
+            const personaCache = new Map<number, PersonaDTO>();
+            const nombreEmpleado = async (emp: EmpleadoDTO) => {
+              if (!emp.personaId) return "";
+              if (!personaCache.has(emp.personaId)) {
+                const p = await api.personasCore
+                  .getById(emp.personaId)
+                  .then((r) => r.data as PersonaDTO);
+                personaCache.set(emp.personaId, p);
+              }
+              const p = personaCache.get(emp.personaId)!;
+              return `${p.apellido ?? ""} ${p.nombre ?? ""}`.trim();
+            };
+
             const map = new Map<number, string>();
-            const hoy = fecha;
             for (const a of asig as AsignacionDocenteSeccionDTO[]) {
               const rol = String((a as any).rol ?? "").toUpperCase();
               if (rol !== "MAESTRO_TITULAR") continue;
@@ -516,46 +861,72 @@ export function useScopedSecciones(opts?: {
                 !vigente(
                   (a as any).vigenciaDesde,
                   (a as any).vigenciaHasta,
-                  hoy,
+                  fecha,
                 )
               )
                 continue;
+
               const sid = (a as any).seccionId ?? (a as any).seccion?.id;
-              const pid = (a as any).personalId ?? (a as any).personal?.id;
-              if (!sid || !pid) continue;
-              const p = (pers as PersonalDTO[]).find((pp) => pp.id === pid);
-              if (p)
-                map.set(sid, `${p.apellido ?? ""} ${p.nombre ?? ""}`.trim());
+              const eid =
+                (a as any).empleadoId ??
+                (a as any).personalId ??
+                (a as any).docenteId;
+              if (!sid || !eid) continue;
+
+              const emp = (empleados as EmpleadoDTO[]).find(
+                (e) => e.id === eid,
+              );
+              if (emp) map.set(sid, await nombreEmpleado(emp));
             }
             if (alive) setTitularBySeccionId(map);
+          }
+
+          let filtradas = secs;
+          if (periodoEscolarId != null) {
+            filtradas = filtradas.filter(
+              (s: any) =>
+                (s.periodoEscolarId ?? s.periodoId ?? s.periodoEscolar?.id) ===
+                periodoEscolarId,
+            );
           }
 
           if (alive) setSecciones(filtradas);
           return;
         }
 
-        // TEACHER → asignaciones del docente (vigentes en fecha)
+        // TEACHER → asignaciones del docente/empleado (vigentes en fecha)
         if (type === "teacher") {
           if (!personaId) {
             if (alive) setSecciones([]);
             return;
           }
 
-          // Preferir endpoint “vigentes”
+          // 1) resolver empleadoId desde personaId
+          const empleadosRes = await api.empleados
+            .list()
+            .catch(() => ({ data: [] as EmpleadoDTO[] }));
+          const empleado = (empleadosRes.data ?? []).find(
+            (e) => e.personaId === personaId,
+          );
+          const empleadoId = empleado?.id;
+          if (!empleadoId) {
+            if (alive) setSecciones([]);
+            return;
+          }
+
+          // 2) traer asignaciones (endpoint by-empleado si existe)
           let asigs: AsignacionDocenteSeccionDTO[] = [];
-          try {
-            // @ts-ignore
-            const r = await api.asignacionDocenteSeccion.byPersonalVigentes(
-              personaId,
-              fecha,
-            );
+          if ((api.asignacionDocenteSeccion as any).byEmpleadoVigentes) {
+            const r = await (
+              api.asignacionDocenteSeccion as any
+            ).byEmpleadoVigentes(empleadoId, fecha);
             asigs = r.data ?? [];
-          } catch {
+          } else {
             const r = await api.asignacionDocenteSeccion.list();
             const todos = r.data ?? [];
             asigs = todos.filter(
               (a: any) =>
-                (a.personalId ?? a.docenteId) === personaId &&
+                (a.empleadoId ?? a.personalId ?? a.docenteId) === empleadoId &&
                 vigente(
                   (a as any).vigenciaDesde,
                   (a as any).vigenciaHasta,
@@ -592,7 +963,7 @@ export function useScopedSecciones(opts?: {
           return;
         }
 
-        // FAMILY / GUEST → acá no devolvemos secciones (family ve hijos)
+        // FAMILY / GUEST
         if (alive) setSecciones([]);
       } catch (e: any) {
         if (alive) setError(e?.message ?? "Error cargando secciones");
@@ -697,7 +1068,7 @@ export function useScopedIndex(opts?: {
 "use client";
 
 import { useMemo } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 const ROLES_STAFF = new Set(["ADMIN", "DIRECTOR", "SECRETARY"]);
 
@@ -735,32 +1106,29 @@ import { api } from "@/services/api";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 
 type UseActivePeriodOpts = {
-  today?: string; // YYYY-MM-DD (para tests)
+  today?: string; // YYYY-MM-DD
   preferOpen?: boolean; // prioriza período con trimestres abiertos hoy
+  tickMidnight?: boolean; // actualiza hoyISO al cruzar medianoche (default true)
 };
 
 function toLocalISODate(d = new Date()): string {
-  const tzOffset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - tzOffset * 60_000);
-  return local.toISOString().slice(0, 10);
+  const tz = d.getTimezoneOffset();
+  return new Date(d.getTime() - tz * 60_000).toISOString().slice(0, 10);
 }
 
-function normStart(t: TrimestreDTO): string {
-  return ((t as any).fechaInicio ??
-    (t as any).inicio ??
-    "1900-01-01") as string;
-}
-function normEnd(t: TrimestreDTO): string {
-  return ((t as any).fechaFin ?? (t as any).fin ?? "2999-12-31") as string;
-}
-function normPeriodoId(t: TrimestreDTO): number | undefined {
-  return ((t as any).periodoEscolarId ?? (t as any).periodoId) as
-    | number
-    | undefined;
-}
-function inRange(date: string, from: string, to: string) {
-  return date >= from && date <= to;
-}
+const norm = {
+  start: (t: TrimestreDTO) =>
+    ((t as any).fechaInicio ?? (t as any).inicio ?? "1900-01-01") as string,
+  end: (t: TrimestreDTO) =>
+    ((t as any).fechaFin ?? (t as any).fin ?? "2999-12-31") as string,
+  periodoId: (t: TrimestreDTO) =>
+    ((t as any).periodoEscolarId ?? (t as any).periodoId) as number | undefined,
+  closed: (t: TrimestreDTO) =>
+    (t as any).cerrado ?? (t as any).isCerrado ?? false,
+};
+
+const inRange = (dateISO: string, fromISO: string, toISO: string) =>
+  dateISO >= fromISO && dateISO <= toISO;
 
 export function useActivePeriod(opts?: UseActivePeriodOpts) {
   const [periodos, setPeriodos] = useState<PeriodoEscolarDTO[]>([]);
@@ -768,8 +1136,25 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // hoyISO controlado por props (tests) o por reloj local
+  const [today, setToday] = useState<string>(opts?.today ?? toLocalISODate());
   const preferOpen = opts?.preferOpen ?? true;
-  const hoyISO = opts?.today ?? toLocalISODate();
+  const tickMidnight = opts?.tickMidnight ?? true;
+
+  // Opcional: actualizar a medianoche si no viene por props
+  useEffect(() => {
+    if (opts?.today || !tickMidnight) return;
+    const id = setInterval(() => {
+      const now = toLocalISODate();
+      setToday((prev) => (prev !== now ? now : prev));
+    }, 60_000); // chequeo cada 1 min (barato y suficiente)
+    return () => clearInterval(id);
+  }, [opts?.today, tickMidnight]);
+
+  // Si cambian props de test, sincronizamos
+  useEffect(() => {
+    if (opts?.today) setToday(opts.today);
+  }, [opts?.today]);
 
   useEffect(() => {
     let alive = true;
@@ -808,7 +1193,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
 
     const trisByPeriodo = new Map<number, TrimestreDTO[]>();
     for (const t of trimestres) {
-      const pid = normPeriodoId(t);
+      const pid = norm.periodoId(t);
       if (!pid) continue;
       const arr = trisByPeriodo.get(pid) ?? [];
       arr.push(t);
@@ -820,7 +1205,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
       elegido = periodos.find((p) => {
         const ts = trisByPeriodo.get(p.id) ?? [];
         return ts.some(
-          (t) => !t.cerrado && inRange(hoyISO, normStart(t), normEnd(t)),
+          (t) => !norm.closed(t) && inRange(today, norm.start(t), norm.end(t)),
         );
       });
     }
@@ -833,9 +1218,16 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
     const trimestresDelPeriodo = elegido
       ? (trisByPeriodo.get(elegido.id) ?? [])
       : [];
+    // ordena por fecha de inicio por prolijidad
+    trimestresDelPeriodo.sort((a, b) =>
+      norm.start(a) < norm.start(b) ? -1 : 1,
+    );
+
     const allTriIds = trimestresDelPeriodo.map((t) => t.id);
     const activeTriIdsToday = trimestresDelPeriodo
-      .filter((t) => !t.cerrado && inRange(hoyISO, normStart(t), normEnd(t)))
+      .filter(
+        (t) => !norm.closed(t) && inRange(today, norm.start(t), norm.end(t)),
+      )
       .map((t) => t.id);
 
     return {
@@ -844,37 +1236,39 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
       allTriIds,
       activeTriIdsToday,
     };
-  }, [periodos, trimestres, hoyISO, preferOpen]);
+  }, [periodos, trimestres, today, preferOpen]);
 
   const getTrimestreByDate = (dateISO: string) =>
     computed.trimestresDelPeriodo.find((t) =>
-      inRange(dateISO, normStart(t), normEnd(t)),
+      inRange(dateISO, norm.start(t), norm.end(t)),
     );
 
-  const isTrimestreClosed = (trimestreId?: number) =>
-    !!computed.trimestresDelPeriodo.find((t) => t.id === trimestreId)?.cerrado;
+  const isTrimestreClosed = (trimestreId?: number): boolean | undefined => {
+    if (!trimestreId) return undefined;
+    const t = computed.trimestresDelPeriodo.find((x) => x.id === trimestreId);
+    return t ? !!norm.closed(t) : undefined;
+  };
 
   return {
     loading,
     error,
     periodoEscolarId: computed.periodo?.id,
     periodoEscolar: computed.periodo,
-    trimestres, // todos (crudo)
+    trimestres, // crudo
     trimestresDelPeriodo: computed.trimestresDelPeriodo,
     triIds: computed.allTriIds,
     activeTriIdsToday: computed.activeTriIdsToday,
-    hoyISO,
+    hoyISO: today,
     getTrimestreByDate,
     isTrimestreClosed,
   };
 }
-export { useAuth } from "@/context/AuthContext";
 // hooks/useFamilyAlumnos.ts
 "use client";
 
 import { useEffect, useState } from "react";
 import { api } from "@/services/api";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import type { AlumnoLiteDTO } from "@/types/api-generated";
 
 export function useFamilyAlumnos() {
@@ -923,7 +1317,7 @@ export function useFamilyAlumnos() {
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/api-generated";
 import { normalizeRole } from "@/lib/auth-roles";
 
@@ -1062,6 +1456,54 @@ export function useWizard(initial: WizardData) {
 
   return { data, step, error, change, next, prev };
 }
+// src/hooks/useRecentMessages.ts
+"use client";
+import { useEffect, useState } from "react";
+import { api } from "@/services/api";
+
+type RecentItem = {
+  userId: number;
+  nombre: string;
+  lastMessage: string;
+  at: string;
+};
+
+export function useRecentMessages(limit = 5) {
+  const [items, setItems] = useState<RecentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const active = (await api.chat.getActiveChats()).data ?? [];
+        const enriched = await Promise.all(
+          active.slice(0, limit).map(async (c: any) => {
+            const hist =
+              (await api.chat.history(c.id ?? c.userId, { limit: 1 })).data ??
+              [];
+            const last = hist[hist.length - 1];
+            return {
+              userId: c.id ?? c.userId,
+              nombre: c.nombre ?? c.email ?? `Usuario ${c.id ?? c.userId}`,
+              lastMessage: last?.contenido ?? last?.message ?? "",
+              at: last?.fechaEnvio ?? last?.sentAt ?? "",
+            } as RecentItem;
+          }),
+        );
+        if (alive) setItems(enriched);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [limit]);
+
+  return { items, loading };
+}
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/services/api";
@@ -1098,7 +1540,12 @@ export function useAsistenciasData() {
         const [tri, secs, asig, dias] = await Promise.all([
           api.trimestres.list().then((r) => r.data),
           api.secciones.list().then((r) => r.data),
-          api.asignacionDocenteSeccion.list().then((r) => r.data),
+          api.asignacionDocenteSeccion.list().then((r) =>
+            (r.data ?? []).map((a: any) => ({
+              ...a,
+              empleadoId: a.empleadoId ?? a.personalId ?? a.docenteId,
+            })),
+          ),
           api.diasNoHabiles.list().then((r) => r.data),
         ]);
         setTrimestres(tri);

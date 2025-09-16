@@ -26,11 +26,11 @@ public class AsignacionDocenteSeccionController {
     @GetMapping public List<AsignacionDocenteSeccionDTO> list(){ return service.findAll(); }
     @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid AsignacionDocenteSeccionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
     @GetMapping("/by-docente")
-    public List<AsignacionDocenteSeccion> byDocente(@RequestParam Long personalId,
+    public List<AsignacionDocenteSeccion> byDocente(@RequestParam Long empleadoId,
                                                     @RequestParam(required=false)
                                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         LocalDate f = fecha != null ? fecha : LocalDate.now();
-        return repo.findVigentesByPersonal(personalId, f);
+        return repo.findVigentesByEmpleado(empleadoId, f);
     }
 
 }

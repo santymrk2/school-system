@@ -14,7 +14,7 @@ import java.time.LocalDate;
 public class LicenciaDTO {
     private Long id;
     @NotNull
-    private Long personalId;
+    private Long empleadoId;
     @NotNull private LocalDate desde;  // <- renombrado
     private LocalDate hasta;           // <- renombrado
     @NotBlank

@@ -12,7 +12,7 @@ import java.time.LocalDate;
 public class FormacionAcademicaDTO {
     private Long id;
     @NotNull
-    private Long personalId;    // <- agregado (FK)
+    private Long empleadoId;    // <- agregado (FK)
     @NotBlank
     private String nivel;
     @NotBlank private String institucion;

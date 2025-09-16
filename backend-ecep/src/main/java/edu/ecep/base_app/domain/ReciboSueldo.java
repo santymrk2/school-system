@@ -8,11 +8,11 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
 
 @Entity @Table(name="recibos_sueldo",
-        uniqueConstraints=@UniqueConstraint(columnNames={"personal_id","anio","mes"}))
+        uniqueConstraints=@UniqueConstraint(columnNames={"empleado_id","anio","mes"}))
 @SQLDelete(sql = "UPDATE recibos_sueldo SET activo = false, fecha_eliminacion = now() WHERE id = ?")
 @Getter @Setter
 public class ReciboSueldo extends BaseEntity {
-    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Personal personal;
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Empleado empleado;
     @Column(nullable=false) private Integer anio;
     @Column(nullable=false) private Integer mes;
 

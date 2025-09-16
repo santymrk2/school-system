@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @Setter
 public class AsignacionDocenteMateria extends BaseEntity {
     @ManyToOne(optional=false, fetch= FetchType.LAZY) private SeccionMateria seccionMateria;
-    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Personal personal;
+    @ManyToOne(optional=false, fetch=FetchType.LAZY) private Empleado empleado;
 
     @Enumerated(EnumType.STRING) @Column(nullable=false) private RolMateria rol;
     @Column(nullable=false) private LocalDate vigenciaDesde;

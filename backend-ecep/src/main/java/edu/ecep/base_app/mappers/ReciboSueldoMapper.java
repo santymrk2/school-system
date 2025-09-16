@@ -8,9 +8,9 @@ import org.mapstruct.Mapping;
 
 @Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface ReciboSueldoMapper {
-    @Mapping(target = "personalId", source = "personal.id")
+    @Mapping(target = "empleadoId", source = "empleado.id")
     ReciboSueldoDTO toDto(ReciboSueldo e);
 
-    @Mapping(target = "personal", source = "personalId")
+    @Mapping(target = "empleado", source = "empleadoId")
     ReciboSueldo toEntity(ReciboSueldoCreateDTO dto);
 }

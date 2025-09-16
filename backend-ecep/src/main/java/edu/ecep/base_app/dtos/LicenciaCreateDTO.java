@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class LicenciaCreateDTO {
     @NotNull
-    private Long personalId;
+    private Long empleadoId;
     @NotNull private LocalDate desde;
     private LocalDate hasta;
     @NotBlank

@@ -27,8 +27,8 @@ public class AsistenciaQueryService {
     private final AsignacionDocenteSeccionRepository asigSecRepo;
     private final SeccionMapper seccionMapper;
 
-    public List<SeccionDTO> seccionesVigentesDocente(Long personalId, LocalDate fecha) {
-        List<Seccion> secciones = asigSecRepo.findSeccionesVigentesByPersonal(personalId, fecha);
+    public List<SeccionDTO> seccionesVigentesDocente(Long empleadoId, LocalDate fecha) {
+        List<Seccion> secciones = asigSecRepo.findSeccionesVigentesByEmpleado(empleadoId, fecha);
         return secciones.stream().map(seccionMapper::toDto).toList();
     }
 

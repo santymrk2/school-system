@@ -7,11 +7,20 @@ import org.mapstruct.MappingTarget;
 
 import org.mapstruct.*;
 
-@Mapper(config = ModelMapperConfig.class)
+
+@Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface AlumnoMapper {
+
+    // Entity -> DTO
+    @Mapping(target = "personaId", source = "persona.id")
     AlumnoDTO toDto(Alumno e);
+
+    // DTO -> Entity
+    @Mapping(target = "persona", source = "personaId")
     Alumno toEntity(AlumnoDTO dto);
 
+    // Update (no tocar id; re-resolver persona desde personaId)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "persona", source = "personaId")
     void update(@MappingTarget Alumno e, AlumnoDTO dto);
 }

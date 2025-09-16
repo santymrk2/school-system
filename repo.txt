@@ -105,33 +105,14 @@ package edu.ecep.base_app.repos;
 
 
 public interface LicenciaRepository extends JpaRepository<Licencia, Long> {
-    boolean existsByPersonalId(Long id);
-}
-package edu.ecep.base_app.repos;
-
-
-
-
-
-public interface PersonalRepository extends JpaRepository<Personal, Long> {
-
-    boolean existsByUsuarioId(Long id);
-
-    Optional<Personal> findByUsuario(Usuario usuario);
-
-    boolean existsByUsuario(Usuario u);
-
-
-    boolean existsByDni(String dni);
-
-    boolean existsByCuil(@NotBlank String cuil);
+    boolean existsByEmpleadoId(Long id);
 }
 package edu.ecep.base_app.repos;
 
 
 
 public interface AsignacionDocenteMateriaRepository extends JpaRepository<AsignacionDocenteMateria, Long> {
-    boolean existsByPersonalId(Long personalId); // +++
+    boolean existsByEmpleadoId(Long empleadoId); // +++
     @Query("""
       select (count(a) > 0) from AsignacionDocenteMateria a
       where a.seccionMateria.id = :smId and a.rol = edu.ecep.base_app.domain.enums.RolMateria.TITULAR
@@ -149,9 +130,9 @@ public interface AsignacionDocenteMateriaRepository extends JpaRepository<Asigna
 
 
 public interface AsignacionDocenteSeccionRepository extends JpaRepository<AsignacionDocenteSeccion, Long> {
-    boolean existsByPersonalId(Long personalId);
+    boolean existsByEmpleadoId(Long empleadoId);
 
-    List<AsignacionDocenteSeccion> findByPersonal_Id(Long personalId);
+    List<AsignacionDocenteSeccion> findByEmpleado_Id(Long empleadoId);
     @Query("""
       select (count(a) > 0) from AsignacionDocenteSeccion a
       where a.seccion.id = :seccionId and a.rol = edu.ecep.base_app.domain.enums.RolSeccion.MAESTRO_TITULAR
@@ -166,22 +147,22 @@ public interface AsignacionDocenteSeccionRepository extends JpaRepository<Asigna
     @Query("""
         select a
         from AsignacionDocenteSeccion a
-        where a.personal.id = :personalId
+        where a.empleado.id = :empleadoId
           and a.vigenciaDesde <= :fecha
           and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
     """)
-    List<AsignacionDocenteSeccion> findVigentesByPersonal(@Param("personalId") Long personalId,
+    List<AsignacionDocenteSeccion> findVigentesByEmpleado(@Param("empleadoId") Long empleadoId,
                                                           @Param("fecha") LocalDate fecha);
 
     @Query("""
            select a.seccion
            from AsignacionDocenteSeccion a
-           where a.personal.id = :personalId
+           where a.empleado.id = :empleadoId
              and a.vigenciaDesde <= :fecha
              and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
            order by a.seccion.nivel, a.seccion.gradoSala, a.seccion.division
            """)
-    List<Seccion> findSeccionesVigentesByPersonal(@Param("personalId") Long personalId,
+    List<Seccion> findSeccionesVigentesByEmpleado(@Param("empleadoId") Long empleadoId,
                                                   @Param("fecha") LocalDate fecha);
 }
 
@@ -189,16 +170,29 @@ package edu.ecep.base_app.repos;
 
 
 
-public interface AspiranteRepository extends JpaRepository<Aspirante, Long> {
-    boolean existsByUsuarioId(Long id);
 
-    boolean existsByDni(String dni);
+public interface AspiranteRepository extends JpaRepository<Aspirante, Long> {
+    boolean existsByPersonaId(Long personaId);
+    Optional<Aspirante> findByPersonaId(Long personaId);
+}
+package edu.ecep.base_app.repos;
+
+
+
+public interface PersonaRepository extends JpaRepository<Persona, Long> {
+    Optional<Persona> findByDni(String dni);
 }
 package edu.ecep.base_app.repos;
 
 
 public interface PeriodoEscolarRepository extends JpaRepository<PeriodoEscolar, Long> {
     boolean existsByAnio(Integer anio);
+}
+package edu.ecep.base_app.repos;
+
+
+public interface AsistenciaEmpleadoRepository extends JpaRepository<AsistenciaEmpleados, Long> {
+    boolean existsByEmpleadoId(Long empleadoId);
 }
 package edu.ecep.base_app.repos;
 
@@ -228,8 +222,10 @@ package edu.ecep.base_app.repos;
 
 
 
+
 public interface AlumnoRepository extends JpaRepository<Alumno, Long> {
-    boolean existsByUsuarioId(Long id);
+    boolean existsByPersonaId(Long id);
+    Optional<Alumno> findByPersonaId(Long personaId);
 }
 package edu.ecep.base_app.repos;
 
@@ -296,8 +292,12 @@ public interface JornadaAsistenciaRepository extends JpaRepository<JornadaAsiste
 package edu.ecep.base_app.repos;
 
 
-public interface AsistenciaPersonalRepository extends JpaRepository<AsistenciaPersonal, Long> {
-    boolean existsByPersonalId(Long personalId);
+
+
+
+public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
+    Optional<Empleado> findByPersonaId(Long personaId);
+    boolean existsByPersonaId(Long id);
 }
 package edu.ecep.base_app.repos;
 
@@ -335,27 +335,32 @@ public interface DetalleAsistenciaRepository extends JpaRepository<DetalleAsiste
                                             @Param("to") LocalDate to);
 
     @Query("""
-        select new edu.ecep.base_app.dtos.asistencia.AsistenciaAlumnoResumenDTO(
-            m.id, a.id, a.apellido, a.nombre,
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
-            count(d.id)
-        )
-        from DetalleAsistencia d
-             join d.matricula m
-             join m.alumno a
-             join d.jornada j
-        where j.seccion.id = :seccionId
-          and j.fecha between :from and :to
-        group by m.id, a.id, a.nombre, a.apellido
-        order by a.apellido, a.nombre
-    """)
-    List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(@Param("seccionId") Long seccionId,
-                                                      @Param("from") LocalDate from,
-                                                      @Param("to") LocalDate to);
-}
+    select new edu.ecep.base_app.dtos.asistencia.AsistenciaAlumnoResumenDTO(
+        m.id,
+        a.id,
+        p.apellido,
+        p.nombre,
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
+        count(d.id)
+    )
+    from DetalleAsistencia d
+      join d.matricula m
+      join m.alumno a
+      join a.persona p
+      join d.jornada j
+    where j.seccion.id = :seccionId
+      and j.fecha between :from and :to
+    group by m.id, a.id, p.nombre, p.apellido
+    order by p.apellido, p.nombre
+  """)
+    List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(
+            @Param("seccionId") Long seccionId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );}
 package edu.ecep.base_app.repos;
 
 
@@ -476,8 +481,9 @@ package edu.ecep.base_app.repos;
 
 
 public interface FamiliarRepository extends JpaRepository<Familiar, Long> {
-    List<Familiar> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCase(String n, String a);
-    boolean existsByUsuarioId(Long id);
+    List<Familiar> findByPersona_NombreContainingIgnoreCaseOrPersona_ApellidoContainingIgnoreCase(String q1, String q2);
+    boolean existsByPersonaId(Long id);
+    Optional<Familiar> findByPersonaId(Long personaId);
 }
 package edu.ecep.base_app.repos;
 
@@ -494,7 +500,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
 
 
 public interface ReciboSueldoRepository extends JpaRepository<ReciboSueldo, Long> {
-    boolean existsByPersonalId(Long id);
+    boolean existsByEmpleadoId(Long id);
 }
 package edu.ecep.base_app.repos;
 

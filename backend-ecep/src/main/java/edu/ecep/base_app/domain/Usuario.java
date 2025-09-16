@@ -17,62 +17,34 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import static jakarta.persistence.FetchType.EAGER;
+import static jakarta.persistence.GenerationType.IDENTITY;
 
-@Entity
-@Table(name = "usuarios")
+
+@Entity @Table(name = "usuarios")
 @SQLDelete(sql = "UPDATE usuarios SET activo = false, fecha_eliminacion = now() WHERE id = ?")
 @Getter
 @Setter
-public class Usuario extends BaseEntity implements UserDetails  {
-    @Column(unique = true, nullable = false)
-    private String email;
-
-    @Column(nullable = false)
-    private String password;
-
-    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
-    @CollectionTable(name = "usuario_roles", joinColumns = @JoinColumn(name = "usuario_id"))
-    @Column(name = "role")
-    @Enumerated(EnumType.STRING)
-    private Set<UserRole> userRoles = new HashSet<>();
-
+public class Usuario extends BaseEntity  {
     @OneToOne(mappedBy = "usuario", fetch = FetchType.LAZY)
     private Persona persona;
 
-    @Override
+    @Column(unique = true, nullable = false) private String email;
+
+    @Column(nullable = false) private String password;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name="usuario_roles", joinColumns=@JoinColumn(name="usuario_id"))
+    @Column(name="rol")
+    @Enumerated(EnumType.STRING)
+    private Set<UserRole> roles = new HashSet<>();
+
+    public Set<UserRole> getUserRoles() { return getRoles(); }
+    public void setUserRoles(Set<UserRole> roles) { setRoles(roles); }
+
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return userRoles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
+        return this.roles.stream()
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
+                .toList();
     }
 }

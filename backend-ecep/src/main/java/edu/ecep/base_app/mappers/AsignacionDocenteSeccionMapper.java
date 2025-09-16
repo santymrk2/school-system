@@ -10,14 +10,14 @@ import org.mapstruct.MappingTarget;
 @Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface AsignacionDocenteSeccionMapper {
     @Mapping(target = "seccionId", source = "seccion.id")
-    @Mapping(target = "personalId", source = "personal.id")
+    @Mapping(target = "empleadoId", source = "empleado.id")
     AsignacionDocenteSeccionDTO toDto(AsignacionDocenteSeccion e);
 
     @Mapping(target = "seccion", source = "seccionId")
-    @Mapping(target = "personal", source = "personalId")
+    @Mapping(target = "empleado", source = "empleadoId")
     AsignacionDocenteSeccion toEntity(AsignacionDocenteSeccionCreateDTO dto);
 
     @Mapping(target = "seccion", source = "seccionId")
-    @Mapping(target = "personal", source = "personalId")
+    @Mapping(target = "empleado", source = "empleadoId")
     void update(@MappingTarget AsignacionDocenteSeccion e, AsignacionDocenteSeccionDTO dto);
 }

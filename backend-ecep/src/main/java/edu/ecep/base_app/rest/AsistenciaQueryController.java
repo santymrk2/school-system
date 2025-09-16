@@ -18,12 +18,12 @@ public class AsistenciaQueryController {
     private final AsistenciaQueryService service;
 
     // Docente → secciones vigentes (reusa SeccionDTO)
-    @GetMapping("/docentes/{personalId}/secciones")
+    @GetMapping("/docentes/{empleadoId}/secciones")
     public List<SeccionDTO> seccionesVigentesDocente(
-            @PathVariable Long personalId,
+            @PathVariable Long empleadoId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
     ) {
-        return service.seccionesVigentesDocente(personalId, fecha != null ? fecha : LocalDate.now());
+        return service.seccionesVigentesDocente(empleadoId, fecha != null ? fecha : LocalDate.now());
     }
 
     // Historial diario agregado de una sección

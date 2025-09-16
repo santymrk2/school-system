@@ -1,9 +1,9 @@
 package edu.ecep.base_app.service;
 
-import edu.ecep.base_app.domain.AsistenciaPersonal;
-import edu.ecep.base_app.dtos.AsistenciaPersonalDTO;
-import edu.ecep.base_app.mappers.AsistenciaPersonalMapper;
-import edu.ecep.base_app.repos.AsistenciaPersonalRepository;
+import edu.ecep.base_app.domain.AsistenciaEmpleados;
+import edu.ecep.base_app.dtos.AsistenciaEmpleadoDTO;
+import edu.ecep.base_app.mappers.AsistenciaEmpleadoMapper;
+import edu.ecep.base_app.repos.AsistenciaEmpleadoRepository;
 import edu.ecep.base_app.util.NotFoundException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -11,36 +11,36 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class AsistenciaPersonalService {
+public class AsistenciaEmpleadoService {
 
-    private final AsistenciaPersonalRepository asistenciaDiaRepository;
-    private final AsistenciaPersonalMapper asistenciaDiaMapper;
+    private final AsistenciaEmpleadoRepository asistenciaDiaRepository;
+    private final AsistenciaEmpleadoMapper asistenciaDiaMapper;
 
-    public AsistenciaPersonalService(AsistenciaPersonalRepository asistenciaDiaRepository,
-                                AsistenciaPersonalMapper asistenciaDiaMapper) {
+    public AsistenciaEmpleadoService(AsistenciaEmpleadoRepository asistenciaDiaRepository,
+                                     AsistenciaEmpleadoMapper asistenciaDiaMapper) {
         this.asistenciaDiaRepository = asistenciaDiaRepository;
         this.asistenciaDiaMapper = asistenciaDiaMapper;
     }
 
-    public List<AsistenciaPersonalDTO> findAll() {
+    public List<AsistenciaEmpleadoDTO> findAll() {
         return asistenciaDiaRepository.findAll(Sort.by("id")).stream()
                 .map(asistenciaDiaMapper::toDto)
                 .toList();
     }
 
-    public AsistenciaPersonalDTO get(Long id) {
+    public AsistenciaEmpleadoDTO get(Long id) {
         return asistenciaDiaRepository.findById(id)
                 .map(asistenciaDiaMapper::toDto)
                 .orElseThrow(NotFoundException::new);
     }
 
-    public Long create(AsistenciaPersonalDTO dto) {
-        AsistenciaPersonal entity = asistenciaDiaMapper.toEntity(dto);
+    public Long create(AsistenciaEmpleadoDTO dto) {
+        AsistenciaEmpleados entity = asistenciaDiaMapper.toEntity(dto);
         return asistenciaDiaRepository.save(entity).getId();
     }
 
-    public void update(Long id, AsistenciaPersonalDTO dto) {
-        AsistenciaPersonal existing = asistenciaDiaRepository.findById(id)
+    public void update(Long id, AsistenciaEmpleadoDTO dto) {
+        AsistenciaEmpleados existing = asistenciaDiaRepository.findById(id)
                 .orElseThrow(NotFoundException::new);
         asistenciaDiaMapper.updateEntityFromDto(dto, existing);
         asistenciaDiaRepository.save(existing);

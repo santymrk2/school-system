@@ -7,6 +7,7 @@ import edu.ecep.base_app.repos.MatriculaRepository;
 import edu.ecep.base_app.service.FamiliarService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -43,8 +44,11 @@ public class FamiliarController {
         // mapear a (matriculaId, alumnoId, nombre)
         return alumnos.stream().flatMap(al -> {
             var mats = matriculaRepo.findByAlumnoId(al.getId());
-            String nombre = al.getApellido() + ", " + al.getNombre();
-            return mats.stream().map(m -> new AlumnoLiteDTO(m.getId(), al.getId(), nombre));
+            var p = al.getPersona();
+            String nombre = Optional.ofNullable(p)
+                    .map(px -> (px.getApellido() != null ? px.getApellido() : "") +
+                            (px.getNombre()   != null ? (", " + px.getNombre()) : ""))
+                    .orElse("#" + al.getId());            return mats.stream().map(m -> new AlumnoLiteDTO(m.getId(), al.getId(), nombre));
         }).toList();
     }
 }

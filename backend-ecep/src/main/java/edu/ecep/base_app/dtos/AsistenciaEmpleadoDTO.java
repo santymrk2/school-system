@@ -7,11 +7,11 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AsistenciaPersonalDTO {
+public class AsistenciaEmpleadoDTO {
     private Long id;
 
     @NotNull
-    private Long personalId;
+    private Long empleadoId;
 
     @NotNull
     private LocalDate fecha;

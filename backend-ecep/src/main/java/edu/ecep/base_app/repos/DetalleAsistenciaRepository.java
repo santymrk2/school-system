@@ -42,24 +42,29 @@ public interface DetalleAsistenciaRepository extends JpaRepository<DetalleAsiste
                                             @Param("to") LocalDate to);
 
     @Query("""
-        select new edu.ecep.base_app.dtos.asistencia.AsistenciaAlumnoResumenDTO(
-            m.id, a.id, a.apellido, a.nombre,
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
-            sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
-            count(d.id)
-        )
-        from DetalleAsistencia d
-             join d.matricula m
-             join m.alumno a
-             join d.jornada j
-        where j.seccion.id = :seccionId
-          and j.fecha between :from and :to
-        group by m.id, a.id, a.nombre, a.apellido
-        order by a.apellido, a.nombre
-    """)
-    List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(@Param("seccionId") Long seccionId,
-                                                      @Param("from") LocalDate from,
-                                                      @Param("to") LocalDate to);
-}
+    select new edu.ecep.base_app.dtos.asistencia.AsistenciaAlumnoResumenDTO(
+        m.id,
+        a.id,
+        p.apellido,
+        p.nombre,
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.PRESENTE then 1 else 0 end),
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.AUSENTE then 1 else 0 end),
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.TARDE then 1 else 0 end),
+        sum(case when d.estado = edu.ecep.base_app.domain.enums.EstadoAsistencia.RETIRO_ANTICIPADO then 1 else 0 end),
+        count(d.id)
+    )
+    from DetalleAsistencia d
+      join d.matricula m
+      join m.alumno a
+      join a.persona p
+      join d.jornada j
+    where j.seccion.id = :seccionId
+      and j.fecha between :from and :to
+    group by m.id, a.id, p.nombre, p.apellido
+    order by p.apellido, p.nombre
+  """)
+    List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(
+            @Param("seccionId") Long seccionId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );}

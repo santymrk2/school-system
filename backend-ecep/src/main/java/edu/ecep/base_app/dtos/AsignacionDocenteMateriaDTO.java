@@ -16,7 +16,7 @@ public class AsignacionDocenteMateriaDTO {
     @NotNull
     Long seccionMateriaId;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     RolMateria rol;
     @NotNull

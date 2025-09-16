@@ -15,7 +15,7 @@ public class AsignacionDocenteSeccionCreateDTO {
     @NotNull
     Long seccionId;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     RolSeccion rol;
     @NotNull

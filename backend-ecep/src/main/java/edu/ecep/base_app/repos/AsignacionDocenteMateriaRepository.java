@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 
 public interface AsignacionDocenteMateriaRepository extends JpaRepository<AsignacionDocenteMateria, Long> {
-    boolean existsByPersonalId(Long personalId); // +++
+    boolean existsByEmpleadoId(Long empleadoId); // +++
     @Query("""
       select (count(a) > 0) from AsignacionDocenteMateria a
       where a.seccionMateria.id = :smId and a.rol = edu.ecep.base_app.domain.enums.RolMateria.TITULAR

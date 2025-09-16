@@ -7,20 +7,20 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
+import static jakarta.persistence.FetchType.LAZY;
 
-@Entity
-@DiscriminatorValue("FAMILIAR")
-@Getter
-@Setter
-public class Familiar extends Persona {
 
-    @Column
-    private String ocupacion;
+@Entity @Table(name="personas_familiar")
+@Getter @Setter
+public class Familiar {
+    @Id Long id;
 
-    @OneToMany(mappedBy = "familiar")
-    private Set<AlumnoFamiliar> familiarAlumnoFamiliares = new HashSet<>();
+    @MapsId
+    @OneToOne(fetch=LAZY) @JoinColumn(name="id", foreignKey=@ForeignKey(name="fk_familiar_persona"))
+    Persona persona;
 
-    @OneToMany(mappedBy = "familiar")
-    private Set<AspiranteFamiliar> familiarAspiranteFamiliares = new HashSet<>();
+    String ocupacion;
 
+    @OneToMany(mappedBy="familiar") Set<AlumnoFamiliar> familiarAlumnoFamiliares = new HashSet<>();
+    @OneToMany(mappedBy="familiar") Set<AspiranteFamiliar> familiarAspiranteFamiliares = new HashSet<>();
 }

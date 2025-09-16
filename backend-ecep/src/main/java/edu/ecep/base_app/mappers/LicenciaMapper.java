@@ -11,13 +11,13 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", uses = RefMapper.class, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface LicenciaMapper {
 
-    @Mapping(target = "personalId", source = "personal.id")
+    @Mapping(target = "empleadoId", source = "empleado.id")
     LicenciaDTO toDto(Licencia e);
 
-    @Mapping(target = "personal", source = "personalId")
+    @Mapping(target = "empleado", source = "empleadoId")
     Licencia toEntity(LicenciaCreateDTO dto);
 
-    @Mapping(target = "personal", source = "personalId")
+    @Mapping(target = "empleado", source = "empleadoId")
     @Mapping(target = "id", ignore = true)
     void update(@MappingTarget Licencia e, LicenciaDTO dto);
 }

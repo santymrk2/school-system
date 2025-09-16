@@ -1,21 +1,23 @@
 package edu.ecep.base_app.dtos;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// =============================================================
-// 3) Personas, vínculos y matrícula
-// =============================================================
+import java.time.LocalDate;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class AlumnoDTO {
     Long id;
-    @NotBlank
-    String nombre;
-    @NotBlank
-    String apellido;
-    String documento;
+    @NotNull
+    Long personaId;
+
+    LocalDate fechaInscripcion;
+    String observacionesGenerales;
+    String motivoRechazoBaja;
+
 }

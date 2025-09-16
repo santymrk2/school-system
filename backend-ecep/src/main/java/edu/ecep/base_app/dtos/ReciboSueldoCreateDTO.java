@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ReciboSueldoCreateDTO {
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     Integer anio;
     @NotNull

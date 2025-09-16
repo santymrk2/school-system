@@ -25,20 +25,20 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final AlumnoRepository alumnoRepository;
-    private final PersonalRepository personalRepository;
+    private final EmpleadoRepository empleadoRepository;
     private final FamiliarRepository familiarRepository;
     private final AspiranteRepository aspiranteRepository;
 
     public UsuarioService(
             UsuarioRepository usuarioRepository,
             AlumnoRepository alumnoRepository,
-            PersonalRepository personalRepository,
+            EmpleadoRepository empleadoRepository,
             FamiliarRepository familiarRepository,
             AspiranteRepository aspiranteRepository
     ) {
         this.usuarioRepository = usuarioRepository;
         this.alumnoRepository = alumnoRepository;
-        this.personalRepository = personalRepository;
+        this.empleadoRepository = empleadoRepository;
         this.familiarRepository = familiarRepository;
         this.aspiranteRepository = aspiranteRepository;
     }
@@ -70,35 +70,45 @@ public class UsuarioService {
 
     @Transactional
     public void delete(Long id) {
-        ReferencedWarning warning = getReferencedWarning(id);
-        if (warning != null) throw new ReferencedException(warning);
-        if (!usuarioRepository.existsById(id)) throw new NotFoundException("Usuario no encontrado: " + id);
+        var usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado: " + id));
+
+        var warn = getReferencedWarning(usuario);
+        if (warn != null) throw new ReferencedException(warn);
+
         usuarioRepository.deleteById(id);
     }
 
-    public ReferencedWarning getReferencedWarning(Long id) {
-        if (alumnoRepository.existsByUsuarioId(id)) {
+    public ReferencedWarning getReferencedWarning(Usuario usuario) {
+        Persona persona = usuario.getPersona();
+        if (persona == null || persona.getId() == null) return null;
+
+        Long personaId = persona.getId();
+
+        if (alumnoRepository.existsByPersonaId(personaId)) {
             ReferencedWarning w = new ReferencedWarning("usuario.referenciado.alumno");
-            w.addParam(id);
+            w.addParam(usuario.getId());
             return w;
         }
-        if (personalRepository.existsByUsuarioId(id)) {
-            ReferencedWarning w = new ReferencedWarning("usuario.referenciado.personal");
-            w.addParam(id);
+        if (empleadoRepository.existsByPersonaId(personaId)) {
+            ReferencedWarning w = new ReferencedWarning("usuario.referenciado.empleado");
+            w.addParam(usuario.getId());
             return w;
         }
-        if (familiarRepository.existsByUsuarioId(id)) {
+        if (familiarRepository.existsByPersonaId(personaId)) {
             ReferencedWarning w = new ReferencedWarning("usuario.referenciado.familiar");
-            w.addParam(id);
+            w.addParam(usuario.getId());
             return w;
         }
-        if (aspiranteRepository.existsByUsuarioId(id)) {
+        if (aspiranteRepository.existsByPersonaId(personaId)) {
             ReferencedWarning w = new ReferencedWarning("usuario.referenciado.aspirante");
-            w.addParam(id);
+            w.addParam(usuario.getId());
             return w;
         }
         return null;
     }
+
+
 
     public Usuario findById(Long id) {
         return usuarioRepository.findById(id)

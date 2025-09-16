@@ -17,5 +17,5 @@ public class DetalleAsistenciaDTO {
     Long matriculaId;
     @NotNull
     EstadoAsistencia estado;
-    String obs;
+    String observacion;
 }

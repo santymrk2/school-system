@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
 public class ReciboSueldoDTO {
     Long id;
     @NotNull
-    Long personalId;
+    Long empleadoId;
     @NotNull
     Integer anio;
     @NotNull

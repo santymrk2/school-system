@@ -9,58 +9,33 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
+import static jakarta.persistence.FetchType.LAZY;
 
 @Entity
-@DiscriminatorValue("ASPIRANTE")
-@Getter
-@Setter
-public class Aspirante extends Persona {
+@Table(name="personas_aspirante")
+@Getter @Setter
+public class Aspirante {
+    @Id Long id;
 
-    @Column
-    @Enumerated(EnumType.STRING)
-    private Turno turnoPreferido;
+    @MapsId
+    @OneToOne(fetch=LAZY) @JoinColumn(name="id", foreignKey=@ForeignKey(name="fk_aspirante_persona"))
+    Persona persona;
 
-    @Column
-    private String escuelaActual;
+    @Enumerated(EnumType.STRING) Turno turnoPreferido;
+    String escuelaActual;
+    String conectividadInternet;
+    String dispositivosDisponibles;
+    String idiomasHabladosHogar;
+    String enfermedadesAlergias;
+    String medicacionHabitual;
+    String limitacionesFisicas;
+    String tratamientosTerapeuticos;
+    Boolean usoAyudasMovilidad;
+    String coberturaMedica;
+    String observacionesSalud;
+    @Enumerated(EnumType.STRING) Curso cursoSolicitado;
 
-    @Column(length = 50)
-    private String conectividadInternet;
-
-    @Column
-    private String dispositivosDisponibles;
-
-    @Column
-    private String idiomasHabladosHogar;
-
-    @Column(length = 1000)
-    private String enfermedadesAlergias;
-
-    @Column
-    private String medicacionHabitual;
-
-    @Column
-    private String limitacionesFisicas;
-
-    @Column
-    private String tratamientosTerapeuticos;
-
-    @Column
-    private Boolean usoAyudasMovilidad;
-
-    @Column
-    private String coberturaMedica;
-
-    @Column(length = 1000)
-    private String observacionesSalud;
-
-    @Column
-    @Enumerated(EnumType.STRING)
-    private Curso cursoSolicitado;
-
-    @OneToMany(mappedBy = "aspirante")
-    private Set<AspiranteFamiliar> familiares = new HashSet<>();
-
-    @OneToMany(mappedBy = "aspirante")
-    private Set<SolicitudAdmision> solicitudes = new HashSet<>();
-
+    @OneToMany(mappedBy="aspirante") Set<AspiranteFamiliar> familiares = new HashSet<>();
+    @OneToMany(mappedBy="aspirante") Set<SolicitudAdmision> solicitudes = new HashSet<>();
 }
+

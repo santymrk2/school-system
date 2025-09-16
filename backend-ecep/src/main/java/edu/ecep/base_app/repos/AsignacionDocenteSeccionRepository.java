@@ -11,9 +11,9 @@ import java.util.List;
 
 
 public interface AsignacionDocenteSeccionRepository extends JpaRepository<AsignacionDocenteSeccion, Long> {
-    boolean existsByPersonalId(Long personalId);
+    boolean existsByEmpleadoId(Long empleadoId);
 
-    List<AsignacionDocenteSeccion> findByPersonal_Id(Long personalId);
+    List<AsignacionDocenteSeccion> findByEmpleado_Id(Long empleadoId);
     @Query("""
       select (count(a) > 0) from AsignacionDocenteSeccion a
       where a.seccion.id = :seccionId and a.rol = edu.ecep.base_app.domain.enums.RolSeccion.MAESTRO_TITULAR
@@ -28,22 +28,22 @@ public interface AsignacionDocenteSeccionRepository extends JpaRepository<Asigna
     @Query("""
         select a
         from AsignacionDocenteSeccion a
-        where a.personal.id = :personalId
+        where a.empleado.id = :empleadoId
           and a.vigenciaDesde <= :fecha
           and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
     """)
-    List<AsignacionDocenteSeccion> findVigentesByPersonal(@Param("personalId") Long personalId,
+    List<AsignacionDocenteSeccion> findVigentesByEmpleado(@Param("empleadoId") Long empleadoId,
                                                           @Param("fecha") LocalDate fecha);
 
     @Query("""
            select a.seccion
            from AsignacionDocenteSeccion a
-           where a.personal.id = :personalId
+           where a.empleado.id = :empleadoId
              and a.vigenciaDesde <= :fecha
              and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
            order by a.seccion.nivel, a.seccion.gradoSala, a.seccion.division
            """)
-    List<Seccion> findSeccionesVigentesByPersonal(@Param("personalId") Long personalId,
+    List<Seccion> findSeccionesVigentesByEmpleado(@Param("empleadoId") Long empleadoId,
                                                   @Param("fecha") LocalDate fecha);
 }
 

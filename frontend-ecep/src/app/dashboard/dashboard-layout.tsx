@@ -5,7 +5,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { UserRole } from "@/types/api-generated";
 import { useRouter, usePathname } from "next/navigation";
-import { ChevronsUpDown, LogOut, School, X, Menu } from "lucide-react";
+import { ChevronsUpDown, LogOut, School, X, Menu, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,8 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { MENU, type MenuItem } from "@/lib/menu";
 
+import { ConfiguracionDialog } from "./_components/ConfiguracionDialog";
+
 import { isItemActive } from "@/lib/nav";
 
 import { useVisibleMenu } from "@/hooks/useVisibleMenu";
@@ -35,6 +37,7 @@ const getInitials = (name: string | undefined | null) => {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
   const { logout, user, selectedRole, setSelectedRole, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -215,6 +218,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
                 <DropdownMenuSeparator className="bg-gray-200 mx-1" />
 
+                <DropdownMenuItem onClick={() => setConfigOpen(true)}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configuración
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-gray-200 mx-1" />
+
                 <DropdownMenuItem
                   onClick={() => handleLogout()}
                   className="text-red-600 focus:text-red-700"
@@ -259,6 +269,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           onClick={toggleSidebar}
         />
       )}
+
+      <ConfiguracionDialog
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+        currentRole={role}
+        roles={rolesNormalized}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/services/api";
 import {
   Card,
@@ -20,14 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  CalificacionConceptual,
-  EvaluacionDTO,
-  ResultadoEvaluacionCreateDTO,
-  ResultadoEvaluacionDTO,
-  ResultadoEvaluacionUpdateDTO,
-} from "@/types/api-generated";
+import { CalificacionConceptual, EvaluacionDTO, ResultadoEvaluacionDTO } from "@/types/api-generated";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -51,39 +44,6 @@ type Row = {
   observaciones?: string | null;
 };
 
-type NotaExamRow = {
-  matriculaId: number;
-  nombre: string;
-  notaNumerica: number | null;
-  observaciones: string;
-  resultadoId?: number;
-};
-
-type ExamenData = {
-  evaluacion: EvaluacionDTO;
-  notas: NotaExamRow[];
-  baseNotas: NotaExamRow[];
-};
-
-const fechaLargaFormatter = new Intl.DateTimeFormat("es-AR", {
-  dateStyle: "medium",
-});
-
-function splitTema(rawTema?: string | null) {
-  if (!rawTema) return { titulo: "Evaluación", descripcion: "" };
-  const [first, ...rest] = rawTema.split(" — ");
-  const titulo = (first ?? "").trim() || "Evaluación";
-  const descripcion = rest.join(" — ").trim();
-  return { titulo, descripcion };
-}
-
-function formatFechaCorta(iso?: string | null) {
-  if (!iso) return "Sin fecha";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso ?? "Sin fecha";
-  return fechaLargaFormatter.format(date);
-}
-
 export default function CierrePrimarioView({
   seccionId,
 }: {
@@ -94,9 +54,9 @@ export default function CierrePrimarioView({
   // catálogos
   const [trimestres, setTrimestres] = useState<any[]>([]);
   const [seccionMaterias, setSeccionMaterias] = useState<any[]>([]);
-  const [examenes, setExamenes] = useState<ExamenData[]>([]);
-  const [loadingExamenes, setLoadingExamenes] = useState(false);
-  const [savingExamId, setSavingExamId] = useState<number | null>(null);
+  const [materias, setMaterias] = useState<any[]>([]);
+  const [promediosExamenes, setPromediosExamenes] = useState<Record<number, number>>({});
+  const [loadingPromedios, setLoadingPromedios] = useState(false);
   const [alumnos, setAlumnos] = useState<any[]>([]);
   const [califs, setCalifs] = useState<any[]>([]);
 
@@ -114,14 +74,16 @@ export default function CierrePrimarioView({
     (async () => {
       try {
         setLoading(true);
-        const [triRes, smRes, aluRes, cRes] = await Promise.all([
+        const [triRes, smRes, matRes, aluRes, cRes] = await Promise.all([
           api.trimestres.list(), // { id, orden, cerrado, fechaInicio, fechaFin, periodoEscolarId }
           api.seccionMaterias.list(), // { id, seccionId, materiaId, materia{nombre}? }
+          api.materias.list(),
           api.seccionesAlumnos.bySeccionId(seccionId, hoy), // [{ matriculaId, nombre/nombreCompleto }]
           api.calificaciones.list(), // [{ id, trimestreId, seccionMateriaId, matriculaId, ... }]
         ]);
         if (!alive) return;
         setTrimestres(triRes.data ?? []);
+        setMaterias(matRes.data ?? []);
         setSeccionMaterias(
           (smRes.data ?? []).filter(
             (sm: any) => (sm.seccionId ?? sm.seccion?.id) === seccionId,
@@ -151,88 +113,33 @@ export default function CierrePrimarioView({
     [trimestres],
   );
 
-  const matOpts = useMemo(
-    () =>
-      (seccionMaterias ?? []).map((sm: any) => ({
-        id: sm.id,
-        label: sm.materia?.nombre ?? `Materia #${sm.materiaId ?? sm.id}`,
-      })),
-    [seccionMaterias],
-  );
-
-  const alumnosNombreMap = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const a of alumnos ?? []) {
-      const label =
-        (a as any).nombreCompleto ??
-        (a as any).nombre ??
-        `Matrícula ${a?.matriculaId ?? ""}`;
-      if (typeof a?.matriculaId === "number") map.set(a.matriculaId, label);
+  const materiasPorId = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const materia of materias ?? []) {
+      if (typeof materia?.id === "number") {
+        map.set(materia.id, materia);
+      }
     }
     return map;
-  }, [alumnos]);
+  }, [materias]);
 
-  const buildNotaRows = useCallback(
-    (resultados: ResultadoEvaluacionDTO[]) => {
-      const mapResultados = new Map<number, ResultadoEvaluacionDTO>();
-      for (const res of resultados ?? []) {
-        const matriculaId = (res as any).matriculaId as number | undefined;
-        if (typeof matriculaId === "number") {
-          mapResultados.set(matriculaId, res);
-        }
-      }
-
-      const processed = new Set<number>();
-      const sortedAlumnos = [...(alumnos ?? [])].sort((a, b) => {
-        const nombreA = ((a as any).nombreCompleto ?? "").toLowerCase();
-        const nombreB = ((b as any).nombreCompleto ?? "").toLowerCase();
-        return nombreA.localeCompare(nombreB);
-      });
-
-      const rows: NotaExamRow[] = [];
-
-      for (const alumno of sortedAlumnos) {
-        const matriculaId = alumno.matriculaId;
-        if (typeof matriculaId !== "number") continue;
-        const existente = mapResultados.get(matriculaId);
-        processed.add(matriculaId);
-        rows.push({
-          matriculaId,
-          nombre:
-            (alumno as any).nombreCompleto ??
-            (alumno as any).nombre ??
-            `Matrícula ${matriculaId}`,
-          notaNumerica: (existente as any)?.notaNumerica ?? null,
-          observaciones: ((existente as any)?.observaciones ?? "") || "",
-          resultadoId: existente?.id,
-        });
-      }
-
-      for (const [matriculaId, res] of mapResultados.entries()) {
-        if (processed.has(matriculaId)) continue;
-        rows.push({
-          matriculaId,
-          nombre:
-            alumnosNombreMap.get(matriculaId) ?? `Matrícula ${matriculaId}`,
-          notaNumerica: (res as any)?.notaNumerica ?? null,
-          observaciones: ((res as any)?.observaciones ?? "") || "",
-          resultadoId: res.id,
-        });
-      }
-
-      rows.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      return rows;
-    },
-    [alumnos, alumnosNombreMap],
-  );
-
-  const selectedTrimestre = useMemo(
-    () => triOpts.find((t) => String(t.id) === triId),
-    [triOpts, triId],
-  );
-  const selectedMateria = useMemo(
-    () => matOpts.find((m) => String(m.id) === smId),
-    [matOpts, smId],
+  const matOpts = useMemo(
+    () =>
+      (seccionMaterias ?? []).map((sm: any) => {
+        const materiaId = sm.materiaId ?? sm.materia?.id;
+        const materia =
+          sm.materia ??
+          (typeof materiaId === "number"
+            ? materiasPorId.get(materiaId)
+            : undefined);
+        const label =
+          materia?.nombre ??
+          (typeof materiaId === "number"
+            ? `Materia #${materiaId}`
+            : `Materia #${sm.id}`);
+        return { id: sm.id, label };
+      }),
+    [seccionMaterias, materiasPorId],
   );
 
   const triCerrado = useMemo(() => {
@@ -301,35 +208,41 @@ export default function CierrePrimarioView({
 
   useEffect(() => {
     if (!triId || !smId) {
-      setExamenes([]);
+      setPromediosExamenes({});
+      setLoadingPromedios(false);
       return;
     }
     const trimestreId = Number(triId);
-    if (!Number.isFinite(trimestreId)) {
-      setExamenes([]);
+    const seccionMateriaId = Number(smId);
+    if (!Number.isFinite(trimestreId) || !Number.isFinite(seccionMateriaId)) {
+      setPromediosExamenes({});
+      setLoadingPromedios(false);
       return;
     }
 
     let alive = true;
     (async () => {
       try {
-        setLoadingExamenes(true);
+        setLoadingPromedios(true);
         const evalRes = await api.evaluaciones.search({
           seccionId,
           trimestreId,
         });
+        if (!alive) return;
+
         const allEvaluaciones = (evalRes.data ?? []) as EvaluacionDTO[];
         const filtered = allEvaluaciones.filter(
           (ev: any) =>
-            (ev?.seccionMateriaId ?? ev?.seccionMateria?.id) === Number(smId),
+            (ev?.seccionMateriaId ?? ev?.seccionMateria?.id) === seccionMateriaId,
         );
-        const ordered = filtered.sort((a: any, b: any) => {
-          const fa = String((a as any)?.fecha ?? "");
-          const fb = String((b as any)?.fecha ?? "");
-          return fa.localeCompare(fb);
-        });
+
+        if (filtered.length === 0) {
+          if (alive) setPromediosExamenes({});
+          return;
+        }
+
         const resultadosPorEvaluacion = await Promise.all(
-          ordered.map((ev) =>
+          filtered.map((ev) =>
             api.resultadosEvaluacion
               .byEvaluacion(ev.id)
               .then((r) => (r.data ?? []) as ResultadoEvaluacionDTO[])
@@ -337,191 +250,51 @@ export default function CierrePrimarioView({
           ),
         );
         if (!alive) return;
-        const next: ExamenData[] = ordered.map((ev, index) => {
-          const rows = buildNotaRows(resultadosPorEvaluacion[index] ?? []);
-          return {
-            evaluacion: ev,
-            notas: rows.map((row) => ({ ...row })),
-            baseNotas: rows.map((row) => ({ ...row })),
-          };
+
+        const totals = new Map<number, { sum: number; count: number }>();
+        for (const resultados of resultadosPorEvaluacion) {
+          for (const res of resultados) {
+            const matriculaId = (res as any)?.matriculaId;
+            const nota = (res as any)?.notaNumerica;
+            if (typeof matriculaId !== "number" || typeof nota !== "number") {
+              continue;
+            }
+            const entry = totals.get(matriculaId) ?? { sum: 0, count: 0 };
+            entry.sum += nota;
+            entry.count += 1;
+            totals.set(matriculaId, entry);
+          }
+        }
+
+        const averages: Record<number, number> = {};
+        totals.forEach(({ sum, count }, matriculaId) => {
+          if (count > 0) {
+            averages[matriculaId] = Number((sum / count).toFixed(2));
+          }
         });
-        setExamenes(next);
+
+        if (alive) {
+          setPromediosExamenes(averages);
+        }
       } catch (err) {
         console.error(
-          "[CierrePrimarioView] No se pudieron cargar las evaluaciones del trimestre",
+          "[CierrePrimarioView] No se pudieron calcular los promedios de exámenes",
           err,
         );
-        if (alive) setExamenes([]);
+        if (alive) {
+          setPromediosExamenes({});
+        }
       } finally {
-        if (alive) setLoadingExamenes(false);
+        if (alive) {
+          setLoadingPromedios(false);
+        }
       }
     })();
 
     return () => {
       alive = false;
     };
-  }, [triId, smId, seccionId, buildNotaRows]);
-
-  const handleExamNotaChange = (
-    evaluacionId: number,
-    matriculaId: number,
-    value: string,
-  ) => {
-    const normalized = value.replace(",", ".").trim();
-    const parsed = normalized === "" ? null : Number(normalized);
-    if (
-      normalized !== "" &&
-      (!Number.isFinite(parsed) || parsed < 1 || parsed > 10)
-    ) {
-      return;
-    }
-
-    setExamenes((prev) =>
-      prev.map((exam) =>
-        exam.evaluacion.id === evaluacionId
-          ? {
-              ...exam,
-              notas: exam.notas.map((row) =>
-                row.matriculaId === matriculaId
-                  ? { ...row, notaNumerica: parsed }
-                  : row,
-              ),
-            }
-          : exam,
-      ),
-    );
-  };
-
-  const handleExamObservacionChange = (
-    evaluacionId: number,
-    matriculaId: number,
-    value: string,
-  ) => {
-    setExamenes((prev) =>
-      prev.map((exam) =>
-        exam.evaluacion.id === evaluacionId
-          ? {
-              ...exam,
-              notas: exam.notas.map((row) =>
-                row.matriculaId === matriculaId
-                  ? { ...row, observaciones: value }
-                  : row,
-              ),
-            }
-          : exam,
-      ),
-    );
-  };
-
-  const handleResetExamNotas = (evaluacionId: number) => {
-    setExamenes((prev) =>
-      prev.map((exam) =>
-        exam.evaluacion.id === evaluacionId
-          ? {
-              ...exam,
-              notas: exam.baseNotas.map((row) => ({ ...row })),
-            }
-          : exam,
-      ),
-    );
-  };
-
-  const handleSaveExamNotas = async (evaluacionId: number) => {
-    const exam = examenes.find((e) => e.evaluacion.id === evaluacionId);
-    if (!exam) return;
-
-    try {
-      setSavingExamId(evaluacionId);
-      const pending: Promise<unknown>[] = [];
-
-      for (const row of exam.notas) {
-        const base = exam.baseNotas.find(
-          (b) => b.matriculaId === row.matriculaId,
-        );
-        const observacion = (row.observaciones ?? "").trim();
-        const payload: ResultadoEvaluacionUpdateDTO = {
-          notaNumerica: row.notaNumerica ?? null,
-          notaConceptual: null,
-          observaciones: observacion ? row.observaciones : null,
-        };
-
-        if (row.resultadoId) {
-          const changed =
-            (base?.notaNumerica ?? null) !== (row.notaNumerica ?? null) ||
-            (base?.observaciones ?? "") !== (row.observaciones ?? "");
-          if (changed) {
-            pending.push(
-              api.resultadosEvaluacion.update(row.resultadoId, payload),
-            );
-          }
-          continue;
-        }
-
-        const shouldPersist =
-          payload.notaNumerica !== null || observacion.length > 0;
-        if (!shouldPersist) continue;
-
-        pending.push(
-          api.resultadosEvaluacion.create({
-            evaluacionId,
-            matriculaId: row.matriculaId,
-            ...payload,
-          } as ResultadoEvaluacionCreateDTO),
-        );
-      }
-
-      await Promise.all(pending);
-      const refreshed =
-        await api.resultadosEvaluacion.byEvaluacion(evaluacionId);
-      const updatedRows = buildNotaRows(
-        (refreshed.data ?? []) as ResultadoEvaluacionDTO[],
-      );
-      setExamenes((prev) =>
-        prev.map((examData) =>
-          examData.evaluacion.id === evaluacionId
-            ? {
-                ...examData,
-                notas: updatedRows.map((row) => ({ ...row })),
-                baseNotas: updatedRows.map((row) => ({ ...row })),
-              }
-            : examData,
-        ),
-      );
-      alert("Notas de examen guardadas.");
-    } catch (e: any) {
-      alert(
-        e?.response?.data?.message ??
-          e?.message ??
-          "No se pudieron guardar las notas del examen.",
-      );
-    } finally {
-      setSavingExamId(null);
-    }
-  };
-
-  const examHasChanges = useCallback((exam: ExamenData) => {
-    const baseMap = new Map<number, NotaExamRow>(
-      exam.baseNotas.map((row) => [row.matriculaId, row]),
-    );
-
-    for (const row of exam.notas) {
-      const base = baseMap.get(row.matriculaId);
-      if (!base) {
-        if (row.notaNumerica != null || row.observaciones.trim().length > 0) {
-          return true;
-        }
-        continue;
-      }
-      if (
-        (base.notaNumerica ?? null) !== (row.notaNumerica ?? null) ||
-        (base.observaciones ?? "") !== (row.observaciones ?? "")
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }, []);
+  }, [triId, smId, seccionId]);
 
   const onSet = (matId: number, field: keyof Row, val: any) => {
     setRows((prev) =>
@@ -665,34 +438,6 @@ export default function CierrePrimarioView({
         </div>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {selectedMateria?.label ?? "Elegí una materia"}
-              </CardTitle>
-              {selectedTrimestre ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline">{selectedTrimestre.label}</Badge>
-                  <Badge variant="outline">
-                    {rows.length} alumno{rows.length === 1 ? "" : "s"}
-                  </Badge>
-                </div>
-              ) : (
-                <CardDescription>
-                  Seleccioná un trimestre para comenzar
-                </CardDescription>
-              )}
-            </CardHeader>
-            {triCerrado && (
-              <CardContent>
-                <Badge variant="destructive">Trimestre cerrado</Badge>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Los datos se muestran solo para consulta.
-                </p>
-              </CardContent>
-            )}
-          </Card>
-
           {(loading || loadingRows) && (
             <Card>
               <CardContent className="py-6 text-sm">Cargando…</CardContent>
@@ -709,32 +454,58 @@ export default function CierrePrimarioView({
           )}
 
           {!loading && !loadingRows && triId && smId && (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Listado de alumnos</CardTitle>
-                  <CardDescription>
-                    Registrá la nota conceptual y observaciones para cada
-                    estudiante.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ScrollArea className="max-h-[60vh]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[45%]">Alumno</TableHead>
-                          <TableHead className="w-[30%]">
-                            Nota conceptual
-                          </TableHead>
-                          <TableHead>Observaciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows.map((r) => (
+            <Card>
+              <CardHeader>
+                <CardTitle>Listado de alumnos</CardTitle>
+                <CardDescription>
+                  Registrá la nota conceptual y observaciones para cada
+                  estudiante.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {triCerrado && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge variant="destructive">Trimestre cerrado</Badge>
+                    <span className="text-muted-foreground">
+                      Los datos se muestran solo para consulta.
+                    </span>
+                  </div>
+                )}
+                <ScrollArea className="max-h-[60vh]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40%]">Alumno</TableHead>
+                        <TableHead className="w-[20%]">
+                          Promedio exámenes
+                        </TableHead>
+                        <TableHead className="w-[20%]">
+                          Nota conceptual
+                        </TableHead>
+                        <TableHead>Observaciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((r) => {
+                        const promedio = promediosExamenes[r.matriculaId];
+                        return (
                           <TableRow key={r.matriculaId}>
                             <TableCell className="font-medium">
                               {r.nombre}
+                            </TableCell>
+                            <TableCell>
+                              {loadingPromedios ? (
+                                <span className="text-xs text-muted-foreground">
+                                  Calculando…
+                                </span>
+                              ) : promedio != null ? (
+                                promedio.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2,
+                                })
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Select
@@ -778,178 +549,26 @@ export default function CierrePrimarioView({
                               />
                             </TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                  {rows.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      No hay alumnos inscriptos en esta materia para el
-                      trimestre seleccionado.
-                    </p>
-                  )}
-                </CardContent>
-                {!triCerrado && rows.length > 0 && (
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={save} disabled={saving}>
-                      Guardar cambios
-                    </Button>
-                  </CardFooter>
-                )}
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Exámenes del trimestre</CardTitle>
-                  <CardDescription>
-                    Consultá las notas de los exámenes asociados a la materia
-                    seleccionada.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {loadingExamenes ? (
-                    <div className="py-4 text-sm text-muted-foreground">
-                      Cargando exámenes…
-                    </div>
-                  ) : examenes.length === 0 ? (
-                    <div className="py-4 text-sm text-muted-foreground">
-                      No hay exámenes registrados para el trimestre
-                      seleccionado.
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {examenes.map((examen) => {
-                        const { titulo, descripcion } = splitTema(
-                          (examen.evaluacion as any)?.tema ?? "",
-                        );
-                        const fechaLabel = formatFechaCorta(
-                          (examen.evaluacion as any)?.fecha,
-                        );
-                        const peso = (examen.evaluacion as any)?.peso;
-                        const hasChanges = examHasChanges(examen);
-                        return (
-                          <div
-                            key={examen.evaluacion.id}
-                            className="space-y-3 rounded-md border p-3"
-                          >
-                            <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <div className="text-sm font-medium">
-                                  {titulo}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {descripcion
-                                    ? `${descripcion} · ${fechaLabel}`
-                                    : fechaLabel}
-                                </div>
-                              </div>
-                              {typeof peso === "number" && (
-                                <div className="text-xs text-muted-foreground">
-                                  Peso: {peso}
-                                </div>
-                              )}
-                            </div>
-
-                            {examen.notas.length === 0 ? (
-                              <div className="text-sm text-muted-foreground">
-                                No hay notas registradas para este examen.
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {examen.notas.map((row) => (
-                                  <div
-                                    key={`${examen.evaluacion.id}-${row.matriculaId}`}
-                                    className="grid grid-cols-1 gap-2 rounded border p-3 text-sm md:grid-cols-12 md:items-start"
-                                  >
-                                    <div className="md:col-span-4 font-medium">
-                                      {row.nombre}
-                                    </div>
-                                    <div className="md:col-span-2">
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        max={10}
-                                        step={1}
-                                        inputMode="numeric"
-                                        placeholder="Nota"
-                                        value={
-                                          row.notaNumerica == null
-                                            ? ""
-                                            : String(row.notaNumerica)
-                                        }
-                                        onChange={(e) =>
-                                          handleExamNotaChange(
-                                            examen.evaluacion.id,
-                                            row.matriculaId,
-                                            e.target.value,
-                                          )
-                                        }
-                                        disabled={
-                                          triCerrado ||
-                                          savingExamId === examen.evaluacion.id
-                                        }
-                                      />
-                                    </div>
-                                    <div className="md:col-span-6">
-                                      <Textarea
-                                        rows={2}
-                                        placeholder="Observaciones"
-                                        value={row.observaciones}
-                                        onChange={(e) =>
-                                          handleExamObservacionChange(
-                                            examen.evaluacion.id,
-                                            row.matriculaId,
-                                            e.target.value,
-                                          )
-                                        }
-                                        disabled={
-                                          triCerrado ||
-                                          savingExamId === examen.evaluacion.id
-                                        }
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {!triCerrado && examen.notas.length > 0 && (
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() =>
-                                    handleResetExamNotas(examen.evaluacion.id)
-                                  }
-                                  disabled={
-                                    !hasChanges ||
-                                    savingExamId === examen.evaluacion.id
-                                  }
-                                >
-                                  Descartar cambios
-                                </Button>
-                                <Button
-                                  onClick={() =>
-                                    handleSaveExamNotas(examen.evaluacion.id)
-                                  }
-                                  disabled={
-                                    !hasChanges ||
-                                    savingExamId === examen.evaluacion.id
-                                  }
-                                >
-                                  {savingExamId === examen.evaluacion.id
-                                    ? "Guardando…"
-                                    : "Guardar notas"}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
                         );
                       })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+                {rows.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No hay alumnos inscriptos en esta materia para el trimestre
+                    seleccionado.
+                  </p>
+                )}
+              </CardContent>
+              {!triCerrado && rows.length > 0 && (
+                <CardFooter className="flex justify-end">
+                  <Button onClick={save} disabled={saving}>
+                    Guardar cambios
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
           )}
         </div>
       </div>

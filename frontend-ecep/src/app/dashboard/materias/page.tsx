@@ -131,12 +131,15 @@ export default function MateriasPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center justify-between text-lg">
                     <span>{fmtSeccion(s)}</span>
-                    <Badge variant="secondary">{formatTurnoLabel(s.turno)}</Badge>
+                    <Badge variant="secondary">
+                      {formatTurnoLabel(s.turno)}
+                    </Badge>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="pb-3">
                     Gestioná las materias y docentes
                   </CardDescription>
                 </CardHeader>
+                {/*
                 <CardContent className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
@@ -147,6 +150,7 @@ export default function MateriasPage() {
                     Ver materias
                   </Button>
                 </CardContent>
+                */}
               </Card>
             ))}
             {!filtered.length && (

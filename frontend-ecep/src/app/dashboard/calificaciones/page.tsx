@@ -11,12 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CalificacionesIndexPage() {
   const router = useRouter();
@@ -117,8 +112,8 @@ export default function CalificacionesIndexPage() {
                           {formatTurnoLabel(s.turno)}
                         </Badge>
                       </CardTitle>
-                      <CardDescription>
-                        Cierre trimestral por materia (nota conceptual)
+                      <CardDescription className="pb-3">
+                        Cierre trimestral por materia
                       </CardDescription>
                     </CardHeader>
                   </Card>
@@ -153,7 +148,9 @@ export default function CalificacionesIndexPage() {
                           {formatTurnoLabel(s.turno)}
                         </Badge>
                       </CardTitle>
-                      <CardDescription>Informes por trimestre</CardDescription>
+                      <CardDescription className="pb-3">
+                        Informes por trimestre
+                      </CardDescription>
                     </CardHeader>
                   </Card>
                 ))}

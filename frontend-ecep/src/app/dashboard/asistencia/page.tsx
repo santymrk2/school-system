@@ -299,7 +299,13 @@ function DirectivoView() {
                   : "Sin datos";
 
             return (
-              <Card key={s.id}>
+              <Card
+                key={s.id}
+                className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() =>
+                  router.push(`/dashboard/asistencia/seccion/${s.id}`)
+                }
+              >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center justify-between">
                     {nombre || `Sección #${s.id}`}
@@ -308,12 +314,16 @@ function DirectivoView() {
                   <CardDescription>{label}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex gap-2">
+                  {/*
                   <NewJornadaDialog
                     seccion={s}
                     onCreated={(jornadaId) =>
                       router.push(`/dashboard/asistencia/jornada/${jornadaId}`)
                     }
                   />
+
+                  */}
+                  {/*
                   <Button
                     variant="outline"
                     onClick={() =>
@@ -322,6 +332,7 @@ function DirectivoView() {
                   >
                     Ver sección
                   </Button>
+                  */}
                 </CardContent>
               </Card>
             );

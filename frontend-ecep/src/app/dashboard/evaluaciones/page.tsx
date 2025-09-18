@@ -216,6 +216,7 @@ export default function EvaluacionesIndexPage() {
                         ? `${count} evaluación${count === 1 ? "" : "es"}`
                         : "Sin evaluaciones"}
                     </span>
+                    {/*
                     <Button
                       size="sm"
                       variant="outline"
@@ -226,6 +227,7 @@ export default function EvaluacionesIndexPage() {
                     >
                       Ver sección
                     </Button>
+                    */}
                   </CardContent>
                 </Card>
               );

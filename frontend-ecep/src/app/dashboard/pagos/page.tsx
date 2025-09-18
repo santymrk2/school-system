@@ -18,12 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -71,15 +66,14 @@ import type {
   EstadoCuota,
   EstadoPago,
   MatriculaDTO,
-  MedioPago,
   PagoCuotaCreateDTO,
   PagoCuotaDTO,
   PersonaDTO,
   ReciboSueldoCreateDTO,
   ReciboSueldoDTO,
   SeccionDTO,
-  UserRole,
 } from "@/types/api-generated";
+import { UserRole, MedioPago } from "@/types/api-generated";
 
 const MONTH_LABELS = [
   "enero",
@@ -103,7 +97,10 @@ const CONCEPTO_LABELS: Record<string, string> = {
   OTROS: "Otros",
 };
 
-const ESTADO_PAGO_LABEL: Record<EstadoPago, { label: string; variant: string }> = {
+const ESTADO_PAGO_LABEL: Record<
+  EstadoPago,
+  { label: string; variant: string }
+> = {
   EN_REVISION: { label: "En revisión", variant: "secondary" },
   ACREDITADO: { label: "Acreditado", variant: "default" },
   RECHAZADO: { label: "Rechazado", variant: "destructive" },
@@ -153,7 +150,8 @@ function cuotaEstadoInfo(cuota: CuotaDTO): {
   const now = new Date();
 
   if (estado === "PAGADA") return { label: "Pagada", variant: "default" };
-  if (estado === "PARCIAL") return { label: "Pago parcial", variant: "outline" };
+  if (estado === "PARCIAL")
+    return { label: "Pago parcial", variant: "outline" };
   if (
     estado === "VENCIDA" ||
     (dueDate && dueDate.getTime() < now.getTime() && estado !== "PAGADA")
@@ -175,7 +173,8 @@ export default function PagosPage() {
 
   const isFamily = normalizedRole === UserRole.FAMILY;
   const isTeacher =
-    normalizedRole === UserRole.TEACHER || normalizedRole === UserRole.ALTERNATE;
+    normalizedRole === UserRole.TEACHER ||
+    normalizedRole === UserRole.ALTERNATE;
   const isAdmin =
     normalizedRole === UserRole.ADMIN ||
     normalizedRole === UserRole.SECRETARY ||
@@ -292,7 +291,7 @@ export default function PagosPage() {
     if (!shouldLoadSecciones) return;
     setSeccionesLoading(true);
     api.secciones
-      .secciones.list()
+      .list()
       .then((res) => setSecciones(res.data ?? []))
       .catch(() => setSecciones([]))
       .finally(() => setSeccionesLoading(false));
@@ -301,7 +300,7 @@ export default function PagosPage() {
   useEffect(() => {
     if (!shouldLoadMatriculas) return;
     api.matriculas
-      .matriculas.list()
+      .list()
       .then((res) => setMatriculas(res.data ?? []))
       .catch(() => setMatriculas([]));
   }, [shouldLoadMatriculas]);
@@ -317,7 +316,7 @@ export default function PagosPage() {
   useEffect(() => {
     if (!shouldLoadEmpleados) return;
     api.empleados
-      .empleados.list()
+      .list()
       .then((res) => setEmpleados(res.data ?? []))
       .catch(() => setEmpleados([]));
   }, [shouldLoadEmpleados]);
@@ -372,7 +371,9 @@ export default function PagosPage() {
         const mesA = a.mes ?? 0;
         const mesB = b.mes ?? 0;
         if (mesA !== mesB) return mesA - mesB;
-        return (a.fechaVencimiento ?? "").localeCompare(b.fechaVencimiento ?? "");
+        return (a.fechaVencimiento ?? "").localeCompare(
+          b.fechaVencimiento ?? "",
+        );
       });
     }
     return map;
@@ -405,12 +406,17 @@ export default function PagosPage() {
   const myEmpleado = useMemo(() => {
     if (!shouldLoadEmpleados) return null;
     if (!user?.personaId) return null;
-    return empleados.find((empleado) => empleado.personaId === user.personaId) ?? null;
+    return (
+      empleados.find((empleado) => empleado.personaId === user.personaId) ??
+      null
+    );
   }, [empleados, shouldLoadEmpleados, user]);
 
   const misRecibos = useMemo(() => {
     if (!myEmpleado) return [];
-    return recibosOrdenados.filter((recibo) => recibo.empleadoId === myEmpleado.id);
+    return recibosOrdenados.filter(
+      (recibo) => recibo.empleadoId === myEmpleado.id,
+    );
   }, [myEmpleado, recibosOrdenados]);
 
   const getAlumnoNombre = useCallback(
@@ -593,19 +599,22 @@ export default function PagosPage() {
     return map;
   }, [cuotas]);
 
-  const copyToClipboard = useCallback(async (value: string, message: string) => {
-    if (!value) return;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(value);
-        toast.success(message);
-      } else {
-        throw new Error("Clipboard no disponible");
+  const copyToClipboard = useCallback(
+    async (value: string, message: string) => {
+      if (!value) return;
+      try {
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(value);
+          toast.success(message);
+        } else {
+          throw new Error("Clipboard no disponible");
+        }
+      } catch (error: any) {
+        toast.error(error?.message ?? "No se pudo copiar el texto");
       }
-    } catch (error: any) {
-      toast.error(error?.message ?? "No se pudo copiar el texto");
-    }
-  }, []);
+    },
+    [],
+  );
 
   const handleSubmitNuevaCuota = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -626,7 +635,9 @@ export default function PagosPage() {
     const porcentaje = createForm.porcentajeRecargo
       ? Number.parseFloat(createForm.porcentajeRecargo.replace(/,/g, "."))
       : undefined;
-    const anioNumber = createForm.anio ? Number.parseInt(createForm.anio, 10) : undefined;
+    const anioNumber = createForm.anio
+      ? Number.parseInt(createForm.anio, 10)
+      : undefined;
     const mesNumber =
       createForm.matricula || !createForm.mes
         ? undefined
@@ -634,7 +645,9 @@ export default function PagosPage() {
 
     const payload: CuotaBulkCreateDTO = {
       seccionIds: createForm.seccionIds,
-      concepto: createForm.matricula ? ConceptoCuota.MATRICULA : createForm.concepto,
+      concepto: createForm.matricula
+        ? ConceptoCuota.MATRICULA
+        : createForm.concepto,
       subconcepto: createForm.titulo.trim() || undefined,
       anio: anioNumber,
       mes: mesNumber,
@@ -658,7 +671,9 @@ export default function PagosPage() {
       resetCreateForm();
       await loadCuotas();
     } catch (error: any) {
-      toast.error(error?.response?.data ?? error?.message ?? "No se pudo crear la cuota");
+      toast.error(
+        error?.response?.data ?? error?.message ?? "No se pudo crear la cuota",
+      );
     } finally {
       setCreatingCuota(false);
     }
@@ -722,7 +737,11 @@ export default function PagosPage() {
       setPagoDialogOpen(false);
       resetPagoForm();
     } catch (error: any) {
-      toast.error(error?.response?.data ?? error?.message ?? "No se pudo registrar el pago");
+      toast.error(
+        error?.response?.data ??
+          error?.message ??
+          "No se pudo registrar el pago",
+      );
     } finally {
       setRegistrandoPago(false);
     }
@@ -734,12 +753,18 @@ export default function PagosPage() {
         await api.pagosCuota.updateEstado(pagoId, {
           estadoPago: estado,
           fechaAcreditacion:
-            estado === EstadoPago.ACREDITADO ? new Date().toISOString() : undefined,
+            estado === EstadoPago.ACREDITADO
+              ? new Date().toISOString()
+              : undefined,
         });
         toast.success("Estado de pago actualizado");
         await loadPagos();
       } catch (error: any) {
-        toast.error(error?.response?.data ?? error?.message ?? "No se pudo actualizar el pago");
+        toast.error(
+          error?.response?.data ??
+            error?.message ??
+            "No se pudo actualizar el pago",
+        );
       }
     },
     [loadPagos],
@@ -755,7 +780,9 @@ export default function PagosPage() {
         recibo.bruto == null ||
         recibo.neto == null
       ) {
-        toast.error("El recibo no tiene información suficiente para actualizarse");
+        toast.error(
+          "El recibo no tiene información suficiente para actualizarse",
+        );
         return;
       }
       try {
@@ -767,7 +794,11 @@ export default function PagosPage() {
         toast.success(value ? "Recibo confirmado" : "Confirmación eliminada");
         await loadRecibos();
       } catch (error: any) {
-        toast.error(error?.response?.data ?? error?.message ?? "No se pudo actualizar el recibo");
+        toast.error(
+          error?.response?.data ??
+            error?.message ??
+            "No se pudo actualizar el recibo",
+        );
       }
     },
     [loadRecibos],
@@ -789,7 +820,8 @@ export default function PagosPage() {
     if (authLoading) {
       return (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando información...
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
+          información...
         </div>
       );
     }
@@ -798,7 +830,8 @@ export default function PagosPage() {
       if (hijosLoading || cuotasLoading) {
         return (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Preparando tus cuotas...
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Preparando tus
+            cuotas...
           </div>
         );
       }
@@ -822,7 +855,8 @@ export default function PagosPage() {
           )}
           <div className="grid gap-4 lg:grid-cols-2">
             {hijos.map((hijo) => {
-              const cuotasMatricula = cuotasPorMatricula.get(hijo.matriculaId) ?? [];
+              const cuotasMatricula =
+                cuotasPorMatricula.get(hijo.matriculaId) ?? [];
               const cuotasMensuales = cuotasMatricula.filter(
                 (cuota) => cuota.concepto !== "MATRICULA",
               );
@@ -839,7 +873,8 @@ export default function PagosPage() {
                       </Badge>
                     </CardTitle>
                     <CardDescription>
-                      Visualizá el detalle de cuotas y matrícula correspondientes.
+                      Visualizá el detalle de cuotas y matrícula
+                      correspondientes.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col gap-4">
@@ -856,19 +891,30 @@ export default function PagosPage() {
                           {cuotasMensuales.map((cuota) => {
                             const estado = cuotaEstadoInfo(cuota);
                             return (
-                              <div key={cuota.id} className="rounded-lg border bg-card/40 p-3">
+                              <div
+                                key={cuota.id}
+                                className="rounded-lg border bg-card/40 p-3"
+                              >
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>
                                     <p className="font-medium">
-                                      {formatMonthAndYear(cuota.mes ?? undefined, cuota.anio ?? undefined)}
+                                      {formatMonthAndYear(
+                                        cuota.mes ?? undefined,
+                                        cuota.anio ?? undefined,
+                                      )}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                      Vence: {formatDate(cuota.fechaVencimiento)}
+                                      Vence:{" "}
+                                      {formatDate(cuota.fechaVencimiento)}
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-semibold">{formatCurrency(cuota.importe)}</p>
-                                    <Badge variant={estado.variant}>{estado.label}</Badge>
+                                    <p className="font-semibold">
+                                      {formatCurrency(cuota.importe)}
+                                    </p>
+                                    <Badge variant={estado.variant}>
+                                      {estado.label}
+                                    </Badge>
                                   </div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -878,7 +924,8 @@ export default function PagosPage() {
                                     size="sm"
                                     onClick={() => setDetalleCuota(cuota)}
                                   >
-                                    <FileText className="mr-2 h-4 w-4" /> Ver detalle
+                                    <FileText className="mr-2 h-4 w-4" /> Ver
+                                    detalle
                                   </Button>
                                 </div>
                               </div>
@@ -907,14 +954,20 @@ export default function PagosPage() {
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>
-                                    <p className="font-medium">{cuota.subconcepto || "Matrícula"}</p>
+                                    <p className="font-medium">
+                                      {cuota.subconcepto || "Matrícula"}
+                                    </p>
                                     <p className="text-sm text-muted-foreground">
                                       Año: {cuota.anio ?? "—"}
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-semibold">{formatCurrency(cuota.importe)}</p>
-                                    <Badge variant={estado.variant}>{estado.label}</Badge>
+                                    <p className="font-semibold">
+                                      {formatCurrency(cuota.importe)}
+                                    </p>
+                                    <Badge variant={estado.variant}>
+                                      {estado.label}
+                                    </Badge>
                                   </div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -924,7 +977,8 @@ export default function PagosPage() {
                                     size="sm"
                                     onClick={() => setDetalleCuota(cuota)}
                                   >
-                                    <FileText className="mr-2 h-4 w-4" /> Ver detalle
+                                    <FileText className="mr-2 h-4 w-4" /> Ver
+                                    detalle
                                   </Button>
                                 </div>
                               </div>
@@ -949,7 +1003,8 @@ export default function PagosPage() {
             <div>
               <h2 className="text-lg font-semibold">Gestión de cuotas</h2>
               <p className="text-sm text-muted-foreground">
-                Administrá cuotas, matrículas y visualizá el estado financiero por sección.
+                Administrá cuotas, matrículas y visualizá el estado financiero
+                por sección.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -971,32 +1026,48 @@ export default function PagosPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cuotas generadas</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Cuotas generadas
+                </CardTitle>
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{resumenCuotas.total}</div>
-                <p className="text-xs text-muted-foreground">Totales registradas en el sistema</p>
+                <p className="text-xs text-muted-foreground">
+                  Totales registradas en el sistema
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Importe emitido</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Importe emitido
+                </CardTitle>
                 <TrendingUp className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(resumenCuotas.importeTotal)}</div>
-                <p className="text-xs text-muted-foreground">Suma de cuotas y matrículas</p>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(resumenCuotas.importeTotal)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Suma de cuotas y matrículas
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cuotas vencidas</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Cuotas vencidas
+                </CardTitle>
                 <AlertCircle className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{resumenCuotas.vencidas}</div>
-                <p className="text-xs text-muted-foreground">Incluye vencimientos al día de hoy</p>
+                <div className="text-2xl font-bold">
+                  {resumenCuotas.vencidas}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Incluye vencimientos al día de hoy
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -1012,13 +1083,15 @@ export default function PagosPage() {
             <CardHeader>
               <CardTitle>Listado de cuotas</CardTitle>
               <CardDescription>
-                Visualizá cada cuota generada y accedé rápidamente al código de pago.
+                Visualizá cada cuota generada y accedé rápidamente al código de
+                pago.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {cuotasLoading ? (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando cuotas...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
+                  cuotas...
                 </div>
               ) : !cuotasOrdenadasAdmin.length ? (
                 <p className="text-sm text-muted-foreground">
@@ -1036,17 +1109,23 @@ export default function PagosPage() {
                         <div className="md:col-span-2">
                           <p className="font-medium">{conceptoTexto(cuota)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {getAlumnoNombre(cuota.matriculaId)} — {getAlumnoSeccion(cuota.matriculaId)}
+                            {getAlumnoNombre(cuota.matriculaId)} —{" "}
+                            {getAlumnoSeccion(cuota.matriculaId)}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm font-medium">Período</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatMonthAndYear(cuota.mes ?? undefined, cuota.anio ?? undefined)}
+                            {formatMonthAndYear(
+                              cuota.mes ?? undefined,
+                              cuota.anio ?? undefined,
+                            )}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">{formatCurrency(cuota.importe)}</p>
+                          <p className="font-semibold">
+                            {formatCurrency(cuota.importe)}
+                          </p>
                           <Badge variant={info.variant}>{info.label}</Badge>
                         </div>
                         <div className="flex flex-col items-end gap-2 md:items-start">
@@ -1062,7 +1141,11 @@ export default function PagosPage() {
                           >
                             <Download className="mr-2 h-4 w-4" /> Copiar código
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setDetalleCuota(cuota)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDetalleCuota(cuota)}
+                          >
                             Detalle
                           </Button>
                         </div>
@@ -1115,26 +1198,35 @@ export default function PagosPage() {
         <Card>
           <CardHeader>
             <CardTitle>Historial</CardTitle>
-            <CardDescription>Pagos ordenados por fecha de registro.</CardDescription>
+            <CardDescription>
+              Pagos ordenados por fecha de registro.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {pagosLoading ? (
               <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando pagos...
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
+                pagos...
               </div>
             ) : !pagosOrdenados.length ? (
-              <p className="text-sm text-muted-foreground">Aún no hay pagos registrados.</p>
+              <p className="text-sm text-muted-foreground">
+                Aún no hay pagos registrados.
+              </p>
             ) : (
               <div className="space-y-3">
                 {pagosOrdenados.map((pago) => {
-                  const cuota = pago.cuotaId ? cuotaMap.get(pago.cuotaId) ?? null : null;
+                  const cuota = pago.cuotaId
+                    ? (cuotaMap.get(pago.cuotaId) ?? null)
+                    : null;
                   return (
                     <div
                       key={pago.id}
                       className="grid gap-3 rounded-lg border p-4 md:grid-cols-5 md:items-center"
                     >
                       <div className="md:col-span-2">
-                        <p className="font-medium">{cuota ? conceptoTexto(cuota) : "Pago sin cuota"}</p>
+                        <p className="font-medium">
+                          {cuota ? conceptoTexto(cuota) : "Pago sin cuota"}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {cuota
                             ? `${getAlumnoNombre(cuota.matriculaId)} — ${formatMonthAndYear(
@@ -1158,8 +1250,12 @@ export default function PagosPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(pago.montoPagado)}</p>
-                        <p className="text-xs text-muted-foreground">{pago.medioPago}</p>
+                        <p className="font-semibold">
+                          {formatCurrency(pago.montoPagado)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {pago.medioPago}
+                        </p>
                       </div>
                       <div className="flex flex-col items-end gap-2 md:items-start">
                         {renderEstadoPago(pago.estadoPago)}
@@ -1167,21 +1263,36 @@ export default function PagosPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => actualizarEstadoPago(pago.id, EstadoPago.ACREDITADO)}
+                            onClick={() =>
+                              actualizarEstadoPago(
+                                pago.id,
+                                EstadoPago.ACREDITADO,
+                              )
+                            }
                           >
                             <CheckCircle className="mr-2 h-4 w-4" /> Acreditar
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => actualizarEstadoPago(pago.id, EstadoPago.EN_REVISION)}
+                            onClick={() =>
+                              actualizarEstadoPago(
+                                pago.id,
+                                EstadoPago.EN_REVISION,
+                              )
+                            }
                           >
                             Revisar
                           </Button>
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => actualizarEstadoPago(pago.id, EstadoPago.RECHAZADO)}
+                            onClick={() =>
+                              actualizarEstadoPago(
+                                pago.id,
+                                EstadoPago.RECHAZADO,
+                              )
+                            }
                           >
                             Rechazar
                           </Button>
@@ -1255,7 +1366,8 @@ export default function PagosPage() {
           <CardContent>
             {recibosLoading ? (
               <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando recibos...
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
+                recibos...
               </div>
             ) : !listado.length ? (
               <p className="text-sm text-muted-foreground">
@@ -1278,15 +1390,20 @@ export default function PagosPage() {
                     >
                       <div className="md:col-span-2">
                         <p className="font-medium">{empleadoNombre}</p>
-                        <p className="text-sm text-muted-foreground">Período {periodo}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Período {periodo}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          Bruto: {formatCurrency(recibo.bruto)} — Neto: {formatCurrency(recibo.neto)}
+                          Bruto: {formatCurrency(recibo.bruto)} — Neto:{" "}
+                          {formatCurrency(recibo.neto)}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm font-medium">Estado</p>
                         <p className="text-sm text-muted-foreground">
-                          {recibo.recibiConforme ? "Recibí conforme" : "Pendiente de confirmación"}
+                          {recibo.recibiConforme
+                            ? "Recibí conforme"
+                            : "Pendiente de confirmación"}
                         </p>
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -1301,7 +1418,8 @@ export default function PagosPage() {
                               )
                             }
                           >
-                            <Download className="mr-2 h-4 w-4" /> Copiar comprobante
+                            <Download className="mr-2 h-4 w-4" /> Copiar
+                            comprobante
                           </Button>
                         ) : (
                           <span>Sin comprobante adjunto</span>
@@ -1311,10 +1429,19 @@ export default function PagosPage() {
                         {isTeacher && (
                           <Button
                             size="sm"
-                            variant={recibo.recibiConforme ? "secondary" : "outline"}
-                            onClick={() => handleConfirmarRecibo(recibo, !recibo.recibiConforme)}
+                            variant={
+                              recibo.recibiConforme ? "secondary" : "outline"
+                            }
+                            onClick={() =>
+                              handleConfirmarRecibo(
+                                recibo,
+                                !recibo.recibiConforme,
+                              )
+                            }
                           >
-                            {recibo.recibiConforme ? "Quitar confirmación" : "Recibí conforme"}
+                            {recibo.recibiConforme
+                              ? "Quitar confirmación"
+                              : "Recibí conforme"}
                           </Button>
                         )}
                         {isAdmin && (
@@ -1327,16 +1454,27 @@ export default function PagosPage() {
                                 ...prev,
                                 tipo: "sueldo",
                                 empleadoId:
-                                  recibo.empleadoId != null ? String(recibo.empleadoId) : "",
+                                  recibo.empleadoId != null
+                                    ? String(recibo.empleadoId)
+                                    : "",
                                 anio:
-                                  recibo.anio != null ? String(recibo.anio) : prev.anio,
+                                  recibo.anio != null
+                                    ? String(recibo.anio)
+                                    : prev.anio,
                                 mes:
-                                  recibo.mes != null ? String(recibo.mes) : prev.mes,
+                                  recibo.mes != null
+                                    ? String(recibo.mes)
+                                    : prev.mes,
                                 bruto:
-                                  recibo.bruto != null ? String(recibo.bruto) : prev.bruto,
+                                  recibo.bruto != null
+                                    ? String(recibo.bruto)
+                                    : prev.bruto,
                                 neto:
-                                  recibo.neto != null ? String(recibo.neto) : prev.neto,
-                                comprobanteId: recibo.comprobanteArchivoId ?? "",
+                                  recibo.neto != null
+                                    ? String(recibo.neto)
+                                    : prev.neto,
+                                comprobanteId:
+                                  recibo.comprobanteArchivoId ?? "",
                               }));
                               setPagoDialogOpen(true);
                             }}
@@ -1381,7 +1519,9 @@ export default function PagosPage() {
       <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Pagos y cuotas</h2>
+            <h2 className="text-3xl font-bold tracking-tight">
+              Pagos y cuotas
+            </h2>
             <p className="text-sm text-muted-foreground">
               {isAdmin
                 ? "Generá cuotas, registrá pagos y administrá los recibos del personal."
@@ -1475,25 +1615,33 @@ export default function PagosPage() {
 
                 <div className="grid gap-3 text-sm md:grid-cols-2">
                   <div className="space-y-1">
-                    <p className="text-xs uppercase text-muted-foreground">Alumno</p>
+                    <p className="text-xs uppercase text-muted-foreground">
+                      Alumno
+                    </p>
                     <p className="font-medium">
                       {getAlumnoNombre(detalleCuota.matriculaId)}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs uppercase text-muted-foreground">Sección</p>
+                    <p className="text-xs uppercase text-muted-foreground">
+                      Sección
+                    </p>
                     <p className="font-medium">
                       {getAlumnoSeccion(detalleCuota.matriculaId)}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs uppercase text-muted-foreground">Vencimiento</p>
+                    <p className="text-xs uppercase text-muted-foreground">
+                      Vencimiento
+                    </p>
                     <p className="font-medium">
                       {formatDate(detalleCuota.fechaVencimiento)}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs uppercase text-muted-foreground">Código de pago</p>
+                    <p className="text-xs uppercase text-muted-foreground">
+                      Código de pago
+                    </p>
                     <p className="font-mono text-sm">
                       {detalleCuota.codigoPago ?? "—"}
                     </p>
@@ -1577,8 +1725,8 @@ export default function PagosPage() {
               <DialogHeader>
                 <DialogTitle>Nueva cuota</DialogTitle>
                 <DialogDescription>
-                  Definí el período, concepto e importe que se aplicará a las secciones
-                  seleccionadas.
+                  Definí el período, concepto e importe que se aplicará a las
+                  secciones seleccionadas.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1588,7 +1736,8 @@ export default function PagosPage() {
                   <div className="max-h-60 space-y-2 overflow-auto rounded-md border p-3 text-sm">
                     {seccionesLoading ? (
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Cargando secciones...
+                        <Loader2 className="h-4 w-4 animate-spin" /> Cargando
+                        secciones...
                       </div>
                     ) : !seccionesOrdenadas.length ? (
                       <p className="text-muted-foreground">
@@ -1597,7 +1746,9 @@ export default function PagosPage() {
                     ) : (
                       seccionesOrdenadas.map((seccion) => {
                         if (seccion.id == null) return null;
-                        const checked = createForm.seccionIds.includes(seccion.id);
+                        const checked = createForm.seccionIds.includes(
+                          seccion.id,
+                        );
                         const nombreSeccion = [
                           seccion.nivel,
                           seccion.gradoSala,
@@ -1607,7 +1758,10 @@ export default function PagosPage() {
                           .join(" ")
                           .trim();
                         return (
-                          <div key={seccion.id} className="flex items-center gap-2">
+                          <div
+                            key={seccion.id}
+                            className="flex items-center gap-2"
+                          >
                             <Checkbox
                               id={`seccion-${seccion.id}`}
                               checked={checked}
@@ -1642,8 +1796,8 @@ export default function PagosPage() {
                     </Label>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Las cuotas de matrícula no requieren selección de mes y se generan una única
-                    vez por ciclo lectivo.
+                    Las cuotas de matrícula no requieren selección de mes y se
+                    generan una única vez por ciclo lectivo.
                   </p>
                 </div>
 
@@ -1664,11 +1818,13 @@ export default function PagosPage() {
                         <SelectValue placeholder="Seleccioná un concepto" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(CONCEPTO_LABELS).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
+                        {Object.entries(CONCEPTO_LABELS).map(
+                          ([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1751,7 +1907,9 @@ export default function PagosPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="fechaVencimiento">Fecha de vencimiento</Label>
+                    <Label htmlFor="fechaVencimiento">
+                      Fecha de vencimiento
+                    </Label>
                     <Input
                       id="fechaVencimiento"
                       type="date"
@@ -1766,7 +1924,9 @@ export default function PagosPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="porcentajeRecargo">Recargo por mora (%)</Label>
+                    <Label htmlFor="porcentajeRecargo">
+                      Recargo por mora (%)
+                    </Label>
                     <Input
                       id="porcentajeRecargo"
                       type="number"
@@ -1781,7 +1941,8 @@ export default function PagosPage() {
                       }
                     />
                     <p className="text-xs text-muted-foreground">
-                      Este porcentaje se aplicará automáticamente a los pagos fuera de término.
+                      Este porcentaje se aplicará automáticamente a los pagos
+                      fuera de término.
                     </p>
                   </div>
                 </div>
@@ -1796,7 +1957,9 @@ export default function PagosPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={creatingCuota}>
-                  {creatingCuota && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {creatingCuota && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Crear cuota
                 </Button>
               </DialogFooter>
@@ -1837,7 +2000,9 @@ export default function PagosPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cuota">Pago de cuota</SelectItem>
-                      <SelectItem value="matricula">Pago de matrícula</SelectItem>
+                      <SelectItem value="matricula">
+                        Pago de matrícula
+                      </SelectItem>
                       <SelectItem value="sueldo">Recibo de sueldo</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1868,7 +2033,9 @@ export default function PagosPage() {
                             empleados.map((empleado) => (
                               <SelectItem
                                 key={empleado.id}
-                                value={empleado.id != null ? String(empleado.id) : ""}
+                                value={
+                                  empleado.id != null ? String(empleado.id) : ""
+                                }
                                 disabled={empleado.id == null}
                               >
                                 {getEmpleadoNombre(empleado.id)}
@@ -1956,7 +2123,9 @@ export default function PagosPage() {
                     </div>
 
                     <div className="grid gap-2 md:col-span-2">
-                      <Label htmlFor="comprobanteRecibo">Identificador de comprobante</Label>
+                      <Label htmlFor="comprobanteRecibo">
+                        Identificador de comprobante
+                      </Label>
                       <Input
                         id="comprobanteRecibo"
                         value={pagoForm.comprobanteId}
@@ -2083,7 +2252,9 @@ export default function PagosPage() {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="comprobante">Identificador de comprobante</Label>
+                      <Label htmlFor="comprobante">
+                        Identificador de comprobante
+                      </Label>
                       <Input
                         id="comprobante"
                         value={pagoForm.comprobanteId}
@@ -2109,7 +2280,9 @@ export default function PagosPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={registrandoPago}>
-                  {registrandoPago && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {registrandoPago && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Guardar
                 </Button>
               </DialogFooter>

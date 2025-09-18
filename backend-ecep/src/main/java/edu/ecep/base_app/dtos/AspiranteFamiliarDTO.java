@@ -12,4 +12,5 @@ public class AspiranteFamiliarDTO {
     Long aspiranteId;
     Long familiarId;
     String parentesco;
+    Boolean convive;
 }

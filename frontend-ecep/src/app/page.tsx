@@ -241,7 +241,7 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <Link href="/postulacion">
+                <Link href="/solicitud">
                   <Button variant="outline" className="w-full">
                     <Users className="h-4 w-4 mr-2" />
                     ¿Querés postularte como alumno? Ingresá acá

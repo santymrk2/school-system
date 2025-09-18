@@ -69,10 +69,27 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/personas/dni/**",
+                                "/api/personas/*",
+                                "/api/aspirantes/*",
+                                "/api/familiares/*"
+                        ).permitAll()
+
+                        .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/personas",
+                                "/api/familiares",
                                 "/api/aspirantes",
-                                "/api/aspirant-familiar",
+                                "/api/aspirante-familiar",
                                 "/api/solicitudes-admision"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/personas/*",
+                                "/api/familiares/*",
+                                "/api/aspirantes/*"
                         ).permitAll()
 
                         .requestMatchers("/api/**").authenticated()

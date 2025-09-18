@@ -11,7 +11,11 @@ import type { PostulacionFormData } from "./types";
 
 interface Step4Props {
   formData: PostulacionFormData;
-  handleInputChange: (field: string, value: any) => void;
+  handleInputChange: (
+    field: string,
+    value: any,
+    options?: { errorKeys?: string | string[] },
+  ) => void;
 }
 
 export function Step4({ formData, handleInputChange }: Step4Props) {

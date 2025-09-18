@@ -15,11 +15,16 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { RolVinculo } from "@/types/api-generated";
 import type { PostulacionFormData } from "./types";
 
 interface Step2Props {
   formData: PostulacionFormData;
-  handleInputChange: (field: string, value: any) => void;
+  handleInputChange: (
+    field: string,
+    value: any,
+    options?: { errorKeys?: string | string[] },
+  ) => void;
   addFamiliar: () => void;
   errors?: Record<string, boolean>;
 }
@@ -31,6 +36,12 @@ export function Step2({
   errors = {},
 }: Step2Props) {
   const familiares = formData.familiares ?? [];
+  const relationshipOptions: { value: RolVinculo; label: string }[] = [
+    { value: RolVinculo.PADRE, label: "Padre" },
+    { value: RolVinculo.MADRE, label: "Madre" },
+    { value: RolVinculo.TUTOR, label: "Tutor/a" },
+    { value: RolVinculo.OTRO, label: "Otro/a" },
+  ];
 
   return (
     <div className="space-y-4">
@@ -57,6 +68,12 @@ export function Step2({
         </p>
       )}
 
+      {errors.familiares && (
+        <p className="text-sm text-destructive">
+          Agregá al menos un familiar con sus datos completos.
+        </p>
+      )}
+
       {/* ——— Lista de Formularios de cada Familiar ——— */}
       <div className="space-y-6">
         {familiares.map((f, i) => (
@@ -75,6 +92,7 @@ export function Step2({
                       familiares.map((x, j) =>
                         j === i ? { ...x, tipoRelacion: v as string } : x,
                       ),
+                      { errorKeys: [`familiares.${i}.tipoRelacion`] },
                     )
                   }
                   className={cn(
@@ -86,11 +104,11 @@ export function Step2({
                     <SelectValue placeholder="Seleccione relación" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PADRE">Padre</SelectItem>
-                    <SelectItem value="MADRE">Madre</SelectItem>
-                    <SelectItem value="TUTOR">Tutor</SelectItem>
-                    <SelectItem value="ABUELO">Abuelo</SelectItem>
-                    <SelectItem value="ABUELA">Abuela</SelectItem>
+                    {relationshipOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -115,6 +133,7 @@ export function Step2({
                             }
                           : x,
                       ),
+                      { errorKeys: [`familiares.${i}.familiar.nombre`] },
                     )
                   }
                   placeholder="Nombre"
@@ -145,6 +164,7 @@ export function Step2({
                             }
                           : x,
                       ),
+                      { errorKeys: [`familiares.${i}.familiar.apellido`] },
                     )
                   }
                   placeholder="Apellido"
@@ -180,6 +200,7 @@ export function Step2({
                             }
                           : x,
                       ),
+                      { errorKeys: [`familiares.${i}.familiar.dni`] },
                     )
                   }
                   placeholder="12345678"
@@ -213,6 +234,7 @@ export function Step2({
                             }
                           : x,
                       ),
+                      { errorKeys: [`familiares.${i}.familiar.fechaNacimiento`] },
                     )
                   }
                   className={cn(
@@ -243,6 +265,7 @@ export function Step2({
                             }
                           : x,
                       ),
+                      { errorKeys: [`familiares.${i}.familiar.emailContacto`] },
                     )
                   }
                   placeholder="email@dominio.com"

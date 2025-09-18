@@ -16,4 +16,7 @@ import org.hibernate.annotations.SQLDelete;
 public class PeriodoEscolar extends BaseEntity {
     @Column(nullable=false, unique=true)
     private Integer anio;
+
+    @Column(nullable = false)
+    private boolean cerrado = false;
 }

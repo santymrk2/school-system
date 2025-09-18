@@ -1,25 +1,15 @@
 package edu.ecep.base_app.service;
 
-import edu.ecep.base_app.domain.*;
-import edu.ecep.base_app.dtos.*;
-import edu.ecep.base_app.mappers.*;
-import edu.ecep.base_app.repos.*;
+import edu.ecep.base_app.domain.Trimestre;
+import edu.ecep.base_app.dtos.TrimestreCreateDTO;
+import edu.ecep.base_app.dtos.TrimestreDTO;
+import edu.ecep.base_app.mappers.TrimestreMapper;
+import edu.ecep.base_app.repos.TrimestreRepository;
 import edu.ecep.base_app.util.NotFoundException;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
-
-import java.time.LocalDate;
-
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -33,7 +23,16 @@ public class TrimestreService {
 
     @Transactional(readOnly = true)
     public List<TrimestreDTO> list() {
-        return repo.findAll().stream().map(mapper::toDto).toList();
+        return repo.findAll().stream()
+                .map(mapper::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TrimestreDTO> listByPeriodo(Long periodoEscolarId) {
+        return repo.findByPeriodoEscolarIdOrderByOrdenAsc(periodoEscolarId).stream()
+                .map(mapper::toDto)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -44,35 +43,29 @@ public class TrimestreService {
     }
 
     public Long create(TrimestreCreateDTO dto) {
-        Trimestre e = mapper.toEntity(dto);
-        e.setCerrado(false);
-        return repo.save(e).getId();
+        Trimestre entity = mapper.toEntity(dto);
+        entity.setCerrado(false);
+        return repo.save(entity).getId();
     }
 
     public void update(Long id, TrimestreDTO dto) {
-        Trimestre t = repo.findById(id)
+        Trimestre entity = repo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Trimestre no encontrado"));
-
-        // Si necesitás tocar PeriodoEscolar relación, hacelo ANTES del merge
-        // if (dto.getPeriodoEscolarId() != null) {
-        //   t.setPeriodoEscolar(periodoRepo.getReferenceById(dto.getPeriodoEscolarId()));
-        // }
-
-        mapper.updateEntityFromDto(dto, t);
-        repo.save(t);
+        mapper.updateEntityFromDto(dto, entity);
+        repo.save(entity);
     }
 
     public void cerrar(Long id) {
-        Trimestre e = repo.findById(id)
+        Trimestre entity = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trimestre " + id + " no encontrado"));
-        e.setCerrado(true);
-        repo.save(e);
+        entity.setCerrado(true);
+        repo.save(entity);
     }
 
     public void reabrir(Long id) {
-        Trimestre e = repo.findById(id)
+        Trimestre entity = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trimestre " + id + " no encontrado"));
-        e.setCerrado(false);
-        repo.save(e);
+        entity.setCerrado(false);
+        repo.save(entity);
     }
 }

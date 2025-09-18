@@ -258,6 +258,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     private PeriodoEscolar nuevoPeriodo(int anio) {
         PeriodoEscolar p = new PeriodoEscolar();
         p.setAnio(anio);
+        p.setCerrado(false);
         return periodoEscolarRepository.save(p);
     }
 

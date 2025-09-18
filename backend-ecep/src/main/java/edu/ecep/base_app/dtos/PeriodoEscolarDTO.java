@@ -17,4 +17,5 @@ public class PeriodoEscolarDTO {
     @NotNull
     @Min(2000)
     Integer anio;
+    boolean cerrado;
 }

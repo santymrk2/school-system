@@ -14,6 +14,8 @@ export const cuotas = {
   list: () => http.get<DTO.CuotaDTO[]>('/api/cuotas'),
   byId: (id: number) => http.get<DTO.CuotaDTO>('/api/cuotas/' + id),
   create: (body: DTO.CuotaCreateDTO) => http.post<number>('/api/cuotas', body),
+  bulkCreate: (body: DTO.CuotaBulkCreateDTO) =>
+    http.post<number[]>('/api/cuotas/bulk', body),
   update: (id: number, body: DTO.CuotaDTO) => http.put<void>('/api/cuotas/' + id, body),
   delete: (id: number) => http.delete<void>('/api/cuotas/' + id),
 };

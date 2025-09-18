@@ -5,6 +5,8 @@ import edu.ecep.base_app.dtos.LicenciaDTO;
 import edu.ecep.base_app.mappers.LicenciaMapper;
 import edu.ecep.base_app.repos.LicenciaRepository;
 import edu.ecep.base_app.util.NotFoundException;
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -18,9 +20,20 @@ public class LicenciaService {
     private final LicenciaRepository repository;
     private final LicenciaMapper mapper;
 
-    public List<LicenciaDTO> findAll() {
-        return repository.findAll(Sort.by("id"))
-                .stream().map(mapper::toDto).toList();
+    public List<LicenciaDTO> findAll(Long empleadoId) {
+        List<Licencia> entities = empleadoId != null
+                ? repository.findByEmpleadoId(empleadoId)
+                : repository.findAll(Sort.by("fechaInicio").descending());
+
+        Comparator<Licencia> comparator = Comparator
+                .comparing(Licencia::getFechaInicio, Comparator.nullsLast(LocalDate::compareTo))
+                .thenComparing(Licencia::getId, Comparator.nullsLast(Long::compare))
+                .reversed();
+
+        return entities.stream()
+                .sorted(comparator)
+                .map(mapper::toDto)
+                .toList();
     }
 
     public LicenciaDTO get(Long id) {
@@ -32,6 +45,9 @@ public class LicenciaService {
     // <- create con CreateDTO
     public Long create(LicenciaCreateDTO dto) {
         Licencia entity = mapper.toEntity(dto);
+        if (entity.getJustificada() == null) {
+            entity.setJustificada(Boolean.FALSE);
+        }
         return repository.save(entity).getId();
     }
 
@@ -40,6 +56,9 @@ public class LicenciaService {
         Licencia entity = repository.findById(id)
                 .orElseThrow(NotFoundException::new);
         mapper.update(entity, dto); // usa @MappingTarget en el mapper
+        if (entity.getJustificada() == null) {
+            entity.setJustificada(Boolean.FALSE);
+        }
         repository.save(entity);
     }
 

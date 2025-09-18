@@ -1,5 +1,6 @@
 package edu.ecep.base_app.dtos;
 
+import edu.ecep.base_app.domain.enums.RolEmpleado;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,6 +16,8 @@ public class EmpleadoDTO {
     @NotNull
     Long personaId;
 
+    @NotNull
+    private RolEmpleado rolEmpleado;
     private String cuil;
     private LocalDate fechaIngreso;
     private String condicionLaboral;

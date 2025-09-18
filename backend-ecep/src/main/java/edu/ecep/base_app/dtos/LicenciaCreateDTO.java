@@ -14,9 +14,14 @@ import java.time.LocalDate;
 public class LicenciaCreateDTO {
     @NotNull
     private Long empleadoId;
-    @NotNull private LocalDate desde;
-    private LocalDate hasta;
+    @NotBlank
+    private String tipoLicencia;
+    @NotNull
+    private LocalDate fechaInicio;
+    private LocalDate fechaFin;
     @NotBlank
     private String motivo;
+    private Boolean justificada;
+    private Integer horasAusencia;
     private String observaciones;
 }

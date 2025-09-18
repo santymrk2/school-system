@@ -1,5 +1,6 @@
 package edu.ecep.base_app.dtos;
 
+import edu.ecep.base_app.domain.enums.RolEmpleado;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -12,9 +13,12 @@ public class EmpleadoCreateDTO {
 
     private Long personaId;
 
+    private RolEmpleado rolEmpleado;
+    private String cuil;
     private String condicionLaboral;
     private String cargo;
     private String situacionActual;
     private LocalDate fechaIngreso;
     private String antecedentesLaborales;
+    private String observacionesGenerales;
 }

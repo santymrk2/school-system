@@ -21,7 +21,9 @@ import java.util.List;
 public class LicenciaController {
     private final LicenciaService service;
     @GetMapping
-    public List<LicenciaDTO> list(){ return service.findAll(); }
+    public List<LicenciaDTO> list(@RequestParam(required = false) Long empleadoId){
+        return service.findAll(empleadoId);
+    }
     @GetMapping("/{id}") public LicenciaDTO get(@PathVariable Long id){ return service.get(id); }
     @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid LicenciaCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
     @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid LicenciaDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }

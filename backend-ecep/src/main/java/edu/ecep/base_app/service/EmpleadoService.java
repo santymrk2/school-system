@@ -47,6 +47,9 @@ public class EmpleadoService {
         if (dto.getPersonaId() == null) {
             throw new IllegalArgumentException("Debe enviar personaId");
         }
+        if (dto.getRolEmpleado() == null) {
+            throw new IllegalArgumentException("Debe enviar rolEmpleado");
+        }
 
         // 1) Persona existente
         Persona persona = personaRepository.findById(dto.getPersonaId())
@@ -60,11 +63,14 @@ public class EmpleadoService {
         // 3) Crear empleado (si usás @MapsId, el id del empleado será el de persona)
         Empleado p = new Empleado();
         p.setPersona(persona);
+        p.setRolEmpleado(dto.getRolEmpleado());
+        p.setCuil(dto.getCuil());
         p.setCondicionLaboral(dto.getCondicionLaboral());
         p.setCargo(dto.getCargo());
         p.setSituacionActual(dto.getSituacionActual());
         p.setFechaIngreso(dto.getFechaIngreso());
         p.setAntecedentesLaborales(dto.getAntecedentesLaborales());
+        p.setObservacionesGenerales(dto.getObservacionesGenerales());
 
         p = repo.save(p);
         return mapper.toDto(p);
@@ -88,11 +94,14 @@ public class EmpleadoService {
         }
 
         // Update laboral (solo campos no nulos)
+        if (dto.getRolEmpleado() != null)       p.setRolEmpleado(dto.getRolEmpleado());
+        if (dto.getCuil() != null)              p.setCuil(dto.getCuil());
         if (dto.getCondicionLaboral() != null)  p.setCondicionLaboral(dto.getCondicionLaboral());
         if (dto.getCargo() != null)             p.setCargo(dto.getCargo());
         if (dto.getSituacionActual() != null)   p.setSituacionActual(dto.getSituacionActual());
         if (dto.getFechaIngreso() != null)      p.setFechaIngreso(dto.getFechaIngreso());
         if (dto.getAntecedentesLaborales() != null) p.setAntecedentesLaborales(dto.getAntecedentesLaborales());
+        if (dto.getObservacionesGenerales() != null) p.setObservacionesGenerales(dto.getObservacionesGenerales());
 
         // Hibernate hace flush al salir de @Transactional
         return mapper.toDto(p);

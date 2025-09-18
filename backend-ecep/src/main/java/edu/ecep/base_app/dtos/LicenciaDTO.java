@@ -15,9 +15,14 @@ public class LicenciaDTO {
     private Long id;
     @NotNull
     private Long empleadoId;
-    @NotNull private LocalDate desde;  // <- renombrado
-    private LocalDate hasta;           // <- renombrado
+    @NotBlank
+    private String tipoLicencia;
+    @NotNull
+    private LocalDate fechaInicio;
+    private LocalDate fechaFin;
     @NotBlank
     private String motivo;
-    // Si tu entidad realmente tiene tipoLicencia, agregalo acá.
+    private Boolean justificada;
+    private Integer horasAusencia;
+    private String observaciones;
 }

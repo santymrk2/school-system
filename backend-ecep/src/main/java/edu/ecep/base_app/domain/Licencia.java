@@ -26,11 +26,20 @@ public class Licencia extends BaseEntity{
     @Column(nullable = false)
     private LocalDate fechaInicio;
 
-    @Column(nullable = false)
+    @Column
     private LocalDate fechaFin;
 
     @Column(length = 1000)
     private String motivo;
+
+    @Column(nullable = false)
+    private Boolean justificada = Boolean.FALSE;
+
+    @Column(name = "horas_ausencia")
+    private Integer horasAusencia;
+
+    @Column(length = 1000)
+    private String observaciones;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empleado_id", nullable = false)

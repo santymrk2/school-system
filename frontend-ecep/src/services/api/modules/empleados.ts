@@ -7,9 +7,9 @@ export const empleados = {
   list: () => http.get<DTO.EmpleadoDTO[]>("/api/empleados"),
   byId: (id: number) => http.get<DTO.EmpleadoDTO>("/api/empleados/" + id),
   create: (body: DTO.EmpleadoCreateDTO) =>
-    http.post<number>("/api/empleados", body),
+    http.post<DTO.EmpleadoDTO>("/api/empleados", body),
   update: (id: number, body: DTO.EmpleadoUpdateDTO) =>
-    http.put<number>("/api/empleados/" + id, body),
+    http.put<void>("/api/empleados/" + id, body),
   delete: (id: number) => http.delete<void>("/api/empleados/" + id),
 };
 

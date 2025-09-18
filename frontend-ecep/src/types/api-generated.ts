@@ -423,16 +423,20 @@ export interface EmisionCuotaDTO {
 export interface EmpleadoCreateDTO {
   id?: number;
   personaId?: number;
+  rolEmpleado?: RolEmpleado;
+  cuil?: string;
   condicionLaboral?: string;
   cargo?: string;
   situacionActual?: string;
   fechaIngreso?: ISODate;
   antecedentesLaborales?: string;
+  observacionesGenerales?: string;
 }
 
 export interface EmpleadoDTO {
   id: number;
   personaId?: number;
+  rolEmpleado?: RolEmpleado;
   cuil?: string;
   fechaIngreso?: ISODate;
   condicionLaboral?: string;
@@ -445,11 +449,14 @@ export interface EmpleadoDTO {
 export interface EmpleadoUpdateDTO {
   id?: number;
   personaId?: number;
+  rolEmpleado?: RolEmpleado;
+  cuil?: string;
   condicionLaboral?: string;
   cargo?: string;
   situacionActual?: string;
   fechaIngreso?: ISODate;
   antecedentesLaborales?: string;
+  observacionesGenerales?: string;
 }
 
 export interface InformeInicialCreateDTO {
@@ -483,18 +490,24 @@ export interface JornadaAsistenciaDTO {
 export interface LicenciaCreateDTO {
   id?: number;
   empleadoId?: number;
+  tipoLicencia?: string;
   fechaInicio?: ISODate;
   fechaFin?: ISODate;
   motivo?: string;
+  justificada?: boolean;
+  horasAusencia?: number;
   observaciones?: string;
 }
 
 export interface LicenciaDTO {
   id: number;
   empleadoId?: number;
+  tipoLicencia?: string;
   fechaInicio?: ISODate;
   fechaFin?: ISODate;
   motivo?: string;
+  justificada?: boolean;
+  horasAusencia?: number;
   observaciones?: string;
 }
 

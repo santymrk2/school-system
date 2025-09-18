@@ -16,11 +16,29 @@ import java.util.List;
 public class CalificacionTrimestralService {
     private final CalificacionTrimestralRepository repo; private final CalificacionTrimestralMapper mapper; private final TrimestreRepository trimRepo;
     public List<CalificacionTrimestralDTO> findAll(){ return repo.findAll().stream().map(mapper::toDto).toList(); }
+    public CalificacionTrimestralDTO get(Long id){
+        return repo.findById(id)
+                .map(mapper::toDto)
+                .orElseThrow(() -> new NotFoundException("No encontrado"));
+    }
     public Long create(CalificacionTrimestralCreateDTO dto){
         Trimestre tri = trimRepo.findById(dto.getTrimestreId()).orElseThrow(() -> new NotFoundException("No encontrado"));
         if(tri.isCerrado()) throw new IllegalArgumentException("Trimestre cerrado");
         if(repo.existsByTrimestreIdAndSeccionMateriaIdAndMatriculaId(dto.getTrimestreId(), dto.getSeccionMateriaId(), dto.getMatriculaId()))
             throw new IllegalArgumentException("Calificación trimestral duplicada");
         return repo.save(mapper.toEntity(dto)).getId();
+    }
+
+    public void update(Long id, CalificacionTrimestralDTO dto){
+        var entity = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
+        var trimestre = trimRepo.findById(dto.getTrimestreId()).orElseThrow(() -> new NotFoundException("No encontrado"));
+        if(trimestre.isCerrado()) throw new IllegalArgumentException("Trimestre cerrado");
+        mapper.update(entity, dto);
+        repo.save(entity);
+    }
+
+    public void delete(Long id){
+        if(!repo.existsById(id)) throw new NotFoundException("No encontrado");
+        repo.deleteById(id);
     }
 }

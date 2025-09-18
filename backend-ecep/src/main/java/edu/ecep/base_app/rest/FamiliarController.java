@@ -1,11 +1,15 @@
 package edu.ecep.base_app.rest;
 
+import edu.ecep.base_app.domain.MatriculaSeccionHistorial;
+import edu.ecep.base_app.domain.Seccion;
 import edu.ecep.base_app.dtos.AlumnoLiteDTO;
 import edu.ecep.base_app.dtos.FamiliarDTO;
 import edu.ecep.base_app.repos.AlumnoFamiliarRepository;
 import edu.ecep.base_app.repos.MatriculaRepository;
+import edu.ecep.base_app.repos.MatriculaSeccionHistorialRepository;
 import edu.ecep.base_app.service.FamiliarService;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +35,7 @@ public class FamiliarController {
     private final FamiliarService service;
     private final AlumnoFamiliarRepository repoFam;
     private final MatriculaRepository matriculaRepo;
+    private final MatriculaSeccionHistorialRepository historialRepo;
 
     @GetMapping public List<FamiliarDTO> list(){ return service.findAll(); }
     @GetMapping("/{id}") public FamiliarDTO get(@PathVariable Long id){ return service.get(id); }
@@ -48,8 +53,33 @@ public class FamiliarController {
             String nombre = Optional.ofNullable(p)
                     .map(px -> (px.getApellido() != null ? px.getApellido() : "") +
                             (px.getNombre()   != null ? (", " + px.getNombre()) : ""))
-                    .orElse("#" + al.getId());            return mats.stream().map(m -> new AlumnoLiteDTO(m.getId(), al.getId(), nombre));
+                    .orElse("#" + al.getId());
+
+            return mats.stream().map(m -> {
+                var vigente = historialRepo.findVigente(m.getId(), LocalDate.now()).stream().findFirst();
+                var seccion = vigente.map(MatriculaSeccionHistorial::getSeccion);
+                Long seccionId = seccion.map(Seccion::getId).orElse(null);
+                String seccionNombre = seccion.map(this::buildSeccionNombre).orElse(null);
+                var nivel = seccion.map(Seccion::getNivel).orElse(null);
+                return new AlumnoLiteDTO(
+                        m.getId(),
+                        al.getId(),
+                        nombre,
+                        seccionId,
+                        seccionNombre,
+                        nivel
+                );
+            });
         }).toList();
     }
-}
 
+    private String buildSeccionNombre(Seccion seccion) {
+        if (seccion == null) return null;
+        var grado = Optional.ofNullable(seccion.getGradoSala()).orElse("");
+        var division = Optional.ofNullable(seccion.getDivision()).orElse("");
+        var turno = Optional.ofNullable(seccion.getTurno()).map(Enum::name).orElse("");
+        String base = (grado + " " + division).trim();
+        if (base.isEmpty()) base = "Sección";
+        return turno.isEmpty() ? base : base + " (" + turno + ")";
+    }
+}

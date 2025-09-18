@@ -34,9 +34,21 @@ public class DetalleAsistenciaController {
         return service.findAll();
     }
 
+    @GetMapping("/{id}")
+    public DetalleAsistenciaDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+
     @PostMapping
     public ResponseEntity<Long> marcar(@RequestBody @Validated DetalleAsistenciaCreateDTO dto) {
         return new ResponseEntity<>(service.marcar(dto), HttpStatus.CREATED);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable Long id,
+                                       @RequestBody @Validated DetalleAsistenciaUpdateDTO dto) {
+        service.actualizarParcial(id, dto);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/search")

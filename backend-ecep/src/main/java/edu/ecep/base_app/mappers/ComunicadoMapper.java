@@ -10,6 +10,7 @@ import org.mapstruct.MappingTarget;
 @Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface ComunicadoMapper {
     @Mapping(target = "seccionId", source = "seccion.id")
+    @Mapping(target = "fechaCreacion", source = "dateCreated")
     ComunicadoDTO toDto(Comunicado e);
 
     @Mapping(target = "seccion", source = "seccionId")

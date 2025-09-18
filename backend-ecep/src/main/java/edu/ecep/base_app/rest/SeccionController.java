@@ -1,5 +1,6 @@
 package edu.ecep.base_app.rest;
 
+import edu.ecep.base_app.domain.Seccion;
 import edu.ecep.base_app.dtos.AlumnoLiteDTO;
 import edu.ecep.base_app.dtos.SeccionCreateDTO;
 import edu.ecep.base_app.dtos.SeccionDTO;
@@ -32,7 +33,10 @@ public class SeccionController {
     private final MatriculaSeccionHistorialRepository mshRepo;
 
     @GetMapping public List<SeccionDTO> list(){ return service.findAll(); }
+    @GetMapping("/{id}") public SeccionDTO get(@PathVariable Long id){ return service.get(id); }
     @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SeccionCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid SeccionDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
     @GetMapping("/{id}/alumnos")
     @Transactional(readOnly=true)
     public List<AlumnoLiteDTO> alumnosActivos(
@@ -50,7 +54,26 @@ public class SeccionController {
                             ", " +
                             (p.getNombre() != null ? p.getNombre() : ""))
                     .orElse("#" + alumno.getId());
-            return new AlumnoLiteDTO(matricula.getId(), alumno.getId(), nombre);
+            var seccion = m.getSeccion();
+            return new AlumnoLiteDTO(
+                    matricula.getId(),
+                    alumno.getId(),
+                    nombre,
+                    seccion != null ? seccion.getId() : null,
+                    buildSeccionNombre(seccion),
+                    seccion != null ? seccion.getNivel() : null
+            );
         }).toList();
+    }
+
+    private String buildSeccionNombre(Seccion seccion) {
+        if (seccion == null) return null;
+        var base = ((Optional.ofNullable(seccion.getGradoSala()).orElse("")) +
+                " " +
+                Optional.ofNullable(seccion.getDivision()).orElse(""))
+                .trim();
+        if (base.isEmpty()) base = "Sección";
+        var turno = Optional.ofNullable(seccion.getTurno()).map(Enum::name).orElse("");
+        return turno.isEmpty() ? base : base + " (" + turno + ")";
     }
 }

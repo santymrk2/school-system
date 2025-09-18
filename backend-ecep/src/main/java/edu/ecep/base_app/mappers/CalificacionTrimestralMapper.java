@@ -5,6 +5,7 @@ import edu.ecep.base_app.dtos.CalificacionTrimestralCreateDTO;
 import edu.ecep.base_app.dtos.CalificacionTrimestralDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface CalificacionTrimestralMapper {
@@ -17,4 +18,9 @@ public interface CalificacionTrimestralMapper {
     @Mapping(target = "seccionMateria", source = "seccionMateriaId")
     @Mapping(target = "matricula", source = "matriculaId")
     CalificacionTrimestral toEntity(CalificacionTrimestralCreateDTO dto);
+
+    @Mapping(target = "trimestre", source = "trimestreId")
+    @Mapping(target = "seccionMateria", source = "seccionMateriaId")
+    @Mapping(target = "matricula", source = "matriculaId")
+    void update(@MappingTarget CalificacionTrimestral entity, CalificacionTrimestralDTO dto);
 }

@@ -22,4 +22,23 @@ public class MatriculaService {
             throw new IllegalArgumentException("El alumno ya tiene matrícula en ese periodo");
         return repo.save(mapper.toEntity(dto)).getId();
     }
+
+    public MatriculaDTO get(Long id){
+        return repo.findById(id)
+                .map(mapper::toDto)
+                .orElseThrow(NotFoundException::new);
+    }
+
+    public void update(Long id, MatriculaDTO dto){
+        var entity = repo.findById(id).orElseThrow(NotFoundException::new);
+        mapper.update(entity, dto);
+        repo.save(entity);
+    }
+
+    public void delete(Long id){
+        if(!repo.existsById(id)){
+            throw new NotFoundException();
+        }
+        repo.deleteById(id);
+    }
 }

@@ -68,6 +68,12 @@ public class JornadaAsistenciaController {
         return new ResponseEntity<>(service.abrir(dto), HttpStatus.CREATED);
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
 
     @GetMapping("/{id}")
     public JornadaAsistenciaDTO get(@PathVariable Long id) {

@@ -13,6 +13,11 @@ public interface AlumnoMapper {
 
     // Entity -> DTO
     @Mapping(target = "personaId", source = "persona.id")
+    @Mapping(target = "nombre", source = "persona.nombre")
+    @Mapping(target = "apellido", source = "persona.apellido")
+    @Mapping(target = "dni", source = "persona.dni")
+    @Mapping(target = "seccionActualId", ignore = true)
+    @Mapping(target = "seccionActualNombre", ignore = true)
     AlumnoDTO toDto(Alumno e);
 
     // DTO -> Entity

@@ -18,11 +18,19 @@ import org.springframework.stereotype.Service;
 public class InformeInicialService {
     private final InformeInicialRepository repo; private final InformeInicialMapper mapper; private final TrimestreRepository trimRepo;
     public List<InformeInicialDTO> findAll(){ return repo.findAll().stream().map(mapper::toDto).toList(); }
+    public InformeInicialDTO get(Long id){
+        return repo.findById(id).map(mapper::toDto).orElseThrow(NotFoundException::new);
+    }
     public Long create(InformeInicialCreateDTO dto) {
         return repo.save(mapper.toEntity(dto)).getId();
     }
     public void update(Long id, InformeInicialDTO dto) {
         InformeInicial e = repo.findById(id).orElseThrow(NotFoundException::new);
         mapper.update(e, dto);
+        repo.save(e);
+    }
+    public void delete(Long id){
+        if(!repo.existsById(id)) throw new NotFoundException();
+        repo.deleteById(id);
     }
 }

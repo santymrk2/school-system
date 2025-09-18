@@ -55,6 +55,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     // === Aspirantes (si aplica) ===
     private final AspiranteRepository aspiranteRepository;
     private final AspiranteFamiliarRepository aspiranteFamiliarRepository;
+    private final SolicitudAdmisionRepository solicitudAdmisionRepository;
 
     @Override
     @Transactional
@@ -110,8 +111,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
 
 
         // 6) Aspirantes de ejemplo (con familiar)
-        crearAspiranteConFamiliar(new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001"));
-        crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega",     "47000002", "Eliana", "Vega",     "33000002"));
+        Aspirante aspirante1 = crearAspiranteConFamiliar(new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001"));
+        Aspirante aspirante2 = crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega",     "47000002", "Eliana", "Vega",     "33000002"));
+        crearSolicitudesDemostracion(aspirante1, aspirante2);
 
         // 7) Usuario docente demo + asignaciones + extra de datos/secciones
         ensureDocenteDemoUserYAsignacion(docPrim1A, primario1A);
@@ -498,10 +500,59 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     // ASPIRANTES
     // =========================================================================
 
-    private void crearAspiranteConFamiliar(PersonaSeed seed) {
+    private Aspirante crearAspiranteConFamiliar(PersonaSeed seed) {
         Aspirante a = ensureAspirante(seed.nombre(), seed.apellido(), seed.dni());
         Familiar f = ensureFamiliar(seed.famNombre(), seed.famApellido(), seed.famDni());
         ensureVinculoAspiranteFamiliar(a, f, RolVinculo.MADRE, false);
+        return a;
+    }
+    private void crearSolicitudesDemostracion(Aspirante aspirantePendiente, Aspirante aspiranteProgramado) {
+        if (aspirantePendiente != null) {
+            crearSolicitudAdmision(aspirantePendiente, solicitud -> {
+                LocalDate hoy = LocalDate.now();
+                solicitud.setEstado("PROPUESTA_ENVIADA");
+                solicitud.setPropuestaFecha1(hoy.plusDays(7));
+                solicitud.setPropuestaFecha2(hoy.plusDays(9));
+                solicitud.setPropuestaFecha3(hoy.plusDays(11));
+                solicitud.setFechaLimiteRespuesta(hoy.plusDays(15));
+                solicitud.setCupoDisponible(true);
+                solicitud.setDisponibilidadCurso("Vacante disponible");
+                solicitud.setDocumentosRequeridos("DNI del alumno y familia\nCertificado de nacimiento");
+                solicitud.setAdjuntosInformativos("https://institucion.example/plan.pdf||https://institucion.example/normativa.pdf");
+                solicitud.setEmailConfirmacionEnviado(true);
+            });
+        }
+
+        if (aspiranteProgramado != null) {
+            crearSolicitudAdmision(aspiranteProgramado, solicitud -> {
+                LocalDate hoy = LocalDate.now();
+                solicitud.setEstado("ENTREVISTA_PROGRAMADA");
+                solicitud.setPropuestaFecha1(hoy.plusDays(-5));
+                solicitud.setPropuestaFecha2(hoy.plusDays(-3));
+                solicitud.setPropuestaFecha3(hoy.plusDays(-1));
+                solicitud.setFechaLimiteRespuesta(hoy.minusDays(10));
+                solicitud.setFechaRespuestaFamilia(hoy.minusDays(9));
+                solicitud.setFechaEntrevista(hoy.plusDays(2));
+                solicitud.setCupoDisponible(true);
+                solicitud.setDisponibilidadCurso("Entrevista programada");
+                solicitud.setDocumentosRequeridos("Carpeta médica\nBoletín escolar");
+                solicitud.setAdjuntosInformativos("https://institucion.example/proyecto.pdf");
+                solicitud.setNotasDireccion("Familia solicitó entrevista vespertina.");
+                solicitud.setEmailConfirmacionEnviado(true);
+            });
+        }
+    }
+
+    private void crearSolicitudAdmision(Aspirante aspirante, java.util.function.Consumer<SolicitudAdmision> patch) {
+        if (solicitudAdmisionRepository.existsByAspiranteId(aspirante.getId())) {
+            return;
+        }
+        SolicitudAdmision solicitud = new SolicitudAdmision();
+        solicitud.setAspirante(aspirante);
+        solicitud.setEstado("PENDIENTE");
+        solicitud.setCupoDisponible(Boolean.FALSE);
+        patch.accept(solicitud);
+        solicitudAdmisionRepository.save(solicitud);
     }
 
     private Aspirante ensureAspirante(String nombre, String apellido, String dni) {

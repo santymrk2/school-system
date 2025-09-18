@@ -4,9 +4,9 @@ import edu.ecep.base_app.domain.ActaAccidente;
 import edu.ecep.base_app.dtos.ActaAccidenteCreateDTO;
 import edu.ecep.base_app.dtos.ActaAccidenteDTO;
 import edu.ecep.base_app.dtos.ActaAccidenteUpdateDTO;
+import edu.ecep.base_app.domain.enums.EstadoActaAccidente;
 import edu.ecep.base_app.mappers.ActaAccidenteMapper;
 import edu.ecep.base_app.repos.ActaAccidenteRepository;
-import edu.ecep.base_app.util.NotFoundException;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -28,6 +28,12 @@ public class ActaAccidenteService {
                 .stream().map(mapper::toDto).toList();
     }
 
+    public ActaAccidenteDTO get(Long id){
+        return repo.findById(id)
+                .map(mapper::toDto)
+                .orElseThrow(() -> new EntityNotFoundException("Acta no encontrada: " + id));
+    }
+
     public Long create(ActaAccidenteCreateDTO dto){
         if (ChronoUnit.DAYS.between(dto.getFechaSuceso(), LocalDate.now()) > 2)
             throw new IllegalArgumentException("Fuera de ventana de edición");
@@ -38,10 +44,21 @@ public class ActaAccidenteService {
         ActaAccidente acta = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Acta no encontrada: " + id));
 
-        long diffOriginal = ChronoUnit.DAYS.between(acta.getFechaSuceso(), LocalDate.now());
-        long diffNueva    = ChronoUnit.DAYS.between(dto.fechaSuceso(), LocalDate.now());
-        if (diffOriginal > 2 || diffNueva > 2) {
-            throw new IllegalArgumentException("Fuera de ventana de edición");
+        boolean onlyMarkSigned =
+                java.util.Objects.equals(acta.getFechaSuceso(), dto.fechaSuceso()) &&
+                java.util.Objects.equals(acta.getHoraSuceso(), dto.horaSuceso()) &&
+                java.util.Objects.equals(acta.getLugar(), dto.lugar()) &&
+                java.util.Objects.equals(acta.getAcciones(), dto.acciones()) &&
+                java.util.Objects.equals(acta.getDescripcion(), dto.descripcion()) &&
+                dto.estado() == EstadoActaAccidente.CERRADA &&
+                acta.getEstado() != EstadoActaAccidente.CERRADA;
+
+        if (!onlyMarkSigned) {
+            long diffOriginal = ChronoUnit.DAYS.between(acta.getFechaSuceso(), LocalDate.now());
+            long diffNueva    = ChronoUnit.DAYS.between(dto.fechaSuceso(), LocalDate.now());
+            if (diffOriginal > 2 || diffNueva > 2) {
+                throw new IllegalArgumentException("Fuera de ventana de edición");
+            }
         }
 
         mapper.applyUpdate(acta, dto);

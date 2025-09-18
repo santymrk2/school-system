@@ -17,6 +17,11 @@ import org.springframework.stereotype.Service;
 public class CuotaService {
     private final CuotaRepository repo; private final CuotaMapper mapper;
     public List<CuotaDTO> findAll(){ return repo.findAll(Sort.by("anio","mes")).stream().map(mapper::toDto).toList(); }
+    public CuotaDTO get(Long id){
+        return repo.findById(id)
+                .map(mapper::toDto)
+                .orElseThrow(NotFoundException::new);
+    }
     public Long create(CuotaCreateDTO dto){
         // reglas de unicidad por concepto
         if(dto.getConcepto()== ConceptoCuota.MENSUALIDAD && repo.existsByMatriculaIdAndAnioAndMesAndConcepto(dto.getMatriculaId(), dto.getAnio(), dto.getMes(), dto.getConcepto()))
@@ -24,5 +29,16 @@ public class CuotaService {
         if(dto.getConcepto()==ConceptoCuota.MATRICULA && repo.existsByMatriculaIdAndAnioAndConcepto(dto.getMatriculaId(), dto.getAnio(), dto.getConcepto()))
             throw new IllegalArgumentException("Matrícula duplicada");
         return repo.save(mapper.toEntity(dto)).getId();
+    }
+
+    public void update(Long id, CuotaDTO dto){
+        var entity = repo.findById(id).orElseThrow(NotFoundException::new);
+        mapper.update(entity, dto);
+        repo.save(entity);
+    }
+
+    public void delete(Long id){
+        if(!repo.existsById(id)) throw new NotFoundException();
+        repo.deleteById(id);
     }
 }

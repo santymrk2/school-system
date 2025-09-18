@@ -1,10 +1,14 @@
 package edu.ecep.base_app.rest;
 
 import edu.ecep.base_app.dtos.PersonaDTO; // si no tenés, podés devolver un map básico
+import edu.ecep.base_app.dtos.PersonaCreateDTO;
+import edu.ecep.base_app.dtos.PersonaUpdateDTO;
+import edu.ecep.base_app.mappers.PersonaMapper;
 import edu.ecep.base_app.repos.*;
 import edu.ecep.base_app.domain.Persona;
 import edu.ecep.base_app.util.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -20,27 +24,14 @@ public class PersonaController {
     private final EmpleadoRepository empleadoRepository;
     private final FamiliarRepository familiarRepository;
     private final AspiranteRepository aspiranteRepository;
+    private final PersonaMapper personaMapper;
 
     // PersonaController
     @GetMapping("/{personaId}")
     public ResponseEntity<PersonaDTO> get(@PathVariable Long personaId) {
         Persona p = personaRepository.findById(personaId)
                 .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
-        PersonaDTO dto = PersonaDTO.builder()
-                .id(p.getId())
-                .nombre(p.getNombre())
-                .apellido(p.getApellido())
-                .dni(p.getDni())
-                .fechaNacimiento(p.getFechaNacimiento())
-                .genero(p.getGenero())
-                .estadoCivil(p.getEstadoCivil())
-                .nacionalidad(p.getNacionalidad())
-                .domicilio(p.getDomicilio())
-                .telefono(p.getTelefono())
-                .celular(p.getCelular())
-                .email(p.getEmail())
-                .build();
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(personaMapper.toDto(p));
     }
 
     @GetMapping("/dni/{dni}")
@@ -49,6 +40,26 @@ public class PersonaController {
                 .map(Persona::getId)
                 .orElseThrow(() -> new NotFoundException("Persona no encontrada por DNI"));
         return ResponseEntity.ok(id);
+    }
+
+    @PostMapping
+    public ResponseEntity<Long> create(@RequestBody @Validated PersonaCreateDTO dto) {
+        if (personaRepository.existsByDni(dto.getDni())) {
+            throw new IllegalArgumentException("Ya existe una persona con ese DNI");
+        }
+        Persona entity = personaMapper.toEntity(dto);
+        Persona saved = personaRepository.save(entity);
+        return new ResponseEntity<>(saved.getId(), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{personaId}")
+    public ResponseEntity<Void> update(@PathVariable Long personaId,
+                                       @RequestBody @Validated PersonaUpdateDTO dto) {
+        Persona entity = personaRepository.findById(personaId)
+                .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
+        personaMapper.update(entity, dto);
+        personaRepository.save(entity);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{personaId}/roles")

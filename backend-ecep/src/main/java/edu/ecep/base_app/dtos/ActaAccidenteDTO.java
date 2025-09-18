@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 // =============================================================
 // 8) Actas de accidente (SIN presentes linkeados; informante obligatorio)
@@ -23,9 +24,16 @@ public class ActaAccidenteDTO {
     LocalDate fechaSuceso;
     @NotBlank
     String descripcion;
+    @NotBlank
+    String lugar;
+    @NotNull
+    LocalTime horaSuceso;
+    @NotBlank
+    String acciones;
     @NotNull
     EstadoActaAccidente estado;
     String creadoPor;
     @NotNull
     Long informanteId;
+    Long firmanteId;
 }

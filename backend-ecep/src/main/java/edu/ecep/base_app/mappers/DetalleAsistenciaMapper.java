@@ -17,7 +17,8 @@ public interface DetalleAsistenciaMapper {
     // Entity -> DTO
     @Mappings({
             @Mapping(target = "jornadaId", source = "jornada.id"),
-            @Mapping(target = "matriculaId", source = "matricula.id")
+            @Mapping(target = "matriculaId", source = "matricula.id"),
+            @Mapping(target = "observacion", source = "obs")
     })
     DetalleAsistenciaDTO toDto(DetalleAsistencia entity);
 
@@ -31,7 +32,8 @@ public interface DetalleAsistenciaMapper {
             @Mapping(target = "activo", ignore = true),
             @Mapping(target = "fechaEliminacion", ignore = true),
             @Mapping(target = "jornada", expression = "java(jornadaFromId(dto.getJornadaId()))"),
-            @Mapping(target = "matricula", expression = "java(matriculaFromId(dto.getMatriculaId()))")
+            @Mapping(target = "matricula", expression = "java(matriculaFromId(dto.getMatriculaId()))"),
+            @Mapping(target = "obs", source = "observacion")
     })
     DetalleAsistencia toEntity(DetalleAsistenciaCreateDTO dto);
 

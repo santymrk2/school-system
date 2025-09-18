@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
@@ -18,7 +19,14 @@ public class ActaAccidenteCreateDTO {
     LocalDate fechaSuceso;
     @NotBlank
     String descripcion;
+    @NotBlank
+    String lugar;
+    @NotNull
+    LocalTime horaSuceso;
+    @NotBlank
+    String acciones;
     @NotNull
     Long informanteId;
+    Long firmanteId;
     String creadoPor;
 }

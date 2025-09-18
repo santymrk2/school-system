@@ -65,9 +65,27 @@ services:
       - ./frontend-ecep:/app
       - /app/node_modules
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_API_URL: https://api.ecep.dpdns.org
     depends_on:
       - backend
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    # Usamos el config-docker.yml que acabamos de crear en tu HOME
+    command: tunnel --config /etc/cloudflared/config-docker.yml run
+    volumes:
+      - ${HOME}/.cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "2000:2000" # opcional: ver /ready y /metrics
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:2000/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   pgdata:

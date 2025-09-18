@@ -36,17 +36,47 @@ public class SolicitudAdmision extends BaseEntity{
     @Column(nullable = false, length = 50)
     private String estado;
 
+    @Column(length = 100)
+    private String disponibilidadCurso;
+
+    @Column
+    private Boolean cupoDisponible;
+
     @Column(length = 1000)
     private String motivoRechazo;
 
     @Column
-    private LocalDate fechaEntrevista;
+    private LocalDate fechaEntrevista; // fecha confirmada con la familia
+
+    @Column
+    private LocalDate propuestaFecha1;
+
+    @Column
+    private LocalDate propuestaFecha2;
+
+    @Column
+    private LocalDate propuestaFecha3;
+
+    @Column
+    private LocalDate fechaLimiteRespuesta;
+
+    @Column
+    private LocalDate fechaRespuestaFamilia;
 
     @Column
     private Boolean emailConfirmacionEnviado;
 
     @Column
     private Boolean entrevistaRealizada;
+
+    @Column(length = 2000)
+    private String documentosRequeridos;
+
+    @Column(length = 2000)
+    private String adjuntosInformativos;
+
+    @Column(length = 1000)
+    private String notasDireccion;
 
     @Column
     private Boolean autorizadoComunicacionesEmail;

@@ -20,4 +20,11 @@ public class AlumnoDTO {
     String observacionesGenerales;
     String motivoRechazoBaja;
 
+    // Datos visibles para listados
+    String nombre;
+    String apellido;
+    String dni;
+
+    Long seccionActualId;
+    String seccionActualNombre;
 }

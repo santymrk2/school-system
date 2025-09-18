@@ -44,7 +44,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOriginPatterns(
                         "http://localhost:3000",
                         "http://localhost:8080",
-                        "http://192.168.0.65:3000"
+                        "http://192.168.0.65:3000",
+                        "https://ecep.dpdns.org",
+                        "https://*.ngrok-free.app"
                 )
                 .withSockJS();
     }

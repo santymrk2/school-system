@@ -28,4 +28,5 @@ public class ComunicadoDTO {
     String cuerpo;
     OffsetDateTime fechaProgPublicacion;
     boolean publicado;
+    OffsetDateTime fechaCreacion;
 }

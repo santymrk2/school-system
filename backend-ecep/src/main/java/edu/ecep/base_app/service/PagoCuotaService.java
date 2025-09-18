@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 public class PagoCuotaService {
     private final PagoCuotaRepository repo; private final PagoCuotaMapper mapper; private final CuotaRepository cuotaRepo;
     public List<PagoCuotaDTO> findAll(){ return repo.findAll(Sort.by("id")).stream().map(mapper::toDto).toList(); }
+    public PagoCuotaDTO get(Long id){
+        return repo.findById(id).map(mapper::toDto).orElseThrow(() -> new NotFoundException("No encontrado"));
+    }
     public Long crearPago(PagoCuotaCreateDTO dto){
         // ejemplo de validación simple: código de pago existente
         Cuota c = cuotaRepo.findById(dto.getCuotaId()).orElseThrow(() -> new NotFoundException("No encontrado"));
@@ -29,5 +32,10 @@ public class PagoCuotaService {
     public void actualizarEstado(Long id, PagoCuotaEstadoUpdateDTO dto){
         PagoCuota p = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
         mapper.updateEstado(p, dto);
+    }
+
+    public void delete(Long id){
+        if(!repo.existsById(id)) throw new NotFoundException("No encontrado");
+        repo.deleteById(id);
     }
 }

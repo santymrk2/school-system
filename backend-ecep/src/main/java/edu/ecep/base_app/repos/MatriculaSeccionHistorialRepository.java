@@ -13,6 +13,7 @@ public interface MatriculaSeccionHistorialRepository extends JpaRepository<Matri
 
     @Query("""
         select h from MatriculaSeccionHistorial h
+        join fetch h.seccion s
         where h.matricula.id = :matriculaId
           and h.desde <= :fecha
           and (h.hasta is null or h.hasta >= :fecha)
@@ -21,13 +22,14 @@ public interface MatriculaSeccionHistorialRepository extends JpaRepository<Matri
                                                 @Param("fecha") java.time.LocalDate fecha);
     List<MatriculaSeccionHistorial> findByMatriculaIdOrderByDesdeDesc(Long matriculaId);
 
-
     @Query("""
          select msh 
          from MatriculaSeccionHistorial msh
-         where msh.seccion.id = :seccionId
+         join fetch msh.seccion s
+         where s.id = :seccionId
            and msh.desde <= :fecha
            and (msh.hasta is null or msh.hasta >= :fecha)
          """)
     List<MatriculaSeccionHistorial> findActivosBySeccionOnDate(@Param("seccionId") Long seccionId,
-                                                               @Param("fecha") LocalDate fecha);}
+                                                               @Param("fecha") LocalDate fecha);
+}

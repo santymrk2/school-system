@@ -32,5 +32,27 @@ public class MateriaService {
         }
         return repo.save(mapper.toEntity(dto)).getId();
     }
-}
 
+    public MateriaDTO get(Long id) {
+        return repo.findById(id)
+                .map(mapper::toDto)
+                .orElseThrow(NotFoundException::new);
+    }
+
+    public void update(Long id, MateriaCreateDTO dto) {
+        var materia = repo.findById(id).orElseThrow(NotFoundException::new);
+        if (dto.getNombre() != null && !dto.getNombre().equalsIgnoreCase(materia.getNombre())
+                && repo.existsByNombreIgnoreCase(dto.getNombre())) {
+            throw new IllegalArgumentException("Ya existe una materia con ese nombre");
+        }
+        materia.setNombre(dto.getNombre());
+        repo.save(materia);
+    }
+
+    public void delete(Long id) {
+        if (!repo.existsById(id)) {
+            throw new NotFoundException();
+        }
+        repo.deleteById(id);
+    }
+}

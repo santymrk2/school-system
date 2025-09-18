@@ -17,4 +17,8 @@ public interface EvaluacionMapper {
     @Mapping(target="seccionMateria", source="seccionMateriaId")
     @Mapping(target="trimestre",      source="trimestreId")
     Evaluacion toEntity(EvaluacionCreateDTO dto);
+
+    @Mapping(target="seccionMateria", source="seccionMateriaId")
+    @Mapping(target="trimestre",      source="trimestreId")
+    void update(@MappingTarget Evaluacion entity, EvaluacionDTO dto);
 }

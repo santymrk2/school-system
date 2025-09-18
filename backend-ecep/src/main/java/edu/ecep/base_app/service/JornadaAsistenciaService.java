@@ -67,4 +67,12 @@ public class JornadaAsistenciaService {
     public List<JornadaAsistenciaDTO> findByTrimestre(Long trimestreId) {
         return repo.findByTrimestreId(trimestreId).stream().map(mapper::toDto).toList();
     }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!repo.existsById(id)) {
+            throw new EntityNotFoundException("Jornada " + id + " no encontrada");
+        }
+        repo.deleteById(id);
+    }
 }

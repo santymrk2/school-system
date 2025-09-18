@@ -123,6 +123,11 @@ export default function AlumnoPerfilPage() {
       }));
   }, [seccionesList, seccionesMap, activePeriodId]);
   const rolOptions = useMemo(() => Object.values(RolVinculo), []);
+  const formatRol = (value?: RolVinculo | string | null) => {
+    if (!value) return "Sin vínculo";
+    const formatted = String(value).replace(/_/g, " ").toLowerCase();
+    return formatted.replace(/\b\w/g, (char) => char.toUpperCase());
+  };
 
   const [editOpen, setEditOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);

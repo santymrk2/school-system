@@ -1,0 +1,20 @@
+# Etapa base con Bun como gestor de paquetes, no como runtime
+FROM oven/bun:1 AS base
+
+# Establece el directorio de trabajo
+WORKDIR /app
+
+# Copia ambos archivos para asegurar instalación consistente
+COPY package.json bun.lock ./
+
+# Instala las dependencias de forma reproducible
+RUN bun install --frozen-lockfile
+
+# Copia el resto del proyecto
+COPY . .
+
+# Expone el puerto de Next.js
+EXPOSE 3000
+
+# Ejecuta el servidor de desarrollo con Node.js (Next.js no usa Bun como runtime)
+CMD ["bun", "run", "dev"]

@@ -34,3 +34,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+frontend-ecep/node_modules/
+frontend-ecep/.next/
+frontend-ecep/out/
+frontend-ecep/dist/
+frontend-ecep/.env*
+# Backend (Java)
+backend-ecep/target/
+backend-ecep/build/
+# General
+.DS_Store
+.idea/
+.vscode/
+EOF

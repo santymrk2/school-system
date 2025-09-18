@@ -13,4 +13,5 @@ public interface CuotaRepository extends JpaRepository<Cuota, Long> {
     boolean existsByMatriculaIdAndAnioAndMesAndConcepto(Long matriculaId, Integer anio, Integer mes, ConceptoCuota concepto);
     boolean existsByMatriculaIdAndAnioAndConcepto(Long matriculaId, Integer anio, ConceptoCuota concepto);
     Optional<Cuota> findByCodigoPago(String codigoPago);
+    boolean existsByCodigoPago(String codigoPago);
 }

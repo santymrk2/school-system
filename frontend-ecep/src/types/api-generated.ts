@@ -359,6 +359,19 @@ export interface CuotaCreateDTO {
   observaciones?: string;
 }
 
+export interface CuotaBulkCreateDTO {
+  seccionIds: number[];
+  concepto?: ConceptoCuota;
+  subconcepto?: string;
+  anio?: number;
+  mes?: number;
+  importe: number;
+  fechaVencimiento: ISODate;
+  porcentajeRecargo?: number;
+  observaciones?: string;
+  matricula?: boolean;
+}
+
 export interface CuotaDTO {
   id: number;
   matriculaId?: number;

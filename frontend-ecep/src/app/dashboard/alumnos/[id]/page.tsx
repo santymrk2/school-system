@@ -87,6 +87,24 @@ export default function AlumnoPerfilPage() {
 
   const { periodoEscolarId: activePeriodId } = useActivePeriod();
 
+  // helpers
+  const toNombre = (p?: PersonaDTO | null) =>
+    p
+      ? `${p.apellido ?? ""}, ${p.nombre ?? ""}`.trim().replace(/^, /, "") ||
+        "—"
+      : "—";
+
+  const seccionLabel = (sid?: number | null, mapOverride?: Map<number, SeccionDTO>) => {
+    if (!sid) return "—";
+    const sourceMap = mapOverride ?? seccionesMap;
+    const s = sourceMap.get(sid);
+    if (!s) return `Sección #${sid}`;
+    const grado = (s as any).gradoSala ?? (s as any).grado ?? "";
+    const div = (s as any).division ?? "";
+    const turno = (s as any).turno ?? "";
+    return `${grado} ${div} ${turno}`.trim();
+  };
+
   const sectionOptions = useMemo(() => {
     if (!seccionesList.length) return [] as { id: string; label: string }[];
     return seccionesList
@@ -150,24 +168,6 @@ export default function AlumnoPerfilPage() {
   const [addEsTutor, setAddEsTutor] = useState(false);
   const [savingFamily, setSavingFamily] = useState(false);
   const [familiaresCatalog, setFamiliaresCatalog] = useState<FamiliarDTO[]>([]);
-
-  // helpers
-  const toNombre = (p?: PersonaDTO | null) =>
-    p
-      ? `${p.apellido ?? ""}, ${p.nombre ?? ""}`.trim().replace(/^, /, "") ||
-        "—"
-      : "—";
-
-  const seccionLabel = (sid?: number | null, mapOverride?: Map<number, SeccionDTO>) => {
-    if (!sid) return "—";
-    const sourceMap = mapOverride ?? seccionesMap;
-    const s = sourceMap.get(sid);
-    if (!s) return `Sección #${sid}`;
-    const grado = (s as any).gradoSala ?? (s as any).grado ?? "";
-    const div = (s as any).division ?? "";
-    const turno = (s as any).turno ?? "";
-    return `${grado} ${div} ${turno}`.trim();
-  };
 
   // carga
   useEffect(() => {

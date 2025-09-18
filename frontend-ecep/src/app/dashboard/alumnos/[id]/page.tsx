@@ -123,6 +123,11 @@ export default function AlumnoPerfilPage() {
       }));
   }, [seccionesList, seccionesMap, activePeriodId]);
   const rolOptions = useMemo(() => Object.values(RolVinculo), []);
+  const formatRol = (value?: RolVinculo | string | null) => {
+    if (!value) return "Sin vínculo";
+    const formatted = String(value).replace(/_/g, " ").toLowerCase();
+    return formatted.replace(/\b\w/g, (char) => char.toUpperCase());
+  };
 
   const [editOpen, setEditOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -181,6 +186,7 @@ export default function AlumnoPerfilPage() {
 
         // 1) Alumno + Persona
         const a = (await api.alumnos.byId(alumnoId)).data ?? null;
+        if (!alive) return;
         setAlumno(a);
 
         let p: PersonaDTO | null = null;
@@ -193,6 +199,7 @@ export default function AlumnoPerfilPage() {
             p = null;
           }
         }
+        if (!alive) return;
         setPersona(p);
 
         // 2) Secciones (para labels y periodo)
@@ -203,6 +210,7 @@ export default function AlumnoPerfilPage() {
           const map = new Map<number, SeccionDTO>();
           secciones.forEach((s: any) => map.set(s.id, s));
           seccionMapLocal = map;
+          if (!alive) return;
           setSeccionesMap(map);
           setSeccionesList(secciones);
         } catch {
@@ -213,6 +221,7 @@ export default function AlumnoPerfilPage() {
         const mats = ((await api.matriculas.list()).data ?? []).filter(
           (m: any) => m.alumnoId === alumnoId,
         );
+        if (!alive) return;
         setMatriculas(mats as MatriculaDTO[]);
 
         // 4) Historial de sección (todas las filas) y enriquecer con label
@@ -235,6 +244,7 @@ export default function AlumnoPerfilPage() {
               seccionLabel: labelFor(sid),
             } as HistorialVM;
           });
+        if (!alive) return;
         setHistorial(hist);
 
         // 5) Familiares + sus personas + vínculo
@@ -261,6 +271,7 @@ export default function AlumnoPerfilPage() {
             };
           }),
         );
+        if (!alive) return;
         setFamiliares(fams);
 
         if (personaUsuarioId) {
@@ -341,6 +352,7 @@ export default function AlumnoPerfilPage() {
 
   useEffect(() => {
     if (!addFamilyOpen) return;
+    let alive = true;
     setAddPersonaDraft({
       nombre: "",
       apellido: "",
@@ -358,12 +370,17 @@ export default function AlumnoPerfilPage() {
     (async () => {
       try {
         const { data } = await api.familiares.list();
+        if (!alive) return;
         setFamiliaresCatalog(data ?? []);
       } catch (error) {
         console.error(error);
+        if (!alive) return;
         setFamiliaresCatalog([]);
       }
     })();
+    return () => {
+      alive = false;
+    };
   }, [addFamilyOpen]);
 
   useEffect(() => {
@@ -644,18 +661,22 @@ export default function AlumnoPerfilPage() {
   const handleSaveFamily = async () => {
     if (!alumno) return;
 
-    if (!addPersonaDraft.dni.trim() || !addPersonaDraft.nombre.trim() || !addPersonaDraft.apellido.trim()) {
-      toast.error('Completá DNI, nombre y apellido del familiar');
+    if (
+      !addPersonaDraft.dni.trim() ||
+      !addPersonaDraft.nombre.trim() ||
+      !addPersonaDraft.apellido.trim()
+    ) {
+      toast.error("Completá DNI, nombre y apellido del familiar");
       return;
     }
 
     if (!addRol) {
-      toast.error('Seleccioná el rol del familiar');
+      toast.error("Seleccioná el rol del familiar");
       return;
     }
 
     if (addFamiliarId && familiares.some((f) => f.id === addFamiliarId)) {
-      toast.error('El familiar ya está vinculado a este alumno');
+      toast.error("El familiar ya está vinculado a este alumno");
       return;
     }
 
@@ -679,7 +700,7 @@ export default function AlumnoPerfilPage() {
       }
 
       if (!personaId) {
-        throw new Error('No pudimos registrar los datos del familiar');
+        throw new Error("No pudimos registrar los datos del familiar");
       }
 
       let familiarId = addFamiliarId;
@@ -691,7 +712,7 @@ export default function AlumnoPerfilPage() {
       }
 
       if (!familiarId) {
-        throw new Error('No pudimos generar el vínculo del familiar');
+        throw new Error("No pudimos generar el vínculo del familiar");
       }
 
       await api.alumnoFamiliares.create({
@@ -701,7 +722,7 @@ export default function AlumnoPerfilPage() {
         esTutorLegal: addEsTutor,
       } as any);
 
-      toast.success('Familiar agregado correctamente');
+      toast.success("Familiar agregado correctamente");
       setAddFamilyOpen(false);
       setReloadKey((value) => value + 1);
     } catch (error: any) {
@@ -709,7 +730,7 @@ export default function AlumnoPerfilPage() {
       toast.error(
         error?.response?.data?.message ??
           error?.message ??
-          'No pudimos agregar al familiar',
+          "No pudimos agregar al familiar",
       );
     } finally {
       setSavingFamily(false);

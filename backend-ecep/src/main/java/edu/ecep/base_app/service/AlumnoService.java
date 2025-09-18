@@ -47,7 +47,11 @@ public class AlumnoService {
 
     public AlumnoDTO get(Long id) {
         return alumnoRepository.findWithPersonaById(id)
-                .map(alumnoMapper::toDto)
+                .map(entity -> {
+                    AlumnoDTO dto = alumnoMapper.toDto(entity);
+                    applySeccionActual(dto, entity.getId());
+                    return dto;
+                })
                 .orElseThrow(() -> new NotFoundException("Alumno no encontrado"));
     }
 

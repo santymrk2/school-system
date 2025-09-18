@@ -597,6 +597,7 @@ export interface PersonaDTO {
   celular?: string;
   email?: string;
   observacionesGenerales?: string;
+  usuarioId?: number;
 }
 
 export interface PersonaCreateDTO {

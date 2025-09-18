@@ -12,6 +12,8 @@ export const matriculas = {
 export const matriculaSeccionHistorial = {
   list: () => http.get<DTO.MatriculaSeccionHistorialDTO[]>('/api/matriculas/historial'),
   create: (body: DTO.MatriculaSeccionHistorialCreateDTO) => http.post<number>('/api/matriculas/historial', body),
+  update: (id: number, body: DTO.MatriculaSeccionHistorialDTO) =>
+    http.put<void>(`/api/matriculas/historial/${id}`, body),
 };
 
 export const solicitudesBaja = {

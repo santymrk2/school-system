@@ -16,6 +16,7 @@ import edu.ecep.base_app.dtos.PersonaUpdateDTO;
 public interface PersonaMapper {
 
     // Entity → DTO
+    @Mapping(target = "usuarioId", source = "usuario.id")
     PersonaDTO toDto(Persona e);
 
     // CreateDTO → Entity

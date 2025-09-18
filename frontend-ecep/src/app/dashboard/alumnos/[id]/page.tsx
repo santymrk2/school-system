@@ -41,6 +41,7 @@ import type {
   AlumnoDTO,
   FamiliarDTO,
   MatriculaDTO,
+  MatriculaSeccionHistorialDTO,
   PersonaDTO,
   SeccionDTO,
   UsuarioDTO,
@@ -187,10 +188,7 @@ export default function AlumnoPerfilPage() {
         if (a?.personaId) {
           try {
             p = (await api.personasCore.getById(a.personaId)).data ?? null;
-            personaUsuarioId =
-              (p as any)?.usuarioId != null
-                ? Number((p as any).usuarioId)
-                : null;
+            personaUsuarioId = p?.usuarioId ?? null;
           } catch {
             p = null;
           }
@@ -508,13 +506,14 @@ export default function AlumnoPerfilPage() {
             currentEntry &&
             (targetSeccionId === null || currentEntry.seccionId !== targetSeccionId)
           ) {
-            await api.matriculaSeccionHistorial.create({
+            const desdeValue = currentEntry.desde ?? todayIso;
+            await api.matriculaSeccionHistorial.update(currentEntry.id, {
               id: currentEntry.id,
               matriculaId: currentEntry.matriculaId,
               seccionId: currentEntry.seccionId,
-              desde: currentEntry.desde ?? todayIso,
+              desde: desdeValue,
               hasta: todayIso,
-            });
+            } as MatriculaSeccionHistorialDTO);
           }
 
           if (
@@ -602,6 +601,10 @@ export default function AlumnoPerfilPage() {
       if (userId != null) {
         const { data: refreshed } = await api.user.getById(userId);
         setUsuarioActual(refreshed ?? null);
+        const finalUserId = userId ?? undefined;
+        setPersona((prev) =>
+          prev ? { ...prev, usuarioId: finalUserId } : prev,
+        );
       }
 
       toast.success("Acceso del alumno actualizado");
@@ -624,6 +627,7 @@ export default function AlumnoPerfilPage() {
     try {
       await api.personasCore.unlinkUsuario(persona.id);
       setUsuarioActual(null);
+      setPersona((prev) => (prev ? { ...prev, usuarioId: undefined } : prev));
       toast.success("Acceso desvinculado correctamente");
     } catch (error: any) {
       console.error(error);

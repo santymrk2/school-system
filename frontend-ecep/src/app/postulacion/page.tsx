@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { api } from "@/services/api"; // ← import del cliente API
-import type * as DTO from "@/types/api-generated";
+import * as DTO from "@/types/api-generated";
 
 import { Step1 } from "./Step1";
 import { Step2 } from "./Step2";
@@ -41,7 +41,7 @@ const emptyFamiliarPersona: FamiliarPersonaForm = {
 
 const createEmptyFamiliar = (): FamiliarForm => ({
   id: undefined,
-  tipoRelacion: "PADRE",
+  tipoRelacion: DTO.RolVinculo.PADRE,
   viveConAlumno: true,
   familiar: { ...emptyFamiliarPersona },
 });
@@ -98,7 +98,11 @@ export default function PostulacionPage() {
     useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (
+    field: string,
+    value: any,
+    options?: { errorKeys?: string | string[] },
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -108,7 +112,22 @@ export default function PostulacionPage() {
       setAspirantePersonaPreview(null);
       setLastLookupDni("");
     }
-    setErrors((e) => ({ ...e, [field]: false }));
+    setErrors((prev) => {
+      if (!Object.keys(prev).length) return prev;
+      const keys = options?.errorKeys
+        ? Array.isArray(options.errorKeys)
+          ? options.errorKeys
+          : [options.errorKeys]
+        : [];
+      const next = { ...prev };
+      delete next[field];
+      for (const key of keys) {
+        if (key) {
+          delete next[key];
+        }
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -252,12 +271,14 @@ export default function PostulacionPage() {
     aspiranteId: number,
     familiarId: number,
     parentesco: string,
+    convive: boolean,
   ) => {
     try {
       await api.aspiranteFamiliares.create({
         aspiranteId,
         familiarId,
         parentesco,
+        convive,
       } as DTO.AspiranteFamiliarDTO);
     } catch (error: any) {
       if (error?.response?.status && [400, 409].includes(error.response.status)) {
@@ -272,6 +293,17 @@ export default function PostulacionPage() {
       ...prev,
       familiares: [...prev.familiares, createEmptyFamiliar()],
     }));
+    setErrors((prev) => {
+      if (!prev.familiares) return prev;
+      const next = { ...prev };
+      delete next.familiares;
+      return next;
+    });
+  };
+
+  const isValidRolVinculo = (value?: string | null): value is DTO.RolVinculo => {
+    if (!value) return false;
+    return (Object.values(DTO.RolVinculo) as string[]).includes(value);
   };
 
   const validateStep1 = () => {
@@ -301,8 +333,98 @@ export default function PostulacionPage() {
     return ok;
   };
 
+  const validateStep2 = () => {
+    const familiares = formData.familiares ?? [];
+    const newErrors: Record<string, boolean> = {};
+    let ok = true;
+
+    if (!familiares.length) {
+      newErrors.familiares = true;
+      ok = false;
+    }
+
+    familiares.forEach((familiarEntry, index) => {
+      if (!isValidRolVinculo(familiarEntry.tipoRelacion)) {
+        newErrors[`familiares.${index}.tipoRelacion`] = true;
+        ok = false;
+      }
+      const familiarPersona = familiarEntry.familiar;
+      const nombre = familiarPersona?.nombre?.trim();
+      if (!nombre) {
+        newErrors[`familiares.${index}.familiar.nombre`] = true;
+        ok = false;
+      }
+      const apellido = familiarPersona?.apellido?.trim();
+      if (!apellido) {
+        newErrors[`familiares.${index}.familiar.apellido`] = true;
+        ok = false;
+      }
+      const dni = familiarPersona?.dni?.trim();
+      if (!dni || dni.length < 7) {
+        newErrors[`familiares.${index}.familiar.dni`] = true;
+        ok = false;
+      }
+      const email = familiarPersona?.emailContacto?.trim();
+      if (!email) {
+        newErrors[`familiares.${index}.familiar.emailContacto`] = true;
+        ok = false;
+      }
+    });
+
+    setErrors(newErrors);
+    if (!ok) {
+      toast({
+        title: "Completá los datos de al menos un familiar.",
+        description:
+          "Ingresá nombre, apellido, DNI y un email de contacto para continuar.",
+        variant: "destructive",
+      });
+    }
+    return ok;
+  };
+
+  const validateStep3 = () => {
+    const newErrors: Record<string, boolean> = {};
+    let ok = true;
+    if (!(formData.conectividadInternet ?? "").trim()) {
+      newErrors.conectividadInternet = true;
+      ok = false;
+    }
+    if (!(formData.dispositivosDisponibles ?? "").trim()) {
+      newErrors.dispositivosDisponibles = true;
+      ok = false;
+    }
+    if (!(formData.idiomasHabladosHogar ?? "").trim()) {
+      newErrors.idiomasHabladosHogar = true;
+      ok = false;
+    }
+    setErrors(newErrors);
+    if (!ok) {
+      toast({
+        title: "Completá la información del hogar.",
+        description:
+          "Seleccioná la conectividad y detallá dispositivos e idiomas hablados.",
+        variant: "destructive",
+      });
+    }
+    return ok;
+  };
+
+  const validateCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return validateStep1();
+      case 2:
+        return validateStep2();
+      case 3:
+        return validateStep3();
+      default:
+        return true;
+    }
+  };
+
   const nextStep = () => {
-    if (currentStep === 1 && !validateStep1()) return;
+    if (!validateCurrentStep()) return;
     setCurrentStep((s) => Math.min(s + 1, totalSteps));
   };
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
@@ -364,8 +486,15 @@ export default function PostulacionPage() {
           familiarPersona.ocupacion || undefined,
         );
 
-        const parentesco = familiarEntry.tipoRelacion || "FAMILIAR";
-        await linkAspiranteFamiliar(aspiranteId, familiarPersonaId, parentesco);
+        const parentesco = isValidRolVinculo(familiarEntry.tipoRelacion)
+          ? familiarEntry.tipoRelacion
+          : DTO.RolVinculo.OTRO;
+        await linkAspiranteFamiliar(
+          aspiranteId,
+          familiarPersonaId,
+          parentesco,
+          familiarEntry.viveConAlumno ?? false,
+        );
       }
 
       const solicitudPayload: DTO.SolicitudAdmisionDTO = {
@@ -416,7 +545,11 @@ export default function PostulacionPage() {
         );
       case 3:
         return (
-          <Step3 formData={formData} handleInputChange={handleInputChange} />
+          <Step3
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+          />
         );
       case 4:
         return (

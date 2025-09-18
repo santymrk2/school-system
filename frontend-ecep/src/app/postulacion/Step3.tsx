@@ -13,6 +13,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { PostulacionFormData } from "./types";
 
 enum InternetConnectivity {
@@ -24,10 +25,15 @@ enum InternetConnectivity {
 
 interface Step3Props {
   formData: PostulacionFormData;
-  handleInputChange: (field: string, value: any) => void;
+  handleInputChange: (
+    field: string,
+    value: any,
+    options?: { errorKeys?: string | string[] },
+  ) => void;
+  errors?: Record<string, boolean>;
 }
 
-export function Step3({ formData, handleInputChange }: Step3Props) {
+export function Step3({ formData, handleInputChange, errors = {} }: Step3Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center mb-6">
@@ -45,7 +51,11 @@ export function Step3({ formData, handleInputChange }: Step3Props) {
             onValueChange={(v) => handleInputChange("conectividadInternet", v)}
             required
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={cn(
+                errors.conectividadInternet && "border-destructive",
+              )}
+            >
               <SelectValue placeholder="Seleccione conexión" />
             </SelectTrigger>
             <SelectContent>
@@ -71,6 +81,9 @@ export function Step3({ formData, handleInputChange }: Step3Props) {
             placeholder="Ej: PC, tablet, smartphone..."
             rows={3}
             required
+            className={cn(
+              errors.dispositivosDisponibles && "border-destructive",
+            )}
           />
         </div>
 
@@ -86,6 +99,9 @@ export function Step3({ formData, handleInputChange }: Step3Props) {
             }
             placeholder="Ej: Español, Inglés..."
             required
+            className={cn(
+              errors.idiomasHabladosHogar && "border-destructive",
+            )}
           />
         </div>
       </div>

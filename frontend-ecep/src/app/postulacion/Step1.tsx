@@ -17,7 +17,11 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   formData: PostulacionFormData;
-  handleInputChange: (field: string, value: any) => void;
+  handleInputChange: (
+    field: string,
+    value: any,
+    options?: { errorKeys?: string | string[] },
+  ) => void;
   errors: Record<string, boolean>;
   personaDetectadaId?: number | null;
   dniLookupLoading?: boolean;

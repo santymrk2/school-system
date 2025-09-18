@@ -3,9 +3,11 @@ package edu.ecep.base_app.rest;
 import edu.ecep.base_app.dtos.PersonaDTO; // si no tenés, podés devolver un map básico
 import edu.ecep.base_app.dtos.PersonaCreateDTO;
 import edu.ecep.base_app.dtos.PersonaUpdateDTO;
+import edu.ecep.base_app.dtos.PersonaUsuarioLinkDTO;
 import edu.ecep.base_app.mappers.PersonaMapper;
 import edu.ecep.base_app.repos.*;
 import edu.ecep.base_app.domain.Persona;
+import edu.ecep.base_app.domain.Usuario;
 import edu.ecep.base_app.util.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,7 @@ public class PersonaController {
     private final EmpleadoRepository empleadoRepository;
     private final FamiliarRepository familiarRepository;
     private final AspiranteRepository aspiranteRepository;
+    private final UsuarioRepository usuarioRepository;
     private final PersonaMapper personaMapper;
 
     // PersonaController
@@ -59,6 +62,52 @@ public class PersonaController {
                 .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
         personaMapper.update(entity, dto);
         personaRepository.save(entity);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{personaId}/link-usuario")
+    public ResponseEntity<Void> linkUsuario(@PathVariable Long personaId,
+                                            @RequestBody @Validated PersonaUsuarioLinkDTO request) {
+        Persona persona = personaRepository.findById(personaId)
+                .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
+
+        Usuario current = persona.getUsuario();
+        if (current != null) {
+            if (current.getId().equals(request.usuarioId())) {
+                return ResponseEntity.noContent().build();
+            }
+            throw new IllegalStateException("La persona ya está vinculada a un usuario");
+        }
+
+        Usuario usuario = usuarioRepository.findById(request.usuarioId())
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        if (usuario.getPersona() != null && !usuario.getPersona().getId().equals(personaId)) {
+            throw new IllegalStateException("El usuario ya está vinculado a otra persona");
+        }
+
+        persona.setUsuario(usuario);
+        usuario.setPersona(persona);
+        personaRepository.save(persona);
+        usuarioRepository.save(usuario);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{personaId}/unlink-usuario")
+    public ResponseEntity<Void> unlinkUsuario(@PathVariable Long personaId) {
+        Persona persona = personaRepository.findById(personaId)
+                .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
+
+        Usuario usuario = persona.getUsuario();
+        if (usuario != null) {
+            persona.setUsuario(null);
+            personaRepository.save(persona);
+
+            usuario.setPersona(null);
+            usuarioRepository.save(usuario);
+        }
+
         return ResponseEntity.noContent().build();
     }
 

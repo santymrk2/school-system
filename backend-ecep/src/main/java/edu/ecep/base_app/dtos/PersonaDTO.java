@@ -26,4 +26,5 @@ public class PersonaDTO {
     String telefono;
     String celular;
     String email;
+    Long usuarioId;
 }

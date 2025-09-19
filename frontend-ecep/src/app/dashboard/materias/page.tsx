@@ -127,7 +127,13 @@ export default function MateriasPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((s) => (
-              <Card key={s.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={s.id}
+                className="hover:shadow-md transition-shadow"
+                onClick={() =>
+                  router.push(`/dashboard/materias/seccion/${s.id}`)
+                }
+              >
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center justify-between text-lg">
                     <span>{fmtSeccion(s)}</span>

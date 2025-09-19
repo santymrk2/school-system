@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { api } from "@/services/api"; // ← import del cliente API
 import * as DTO from "@/types/api-generated";
+import { isBirthDateValid } from "@/lib/form-utils";
 
 import { Step1 } from "./Step1";
 import { Step2 } from "./Step2";
@@ -317,16 +318,36 @@ export default function PostulacionPage() {
     ];
     const newErrors: Record<string, boolean> = {};
     let ok = true;
+    let missingRequired = false;
+    let invalidBirthDate = false;
     for (const f of fields) {
       if (!formData[f as keyof typeof formData]) {
         newErrors[f] = true;
         ok = false;
+        missingRequired = true;
       }
     }
+
+    const birthDate = formData.fechaNacimiento;
+    if (birthDate && !isBirthDateValid(birthDate)) {
+      newErrors.fechaNacimiento = true;
+      ok = false;
+      invalidBirthDate = true;
+    }
+
     setErrors(newErrors);
     if (!ok) {
+      const details = [
+        missingRequired ? "Completá los campos obligatorios." : null,
+        invalidBirthDate
+          ? "La fecha de nacimiento debe ser al menos dos años anterior a hoy."
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
       toast({
-        title: "Completa los campos obligatorios.",
+        title: "Revisá los datos del aspirante.",
+        description: details || undefined,
         variant: "destructive",
       });
     }
@@ -337,6 +358,7 @@ export default function PostulacionPage() {
     const familiares = formData.familiares ?? [];
     const newErrors: Record<string, boolean> = {};
     let ok = true;
+    let invalidBirthDate = false;
 
     if (!familiares.length) {
       newErrors.familiares = true;
@@ -364,6 +386,12 @@ export default function PostulacionPage() {
         newErrors[`familiares.${index}.familiar.dni`] = true;
         ok = false;
       }
+      const fechaNacimiento = familiarPersona?.fechaNacimiento?.trim();
+      if (fechaNacimiento && !isBirthDateValid(fechaNacimiento)) {
+        newErrors[`familiares.${index}.familiar.fechaNacimiento`] = true;
+        ok = false;
+        invalidBirthDate = true;
+      }
       const email = familiarPersona?.emailContacto?.trim();
       if (!email) {
         newErrors[`familiares.${index}.familiar.emailContacto`] = true;
@@ -373,10 +401,17 @@ export default function PostulacionPage() {
 
     setErrors(newErrors);
     if (!ok) {
+      const descriptions = [
+        "Ingresá nombre, apellido, DNI y un email de contacto para continuar.",
+        invalidBirthDate
+          ? "Revisá también la fecha de nacimiento: debe ser al menos dos años anterior a hoy."
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
       toast({
         title: "Completá los datos de al menos un familiar.",
-        description:
-          "Ingresá nombre, apellido, DNI y un email de contacto para continuar.",
+        description: descriptions,
         variant: "destructive",
       });
     }
@@ -433,6 +468,30 @@ export default function PostulacionPage() {
     if (!communicationsAuthorized) {
       toast({
         title: "Debes autorizar comunicaciones por email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.fechaNacimiento && !isBirthDateValid(formData.fechaNacimiento)) {
+      toast({
+        title: "Fecha de nacimiento inválida",
+        description:
+          "La fecha de nacimiento del aspirante debe ser al menos dos años anterior a hoy.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const familiaresInvalidos = (formData.familiares ?? []).some((familiar) => {
+      const fecha = familiar.familiar?.fechaNacimiento?.trim();
+      return fecha ? !isBirthDateValid(fecha) : false;
+    });
+    if (familiaresInvalidos) {
+      toast({
+        title: "Fecha de nacimiento inválida",
+        description:
+          "Verificá las fechas de nacimiento de los familiares: deben ser al menos dos años anteriores a hoy.",
         variant: "destructive",
       });
       return;

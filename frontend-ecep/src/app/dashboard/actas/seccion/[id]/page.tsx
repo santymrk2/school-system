@@ -19,7 +19,6 @@ import {
   Calendar,
   CheckCircle,
   X,
-  ArrowLeft,
   Plus,
   Eye,
   Pencil,
@@ -327,7 +326,14 @@ export default function AccidentesSeccionPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
-        <div className="flex items-start md:items-center justify-between gap-3 flex-col md:flex-row">
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/accidentes")}
+        >
+          Volver
+        </Button>
+
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-2xl font-semibold">
               Actas de Accidentes — Sección{" "}
@@ -344,7 +350,7 @@ export default function AccidentesSeccionPage() {
               ) : null}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <div className="hidden md:block">
               <label className="text-xs block mb-1">
                 Fecha (roster activo)
@@ -364,12 +370,6 @@ export default function AccidentesSeccionPage() {
                 className="pl-10"
               />
             </div>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/accidentes")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-            </Button>
             {canCreate && (
               <NewActaDialog
                 open={openNew}

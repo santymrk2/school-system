@@ -21,7 +21,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
-import { Calendar, ArrowLeft, Plus } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
 import { api } from "@/services/api";
 import type {
   SeccionDTO,
@@ -208,7 +208,6 @@ export default function SeccionHistorialPage() {
           variant="outline"
           onClick={() => router.push("/dashboard/asistencia")}
         >
-          <ArrowLeft className="h-4 w-4 mr-1" />
           Volver
         </Button>
 

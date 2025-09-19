@@ -28,20 +28,18 @@ export default function SeccionAlumnosPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/alumnos")}
+        >
+          Volver
+        </Button>
         {/* Header sin filtros */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              Alumnos por sección
-            </h2>
-            <div className="text-muted-foreground">Sección #{seccionId}</div>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/dashboard/alumnos")}
-          >
-            Volver
-          </Button>
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Alumnos por sección
+          </h2>
+          <div className="text-muted-foreground">Sección #{seccionId}</div>
         </div>
 
         {/* Contenido: solo alumnos */}

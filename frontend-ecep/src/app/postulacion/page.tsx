@@ -630,14 +630,11 @@ export default function PostulacionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <Link
-          href="/"
-          className="inline-flex items-center text-primary mb-4 hover:text-primary/80"
-        >
-          Volver
-        </Link>
-        <div className="text-center mb-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Button variant="outline" asChild>
+          <Link href="/">Volver</Link>
+        </Button>
+        <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Postulación de Alumno
           </h1>

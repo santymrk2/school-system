@@ -44,6 +44,8 @@ import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import {
   RolEmpleado,
   UserRole,
+  type AsignacionDocenteMateriaDTO,
+  type AsignacionDocenteSeccionDTO,
   type EmpleadoDTO,
   type FormacionAcademicaDTO,
   type LicenciaDTO,
@@ -200,6 +202,20 @@ function formatTipoLicencia(value?: string | null) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+async function safeRequest<T>(
+  promise: Promise<{ data?: T }>,
+  fallback: T,
+  label: string,
+): Promise<T> {
+  try {
+    const res = await promise;
+    return (res.data ?? fallback) as T;
+  } catch (error) {
+    console.error(label, error);
+    return fallback;
+  }
+}
+
 function getSituacionBadge(situacion?: string | null) {
   const normalized = (situacion ?? "").toLowerCase();
   if (normalized === "activo") {
@@ -315,24 +331,48 @@ export default function PersonalPage() {
   }, [licenseDialogOpen, resetNewLicenseForm]);
 
   const fetchData = useCallback(async () => {
-    const [empleadosRes, licRes, formacionesRes, seccionesRes, materiasRes, asignSecRes, asignMatRes] =
-      await Promise.all([
-        api.empleados.list(),
-        api.licencias.list(),
-        api.formaciones.list(),
-        api.secciones.list(),
-        api.materias.list(),
-        api.asignacionDocenteSeccion.list(),
-        api.asignacionDocenteMateria.list(),
-      ]);
-
+    const empleadosRes = await api.empleados.list();
     const empleados = (empleadosRes.data ?? []) as EmpleadoDTO[];
-    const licencias = (licRes.data ?? []) as LicenciaDTO[];
-    const formaciones = (formacionesRes.data ?? []) as FormacionAcademicaDTO[];
-    const secciones = (seccionesRes.data ?? []) as SeccionDTO[];
-    const materias = (materiasRes.data ?? []) as MateriaDTO[];
-    const asignacionesSeccion = asignSecRes.data ?? [];
-    const asignacionesMateria = asignMatRes.data ?? [];
+
+    const [
+      licencias,
+      formaciones,
+      secciones,
+      materias,
+      asignacionesSeccion,
+      asignacionesMateria,
+    ] = await Promise.all([
+      safeRequest<LicenciaDTO[]>(
+        api.licencias.list(),
+        [] as LicenciaDTO[],
+        "No se pudieron obtener las licencias",
+      ),
+      safeRequest<FormacionAcademicaDTO[]>(
+        api.formaciones.list(),
+        [] as FormacionAcademicaDTO[],
+        "No se pudo obtener la formación académica",
+      ),
+      safeRequest<SeccionDTO[]>(
+        api.secciones.list(),
+        [] as SeccionDTO[],
+        "No se pudieron obtener las secciones",
+      ),
+      safeRequest<MateriaDTO[]>(
+        api.materias.list(),
+        [] as MateriaDTO[],
+        "No se pudieron obtener las materias",
+      ),
+      safeRequest<AsignacionDocenteSeccionDTO[]>(
+        api.asignacionDocenteSeccion.list(),
+        [] as AsignacionDocenteSeccionDTO[],
+        "No se pudieron obtener las asignaciones de sección",
+      ),
+      safeRequest<AsignacionDocenteMateriaDTO[]>(
+        api.asignacionDocenteMateria.list(),
+        [] as AsignacionDocenteMateriaDTO[],
+        "No se pudieron obtener las asignaciones de materia",
+      ),
+    ]);
 
     const personaIds = Array.from(
       new Set(
@@ -1235,32 +1275,12 @@ export default function PersonalPage() {
   return (
     <DashboardLayout>
       <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestión de personal</h1>
-            <p className="text-muted-foreground">
-              Administra la información del personal docente y no docente, registra nuevas altas y
-              realiza el seguimiento de licencias.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {canRegisterLicenses && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenLicenseDialog()}
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                Nueva licencia
-              </Button>
-            )}
-            {canCreatePersonal && (
-              <Button type="button" onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Añadir profesor
-              </Button>
-            )}
-          </div>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de personal</h1>
+          <p className="text-muted-foreground">
+            Administra la información del personal docente y no docente, registra nuevas altas y
+            realiza el seguimiento de licencias.
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -1321,10 +1341,30 @@ export default function PersonalPage() {
           onValueChange={(value) => setSelectedTab(value)}
           className="space-y-4"
         >
-          <TabsList>
-            <TabsTrigger value="listado">Personal</TabsTrigger>
-            <TabsTrigger value="licencias">Licencias</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <TabsList className="w-full lg:w-auto">
+              <TabsTrigger value="listado">Personal</TabsTrigger>
+              <TabsTrigger value="licencias">Licencias</TabsTrigger>
+            </TabsList>
+            <div className="flex flex-wrap gap-2">
+              {selectedTab === "licencias" && canRegisterLicenses ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenLicenseDialog()}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  Nueva licencia
+                </Button>
+              ) : null}
+              {selectedTab === "listado" && canCreatePersonal ? (
+                <Button type="button" onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Registrar personal
+                </Button>
+              ) : null}
+            </div>
+          </div>
           <TabsContent value="listado" className="space-y-4">
             {renderFilters("personal")}
             {dataLoading && personal.length === 0 ? (

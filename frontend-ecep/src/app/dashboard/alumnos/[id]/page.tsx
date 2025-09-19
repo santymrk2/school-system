@@ -212,8 +212,17 @@ export default function AlumnoPerfilPage() {
         if (a.personaId) {
           try {
             p = (await api.personasCore.getById(a.personaId)).data ?? null;
-          } catch {
-            p = null;
+          } catch (personaError) {
+            console.error("No se pudo obtener la persona del alumno", personaError);
+          }
+          if (!p) {
+            const fallbackPersona: PersonaDTO = {
+              id: a.personaId,
+              nombre: a.nombre ?? undefined,
+              apellido: a.apellido ?? undefined,
+              dni: a.dni ?? undefined,
+            };
+            p = fallbackPersona;
           }
         }
         if (!alive) return;

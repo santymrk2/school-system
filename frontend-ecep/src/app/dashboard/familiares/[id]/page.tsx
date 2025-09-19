@@ -109,25 +109,44 @@ export default function FamiliarPerfilPage() {
               await api.personasCore.getById(familiarData.personaId)
             ).data ?? null;
           } catch (error) {
-            console.error(error);
-            personaData = null;
+            console.error("No se pudo obtener la persona del familiar", error);
+          }
+          if (!personaData) {
+            const fallbackPersona: PersonaDTO = { id: familiarData.personaId };
+            personaData = fallbackPersona;
           }
         }
         if (!alive) return;
         setPersona(personaData);
         setOcupacion((familiarData as any)?.ocupacion ?? "");
 
-        const linksData = ((await api.alumnoFamiliares.list()).data ?? []).filter(
-          (link: any) => link.familiarId === familiarId,
-        );
+        let linksData: AlumnoFamiliarDTO[] = [];
+        try {
+          const { data } = await api.alumnoFamiliares.list();
+          linksData = ((data ?? []) as any[]).filter(
+            (link: any) => link.familiarId === familiarId,
+          ) as AlumnoFamiliarDTO[];
+        } catch (linksError) {
+          console.error(
+            "No se pudieron obtener los vínculos del familiar",
+            linksError,
+          );
+        }
         if (!alive) return;
-        setLinks(linksData as AlumnoFamiliarDTO[]);
+        setLinks(linksData);
 
-        const alumnosData = (
-          await api.familiaresAlumnos.byFamiliarId(familiarId)
-        ).data ?? [];
+        let alumnosData: AlumnoLiteDTO[] = [];
+        try {
+          const { data } = await api.familiaresAlumnos.byFamiliarId(familiarId);
+          alumnosData = (data ?? []) as AlumnoLiteDTO[];
+        } catch (alumnosError) {
+          console.error(
+            "No se pudieron obtener los alumnos vinculados",
+            alumnosError,
+          );
+        }
         if (!alive) return;
-        setAlumnos(alumnosData as AlumnoLiteDTO[]);
+        setAlumnos(alumnosData);
 
       } catch (fetchError: any) {
         if (!alive) return;

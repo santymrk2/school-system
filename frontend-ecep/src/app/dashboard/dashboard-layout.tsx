@@ -45,8 +45,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const rolesNormalized = useMemo(
     () =>
       Array.from(
-        new Set((user?.userRoles ?? []).map(normalizeRole).filter(Boolean)),
-      ) as UserRole[],
+        new Set(
+          (user?.roles ?? [])
+            .map(normalizeRole)
+            .filter((role): role is UserRole => role !== null),
+        ),
+      ),
     [user],
   );
 

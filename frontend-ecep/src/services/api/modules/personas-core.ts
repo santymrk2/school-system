@@ -8,10 +8,10 @@ export const personasCore = {
   getById: (id: number) => http.get<DTO.PersonaDTO>(`/api/personas/${id}`),
   update: (id: number, patch: Partial<DTO.PersonaUpdateDTO>) =>
     http.put<void>(`/api/personas/${id}`, patch),
-
-  // link/unlink de usuario a Persona
-  linkUsuario: (personaId: number, usuarioId: number) =>
-    http.post<void>(`/api/personas/${personaId}/link-usuario`, { usuarioId }),
-  unlinkUsuario: (personaId: number) =>
-    http.post<void>(`/api/personas/${personaId}/unlink-usuario`, {}),
+  getResumen: (id: number) =>
+    http.get<DTO.PersonaResumenDTO>(`/api/personas/credenciales/${id}`),
+  searchCredenciales: (q?: string) =>
+    http.get<DTO.PersonaResumenDTO[]>(`/api/personas/credenciales/search`, {
+      params: q ? { q } : {},
+    }),
 };

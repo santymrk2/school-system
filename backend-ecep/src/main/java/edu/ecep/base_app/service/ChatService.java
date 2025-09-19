@@ -1,11 +1,11 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Mensaje;
-import edu.ecep.base_app.domain.Usuario;
+import edu.ecep.base_app.domain.Persona;
 import edu.ecep.base_app.dtos.ChatMessageDTO;
 import edu.ecep.base_app.dtos.SendMessageRequest;
 import edu.ecep.base_app.repos.MensajeRepository;
-import edu.ecep.base_app.repos.UsuarioRepository;
+import edu.ecep.base_app.repos.PersonaRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class ChatService {
 
     private final MensajeRepository mensajeRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final PersonaRepository personaRepository;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final String CHANNEL = "chat";
@@ -33,7 +33,7 @@ public class ChatService {
     /**
      * Guarda el mensaje en la BD y lo publica por Redis para su diseminación.
      */
-    public Mensaje saveAndSend(SendMessageRequest request, Usuario emisor) {
+    public Mensaje saveAndSend(SendMessageRequest request, Persona emisor) {
         // Validaciones
         if (request.getContenido() == null || request.getContenido().trim().isEmpty()) {
             throw new IllegalArgumentException("El mensaje no puede estar vacío");
@@ -45,8 +45,8 @@ public class ChatService {
         // Creación de entidad
         Mensaje mensaje = new Mensaje();
         mensaje.setEmisor(emisor);
-        mensaje.setReceptor(usuarioRepository.findById(request.getReceptorId())
-                .orElseThrow(() -> new IllegalArgumentException("Usuario receptor no encontrado")));
+        mensaje.setReceptor(personaRepository.findById(request.getReceptorId())
+                .orElseThrow(() -> new IllegalArgumentException("Persona receptora no encontrada")));
         mensaje.setContenido(request.getContenido().trim());
         mensaje.setFechaEnvio(OffsetDateTime.now());
         mensaje.setLeido(false);
@@ -87,9 +87,9 @@ public class ChatService {
                 ));
     }
 
-    public List<Usuario> getActiveChatUsers(Long userId) {
+    public List<Persona> getActiveChatUsers(Long userId) {
         List<Long> activeUserIds = mensajeRepository.getActiveChatUserIds(userId);
-        return usuarioRepository.findAllById(activeUserIds);
+        return personaRepository.findAllById(activeUserIds);
     }
 
     public void setUserOnline(Long userId) {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -20,22 +20,55 @@ import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import type { ChatMessageDTO, UsuarioBusquedaDTO } from "@/types/api-generated";
+import type { ChatMessageDTO, PersonaResumenDTO } from "@/types/api-generated";
 import useChatSocket from "@/hooks/useChatSocket";
 
 dayjs.extend(relativeTime);
 
+const getPersonaDisplayName = (persona: PersonaResumenDTO | null | undefined) => {
+  if (!persona) return "Sin nombre";
+  if (persona.nombreCompleto && persona.nombreCompleto.trim()) {
+    return persona.nombreCompleto;
+  }
+  const composed = [persona.apellido, persona.nombre]
+    .filter((value) => value && value.trim())
+    .join(", ");
+  if (composed) return composed;
+  if (persona.email) return persona.email;
+  if (persona.dni) return `DNI ${persona.dni}`;
+  return `Persona ${persona.id}`;
+};
+
+const getPersonaInitials = (persona: PersonaResumenDTO | null | undefined) => {
+  const source = persona?.nombreCompleto ||
+    [persona?.nombre, persona?.apellido].filter(Boolean).join(" ") ||
+    persona?.email ||
+    "";
+  if (!source) return "?";
+  const letters = source
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk.charAt(0).toUpperCase());
+  return letters.length ? letters.join("") : source.charAt(0).toUpperCase();
+};
+
+const getPersonaEmail = (persona: PersonaResumenDTO | null | undefined) =>
+  persona?.email ?? "Sin email";
+
 export default function ChatComponent() {
-  const [activeChats, setActiveChats] = useState<UsuarioBusquedaDTO[]>([]);
+  const [activeChats, setActiveChats] = useState<PersonaResumenDTO[]>([]);
   const [openChatDialog, setOpenChatDialog] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [personas, setPersonas] = useState<UsuarioBusquedaDTO[]>([]);
+  const [personas, setPersonas] = useState<PersonaResumenDTO[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
 
-  const [selectedUserId, setSelectedUserId] = useState<number>(0);
-  const [selectedPersona, setSelectedPersona] =
-    useState<UsuarioBusquedaDTO | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedPersona, setSelectedPersona] = useState<PersonaResumenDTO | null>(
+    null,
+  );
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -50,9 +83,14 @@ export default function ChatComponent() {
     loadHistory,
   } = useChatSocket();
 
-  /* ---------- Cargar chats activos y unreadCounts ---------- */
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setActiveChats([]);
+      setUnreadCounts({});
+      return;
+    }
+
+    let alive = true;
 
     const loadData = async () => {
       try {
@@ -61,80 +99,101 @@ export default function ChatComponent() {
           api.chat.getUnreadCounts(),
         ]);
 
-        setActiveChats(chatsRes.data);
+        if (!alive) return;
+        setActiveChats(chatsRes.data ?? []);
         setUnreadCounts(unreadRes.data ?? {});
       } catch (err) {
-        console.error("Error al cargar chats:", err);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error al cargar chats", err);
+        }
       }
     };
 
     loadData();
     const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
   }, [user]);
 
-  /* ---------- Búsqueda de personas con debounce ---------- */
   useEffect(() => {
     if (!user) return;
+    const query = searchTerm.trim();
+
     const debounceTimer = setTimeout(() => {
-      api
-        .searchUsers(searchTerm.trim())
-        .then(({ data }) => setPersonas(data))
-        .catch(console.error);
+      api.personasCore
+        .searchCredenciales(query || undefined)
+        .then(({ data }) => {
+          const results = (data ?? []).filter((p) => p.id !== user.id);
+          setPersonas(results);
+        })
+        .catch((error) => {
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error al buscar personas", error);
+          }
+        });
     }, 300);
+
     return () => clearTimeout(debounceTimer);
   }, [user, searchTerm]);
 
-  /* ---------- Scroll automático ---------- */
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  /* ---------- Agregar chat si llega un mensaje nuevo de usuario desconocido ---------- */
   useEffect(() => {
-    if (!messages.length) return;
+    if (!messages.length || !user) return;
     const lastMessage = messages[messages.length - 1];
+    if (lastMessage.emisorId === user.id) return;
+    if (activeChats.some((chat) => chat.id === lastMessage.emisorId)) return;
 
-    if (
-      lastMessage.emisorId !== user?.id &&
-      !activeChats.some((chat) => chat.id === lastMessage.emisorId)
-    ) {
-      // Obtener datos del usuario desde la API
-      api.user
-        .getById(lastMessage.emisorId)
-        .then(({ data }) => {
-          const nuevoChat: UsuarioBusquedaDTO = {
-            id: data.id,
-            nombreCompleto: `${data.nombre} ${data.apellido}`,
-            email: data.email,
-          };
-          setActiveChats((prev) => [...prev, nuevoChat]);
-        })
-        .catch(console.error);
+    (async () => {
+      try {
+        const { data } = await api.personasCore.getResumen(lastMessage.emisorId);
+        if (data) {
+          setActiveChats((prev) =>
+            prev.some((chat) => chat.id === data.id) ? prev : [...prev, data],
+          );
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("No pudimos cargar la persona del mensaje", error);
+        }
+      }
+    })();
+  }, [messages, user, activeChats]);
+
+  useEffect(() => {
+    if (!selectedPersona) return;
+    const refreshed = activeChats.find((chat) => chat.id === selectedPersona.id);
+    if (refreshed && refreshed !== selectedPersona) {
+      setSelectedPersona(refreshed);
     }
-  }, [messages]);
+  }, [activeChats, selectedPersona]);
 
-  /* ---------- Abrir chat y marcar como leído ---------- */
-  const openChat = async (p: UsuarioBusquedaDTO) => {
-    setSelectedPersona(p);
-    setSelectedUserId(p.id);
+  const openChat = async (persona: PersonaResumenDTO) => {
+    setActiveChats((prev) =>
+      prev.some((chat) => chat.id === persona.id) ? prev : [...prev, persona],
+    );
+    setSelectedPersona(persona);
+    setSelectedUserId(persona.id);
 
-    await loadHistory(p.id);
-    markRead(p.id);
+    await loadHistory(persona.id);
+    await markRead(persona.id);
 
     setUnreadCounts((prev) => ({
       ...prev,
-      [p.id]: 0,
+      [persona.id]: 0,
     }));
 
     setOpenChatDialog(false);
   };
 
-  /* ---------- Enviar mensaje ---------- */
   const handleSend = () => {
-    if (!newMessage.trim() || !selectedUserId) return;
+    if (!newMessage.trim() || selectedUserId == null) return;
     sendMessage(selectedUserId, newMessage.trim());
     setNewMessage("");
   };
@@ -146,7 +205,6 @@ export default function ChatComponent() {
     }
   };
 
-  /* ---------- Estado conexión ---------- */
   const ConnectionStatus = () => {
     switch (connectionStatus) {
       case "connecting":
@@ -178,7 +236,6 @@ export default function ChatComponent() {
     }
   };
 
-  /* ---------- Mensaje ---------- */
   const MessageBubble = ({ message }: { message: ChatMessageDTO }) => {
     const isOwn = message.emisorId === user?.id;
     const isOptimistic = message.id < 0;
@@ -211,15 +268,15 @@ export default function ChatComponent() {
     );
   };
 
-  /* ---------- Responsive ---------- */
   const useMediaQuery = (query: string) => {
     const [matches, setMatches] = useState(false);
     useEffect(() => {
-      const m = window.matchMedia(query);
-      setMatches(m.matches);
-      const handler = () => setMatches(m.matches);
-      m.addEventListener("change", handler);
-      return () => m.removeEventListener("change", handler);
+      if (typeof window === "undefined") return;
+      const mql = window.matchMedia(query);
+      setMatches(mql.matches);
+      const handler = () => setMatches(mql.matches);
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
     }, [query]);
     return matches;
   };
@@ -238,7 +295,6 @@ export default function ChatComponent() {
           </div>
         </div>
         <div className="flex h-[calc(100vh-12rem)] md:h-[calc(100vh-12rem)]">
-          {/* Lista de chats */}
           {showChatList && (
             <div className="w-full md:w-1/3 flex-shrink-0">
               <Card className="h-full flex flex-col">
@@ -258,50 +314,45 @@ export default function ChatComponent() {
                         <DialogHeader>
                           <DialogTitle>Nuevo Chat</DialogTitle>
                           <DialogDescription>
-                            Busca y selecciona una persona para iniciar
-                            conversación
+                            Buscá y seleccioná una persona para iniciar la conversación.
                           </DialogDescription>
                         </DialogHeader>
                         <Input
-                          placeholder="Escribe para buscar..."
+                          placeholder="Escribí para buscar..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                         />
                         <ScrollArea className="h-64">
                           <div className="space-y-2">
                             {personas
-                              .filter(
-                                (p) =>
-                                  !activeChats.find((ac) => ac.id === p.id),
-                              )
+                              .filter((p) => !activeChats.some((ac) => ac.id === p.id))
                               .map((p) => (
-                                <div
+                                <button
                                   key={p.id}
-                                  className="p-2 rounded hover:bg-muted cursor-pointer"
+                                  type="button"
+                                  className="w-full p-2 rounded hover:bg-muted text-left"
                                   onClick={() => openChat(p)}
                                 >
                                   <div className="flex items-center gap-2">
                                     <Avatar className="h-8 w-8">
-                                      {/*
-                                      <AvatarImage
-                                        src={`/avatars/${p.id}.jpg`}
-                                      />
-                                      */}
-                                      <AvatarFallback>
-                                        {p.nombreCompleto?.charAt(0) || "?"}
-                                      </AvatarFallback>
+                                      <AvatarFallback>{getPersonaInitials(p)}</AvatarFallback>
                                     </Avatar>
                                     <div>
                                       <p className="font-medium text-sm">
-                                        {p.nombreCompleto}
+                                        {getPersonaDisplayName(p)}
                                       </p>
                                       <p className="text-xs text-muted-foreground">
-                                        {p.email}
+                                        {getPersonaEmail(p)}
                                       </p>
                                     </div>
                                   </div>
-                                </div>
+                                </button>
                               ))}
+                            {personas.length === 0 && (
+                              <p className="px-2 text-sm text-muted-foreground">
+                                Escribí para buscar personas con acceso al sistema.
+                              </p>
+                            )}
                           </div>
                         </ScrollArea>
                       </DialogContent>
@@ -313,47 +364,43 @@ export default function ChatComponent() {
                   <ScrollArea className="h-full">
                     {activeChats.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground">
-                        No hay chats activos. Haz clic en + para iniciar uno.
+                        No hay chats activos. Usá el botón "+" para iniciar uno nuevo.
                       </div>
                     ) : (
                       <div className="space-y-1 p-2">
                         {activeChats.map((p) => (
-                          <div
+                          <button
                             key={p.id}
+                            type="button"
                             onClick={() => openChat(p)}
                             className={`
-                          flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors
-                          ${
-                            selectedPersona?.id === p.id
-                              ? "bg-primary/10 border border-primary/20"
-                              : "hover:bg-muted"
-                          }
-                        `}
+                              flex w-full items-center space-x-3 p-3 rounded-lg transition-colors
+                              ${
+                                selectedPersona?.id === p.id
+                                  ? "bg-primary/10 border border-primary/20"
+                                  : "hover:bg-muted"
+                              }
+                            `}
                           >
                             <div className="relative">
                               <Avatar className="h-10 w-10">
-                                {/*
-                                <AvatarImage src={`/avatars/${p.id}.jpg`} />
-                                */}
-                                <AvatarFallback>
-                                  {p.nombreCompleto?.charAt(0) || "?"}
-                                </AvatarFallback>
+                                <AvatarFallback>{getPersonaInitials(p)}</AvatarFallback>
                               </Avatar>
-                              {unreadCounts[p.id] > 0 && (
+                              {(unreadCounts[p.id] ?? 0) > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                                   {unreadCounts[p.id]}
                                 </span>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 text-left">
                               <p className="font-medium truncate text-sm">
-                                {p.nombreCompleto}
+                                {getPersonaDisplayName(p)}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
-                                {p.email}
+                                {getPersonaEmail(p)}
                               </p>
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -363,34 +410,27 @@ export default function ChatComponent() {
             </div>
           )}
 
-          {/* Vista del chat */}
           {showChatView && selectedPersona && (
             <div className="flex-1 flex flex-col bg-background border rounded-lg">
-              {/* Header */}
-              <div className="p-4 flex items-center gap-3 bg-background rounded-lg ">
+              <div className="p-4 flex items-center gap-3 bg-background rounded-lg">
                 {!isMd && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setSelectedPersona(null);
-                      setSelectedUserId(0);
+                      setSelectedUserId(null);
                     }}
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                 )}
                 <Avatar className="h-8 w-8">
-                  {/*
-                  <AvatarImage src={`/avatars/${selectedPersona.id}.jpg`} />
-                  */}
-                  <AvatarFallback>
-                    {selectedPersona.nombreCompleto?.charAt(0) || "?"}
-                  </AvatarFallback>
+                  <AvatarFallback>{getPersonaInitials(selectedPersona)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm">
-                    {selectedPersona.nombreCompleto}
+                    {getPersonaDisplayName(selectedPersona)}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {connected ? "En línea" : "Desconectado"}
@@ -398,7 +438,6 @@ export default function ChatComponent() {
                 </div>
               </div>
 
-              {/* Mensajes */}
               <ScrollArea className="flex-1">
                 <div className="p-4">
                   {messages.map((message) => (
@@ -408,22 +447,19 @@ export default function ChatComponent() {
                 </div>
               </ScrollArea>
 
-              {/* Input */}
               <div className="p-4 bg-background rounded-lg">
                 <div className="flex gap-2">
                   <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Selecciona un chat para escribir..."
-                    disabled={!connected || !selectedUserId}
+                    placeholder="Escribí un mensaje..."
+                    disabled={!connected || selectedUserId == null}
                     className="flex-1"
                   />
                   <Button
                     onClick={handleSend}
-                    disabled={
-                      !connected || !newMessage.trim() || !selectedUserId
-                    }
+                    disabled={!connected || !newMessage.trim() || selectedUserId == null}
                     size="icon"
                   >
                     <Send className="h-4 w-4" />

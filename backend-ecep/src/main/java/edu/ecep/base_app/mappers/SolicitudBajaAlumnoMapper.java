@@ -9,6 +9,7 @@ import org.mapstruct.Mapping;
 @Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface SolicitudBajaAlumnoMapper {
     @Mapping(target = "matriculaId", source = "matricula.id")
+    @Mapping(target = "decididoPor", source = "decididoPorPersonaId")
     SolicitudBajaAlumnoDTO toDto(SolicitudBajaAlumno e);
 
     @Mapping(target = "matricula", source = "matriculaId")

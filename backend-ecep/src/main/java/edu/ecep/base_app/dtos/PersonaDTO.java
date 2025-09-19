@@ -1,5 +1,6 @@
 package edu.ecep.base_app.dtos;
 
+import edu.ecep.base_app.domain.enums.UserRole;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,24 +8,30 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.Set;
 
-@Data@NoArgsConstructor
-@AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class PersonaDTO {
-    Long id;
-    @NotBlank String nombre;
-    @NotBlank String apellido;
+    private Long id;
     @NotBlank
-    String dni;
+    private String nombre;
+    @NotBlank
+    private String apellido;
+    @NotBlank
+    private String dni;
 
-    LocalDate fechaNacimiento;
-    String genero;
-    String estadoCivil;
-    String nacionalidad;
+    private LocalDate fechaNacimiento;
+    private String genero;
+    private String estadoCivil;
+    private String nacionalidad;
 
-    String domicilio;
-    String telefono;
-    String celular;
-    String email;
-    Long usuarioId;
+    private String domicilio;
+    private String telefono;
+    private String celular;
+    private String email;
+    private Set<UserRole> roles;
+    private boolean credencialesActivas;
 }

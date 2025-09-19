@@ -623,7 +623,8 @@ export interface PersonaDTO {
   celular?: string;
   email?: string;
   observacionesGenerales?: string;
-  usuarioId?: number;
+  roles?: UserRole[];
+  credencialesActivas?: boolean;
 }
 
 export interface PersonaCreateDTO {
@@ -638,6 +639,8 @@ export interface PersonaCreateDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  password?: string;
+  roles?: UserRole[];
 }
 
 export interface PersonaUpdateDTO {
@@ -655,6 +658,8 @@ export interface PersonaUpdateDTO {
   celular?: string;
   email?: string;
   observacionesGenerales?: string;
+  password?: string;
+  roles?: UserRole[];
 }
 
 export interface ReciboSueldoCreateDTO {
@@ -834,21 +839,31 @@ export interface TrimestreDTO {
   cerrado?: boolean;
 }
 
-export interface UsuarioBusquedaDTO {
+export interface PersonaResumenDTO {
   id: number;
+  personaId?: number | null;
   email?: string;
-  userRoles?: UserRole[];
-  personaId?: number;
-  nombreCompleto?: string;
+  roles?: UserRole[];
+  nombre?: string;
+  apellido?: string;
+  nombreCompleto?: string | null;
   dni?: string;
   tipoPersona?: string;
 }
 
-export interface UsuarioDTO {
-  id: number;
+export interface AuthResponse {
+  token: string;
+  personaId: number;
   email?: string;
-  password?: string;
-  userRoles?: UserRole[];
+  roles?: UserRole[];
+  nombre?: string;
+  apellido?: string;
+  nombreCompleto?: string | null;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 export interface AlumnoLiteDTO {

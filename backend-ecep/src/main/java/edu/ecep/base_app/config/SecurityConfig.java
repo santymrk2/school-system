@@ -1,7 +1,8 @@
 package edu.ecep.base_app.config;
 
-import edu.ecep.base_app.domain.Usuario;
-import edu.ecep.base_app.repos.UsuarioRepository;
+import edu.ecep.base_app.domain.Persona;
+import edu.ecep.base_app.domain.enums.UserRole;
+import edu.ecep.base_app.repos.PersonaRepository;
 import edu.ecep.base_app.util.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
@@ -34,7 +36,6 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    private final UsuarioRepository usuarioRepository;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -62,8 +63,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/api/users/search"
+                                "/api/auth/**"
                         ).permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -78,7 +78,6 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/api/personas",
                                 "/api/familiares",
                                 "/api/aspirantes",
                                 "/api/aspirante-familiar",
@@ -87,7 +86,6 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PUT,
-                                "/api/personas/*",
                                 "/api/familiares/*",
                                 "/api/aspirantes/*"
                         ).permitAll()
@@ -115,16 +113,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(UsuarioRepository repo) {
+    public UserDetailsService userDetailsService(PersonaRepository repo) {
         return username -> {
-            Usuario u = repo.findByEmail(username)
+            Persona persona = repo.findByEmail(username)
                     .orElseThrow(() -> new UsernameNotFoundException("No existe: " + username));
-            var authorities = u.getUserRoles().stream()
+            Set<UserRole> roles = persona.getRoles() == null ? Set.of() : persona.getRoles();
+            var authorities = roles.stream()
                     .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
                     .toList();
             return new org.springframework.security.core.userdetails.User(
-                    u.getEmail(),
-                    u.getPassword(),
+                    persona.getEmail(),
+                    persona.getPassword(),
                     authorities
             );
         };

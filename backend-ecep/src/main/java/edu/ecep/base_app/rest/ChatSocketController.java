@@ -1,17 +1,18 @@
 package edu.ecep.base_app.rest;
 
 import edu.ecep.base_app.domain.Mensaje;
-import edu.ecep.base_app.domain.Usuario;
+import edu.ecep.base_app.domain.Persona;
 import edu.ecep.base_app.dtos.ChatMessageDTO;
 import edu.ecep.base_app.dtos.SendMessageRequest;
 import edu.ecep.base_app.service.ChatService;
-import edu.ecep.base_app.service.UsuarioService;
+import edu.ecep.base_app.service.PersonaAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
+
 import java.security.Principal;
 
 @Controller
@@ -20,7 +21,7 @@ import java.security.Principal;
 public class ChatSocketController {
 
     private final ChatService chatService;
-    private final UsuarioService userService;
+    private final PersonaAccountService personaAccountService;
 
     @MessageMapping("/chat.send")
     @SendToUser("/queue/ack")
@@ -28,8 +29,8 @@ public class ChatSocketController {
             @Payload SendMessageRequest req,
             Principal principal
     ) {
-        Usuario em = userService.findById(Long.valueOf(principal.getName()));
-        Mensaje saved = chatService.saveAndSend(req, em);
+        Persona emisor = personaAccountService.getPersonaById(Long.valueOf(principal.getName()));
+        Mensaje saved = chatService.saveAndSend(req, emisor);
         return chatService.toDto(saved);
     }
 }

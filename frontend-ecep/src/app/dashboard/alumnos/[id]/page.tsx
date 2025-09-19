@@ -45,8 +45,8 @@ import type {
   MatriculaDTO,
   MatriculaSeccionHistorialDTO,
   PersonaDTO,
+  PersonaUpdateDTO,
   SeccionDTO,
-  UsuarioDTO,
 } from "@/types/api-generated";
 import { RolVinculo, UserRole } from "@/types/api-generated";
 
@@ -151,14 +151,13 @@ export default function AlumnoPerfilPage() {
     motivoRechazoBaja: "",
   });
   const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
-  const [usuarioActual, setUsuarioActual] = useState<UsuarioDTO | null>(null);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [usuarioForm, setUsuarioForm] = useState({
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [credentialsForm, setCredentialsForm] = useState({
     email: "",
     password: "",
     confirmPassword: "",
   });
-  const [savingUser, setSavingUser] = useState(false);
+  const [savingCredentials, setSavingCredentials] = useState(false);
   const [addFamilyOpen, setAddFamilyOpen] = useState(false);
   const [addPersonaDraft, setAddPersonaDraft] = useState({
     nombre: "",
@@ -176,6 +175,16 @@ export default function AlumnoPerfilPage() {
   const [savingFamily, setSavingFamily] = useState(false);
   const [familiaresCatalog, setFamiliaresCatalog] = useState<FamiliarDTO[]>([]);
 
+  useEffect(() => {
+    if (credentialsDialogOpen) {
+      setCredentialsForm({
+        email: persona?.email ?? "",
+        password: "",
+        confirmPassword: "",
+      });
+    }
+  }, [credentialsDialogOpen, persona?.email]);
+
   // carga
   useEffect(() => {
     if (!alumnoId || Number.isNaN(alumnoId)) return;
@@ -192,11 +201,9 @@ export default function AlumnoPerfilPage() {
         setAlumno(a);
 
         let p: PersonaDTO | null = null;
-        let personaUsuarioId: number | null = null;
         if (a?.personaId) {
           try {
             p = (await api.personasCore.getById(a.personaId)).data ?? null;
-            personaUsuarioId = p?.usuarioId ?? null;
           } catch {
             p = null;
           }
@@ -275,19 +282,6 @@ export default function AlumnoPerfilPage() {
         );
         if (!alive) return;
         setFamiliares(fams);
-
-        if (personaUsuarioId) {
-          try {
-            const { data: userData } = await api.user.getById(personaUsuarioId);
-            if (!alive) return;
-            setUsuarioActual(userData ?? null);
-          } catch {
-            if (!alive) return;
-            setUsuarioActual(null);
-          }
-        } else if (alive) {
-          setUsuarioActual(null);
-        }
 
         if (!alive) return;
       } catch (e: any) {
@@ -440,17 +434,6 @@ export default function AlumnoPerfilPage() {
       clearTimeout(handler);
     };
   }, [addFamilyOpen, addPersonaDraft.dni, familiaresCatalog]);
-
-
-  useEffect(() => {
-    if (!linkDialogOpen) return;
-    setUsuarioForm({
-      email: usuarioActual?.email ?? persona?.email ?? "",
-      password: "",
-      confirmPassword: "",
-    });
-  }, [linkDialogOpen, usuarioActual, persona]);
-
   const handleSaveProfile = async () => {
     if (!alumno) return;
     if (!persona?.id) {
@@ -577,22 +560,22 @@ export default function AlumnoPerfilPage() {
     }
   };
 
-  const handleSaveUserAccess = async () => {
+  const handleSaveCredentials = async () => {
     if (!persona?.id) {
       toast.error("No encontramos la persona vinculada al alumno");
       return;
     }
 
-    const email = usuarioForm.email.trim();
-    const password = usuarioForm.password.trim();
-    const confirmPassword = usuarioForm.confirmPassword.trim();
+    const email = credentialsForm.email.trim();
+    const password = credentialsForm.password.trim();
+    const confirmPassword = credentialsForm.confirmPassword.trim();
 
     if (!email) {
       toast.error("Ingresá un email válido para el acceso");
       return;
     }
 
-    if (!usuarioActual && !password) {
+    if (!persona.credencialesActivas && !password) {
       toast.error("Definí una contraseña inicial");
       return;
     }
@@ -602,54 +585,26 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
-    let finalPassword = password;
-    if (usuarioActual && !finalPassword) {
-      const storedPassword = usuarioActual.password;
-      if (!storedPassword?.trim()) {
-        toast.error(
-          "No pudimos recuperar la contraseña actual. Ingresá una nueva.",
-        );
-        return;
-      }
-      finalPassword = storedPassword;
+    const payload: Partial<PersonaUpdateDTO> = {
+      email,
+      roles:
+        persona.roles && persona.roles.length > 0
+          ? persona.roles
+          : [UserRole.STUDENT],
+    };
+
+    if (password) {
+      payload.password = password;
     }
 
-    setSavingUser(true);
+    setSavingCredentials(true);
     try {
-      let userId = usuarioActual?.id ?? null;
-
-      if (usuarioActual) {
-        await api.user.update(usuarioActual.id, {
-          id: usuarioActual.id,
-          email,
-          password: finalPassword,
-          userRoles:
-            usuarioActual.userRoles && usuarioActual.userRoles.length > 0
-              ? usuarioActual.userRoles
-              : [UserRole.STUDENT],
-        } as UsuarioDTO);
-        userId = usuarioActual.id;
-      } else {
-        const { data: createdId } = await api.user.create({
-          email,
-          password: finalPassword,
-          userRoles: [UserRole.STUDENT],
-        } as UsuarioDTO);
-        userId = Number(createdId);
-        await api.personasCore.linkUsuario(persona.id, userId);
-      }
-
-      if (userId != null) {
-        const { data: refreshed } = await api.user.getById(userId);
-        setUsuarioActual(refreshed ?? null);
-        const finalUserId = userId ?? undefined;
-        setPersona((prev) =>
-          prev ? { ...prev, usuarioId: finalUserId } : prev,
-        );
-      }
-
+      await api.personasCore.update(persona.id, payload);
+      const { data: refreshed } = await api.personasCore.getById(persona.id);
+      setPersona(refreshed ?? null);
       toast.success("Acceso del alumno actualizado");
-      setLinkDialogOpen(false);
+      setCredentialsDialogOpen(false);
+      setCredentialsForm({ email: email, password: "", confirmPassword: "" });
     } catch (error: any) {
       console.error(error);
       toast.error(
@@ -658,27 +613,7 @@ export default function AlumnoPerfilPage() {
           "No pudimos actualizar el acceso del alumno",
       );
     } finally {
-      setSavingUser(false);
-    }
-  };
-
-  const handleUnlinkUser = async () => {
-    if (!persona?.id || !usuarioActual?.id) return;
-    setSavingUser(true);
-    try {
-      await api.personasCore.unlinkUsuario(persona.id);
-      setUsuarioActual(null);
-      setPersona((prev) => (prev ? { ...prev, usuarioId: undefined } : prev));
-      toast.success("Acceso desvinculado correctamente");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(
-        error?.response?.data?.message ??
-          error?.message ??
-          "No pudimos desvincular al usuario",
-      );
-    } finally {
-      setSavingUser(false);
+      setSavingCredentials(false);
     }
   };
 
@@ -1371,11 +1306,11 @@ export default function AlumnoPerfilPage() {
               <CardContent className="space-y-4">
                 <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center md:justify-between">
                   <div>
-                    {usuarioActual ? (
+                    {persona?.credencialesActivas ? (
                       <>
-                        <div className="font-medium">{usuarioActual.email}</div>
+                        <div className="font-medium">{persona?.email}</div>
                         <div className="text-muted-foreground">
-                          Roles: {usuarioActual.userRoles?.join(", ") ?? "Sin roles"}
+                          Roles: {persona?.roles?.join(", ") ?? "Sin roles"}
                         </div>
                       </>
                     ) : (
@@ -1385,16 +1320,19 @@ export default function AlumnoPerfilPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+                    <Dialog
+                      open={credentialsDialogOpen}
+                      onOpenChange={setCredentialsDialogOpen}
+                    >
                       <DialogTrigger asChild>
-                        <Button>
-                          {usuarioActual ? "Actualizar acceso" : "Crear acceso"}
-                        </Button>
+                        <Button>Gestionar acceso</Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-md">
                         <DialogHeader>
                           <DialogTitle>
-                            {usuarioActual ? "Actualizar acceso" : "Crear acceso"}
+                            {persona?.credencialesActivas
+                              ? "Actualizar acceso"
+                              : "Crear acceso"}
                           </DialogTitle>
                           <DialogDescription>
                             El email será el usuario de inicio de sesión. Para cambiar la contraseña ingresá y confirmá el nuevo valor.
@@ -1405,9 +1343,9 @@ export default function AlumnoPerfilPage() {
                             <Label>Email</Label>
                             <Input
                               type="email"
-                              value={usuarioForm.email}
+                              value={credentialsForm.email}
                               onChange={(e) =>
-                                setUsuarioForm((prev) => ({
+                                setCredentialsForm((prev) => ({
                                   ...prev,
                                   email: e.target.value,
                                 }))
@@ -1418,14 +1356,14 @@ export default function AlumnoPerfilPage() {
                             <Label>Contraseña</Label>
                             <Input
                               type="password"
-                              value={usuarioForm.password}
+                              value={credentialsForm.password}
                               placeholder={
-                                usuarioActual
+                                persona?.credencialesActivas
                                   ? "Ingresá una nueva contraseña"
                                   : "Contraseña inicial"
                               }
                               onChange={(e) =>
-                                setUsuarioForm((prev) => ({
+                                setCredentialsForm((prev) => ({
                                   ...prev,
                                   password: e.target.value,
                                 }))
@@ -1436,9 +1374,9 @@ export default function AlumnoPerfilPage() {
                             <Label>Confirmar contraseña</Label>
                             <Input
                               type="password"
-                              value={usuarioForm.confirmPassword}
+                              value={credentialsForm.confirmPassword}
                               onChange={(e) =>
-                                setUsuarioForm((prev) => ({
+                                setCredentialsForm((prev) => ({
                                   ...prev,
                                   confirmPassword: e.target.value,
                                 }))
@@ -1449,16 +1387,16 @@ export default function AlumnoPerfilPage() {
                         <DialogFooter>
                           <Button
                             variant="outline"
-                            onClick={() => setLinkDialogOpen(false)}
-                            disabled={savingUser}
+                            onClick={() => setCredentialsDialogOpen(false)}
+                            disabled={savingCredentials}
                           >
                             Cancelar
                           </Button>
                           <Button
-                            onClick={handleSaveUserAccess}
-                            disabled={savingUser}
+                            onClick={handleSaveCredentials}
+                            disabled={savingCredentials}
                           >
-                            {savingUser && (
+                            {savingCredentials && (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             )}
                             Guardar acceso
@@ -1466,18 +1404,6 @@ export default function AlumnoPerfilPage() {
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
-                    {usuarioActual && (
-                      <Button
-                        variant="destructive"
-                        onClick={handleUnlinkUser}
-                        disabled={savingUser}
-                      >
-                        {savingUser ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : null}
-                        Desvincular
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>

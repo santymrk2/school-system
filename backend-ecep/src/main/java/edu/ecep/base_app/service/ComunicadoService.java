@@ -2,14 +2,12 @@ package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Comunicado;
 import edu.ecep.base_app.domain.Seccion;
-import edu.ecep.base_app.domain.Usuario;
 import edu.ecep.base_app.domain.enums.AlcanceComunicado;
 import edu.ecep.base_app.dtos.ComunicadoCreateDTO;
 import edu.ecep.base_app.dtos.ComunicadoDTO;
 import edu.ecep.base_app.mappers.ComunicadoMapper;
 import edu.ecep.base_app.repos.ComunicadoRepository;
 import edu.ecep.base_app.repos.SeccionRepository;
-import edu.ecep.base_app.repos.UsuarioRepository;
 import edu.ecep.base_app.util.NotFoundException;
 import java.util.List;
 

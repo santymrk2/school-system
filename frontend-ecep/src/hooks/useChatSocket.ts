@@ -195,10 +195,7 @@ export default function useChatSocket() {
   const markRead = async (otherUserId: number) => {
     try {
       console.log("📡 Marcando mensajes como leídos de usuario:", otherUserId);
-      await fetch(`http://localhost:8080/api/chat/mark-read/${otherUserId}`, {
-        method: "POST",
-        credentials: "include",
-      });
+      await api.chat.markRead(otherUserId);
 
       setMessages((prev) =>
         prev.map((msg) =>

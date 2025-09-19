@@ -7,7 +7,7 @@ import type {
   ActaAccidenteCreateDTO,
   AlumnoDTO,
   AlumnoLiteDTO,
-  UsuarioBusquedaDTO,
+  PersonaResumenDTO,
   EmpleadoDTO,
   AsignacionDocenteSeccionDTO,
 } from "@/types/api-generated";
@@ -57,7 +57,7 @@ export default function NewActaDialog({
 }) {
   const { periodoEscolarId, hoyISO } = useActivePeriod();
 
-  const [me, setMe] = useState<UsuarioBusquedaDTO | null>(null);
+  const [me, setMe] = useState<PersonaResumenDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 

@@ -1,23 +1,32 @@
 package edu.ecep.base_app.dtos;
 
-import lombok.*;
-import java.time.LocalDate;
+import edu.ecep.base_app.domain.enums.UserRole;
 import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+import java.time.LocalDate;
+import java.util.Set;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class PersonaUpdateDTO {
-    String nombre;
-    String apellido;
+    private String nombre;
+    private String apellido;
     @Pattern(regexp = "\\d{7,10}", message = "El DNI debe tener entre 7 y 10 dígitos numéricos")
-    String dni;
+    private String dni;
 
-    LocalDate fechaNacimiento;
-    String genero;
-    String estadoCivil;
-    String nacionalidad;
+    private LocalDate fechaNacimiento;
+    private String genero;
+    private String estadoCivil;
+    private String nacionalidad;
 
-    String domicilio;
-    String telefono;
-    String celular;
-    String email;
+    private String domicilio;
+    private String telefono;
+    private String celular;
+    private String email;
+    private String password;
+    private Set<UserRole> roles;
 }

@@ -1,7 +1,6 @@
 export * from "./http";
 
 import * as auth from "./modules/auth";
-import * as users from "./modules/users";
 import * as calendario from "./modules/calendario";
 import * as estructura from "./modules/estructura";
 import * as docencia from "./modules/docencia";
@@ -23,10 +22,6 @@ export const api = {
   login: auth.login,
   logout: auth.logout,
   me: auth.me,
-
-  // users
-  user: users.user,
-  searchUsers: users.searchUsers,
 
   // calendario
   periodos: calendario.periodos,

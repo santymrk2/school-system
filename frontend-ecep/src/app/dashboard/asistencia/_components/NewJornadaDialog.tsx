@@ -17,6 +17,8 @@ import type { SeccionDTO, TrimestreDTO } from "@/types/api-generated";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import {
   getTrimestreEstado,
+  getTrimestreFin,
+  getTrimestreInicio,
   isFechaDentroDeTrimestre,
 } from "@/lib/trimestres";
 
@@ -62,13 +64,58 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const [creating, setCreating] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
   const [busyDates, setBusyDates] = useState<Set<string>>(new Set());
-  const { getTrimestreByDate, trimestreActivo, trimestresDelPeriodo } =
-    useActivePeriod();
+  const { trimestreActivo, trimestresDelPeriodo } = useActivePeriod();
+
+  const activeTrimestre = useMemo(() => {
+    const explicitlyActive = trimestresDelPeriodo.find(
+      (t) => getTrimestreEstado(t) === "activo",
+    );
+    if (explicitlyActive) return explicitlyActive;
+    if (trimestreActivo && getTrimestreEstado(trimestreActivo) !== "cerrado") {
+      return trimestreActivo;
+    }
+    return (
+      trimestresDelPeriodo.find(
+        (t) => getTrimestreEstado(t) !== "cerrado",
+      ) ?? null
+    );
+  }, [trimestreActivo, trimestresDelPeriodo]);
+
+  const resolveTrimestreForDate = useCallback(
+    (value: string): TrimestreDTO | null => {
+      if (!value) return null;
+      const match = trimestresDelPeriodo.find((t) =>
+        isFechaDentroDeTrimestre(value, t),
+      );
+      if (!match || getTrimestreEstado(match) === "cerrado") {
+        return null;
+      }
+      if (
+        activeTrimestre &&
+        getTrimestreEstado(activeTrimestre) !== "cerrado" &&
+        match.id !== activeTrimestre.id
+      ) {
+        return null;
+      }
+      return match;
+    },
+    [trimestresDelPeriodo, activeTrimestre],
+  );
 
   const computeDateError = useCallback(
     (value: string, existing: Set<string> | null = null): string | null => {
       const set = existing ?? busyDates;
       if (!value) return "Seleccioná una fecha";
+      const trimesterForDate = resolveTrimestreForDate(value);
+      if (!trimesterForDate) {
+        if (
+          activeTrimestre &&
+          getTrimestreEstado(activeTrimestre) !== "cerrado"
+        ) {
+          return "La fecha seleccionada no pertenece al trimestre actual.";
+        }
+        return "No encontramos un trimestre activo para la fecha seleccionada.";
+      }
       if (isWeekend(value)) {
         return "No se pueden crear jornadas los fines de semana.";
       }
@@ -77,7 +124,29 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       }
       return null;
     },
-    [busyDates],
+    [busyDates, resolveTrimestreForDate, activeTrimestre],
+  );
+
+  const setFechaWithValidation = useCallback(
+    (value: string, opts: { showToast?: boolean } = {}) => {
+      if (!value) {
+        setFecha(value);
+        setDateError("Seleccioná una fecha");
+        return false;
+      }
+      const validation = computeDateError(value);
+      if (validation) {
+        setDateError(validation);
+        if (opts.showToast) {
+          toast.warning(validation);
+        }
+        return false;
+      }
+      setFecha(value);
+      setDateError(null);
+      return true;
+    },
+    [computeDateError],
   );
 
   useEffect(() => {
@@ -92,17 +161,22 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         const incoming = new Set<string>();
         for (const row of (res.data ?? []) as any[]) {
           const raw = (row?.fecha ?? "").slice(0, 10);
-          if (raw) incoming.add(raw);
+          if (raw && resolveTrimestreForDate(raw)) {
+            incoming.add(raw);
+          }
         }
         setBusyDates(incoming);
       } catch (err) {
-        console.error("[NewJornadaDialog] No se pudo cargar jornadas previas", err);
+        console.error(
+          "[NewJornadaDialog] No se pudo cargar jornadas previas",
+          err,
+        );
       }
     })();
     return () => {
       alive = false;
     };
-  }, [open, seccion.id]);
+  }, [open, seccion.id, resolveTrimestreForDate]);
 
   useEffect(() => {
     if (!open) return;
@@ -110,8 +184,12 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   }, [open, fecha, computeDateError]);
 
   const currentYear = new Date().getFullYear();
-  const minFecha = `${currentYear}-01-01`;
-  const maxFecha = `${currentYear}-12-31`;
+  const trimestreInicio = activeTrimestre
+    ? getTrimestreInicio(activeTrimestre)
+    : "";
+  const trimestreFin = activeTrimestre ? getTrimestreFin(activeTrimestre) : "";
+  const minFecha = trimestreInicio || `${currentYear}-01-01`;
+  const maxFecha = trimestreFin || `${currentYear}-12-31`;
   const formattedFecha = useMemo(() => formatHumanDate(fecha), [fecha]);
 
   const defaultTrigger = useMemo(
@@ -132,9 +210,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       const validation = computeDateError(fecha);
       if (validation) {
         setDateError(validation);
-        if (validation.includes("jornada")) {
-          toast.warning(validation);
-        }
+        toast.warning(validation);
         return;
       }
 
@@ -154,30 +230,21 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         return;
       }
 
-      let tri = getTrimestreByDate(fecha) ?? undefined;
-      if (tri && getTrimestreEstado(tri) === "cerrado") {
-        tri = undefined;
-      }
+      let tri = resolveTrimestreForDate(fecha) ?? undefined;
       if (!tri) {
-        tri =
-          trimestreActivo ??
-          trimestresDelPeriodo.find(
-            (t) => getTrimestreEstado(t) === "activo",
-          ) ??
-          undefined;
-      }
-
-      if (!tri) {
-        toast.warning(
-          "No encontramos un trimestre activo para la fecha seleccionada.",
-        );
+        const msg = activeTrimestre
+          ? "La fecha seleccionada no pertenece al trimestre activo."
+          : "No encontramos un trimestre activo para la fecha seleccionada.";
+        setDateError(msg);
+        toast.warning(msg);
         return;
       }
 
       if (!isFechaDentroDeTrimestre(fecha, tri)) {
-        toast.warning(
-          "La fecha seleccionada no pertenece al trimestre activo.",
-        );
+        const msg =
+          "La fecha seleccionada no pertenece al trimestre activo.";
+        setDateError(msg);
+        toast.warning(msg);
         return;
       }
 
@@ -224,7 +291,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
                 const value = e.target.value;
                 if (!value) {
                   setFecha(value);
-                  setDateError(null);
+                  setDateError("Seleccioná una fecha");
                   return;
                 }
                 const valueYear = new Date(value).getFullYear();
@@ -232,8 +299,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
                   toast.warning("Solo se permiten fechas dentro del año actual.");
                   return;
                 }
-                setFecha(value);
-                setDateError(computeDateError(value));
+                setFechaWithValidation(value, { showToast: true });
               }}
             />
             {formattedFecha && (

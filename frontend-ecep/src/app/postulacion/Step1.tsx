@@ -56,6 +56,7 @@ export function Step1({
             value={formData.nombre || ""}
             onChange={(e) => handleInputChange("nombre", e.target.value)}
             placeholder="Ingrese el nombre"
+            aria-invalid={errors.nombre || undefined}
             className={cn(errors.nombre && "border-destructive")}
           />
         </div>
@@ -68,6 +69,7 @@ export function Step1({
             value={formData.apellido || ""}
             onChange={(e) => handleInputChange("apellido", e.target.value)}
             placeholder="Ingrese el apellido"
+            aria-invalid={errors.apellido || undefined}
             className={cn(errors.apellido && "border-destructive")}
           />
         </div>
@@ -85,6 +87,7 @@ export function Step1({
             value={formData.dni || ""}
             onChange={(e) => handleInputChange("dni", formatDni(e.target.value))}
             placeholder="12345678"
+            aria-invalid={errors.dni || undefined}
             className={cn(errors.dni && "border-destructive")}
           />
           <div className="mt-1 text-xs text-muted-foreground min-h-[16px]">
@@ -107,6 +110,7 @@ export function Step1({
             onChange={(e) =>
               handleInputChange("fechaNacimiento", e.target.value)
             }
+            aria-invalid={errors.fechaNacimiento || undefined}
             className={cn(errors.fechaNacimiento && "border-destructive")}
           />
         </div>
@@ -117,9 +121,11 @@ export function Step1({
           <Select
             value={formData.cursoSolicitado}
             onValueChange={(v) => handleInputChange("cursoSolicitado", v)}
-            className={cn(errors.cursoSolicitado && "border-destructive")}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              aria-invalid={errors.cursoSolicitado || undefined}
+              className={cn(errors.cursoSolicitado && "border-destructive")}
+            >
               <SelectValue placeholder="Seleccione un curso" />
             </SelectTrigger>
             <SelectContent>
@@ -145,9 +151,11 @@ export function Step1({
           <Select
             value={formData.turnoPreferido}
             onValueChange={(v) => handleInputChange("turnoPreferido", v)}
-            className={cn(errors.turnoPreferido && "border-destructive")}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              aria-invalid={errors.turnoPreferido || undefined}
+              className={cn(errors.turnoPreferido && "border-destructive")}
+            >
               <SelectValue placeholder="Seleccione un turno" />
             </SelectTrigger>
             <SelectContent>
@@ -164,6 +172,7 @@ export function Step1({
             id="escuelaActual"
             value={formData.escuelaActual || ""}
             onChange={(e) => handleInputChange("escuelaActual", e.target.value)}
+            aria-invalid={errors.escuelaActual || undefined}
             className={cn(errors.escuelaActual && "border-destructive")}
           />
         </div>
@@ -175,6 +184,7 @@ export function Step1({
             id="domicilio"
             value={formData.domicilio || ""}
             onChange={(e) => handleInputChange("domicilio", e.target.value)}
+            aria-invalid={errors.domicilio || undefined}
             className={cn(errors.domicilio && "border-destructive")}
           />
         </div>
@@ -186,6 +196,7 @@ export function Step1({
             id="nacionalidad"
             value={formData.nacionalidad || ""}
             onChange={(e) => handleInputChange("nacionalidad", e.target.value)}
+            aria-invalid={errors.nacionalidad || undefined}
             className={cn(errors.nacionalidad && "border-destructive")}
           />
         </div>

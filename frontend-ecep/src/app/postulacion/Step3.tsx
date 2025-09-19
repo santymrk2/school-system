@@ -34,6 +34,8 @@ interface Step3Props {
 }
 
 export function Step3({ formData, handleInputChange, errors = {} }: Step3Props) {
+  const hasError = (key: string) => Boolean(errors?.[key]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center mb-6">
@@ -52,6 +54,7 @@ export function Step3({ formData, handleInputChange, errors = {} }: Step3Props) 
             required
           >
             <SelectTrigger
+              aria-invalid={hasError("conectividadInternet") || undefined}
               className={cn(
                 errors.conectividadInternet && "border-destructive",
               )}
@@ -81,6 +84,9 @@ export function Step3({ formData, handleInputChange, errors = {} }: Step3Props) 
             placeholder="Ej: PC, tablet, smartphone..."
             rows={3}
             required
+            aria-invalid={
+              hasError("dispositivosDisponibles") || undefined
+            }
             className={cn(
               errors.dispositivosDisponibles && "border-destructive",
             )}
@@ -99,6 +105,7 @@ export function Step3({ formData, handleInputChange, errors = {} }: Step3Props) 
             }
             placeholder="Ej: Español, Inglés..."
             required
+            aria-invalid={hasError("idiomasHabladosHogar") || undefined}
             className={cn(
               errors.idiomasHabladosHogar && "border-destructive",
             )}

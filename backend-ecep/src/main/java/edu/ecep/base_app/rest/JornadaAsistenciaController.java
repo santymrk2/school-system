@@ -62,7 +62,7 @@ public class JornadaAsistenciaController {
     }
 
     // Abrir jornada
-    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','TEACHER','SECRETARY','COORDINATOR')")
     @PostMapping
     public ResponseEntity<Long> abrir(@RequestBody @Valid JornadaAsistenciaCreateDTO dto) {
         return new ResponseEntity<>(service.abrir(dto), HttpStatus.CREATED);

@@ -1730,7 +1730,13 @@ export default function ReportesPage() {
                     <Input
                       type="date"
                       value={attendanceFrom}
-                      onChange={(e) => setAttendanceFrom(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setAttendanceFrom(value);
+                        if (value && attendanceTo && value > attendanceTo) {
+                          setAttendanceTo(value);
+                        }
+                      }}
                     />
                   </div>
                   <div>
@@ -1738,7 +1744,13 @@ export default function ReportesPage() {
                     <Input
                       type="date"
                       value={attendanceTo}
-                      onChange={(e) => setAttendanceTo(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setAttendanceTo(value);
+                        if (value && attendanceFrom && value < attendanceFrom) {
+                          setAttendanceFrom(value);
+                        }
+                      }}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -1992,7 +2004,13 @@ export default function ReportesPage() {
                     <Input
                       type="date"
                       value={teacherFrom}
-                      onChange={(e) => setTeacherFrom(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setTeacherFrom(value);
+                        if (value && teacherTo && value > teacherTo) {
+                          setTeacherTo(value);
+                        }
+                      }}
                     />
                   </div>
                   <div>
@@ -2000,7 +2018,13 @@ export default function ReportesPage() {
                     <Input
                       type="date"
                       value={teacherTo}
-                      onChange={(e) => setTeacherTo(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setTeacherTo(value);
+                        if (value && teacherFrom && value < teacherFrom) {
+                          setTeacherFrom(value);
+                        }
+                      }}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -2118,11 +2142,31 @@ export default function ReportesPage() {
                     <CardContent className="space-y-4 text-sm">
                       <div className="space-y-2">
                         <Label>Desde</Label>
-                        <Input type="date" value={actaFrom} onChange={(e) => setActaFrom(e.target.value)} />
+                        <Input
+                          type="date"
+                          value={actaFrom}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setActaFrom(value);
+                            if (value && actaTo && value > actaTo) {
+                              setActaTo(value);
+                            }
+                          }}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Hasta</Label>
-                        <Input type="date" value={actaTo} onChange={(e) => setActaTo(e.target.value)} />
+                        <Input
+                          type="date"
+                          value={actaTo}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setActaTo(value);
+                            if (value && actaFrom && value < actaFrom) {
+                              setActaFrom(value);
+                            }
+                          }}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Nivel</Label>

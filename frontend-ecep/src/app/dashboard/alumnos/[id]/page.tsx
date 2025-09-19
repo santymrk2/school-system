@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api";
+import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type {
   AlumnoDTO,
   FamiliarDTO,
@@ -465,6 +466,14 @@ export default function AlumnoPerfilPage() {
     const dniValue = formatDni(personaDraft.dni);
     if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
       toast.error("Ingresá un DNI válido (7 a 10 dígitos).");
+
+    if (
+      personaDraft.fechaNacimiento &&
+      !isBirthDateValid(personaDraft.fechaNacimiento)
+    ) {
+      toast.error(
+        "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
+      );
       return;
     }
 
@@ -832,6 +841,7 @@ export default function AlumnoPerfilPage() {
                         <Label>Fecha de nacimiento</Label>
                         <Input
                           type="date"
+                          max={maxBirthDate}
                           value={personaDraft.fechaNacimiento}
                           onChange={(e) =>
                             setPersonaDraft((prev) => ({

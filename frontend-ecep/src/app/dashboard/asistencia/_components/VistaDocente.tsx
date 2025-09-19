@@ -24,6 +24,10 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  getTrimestreEstado,
+  isFechaDentroDeTrimestre,
+} from "@/lib/trimestres";
 
 const DBG = !!process.env.NEXT_PUBLIC_DEBUG;
 const dlog = (...a: any[]) => DBG && console.log("[VistaDocente]", ...a);
@@ -90,9 +94,8 @@ export default function VistaDocente() {
     const t =
       trimestres.find(
         (tr) =>
-          !tr.cerrado &&
-          nowKey >= fmt(tr.fechaInicio ?? undefined) &&
-          nowKey <= fmt(tr.fechaFin ?? undefined),
+          getTrimestreEstado(tr) !== "cerrado" &&
+          isFechaDentroDeTrimestre(nowKey, tr),
       ) ?? null;
 
     dgrp("calculo trimestreHoy");

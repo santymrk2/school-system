@@ -15,6 +15,10 @@ import { api } from "@/services/api";
 import { toast } from "sonner";
 import type { SeccionDTO, TrimestreDTO } from "@/types/api-generated";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import {
+  getTrimestreEstado,
+  isFechaDentroDeTrimestre,
+} from "@/lib/trimestres";
 
 type Props = {
   seccion: SeccionDTO;
@@ -51,13 +55,6 @@ function formatHumanDate(dateString?: string) {
   const year = date.getFullYear();
   return `${weekday} ${day} de ${month}, ${year}`;
 }
-
-const triInicio = (t: TrimestreDTO) =>
-  ((t as any).inicio ?? (t as any).fechaInicio ?? (t as any).fecha_inicio ??
-    "") as string;
-const triFin = (t: TrimestreDTO) =>
-  ((t as any).fin ?? (t as any).fechaFin ?? (t as any).fecha_fin ??
-    "") as string;
 
 export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const [open, setOpen] = useState(false);
@@ -158,13 +155,15 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       }
 
       let tri = getTrimestreByDate(fecha) ?? undefined;
-      if (tri?.cerrado) {
+      if (tri && getTrimestreEstado(tri) === "cerrado") {
         tri = undefined;
       }
       if (!tri) {
         tri =
           trimestreActivo ??
-          trimestresDelPeriodo.find((t) => t.cerrado === false) ??
+          trimestresDelPeriodo.find(
+            (t) => getTrimestreEstado(t) === "activo",
+          ) ??
           undefined;
       }
 
@@ -175,9 +174,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         return;
       }
 
-      const inicioTri = triInicio(tri);
-      const finTri = triFin(tri);
-      if (!inicioTri || !finTri || fecha < inicioTri || fecha > finTri) {
+      if (!isFechaDentroDeTrimestre(fecha, tri)) {
         toast.warning(
           "La fecha seleccionada no pertenece al trimestre activo.",
         );

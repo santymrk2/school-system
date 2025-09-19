@@ -16,6 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatDni } from "@/lib/form-utils";
+import { maxBirthDate } from "@/lib/form-utils";
 import { RolVinculo } from "@/types/api-generated";
 import type { PostulacionFormData } from "./types";
 
@@ -219,6 +220,7 @@ export function Step2({
                 <Input
                   id={`familiar-fecha-${i}`}
                   type="date"
+                  max={maxBirthDate}
                   value={f.familiar?.fechaNacimiento ?? ""}
                   onChange={(e) =>
                     handleInputChange(

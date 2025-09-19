@@ -197,12 +197,19 @@ export default function AlumnoPerfilPage() {
         setError(null);
 
         // 1) Alumno + Persona
-        const a = (await api.alumnos.byId(alumnoId)).data ?? null;
+        const alumnoResponse = await api.alumnos.byId(alumnoId);
+        const a = alumnoResponse.data ?? null;
         if (!alive) return;
+        if (!a) {
+          setAlumno(null);
+          setPersona(null);
+          setError("No encontramos los datos del alumno");
+          return;
+        }
         setAlumno(a);
 
         let p: PersonaDTO | null = null;
-        if (a?.personaId) {
+        if (a.personaId) {
           try {
             p = (await api.personasCore.getById(a.personaId)).data ?? null;
           } catch {
@@ -223,68 +230,106 @@ export default function AlumnoPerfilPage() {
           if (!alive) return;
           setSeccionesMap(map);
           setSeccionesList(secciones);
-        } catch {
+        } catch (error) {
+          console.error(error);
           seccionMapLocal = null;
+          if (!alive) return;
+          setSeccionesMap(new Map<number, SeccionDTO>());
+          setSeccionesList([]);
         }
 
         // 3) Matrículas del alumno
-        const mats = ((await api.matriculas.list()).data ?? []).filter(
-          (m: any) => m.alumnoId === alumnoId,
-        );
+        let mats: MatriculaDTO[] = [];
+        try {
+          const { data } = await api.matriculas.list();
+          mats = ((data ?? []) as MatriculaDTO[]).filter(
+            (m: any) => m.alumnoId === alumnoId,
+          );
+        } catch (error) {
+          console.error(error);
+          mats = [];
+        }
         if (!alive) return;
-        setMatriculas(mats as MatriculaDTO[]);
+        setMatriculas(mats);
 
         // 4) Historial de sección (todas las filas) y enriquecer con label
-        const allHist = (await api.matriculaSeccionHistorial.list()).data ?? [];
-        const labelMap = seccionMapLocal ?? seccionesMap;
-        const labelFor = (sid?: number | null) => seccionLabel(sid, labelMap);
+        let hist: HistorialVM[] = [];
+        try {
+          const { data } = await api.matriculaSeccionHistorial.list();
+          const allHist = (data ?? []) as any[];
+          const labelMap = seccionMapLocal ?? seccionesMap;
+          const labelFor = (sid?: number | null) => seccionLabel(sid, labelMap);
 
-        const hist = (allHist as any[])
-          .filter((h) =>
-            mats.some((m: any) => m.id === (h.matriculaId ?? h.matricula?.id)),
-          )
-          .map((h) => {
-            const sid = h.seccionId ?? h.seccion?.id;
-            return {
-              id: h.id ?? h.matriculaSeccionHistorialId ?? 0,
-              matriculaId: h.matriculaId ?? h.matricula?.id,
-              seccionId: sid,
-              desde: h.desde ?? h.vigenciaDesde ?? null,
-              hasta: h.hasta ?? h.vigenciaHasta ?? null,
-              seccionLabel: labelFor(sid),
-            } as HistorialVM;
-          });
+          hist = allHist
+            .filter((h) =>
+              mats.some(
+                (m: any) => m.id === (h.matriculaId ?? h.matricula?.id),
+              ),
+            )
+            .map((h) => {
+              const sid = h.seccionId ?? h.seccion?.id;
+              return {
+                id: h.id ?? h.matriculaSeccionHistorialId ?? 0,
+                matriculaId: h.matriculaId ?? h.matricula?.id,
+                seccionId: sid,
+                desde: h.desde ?? h.vigenciaDesde ?? null,
+                hasta: h.hasta ?? h.vigenciaHasta ?? null,
+                seccionLabel: labelFor(sid),
+              } as HistorialVM;
+            });
+        } catch (error) {
+          console.error(error);
+          hist = [];
+        }
         if (!alive) return;
         setHistorial(hist);
 
         // 5) Familiares + sus personas + vínculo
-        //    (tu back tiene alumno-familiar como tabla intermedia)
-        const links = ((await api.alumnoFamiliares.list()).data ?? []).filter(
-          (af: any) => af.alumnoId === alumnoId,
-        );
-        const fams: FamiliarConVinculo[] = await Promise.all(
-          links.map(async (link: any) => {
-            const f = (await api.familiares.byId(link.familiarId)).data as any;
-            let fp: PersonaDTO | null = null;
-            if (f?.personaId) {
-              fp = await api.personasCore
-                .getById(f.personaId)
-                .then((r) => r.data ?? null)
-                .catch(() => null);
+        let fams: FamiliarConVinculo[] = [];
+        try {
+          const { data } = await api.alumnoFamiliares.list();
+          const links = ((data ?? []) as any[]).filter(
+            (af: any) => af.alumnoId === alumnoId,
+          );
+          const results = await Promise.allSettled(
+            links.map(async (link: any) => {
+              if (!link?.familiarId) return null;
+              try {
+                const familiarRes = await api.familiares.byId(link.familiarId);
+                const f = familiarRes.data as FamiliarDTO | null;
+                if (!f) return null;
+                let fp: PersonaDTO | null = null;
+                if (f.personaId) {
+                  fp = await api.personasCore
+                    .getById(f.personaId)
+                    .then((r) => r.data ?? null)
+                    .catch(() => null);
+                }
+                return {
+                  ...f,
+                  parentesco: link.rolVinculo ?? undefined,
+                  esTutorLegal: link.esTutorLegal ?? false,
+                  rolVinculo: link.rolVinculo ?? null,
+                  _persona: fp,
+                } as FamiliarConVinculo;
+              } catch (error) {
+                console.error(error);
+                return null;
+              }
+            }),
+          );
+          fams = results.reduce<FamiliarConVinculo[]>((acc, res) => {
+            if (res.status === "fulfilled" && res.value) {
+              acc.push(res.value);
             }
-            return {
-              ...(f as FamiliarDTO),
-              parentesco: link.rolVinculo ?? undefined,
-              esTutorLegal: link.esTutorLegal ?? false,
-              rolVinculo: link.rolVinculo ?? null,
-              _persona: fp,
-            };
-          }),
-        );
+            return acc;
+          }, []);
+        } catch (error) {
+          console.error(error);
+          fams = [];
+        }
         if (!alive) return;
         setFamiliares(fams);
-
-        if (!alive) return;
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message ?? "No se pudo cargar el perfil");
@@ -450,6 +495,8 @@ export default function AlumnoPerfilPage() {
     const dniValue = formatDni(personaDraft.dni);
     if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
       toast.error("Ingresá un DNI válido (7 a 10 dígitos).");
+      return;
+    }
 
     if (
       personaDraft.fechaNacimiento &&

@@ -28,6 +28,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api";
 import type {
   AlumnoFamiliarDTO,
@@ -173,7 +174,7 @@ export default function FamiliarPerfilPage() {
     setPersonaDraft({
       nombre: persona?.nombre ?? "",
       apellido: persona?.apellido ?? "",
-      dni: persona?.dni ?? "",
+      dni: formatDni(persona?.dni ?? ""),
       email: persona?.email ?? "",
       telefono: persona?.telefono ?? "",
       celular: persona?.celular ?? "",
@@ -193,12 +194,18 @@ export default function FamiliarPerfilPage() {
       return;
     }
 
+    const dniValue = formatDni(personaDraft.dni);
+    if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
+      toast.error("Ingresá un DNI válido (7 a 10 dígitos).");
+      return;
+    }
+
     setSavingProfile(true);
     try {
       await api.personasCore.update(persona.id, {
         nombre: personaDraft.nombre.trim(),
         apellido: personaDraft.apellido.trim(),
-        dni: personaDraft.dni.trim() || undefined,
+        dni: dniValue,
         email: personaDraft.email.trim() || undefined,
         telefono: personaDraft.telefono.trim() || undefined,
         celular: personaDraft.celular.trim() || undefined,
@@ -368,9 +375,13 @@ export default function FamiliarPerfilPage() {
                       onChange={(e) =>
                         setPersonaDraft((prev) => ({
                           ...prev,
-                          dni: e.target.value,
+                          dni: formatDni(e.target.value),
                         }))
                       }
+                      inputMode="numeric"
+                      pattern="\d*"
+                      minLength={7}
+                      maxLength={10}
                     />
                   </div>
                   <div className="space-y-2">

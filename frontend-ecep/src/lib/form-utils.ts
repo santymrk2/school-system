@@ -7,9 +7,9 @@ export enum InternetConnectivity {
   SIN_CONEXION = "Sin Conexión",
 }
 
-// Solo dígitos, hasta 9 caracteres
+// Solo dígitos, hasta 10 caracteres
 export function formatDni(s: string) {
-  return s.replace(/\D/g, "").slice(0, 9);
+  return s.replace(/\D/g, "").slice(0, 10);
 }
 
 // Fecha máxima: personas de al menos 1 año
@@ -33,7 +33,8 @@ export function validateStep1(data: Step1Data): string | null {
   if (!data.nombre) return "El nombre es obligatorio.";
   if (!data.apellido) return "El apellido es obligatorio.";
   if (!data.dni) return "El DNI es obligatorio.";
-  if (data.dni.length < 7) return "El DNI debe tener al menos 7 dígitos.";
+  if (data.dni.length < 7 || data.dni.length > 10)
+    return "El DNI debe tener entre 7 y 10 dígitos.";
   if (!data.fechaNacimiento) return "La fecha de nacimiento es obligatoria.";
   if (!data.cursoSolicitado) return "Seleccione un curso.";
   if (!data.turnoPreferido) return "Seleccione un turno.";

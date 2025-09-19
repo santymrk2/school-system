@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/services/api";
 import type * as DTO from "@/types/api-generated";
+import { formatDni } from "@/lib/form-utils";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
@@ -92,7 +93,7 @@ export default function AltaAlumnoPage() {
       setPersonaForm({
         nombre: data.nombre ?? "",
         apellido: data.apellido ?? "",
-        dni: data.dni ?? "",
+        dni: formatDni(data.dni ?? ""),
         fechaNacimiento: data.fechaNacimiento ?? "",
         genero: data.genero ?? "",
         estadoCivil: data.estadoCivil ?? "",
@@ -108,12 +109,13 @@ export default function AltaAlumnoPage() {
   };
 
   useEffect(() => {
-    const dni = personaForm.dni.trim();
-    if (!dni || dni.length < 7) {
+    const dni = formatDni(personaForm.dni);
+    if (!dni || dni.length < 7 || dni.length > 10) {
       setDniLookupLoading(false);
       return;
     }
-    if (personaPreview && personaPreview.dni === dni) {
+    const previewDni = personaPreview?.dni ? formatDni(personaPreview.dni) : "";
+    if (previewDni === dni) {
       return;
     }
     if (lastLookupDni === dni) {
@@ -149,13 +151,17 @@ export default function AltaAlumnoPage() {
   }, [personaForm.dni, personaPreview, lastLookupDni]);
 
   const persistPersona = async (): Promise<number> => {
-    if (!personaForm.nombre || !personaForm.apellido || !personaForm.dni) {
+    const dniValue = formatDni(personaForm.dni);
+    if (!personaForm.nombre || !personaForm.apellido || !dniValue) {
       throw new Error("Completá nombre, apellido y DNI");
+    }
+    if (dniValue.length < 7 || dniValue.length > 10) {
+      throw new Error("El DNI debe tener entre 7 y 10 dígitos.");
     }
     const createPayload: DTO.PersonaCreateDTO = {
       nombre: personaForm.nombre,
       apellido: personaForm.apellido,
-      dni: personaForm.dni,
+      dni: dniValue,
       fechaNacimiento: personaForm.fechaNacimiento || undefined,
       genero: personaForm.genero || undefined,
       estadoCivil: personaForm.estadoCivil || undefined,
@@ -249,7 +255,13 @@ export default function AltaAlumnoPage() {
               <PersonaFormFields
                 values={personaForm}
                 onChange={(field, value) =>
-                  setPersonaForm((prev) => ({ ...prev, [field]: value }))
+                  setPersonaForm((prev) => ({
+                    ...prev,
+                    [field]:
+                      field === "dni" && typeof value === "string"
+                        ? formatDni(value)
+                        : value,
+                  }))
                 }
               />
               {dniLookupLoading && (
@@ -380,7 +392,11 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
         <label className="text-sm font-medium text-muted-foreground">DNI *</label>
         <Input
           value={values.dni}
-          onChange={(e) => onChange("dni", e.target.value)}
+          inputMode="numeric"
+          pattern="\d*"
+          minLength={7}
+          maxLength={10}
+          onChange={(e) => onChange("dni", formatDni(e.target.value))}
           placeholder="DNI"
         />
       </div>

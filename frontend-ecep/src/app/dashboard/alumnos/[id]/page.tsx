@@ -36,6 +36,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api";
 import type {
   AlumnoDTO,
@@ -331,7 +332,7 @@ export default function AlumnoPerfilPage() {
     setPersonaDraft({
       nombre: persona?.nombre ?? "",
       apellido: persona?.apellido ?? "",
-      dni: persona?.dni ?? "",
+      dni: formatDni(persona?.dni ?? ""),
       fechaNacimiento: persona?.fechaNacimiento ?? "",
       genero: persona?.genero ?? "",
       nacionalidad: persona?.nacionalidad ?? "",
@@ -385,8 +386,8 @@ export default function AlumnoPerfilPage() {
 
   useEffect(() => {
     if (!addFamilyOpen) return;
-    const dni = addPersonaDraft.dni.trim();
-    if (dni.length < 7) {
+    const dni = formatDni(addPersonaDraft.dni);
+    if (dni.length < 7 || dni.length > 10) {
       setAddPersonaId(null);
       setAddFamiliarId(null);
       setAddLookupLoading(false);
@@ -409,7 +410,7 @@ export default function AlumnoPerfilPage() {
               ...prev,
               nombre: personaData.nombre ?? "",
               apellido: personaData.apellido ?? "",
-              dni: personaData.dni ?? dni,
+              dni: formatDni(personaData.dni ?? dni),
               email: personaData.email ?? "",
               telefono: personaData.telefono ?? "",
               celular: personaData.celular ?? "",
@@ -461,6 +462,12 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
+    const dniValue = formatDni(personaDraft.dni);
+    if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
+      toast.error("Ingresá un DNI válido (7 a 10 dígitos).");
+      return;
+    }
+
     setSavingProfile(true);
     const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -468,7 +475,7 @@ export default function AlumnoPerfilPage() {
       const personaPayload = {
         nombre: personaDraft.nombre.trim(),
         apellido: personaDraft.apellido.trim(),
-        dni: personaDraft.dni.trim() || undefined,
+        dni: dniValue,
         fechaNacimiento: personaDraft.fechaNacimiento || undefined,
         genero: personaDraft.genero || undefined,
         nacionalidad: personaDraft.nacionalidad || undefined,
@@ -661,12 +668,15 @@ export default function AlumnoPerfilPage() {
   const handleSaveFamily = async () => {
     if (!alumno) return;
 
+    const addDniValue = formatDni(addPersonaDraft.dni);
     if (
-      !addPersonaDraft.dni.trim() ||
+      !addDniValue ||
+      addDniValue.length < 7 ||
+      addDniValue.length > 10 ||
       !addPersonaDraft.nombre.trim() ||
       !addPersonaDraft.apellido.trim()
     ) {
-      toast.error("Completá DNI, nombre y apellido del familiar");
+      toast.error("Completá DNI válido, nombre y apellido del familiar");
       return;
     }
 
@@ -686,7 +696,7 @@ export default function AlumnoPerfilPage() {
       const personaPayload = {
         nombre: addPersonaDraft.nombre.trim(),
         apellido: addPersonaDraft.apellido.trim(),
-        dni: addPersonaDraft.dni.trim(),
+        dni: addDniValue,
         email: addPersonaDraft.email.trim() || undefined,
         telefono: addPersonaDraft.telefono.trim() || undefined,
         celular: addPersonaDraft.celular.trim() || undefined,
@@ -809,9 +819,13 @@ export default function AlumnoPerfilPage() {
                           onChange={(e) =>
                             setPersonaDraft((prev) => ({
                               ...prev,
-                              dni: e.target.value,
+                              dni: formatDni(e.target.value),
                             }))
                           }
+                          inputMode="numeric"
+                          pattern="\d*"
+                          minLength={7}
+                          maxLength={10}
                         />
                       </div>
                       <div className="space-y-2">
@@ -1153,11 +1167,15 @@ export default function AlumnoPerfilPage() {
                               onChange={(e) =>
                                 setAddPersonaDraft((prev) => ({
                                   ...prev,
-                                  dni: e.target.value,
+                                  dni: formatDni(e.target.value),
                                 }))
                               }
                               placeholder="Documento del familiar"
                               disabled={savingFamily}
+                              inputMode="numeric"
+                              pattern="\d*"
+                              minLength={7}
+                              maxLength={10}
                             />
                             {addLookupLoading && (
                               <p className="text-xs text-muted-foreground">Buscando persona…</p>

@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.constraints.Pattern;
 
 @RestController
 @RequestMapping("/api/personas")
@@ -38,7 +39,10 @@ public class PersonaController {
     }
 
     @GetMapping("/dni/{dni}")
-    public ResponseEntity<Long> findIdByDni(@PathVariable String dni) {
+    public ResponseEntity<Long> findIdByDni(
+            @PathVariable
+            @Pattern(regexp = "\\d{7,10}", message = "El DNI debe tener entre 7 y 10 dígitos numéricos")
+            String dni) {
         Long id = personaRepository.findByDni(dni)
                 .map(Persona::getId)
                 .orElseThrow(() -> new NotFoundException("Persona no encontrada por DNI"));

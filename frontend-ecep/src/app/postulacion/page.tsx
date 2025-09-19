@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
+import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api"; // ← import del cliente API
 import * as DTO from "@/types/api-generated";
 
@@ -103,9 +104,11 @@ export default function PostulacionPage() {
     value: any,
     options?: { errorKeys?: string | string[] },
   ) => {
+    const sanitizedValue =
+      field === "dni" && typeof value === "string" ? formatDni(value) : value;
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: sanitizedValue,
       ...(field === "dni" ? { personaId: null } : {}),
     }));
     if (field === "dni") {
@@ -131,12 +134,15 @@ export default function PostulacionPage() {
   };
 
   useEffect(() => {
-    const dni = (formData.dni ?? "").trim();
-    if (!dni || dni.length < 7) {
+    const dni = formatDni(formData.dni ?? "");
+    if (!dni || dni.length < 7 || dni.length > 10) {
       setDniLookupLoading(false);
       return;
     }
-    if (aspirantePersonaPreview?.dni === dni || lastLookupDni === dni) {
+    const previewDni = aspirantePersonaPreview?.dni
+      ? formatDni(aspirantePersonaPreview.dni)
+      : "";
+    if (previewDni === dni || lastLookupDni === dni) {
       return;
     }
 
@@ -179,22 +185,28 @@ export default function PostulacionPage() {
     };
   }, [formData.dni, aspirantePersonaPreview, lastLookupDni]);
 
-  const buildPersonaPayload = (input: PersonaInput): DTO.PersonaCreateDTO => ({
-    nombre: input.nombre,
-    apellido: input.apellido,
-    dni: input.dni,
-    fechaNacimiento: input.fechaNacimiento || undefined,
-    genero: input.genero || undefined,
-    estadoCivil: input.estadoCivil || undefined,
-    nacionalidad: input.nacionalidad || undefined,
-    domicilio: input.domicilio || undefined,
-    telefono: input.telefono || undefined,
-    celular: input.celular || undefined,
-    email: input.email || undefined,
-  });
+  const buildPersonaPayload = (input: PersonaInput): DTO.PersonaCreateDTO => {
+    const dni = formatDni(input.dni);
+    return {
+      nombre: input.nombre,
+      apellido: input.apellido,
+      dni,
+      fechaNacimiento: input.fechaNacimiento || undefined,
+      genero: input.genero || undefined,
+      estadoCivil: input.estadoCivil || undefined,
+      nacionalidad: input.nacionalidad || undefined,
+      domicilio: input.domicilio || undefined,
+      telefono: input.telefono || undefined,
+      celular: input.celular || undefined,
+      email: input.email || undefined,
+    };
+  };
 
   const upsertPersona = async (input: PersonaInput): Promise<number> => {
     const payload = buildPersonaPayload(input);
+    if (!payload.dni || payload.dni.length < 7 || payload.dni.length > 10) {
+      throw new Error("El DNI debe tener entre 7 y 10 dígitos.");
+    }
     if (input.personaId) {
       await api.personasCore.update(input.personaId, payload);
       return input.personaId;
@@ -323,10 +335,18 @@ export default function PostulacionPage() {
         ok = false;
       }
     }
+    const dniValue = formatDni(formData.dni ?? "");
+    const dniInvalid = !dniValue || dniValue.length < 7 || dniValue.length > 10;
+    if (dniInvalid) {
+      newErrors.dni = true;
+      ok = false;
+    }
     setErrors(newErrors);
     if (!ok) {
       toast({
-        title: "Completa los campos obligatorios.",
+        title: dniInvalid
+          ? "El DNI debe tener entre 7 y 10 dígitos."
+          : "Completa los campos obligatorios.",
         variant: "destructive",
       });
     }
@@ -359,8 +379,8 @@ export default function PostulacionPage() {
         newErrors[`familiares.${index}.familiar.apellido`] = true;
         ok = false;
       }
-      const dni = familiarPersona?.dni?.trim();
-      if (!dni || dni.length < 7) {
+      const dni = formatDni(familiarPersona?.dni ?? "");
+      if (!dni || dni.length < 7 || dni.length > 10) {
         newErrors[`familiares.${index}.familiar.dni`] = true;
         ok = false;
       }
@@ -443,7 +463,7 @@ export default function PostulacionPage() {
         personaId: formData.personaId,
         nombre: (formData.nombre ?? "").trim(),
         apellido: (formData.apellido ?? "").trim(),
-        dni: (formData.dni ?? "").trim(),
+        dni: formatDni(formData.dni ?? ""),
         fechaNacimiento: formData.fechaNacimiento || undefined,
         nacionalidad: formData.nacionalidad || undefined,
         domicilio: formData.domicilio || undefined,
@@ -467,7 +487,7 @@ export default function PostulacionPage() {
           personaId: familiarPersona.personaId,
           nombre: familiarPersona.nombre.trim(),
           apellido: familiarPersona.apellido.trim(),
-          dni: familiarPersona.dni.trim(),
+          dni: formatDni(familiarPersona.dni ?? ""),
           fechaNacimiento: familiarPersona.fechaNacimiento || undefined,
           genero: familiarPersona.genero || undefined,
           estadoCivil: familiarPersona.estadoCivil || undefined,

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { formatDni } from "@/lib/form-utils";
 import { RolVinculo } from "@/types/api-generated";
 import type { PostulacionFormData } from "./types";
 
@@ -182,7 +183,8 @@ export function Step2({
                   id={`familiar-dni-${i}`}
                   inputMode="numeric"
                   pattern="\d*"
-                  maxLength={9}
+                  minLength={7}
+                  maxLength={10}
                   value={f.familiar?.dni ?? ""}
                   onChange={(e) =>
                     handleInputChange(
@@ -193,9 +195,7 @@ export function Step2({
                               ...x,
                               familiar: {
                                 ...x.familiar!,
-                                dni: e.target.value
-                                  .replace(/\D/g, "")
-                                  .slice(0, 9),
+                                dni: formatDni(e.target.value),
                               },
                             }
                           : x,

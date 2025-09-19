@@ -583,38 +583,46 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
-    if (!usuarioForm.email.trim()) {
+    const email = usuarioForm.email.trim();
+    const password = usuarioForm.password.trim();
+    const confirmPassword = usuarioForm.confirmPassword.trim();
+
+    if (!email) {
       toast.error("Ingresá un email válido para el acceso");
       return;
     }
 
-    if (!usuarioActual && !usuarioForm.password.trim()) {
+    if (!usuarioActual && !password) {
       toast.error("Definí una contraseña inicial");
       return;
     }
 
-    if (usuarioForm.password !== usuarioForm.confirmPassword) {
+    if (password !== confirmPassword) {
       toast.error("Las contraseñas no coinciden");
       return;
     }
 
+    let finalPassword = password;
+    if (usuarioActual && !finalPassword) {
+      const storedPassword = usuarioActual.password;
+      if (!storedPassword?.trim()) {
+        toast.error(
+          "No pudimos recuperar la contraseña actual. Ingresá una nueva.",
+        );
+        return;
+      }
+      finalPassword = storedPassword;
+    }
+
     setSavingUser(true);
     try {
-      const email = usuarioForm.email.trim();
-      const password = usuarioForm.password.trim();
       let userId = usuarioActual?.id ?? null;
 
       if (usuarioActual) {
-        if (!password) {
-          toast.error("Ingresá una nueva contraseña para actualizar el acceso");
-          setSavingUser(false);
-          return;
-        }
-
         await api.user.update(usuarioActual.id, {
           id: usuarioActual.id,
           email,
-          password,
+          password: finalPassword,
           userRoles:
             usuarioActual.userRoles && usuarioActual.userRoles.length > 0
               ? usuarioActual.userRoles
@@ -624,7 +632,7 @@ export default function AlumnoPerfilPage() {
       } else {
         const { data: createdId } = await api.user.create({
           email,
-          password,
+          password: finalPassword,
           userRoles: [UserRole.STUDENT],
         } as UsuarioDTO);
         userId = Number(createdId);

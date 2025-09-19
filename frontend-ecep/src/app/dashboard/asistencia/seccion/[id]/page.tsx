@@ -16,6 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { Calendar, ArrowLeft, Plus } from "lucide-react";
 import { api } from "@/services/api";
 import type {
@@ -28,9 +33,13 @@ import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestr
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import {
   formatTrimestreRange,
+  getTrimestreEstado,
   getTrimestreFin,
   getTrimestreInicio,
+  TRIMESTRE_ESTADO_BADGE_VARIANT,
+  TRIMESTRE_ESTADO_LABEL,
 } from "@/lib/trimestres";
+import { cn } from "@/lib/utils";
 
 function fmt(iso?: string) {
   if (!iso) return "—";
@@ -258,6 +267,15 @@ export default function SeccionHistorialPage() {
                 Boolean(getTrimestreInicio(tri)) &&
                 Boolean(getTrimestreFin(tri));
               const rangeLabel = formatTrimestreRange(tri);
+              const estado = getTrimestreEstado(tri);
+              const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
+              const estadoBadgeVariant =
+                TRIMESTRE_ESTADO_BADGE_VARIANT[estado] ?? "outline";
+              const canEdit = estado === "activo";
+              const estadoMessage =
+                estado === "cerrado"
+                  ? "Este trimestre está cerrado. Los registros son solo de lectura."
+                  : "Este trimestre está inactivo. No podés registrar ni editar asistencia.";
               return (
                 <TabsContent key={value} value={value} className="space-y-4">
                   {!hasRange ? (
@@ -276,9 +294,14 @@ export default function SeccionHistorialPage() {
                           <Card>
                             <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                               <div>
-                                <CardTitle className="flex items-center">
-                                  <Calendar className="h-5 w-5 mr-2" />
-                                  Jornadas del trimestre
+                                <CardTitle className="flex flex-wrap items-center gap-2">
+                                  <span className="flex items-center">
+                                    <Calendar className="h-5 w-5 mr-2" />
+                                    Jornadas del trimestre
+                                  </span>
+                                  <Badge variant={estadoBadgeVariant}>
+                                    {estadoLabel}
+                                  </Badge>
                                 </CardTitle>
                                 <CardDescription>
                                   Seleccioná una fecha para ver o editar la
@@ -295,7 +318,14 @@ export default function SeccionHistorialPage() {
                                 <NewJornadaDialog
                                   seccion={seccion}
                                   trigger={
-                                    <Button>
+                                    <Button
+                                      disabled={!canEdit}
+                                      title={
+                                        canEdit
+                                          ? undefined
+                                          : "Activá el trimestre para registrar jornadas."
+                                      }
+                                    >
                                       <Plus className="h-4 w-4 mr-2" />
                                       Nueva jornada
                                     </Button>
@@ -310,6 +340,14 @@ export default function SeccionHistorialPage() {
                             </CardHeader>
 
                             <CardContent className="space-y-2">
+                              {!canEdit && (
+                                <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                                  <AlertTitle>{estadoLabel}</AlertTitle>
+                                  <AlertDescription>
+                                    {estadoMessage}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
                               {historial.length === 0 && (
                                 <div className="text-sm text-muted-foreground">
                                   No hay registros en el trimestre seleccionado.
@@ -319,8 +357,13 @@ export default function SeccionHistorialPage() {
                               {historial.map((d) => (
                                 <button
                                   key={d.fecha}
-                                  className="w-full text-left"
+                                  className={cn(
+                                    "w-full text-left",
+                                    !canEdit && "cursor-not-allowed opacity-60",
+                                  )}
+                                  disabled={!canEdit}
                                   onClick={async () => {
+                                    if (!canEdit) return;
                                     try {
                                       const res =
                                         await api.jornadasAsistencia.bySeccionFechaOne(
@@ -351,7 +394,11 @@ export default function SeccionHistorialPage() {
                                       );
                                     }
                                   }}
-                                  title="Ver/editar detalle"
+                                  title={
+                                    canEdit
+                                      ? "Ver/editar detalle"
+                                      : "Trimestre no activo. Solo lectura"
+                                  }
                                 >
                                   <div className="flex items-center justify-between border rounded p-2 hover:bg-gray-50">
                                     <div className="flex items-center gap-3">

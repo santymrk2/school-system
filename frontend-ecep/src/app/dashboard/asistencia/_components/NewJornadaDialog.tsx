@@ -67,16 +67,12 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const { trimestreActivo, trimestresDelPeriodo } = useActivePeriod();
 
   const activeTrimestre = useMemo(() => {
-    const explicitlyActive = trimestresDelPeriodo.find(
-      (t) => getTrimestreEstado(t) === "activo",
-    );
-    if (explicitlyActive) return explicitlyActive;
-    if (trimestreActivo && getTrimestreEstado(trimestreActivo) !== "cerrado") {
+    if (trimestreActivo && getTrimestreEstado(trimestreActivo) === "activo") {
       return trimestreActivo;
     }
     return (
       trimestresDelPeriodo.find(
-        (t) => getTrimestreEstado(t) !== "cerrado",
+        (t) => getTrimestreEstado(t) === "activo",
       ) ?? null
     );
   }, [trimestreActivo, trimestresDelPeriodo]);
@@ -87,14 +83,10 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       const match = trimestresDelPeriodo.find((t) =>
         isFechaDentroDeTrimestre(value, t),
       );
-      if (!match || getTrimestreEstado(match) === "cerrado") {
+      if (!match || getTrimestreEstado(match) !== "activo") {
         return null;
       }
-      if (
-        activeTrimestre &&
-        getTrimestreEstado(activeTrimestre) !== "cerrado" &&
-        match.id !== activeTrimestre.id
-      ) {
+      if (activeTrimestre && match.id !== activeTrimestre.id) {
         return null;
       }
       return match;
@@ -108,12 +100,6 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       if (!value) return "Seleccioná una fecha";
       const trimesterForDate = resolveTrimestreForDate(value);
       if (!trimesterForDate) {
-        if (
-          activeTrimestre &&
-          getTrimestreEstado(activeTrimestre) !== "cerrado"
-        ) {
-          return "La fecha seleccionada no pertenece al trimestre actual.";
-        }
         return "No encontramos un trimestre activo para la fecha seleccionada.";
       }
       if (isWeekend(value)) {
@@ -232,9 +218,8 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
 
       let tri = resolveTrimestreForDate(fecha) ?? undefined;
       if (!tri) {
-        const msg = activeTrimestre
-          ? "La fecha seleccionada no pertenece al trimestre activo."
-          : "No encontramos un trimestre activo para la fecha seleccionada.";
+      const msg =
+        "La fecha seleccionada no pertenece al trimestre activo.";
         setDateError(msg);
         toast.warning(msg);
         return;

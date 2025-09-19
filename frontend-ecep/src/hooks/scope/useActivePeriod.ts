@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/services/api";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
+import { getTrimestreEstado } from "@/lib/trimestres";
 
 type UseActivePeriodOpts = {
   today?: string; // YYYY-MM-DD
@@ -22,8 +23,7 @@ const norm = {
     ((t as any).fechaFin ?? (t as any).fin ?? "2999-12-31") as string,
   periodoId: (t: TrimestreDTO) =>
     ((t as any).periodoEscolarId ?? (t as any).periodoId) as number | undefined,
-  closed: (t: TrimestreDTO) =>
-    (t as any).cerrado ?? (t as any).isCerrado ?? false,
+  estado: (t: TrimestreDTO) => getTrimestreEstado(t),
 };
 
 const inRange = (dateISO: string, fromISO: string, toISO: string) =>
@@ -104,7 +104,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
       elegido = periodos.find((p) => {
         const ts = trisByPeriodo.get(p.id) ?? [];
         return ts.some(
-          (t) => !norm.closed(t) && inRange(today, norm.start(t), norm.end(t)),
+          (t) => norm.estado(t) === "activo" && inRange(today, norm.start(t), norm.end(t)),
         );
       });
     }
@@ -125,11 +125,13 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
     const allTriIds = trimestresDelPeriodo.map((t) => t.id);
     const activeTriIdsToday = trimestresDelPeriodo
       .filter(
-        (t) => !norm.closed(t) && inRange(today, norm.start(t), norm.end(t)),
+        (t) => norm.estado(t) === "activo" && inRange(today, norm.start(t), norm.end(t)),
       )
       .map((t) => t.id);
 
-    const trimestreActivo = trimestresDelPeriodo.find((t) => !norm.closed(t));
+    const trimestreActivo = trimestresDelPeriodo.find(
+      (t) => norm.estado(t) === "activo",
+    );
 
     return {
       periodo: elegido,
@@ -148,7 +150,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
   const isTrimestreClosed = (trimestreId?: number): boolean | undefined => {
     if (!trimestreId) return undefined;
     const t = computed.trimestresDelPeriodo.find((x) => x.id === trimestreId);
-    return t ? !!norm.closed(t) : undefined;
+    return t ? norm.estado(t) === "cerrado" : undefined;
   };
 
   return {

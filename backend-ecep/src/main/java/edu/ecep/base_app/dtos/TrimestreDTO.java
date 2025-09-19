@@ -1,5 +1,6 @@
 package edu.ecep.base_app.dtos;
 
+import edu.ecep.base_app.domain.TrimestreEstado;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -24,5 +25,5 @@ public class TrimestreDTO {
     LocalDate inicio;
     @NotNull
     LocalDate fin;
-    boolean cerrado;
+    TrimestreEstado estado;
 }

@@ -25,6 +25,11 @@ import {
 import { useAsistenciasData } from "@/hooks/useAsistenciasData";
 import { api } from "@/services/api";
 import { toast } from "sonner";
+import {
+  getTrimestreEstado,
+  TRIMESTRE_ESTADO_BADGE_VARIANT,
+  TRIMESTRE_ESTADO_LABEL,
+} from "@/lib/trimestres";
 
 function fmt(iso?: string) {
   if (!iso) return "";
@@ -104,14 +109,15 @@ export default function VistaDireccion() {
 
   const handleToggleTrimestre = async (tri: any) => {
     if (!tri?.id) return;
+    const estado = getTrimestreEstado(tri);
     try {
       setTogglingTrimestreId(tri.id);
-      if (tri.cerrado) {
-        await api.trimestres.reabrir(tri.id);
-        toast.success("Trimestre reabierto");
-      } else {
+      if (estado === "activo") {
         await api.trimestres.cerrar(tri.id);
         toast.success("Trimestre cerrado");
+      } else {
+        await api.trimestres.reabrir(tri.id);
+        toast.success("Trimestre activado");
       }
       await refreshBase();
     } catch {
@@ -169,16 +175,25 @@ export default function VistaDireccion() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={t.cerrado ? "destructive" : "default"}>
-                      {t.cerrado ? "Cerrado" : "Abierto"}
-                    </Badge>
+                    {(() => {
+                      const estado = getTrimestreEstado(t);
+                      const label = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
+                      const variant =
+                        TRIMESTRE_ESTADO_BADGE_VARIANT[estado] ?? "outline";
+                      return <Badge variant={variant}>{label}</Badge>;
+                    })()}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleTrimestre(t)}
                       disabled={togglingTrimestreId === t.id}
                     >
-                      {t.cerrado ? "Reabrir" : "Cerrar"}
+                      {(() => {
+                        const estado = getTrimestreEstado(t);
+                        if (estado === "activo") return "Cerrar";
+                        if (estado === "cerrado") return "Reabrir";
+                        return "Activar";
+                      })()}
                     </Button>
                   </div>
                 </div>

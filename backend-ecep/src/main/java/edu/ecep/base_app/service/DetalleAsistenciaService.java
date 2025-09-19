@@ -2,6 +2,7 @@ package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.DetalleAsistencia;
 import edu.ecep.base_app.domain.JornadaAsistencia;
+import edu.ecep.base_app.domain.TrimestreEstado;
 import edu.ecep.base_app.dtos.DetalleAsistenciaCreateDTO;
 import edu.ecep.base_app.dtos.DetalleAsistenciaDTO;
 import edu.ecep.base_app.dtos.DetalleAsistenciaUpdateDTO;
@@ -41,8 +42,8 @@ public class DetalleAsistenciaService {
         JornadaAsistencia j = jornadaRepo.findById(dto.getJornadaId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Jornada no encontrada"));
 
-        if (j.getTrimestre() != null && j.getTrimestre().isCerrado()) {
-            throw new IllegalArgumentException("El trimestre está cerrado");
+        if (j.getTrimestre() != null && j.getTrimestre().getEstado() != TrimestreEstado.ACTIVO) {
+            throw new IllegalArgumentException("El trimestre no está activo");
         }
 
         if (repo.existsByJornadaIdAndMatriculaId(dto.getJornadaId(), dto.getMatriculaId())) {

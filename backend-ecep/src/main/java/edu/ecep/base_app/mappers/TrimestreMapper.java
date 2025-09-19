@@ -23,7 +23,7 @@ public interface TrimestreMapper {
     @Mapping(target = "modifiedBy", ignore = true)
     @Mapping(target = "activo", ignore = true)
     @Mapping(target = "fechaEliminacion", ignore = true)
-    @Mapping(target = "cerrado", ignore = true)
+    @Mapping(target = "estado", ignore = true)
     @Mapping(target = "periodoEscolar", source = "periodoEscolarId")
     Trimestre toEntity(TrimestreCreateDTO dto);
 
@@ -31,7 +31,7 @@ public interface TrimestreMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mappings({
             @Mapping(target = "id", ignore = true),
-            @Mapping(target = "cerrado", ignore = true),
+            @Mapping(target = "estado", ignore = true),
             @Mapping(target = "dateCreated", ignore = true),
             @Mapping(target = "lastUpdated", ignore = true),
             @Mapping(target = "createdBy", ignore = true),

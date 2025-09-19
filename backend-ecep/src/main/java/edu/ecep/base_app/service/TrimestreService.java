@@ -1,6 +1,7 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Trimestre;
+import edu.ecep.base_app.domain.TrimestreEstado;
 import edu.ecep.base_app.dtos.TrimestreCreateDTO;
 import edu.ecep.base_app.dtos.TrimestreDTO;
 import edu.ecep.base_app.mappers.TrimestreMapper;
@@ -47,7 +48,7 @@ public class TrimestreService {
     public Long create(TrimestreCreateDTO dto) {
         validateFechas(dto.getPeriodoEscolarId(), dto.getOrden(), dto.getInicio(), dto.getFin(), null);
         Trimestre e = mapper.toEntity(dto);
-        e.setCerrado(dto.getOrden() != null && dto.getOrden() > 1);
+        e.setEstado(TrimestreEstado.INACTIVO);
         return repo.save(e).getId();
     }
 
@@ -72,18 +73,21 @@ public class TrimestreService {
     public void cerrar(Long id) {
         Trimestre e = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trimestre " + id + " no encontrado"));
-        if (e.isCerrado()) {
+        if (e.getEstado() == TrimestreEstado.CERRADO) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El trimestre ya está cerrado");
         }
-        e.setCerrado(true);
+        if (e.getEstado() != TrimestreEstado.ACTIVO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se puede cerrar un trimestre activo");
+        }
+        e.setEstado(TrimestreEstado.CERRADO);
         repo.save(e);
     }
 
     public void reabrir(Long id) {
         Trimestre e = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trimestre " + id + " no encontrado"));
-        if (!e.isCerrado()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El trimestre ya está abierto");
+        if (e.getEstado() == TrimestreEstado.ACTIVO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El trimestre ya está activo");
         }
 
         Long periodoId = e.getPeriodoEscolar() != null ? e.getPeriodoEscolar().getId() : null;
@@ -94,7 +98,7 @@ public class TrimestreService {
         List<Trimestre> delPeriodo = repo.findByPeriodoEscolarIdOrderByOrdenAsc(periodoId);
 
         boolean otroAbierto = delPeriodo.stream()
-                .anyMatch(t -> !Objects.equals(t.getId(), e.getId()) && !t.isCerrado());
+                .anyMatch(t -> !Objects.equals(t.getId(), e.getId()) && t.getEstado() == TrimestreEstado.ACTIVO);
         if (otroAbierto) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Cerrá el trimestre activo antes de abrir otro");
@@ -105,13 +109,13 @@ public class TrimestreService {
                         && t.getOrden() != null
                         && e.getOrden() != null
                         && t.getOrden() < e.getOrden())
-                .allMatch(Trimestre::isCerrado);
+                .allMatch(t -> t.getEstado() == TrimestreEstado.CERRADO);
         if (!anterioresCerrados) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Debés cerrar los trimestres anteriores antes de abrir este");
         }
 
-        e.setCerrado(false);
+        e.setEstado(TrimestreEstado.ACTIVO);
         repo.save(e);
     }
 

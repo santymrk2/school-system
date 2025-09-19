@@ -274,10 +274,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         t.setOrden(orden);
         t.setInicio(inicio);
         t.setFin(fin);
-        // Deja abierto solo el primer trimestre del período inicial. Los restantes
-        // comienzan cerrados para respetar la secuencia (solo se habilita el
-        // siguiente cuando el anterior finaliza).
-        t.setCerrado(orden > 1);
+        // Deja activo solo el primer trimestre del período inicial. Los
+        // restantes quedan inactivos hasta que la dirección los habilite.
+        t.setEstado(orden == 1 ? TrimestreEstado.ACTIVO : TrimestreEstado.INACTIVO);
         return trimestreRepository.save(t);
     }
 
@@ -452,7 +451,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                 if (fecha.getDayOfWeek() == DayOfWeek.SATURDAY || fecha.getDayOfWeek() == DayOfWeek.SUNDAY) continue;
 
                 Trimestre tri = pickTrimestrePorFecha(fecha, t1, t2, t3);
-                if (tri == null || Boolean.TRUE.equals(tri.isCerrado())) continue;
+                if (tri == null || tri.getEstado() != TrimestreEstado.ACTIVO) continue;
 
                 JornadaAsistencia j = ensureJornada(s, tri, fecha);
 

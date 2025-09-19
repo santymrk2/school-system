@@ -192,7 +192,7 @@ export default function SeccionEvaluacionesPage() {
         toast.error(
           estado === "cerrado"
             ? "La fecha seleccionada cae en un trimestre cerrado."
-            : "El trimestre seleccionado aún no está activo.",
+            : "El trimestre seleccionado está inactivo.",
         );
         return;
       }

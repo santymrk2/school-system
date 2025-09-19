@@ -45,6 +45,7 @@ import type {
   FamiliarDTO,
   MatriculaDTO,
   MatriculaSeccionHistorialDTO,
+  PersonaCreateDTO,
   PersonaDTO,
   PersonaUpdateDTO,
   SeccionDTO,
@@ -131,6 +132,12 @@ export default function AlumnoPerfilPage() {
     const formatted = String(value).replace(/_/g, " ").toLowerCase();
     return formatted.replace(/\b\w/g, (char) => char.toUpperCase());
   };
+  const addDniValue = formatDni(addPersonaDraft.dni);
+  const addDniValid = addDniValue.length >= 7 && addDniValue.length <= 10;
+  const addPersonaExists = Boolean(addPersonaId);
+  const addPersonaReady =
+    addPersonaExists ||
+    (addDniValid && addLookupCompleted && !addLookupLoading);
 
   const [editOpen, setEditOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -169,6 +176,7 @@ export default function AlumnoPerfilPage() {
     celular: "",
   });
   const [addLookupLoading, setAddLookupLoading] = useState(false);
+  const [addLookupCompleted, setAddLookupCompleted] = useState(false);
   const [addPersonaId, setAddPersonaId] = useState<number | null>(null);
   const [addFamiliarId, setAddFamiliarId] = useState<number | null>(null);
   const [addRol, setAddRol] = useState<RolVinculo | "">("");
@@ -417,6 +425,7 @@ export default function AlumnoPerfilPage() {
     setAddRol("");
     setAddEsTutor(false);
     setAddLookupLoading(false);
+    setAddLookupCompleted(false);
     setSavingFamily(false);
     (async () => {
       try {
@@ -441,9 +450,11 @@ export default function AlumnoPerfilPage() {
       setAddPersonaId(null);
       setAddFamiliarId(null);
       setAddLookupLoading(false);
+      setAddLookupCompleted(false);
       return;
     }
     setAddLookupLoading(true);
+    setAddLookupCompleted(false);
     let alive = true;
     const handler = setTimeout(async () => {
       try {
@@ -475,13 +486,20 @@ export default function AlumnoPerfilPage() {
           setAddPersonaId(null);
           setAddFamiliarId(null);
         }
-      } catch (error) {
+      } catch (error: any) {
         if (!alive) return;
-        console.error(error);
-        setAddPersonaId(null);
-        setAddFamiliarId(null);
+        if (error?.response?.status === 404) {
+          setAddPersonaId(null);
+          setAddFamiliarId(null);
+        } else {
+          console.error(error);
+          setAddPersonaId(null);
+          setAddFamiliarId(null);
+        }
       } finally {
-        if (alive) setAddLookupLoading(false);
+        if (!alive) return;
+        setAddLookupLoading(false);
+        setAddLookupCompleted(true);
       }
     }, 400);
     return () => {
@@ -491,10 +509,6 @@ export default function AlumnoPerfilPage() {
   }, [addFamilyOpen, addPersonaDraft.dni, familiaresCatalog]);
   const handleSaveProfile = async () => {
     if (!alumno) return;
-    if (!persona?.id) {
-      toast.error("No encontramos los datos personales del alumno");
-      return;
-    }
 
     if (!personaDraft.nombre.trim() || !personaDraft.apellido.trim()) {
       toast.error("Completá nombre y apellido del alumno");
@@ -521,7 +535,7 @@ export default function AlumnoPerfilPage() {
     const todayIso = new Date().toISOString().slice(0, 10);
 
     try {
-      const personaPayload = {
+      const personaBasePayload = {
         nombre: personaDraft.nombre.trim(),
         apellido: personaDraft.apellido.trim(),
         dni: dniValue,
@@ -533,12 +547,70 @@ export default function AlumnoPerfilPage() {
         celular: personaDraft.celular || undefined,
         email: personaDraft.email || undefined,
       };
-      await api.personasCore.update(persona.id, personaPayload);
+      const personaUpdatePayload: PersonaUpdateDTO = {
+        ...personaBasePayload,
+      };
+      const personaCreatePayload: PersonaCreateDTO = {
+        ...personaBasePayload,
+      };
+
+      const resolvePersonaId = async (): Promise<number | null> => {
+        let currentId = persona?.id ?? alumno.personaId ?? null;
+
+        if (currentId) {
+          try {
+            await api.personasCore.update(currentId, personaUpdatePayload);
+            return currentId;
+          } catch (error: any) {
+            if (error?.response?.status !== 404) {
+              throw error;
+            }
+            currentId = null;
+          }
+        }
+
+        if (!currentId) {
+          let existingId: number | null = null;
+          try {
+            const { data: personaFoundId } = await api.personasCore.findIdByDni(
+              dniValue,
+            );
+            if (personaFoundId) {
+              existingId = Number(personaFoundId);
+            }
+          } catch (lookupError: any) {
+            if (
+              lookupError?.response?.status &&
+              lookupError.response.status !== 404
+            ) {
+              throw lookupError;
+            }
+          }
+
+          if (existingId) {
+            await api.personasCore.update(existingId, personaUpdatePayload);
+            return existingId;
+          }
+
+          const { data: personaCreated } = await api.personasCore.create(
+            personaCreatePayload,
+          );
+          return Number(personaCreated);
+        }
+
+        return currentId;
+      };
+
+      const personaId = await resolvePersonaId();
+
+      if (!personaId) {
+        throw new Error("No pudimos registrar los datos personales del alumno");
+      }
 
       if (alumno.id) {
         await api.alumnos.update(alumno.id, {
           id: alumno.id,
-          personaId: persona.id,
+          personaId,
           fechaInscripcion: alumnoDraft.fechaInscripcion || undefined,
           observacionesGenerales:
             alumnoDraft.observacionesGenerales?.trim() || undefined,
@@ -551,56 +623,83 @@ export default function AlumnoPerfilPage() {
         ? Number(selectedSeccionId)
         : null;
 
-      if (activePeriodId) {
-        let matricula = matriculaActual;
+      let matricula = matriculaActual ?? null;
+      if (!matricula && seccionActual?.matriculaId) {
+        matricula =
+          matriculas.find((m) => m.id === seccionActual.matriculaId) ?? null;
+      }
 
-        if (!matricula) {
-          const { data: newMatriculaId } = await api.matriculas.create({
-            alumnoId,
-            periodoEscolarId: activePeriodId,
-          });
-          const createdId = Number(newMatriculaId);
-          matricula = {
-            id: createdId,
-            alumnoId,
-            periodoEscolarId: activePeriodId,
-          } as MatriculaDTO;
+      if (!matricula && targetSeccionId && activePeriodId) {
+        const { data: newMatriculaId } = await api.matriculas.create({
+          alumnoId,
+          periodoEscolarId: activePeriodId,
+        });
+        const createdId = Number(newMatriculaId);
+        matricula = {
+          id: createdId,
+          alumnoId,
+          periodoEscolarId: activePeriodId,
+        } as MatriculaDTO;
+      } else if (!matricula && targetSeccionId && !activePeriodId) {
+        throw new Error(
+          "No encontramos un período escolar activo para asignar la sección.",
+        );
+      }
+
+      if (matricula) {
+        const entries = historial
+          .filter((h) => h.matriculaId === matricula.id)
+          .sort((a, b) =>
+            String(b.desde ?? "").localeCompare(String(a.desde ?? "")),
+          );
+        const currentEntry = entries.find((entry) => !entry.hasta) ?? null;
+
+        if (
+          currentEntry &&
+          (targetSeccionId === null ||
+            currentEntry.seccionId !== targetSeccionId)
+        ) {
+          const desdeValue = currentEntry.desde ?? todayIso;
+          await api.matriculaSeccionHistorial.update(currentEntry.id, {
+            id: currentEntry.id,
+            matriculaId: currentEntry.matriculaId,
+            seccionId: currentEntry.seccionId,
+            desde: desdeValue,
+            hasta: todayIso,
+          } as MatriculaSeccionHistorialDTO);
         }
 
-        if (matricula) {
-          const entries = historial
-            .filter((h) => h.matriculaId === matricula.id)
-            .sort((a, b) =>
-              String(b.desde ?? "").localeCompare(String(a.desde ?? "")),
-            );
-          const currentEntry = entries.find((entry) => !entry.hasta) ?? null;
-
-          if (
-            currentEntry &&
-            (targetSeccionId === null || currentEntry.seccionId !== targetSeccionId)
-          ) {
-            const desdeValue = currentEntry.desde ?? todayIso;
-            await api.matriculaSeccionHistorial.update(currentEntry.id, {
-              id: currentEntry.id,
-              matriculaId: currentEntry.matriculaId,
-              seccionId: currentEntry.seccionId,
-              desde: desdeValue,
-              hasta: todayIso,
-            } as MatriculaSeccionHistorialDTO);
-          }
-
-          if (
-            targetSeccionId &&
-            (!currentEntry || currentEntry.seccionId !== targetSeccionId)
-          ) {
-            await api.matriculaSeccionHistorial.create({
-              matriculaId: matricula.id,
-              seccionId: targetSeccionId,
-              desde: todayIso,
-            });
-          }
+        if (
+          targetSeccionId &&
+          (!currentEntry || currentEntry.seccionId !== targetSeccionId)
+        ) {
+          await api.matriculaSeccionHistorial.create({
+            matriculaId: matricula.id,
+            seccionId: targetSeccionId,
+            desde: todayIso,
+          });
         }
       }
+
+      setPersona((prev) => {
+        const base: Partial<PersonaDTO> = prev ? { ...prev } : {};
+        const next: PersonaDTO = {
+          ...base,
+          id: personaId,
+          nombre: personaBasePayload.nombre,
+          apellido: personaBasePayload.apellido,
+          dni: personaBasePayload.dni,
+          fechaNacimiento: personaDraft.fechaNacimiento || undefined,
+          genero: personaDraft.genero || undefined,
+          nacionalidad: personaBasePayload.nacionalidad,
+          domicilio: personaBasePayload.domicilio,
+          telefono: personaBasePayload.telefono,
+          celular: personaBasePayload.celular,
+          email: personaBasePayload.email,
+        } as PersonaDTO;
+        return next;
+      });
+      setAlumno((prev) => (prev ? { ...prev, personaId } : prev));
 
       toast.success("Perfil actualizado correctamente");
       setEditOpen(false);
@@ -678,14 +777,21 @@ export default function AlumnoPerfilPage() {
     if (!alumno) return;
 
     const addDniValue = formatDni(addPersonaDraft.dni);
+    if (!addPersonaReady) {
+      toast.error("Buscá un DNI válido del familiar antes de continuar");
+      return;
+    }
+
+    if (!addDniValue || addDniValue.length < 7 || addDniValue.length > 10) {
+      toast.error("Ingresá un DNI válido para el familiar");
+      return;
+    }
+
     if (
-      !addDniValue ||
-      addDniValue.length < 7 ||
-      addDniValue.length > 10 ||
-      !addPersonaDraft.nombre.trim() ||
-      !addPersonaDraft.apellido.trim()
+      !addPersonaId &&
+      (!addPersonaDraft.nombre.trim() || !addPersonaDraft.apellido.trim())
     ) {
-      toast.error("Completá DNI válido, nombre y apellido del familiar");
+      toast.error("Completá nombre y apellido del familiar");
       return;
     }
 
@@ -1169,95 +1275,163 @@ export default function AlumnoPerfilPage() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>DNI</Label>
-                            <Input
-                              value={addPersonaDraft.dni}
-                              onChange={(e) =>
-                                setAddPersonaDraft((prev) => ({
-                                  ...prev,
-                                  dni: formatDni(e.target.value),
-                                }))
-                              }
-                              placeholder="Documento del familiar"
-                              disabled={savingFamily}
-                              inputMode="numeric"
-                              pattern="\d*"
-                              minLength={7}
-                              maxLength={10}
-                            />
-                            {addLookupLoading && (
-                              <p className="text-xs text-muted-foreground">Buscando persona…</p>
+                        <div className="space-y-2">
+                          <Label>DNI</Label>
+                          <Input
+                            value={addPersonaDraft.dni}
+                            onChange={(e) =>
+                              setAddPersonaDraft((prev) => ({
+                                ...prev,
+                                dni: formatDni(e.target.value),
+                              }))
+                            }
+                            placeholder="Documento del familiar"
+                            disabled={savingFamily}
+                            inputMode="numeric"
+                            pattern="\d*"
+                            minLength={7}
+                            maxLength={10}
+                          />
+                          {addLookupLoading && (
+                            <p className="text-xs text-muted-foreground">
+                              Buscando persona…
+                            </p>
+                          )}
+                          {!addLookupLoading && addPersonaExists && addLookupCompleted && (
+                            <p className="text-xs text-muted-foreground">
+                              Encontramos un familiar con este DNI. Se reutilizarán sus datos guardados.
+                            </p>
+                          )}
+                          {!addLookupLoading &&
+                            !addPersonaExists &&
+                            addLookupCompleted &&
+                            addDniValid && (
+                              <p className="text-xs text-muted-foreground">
+                                No encontramos un familiar con este DNI. Completá los datos para crear uno nuevo.
+                              </p>
                             )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input
-                              type="email"
-                              value={addPersonaDraft.email}
-                              onChange={(e) =>
-                                setAddPersonaDraft((prev) => ({
-                                  ...prev,
-                                  email: e.target.value,
-                                }))
-                              }
-                              disabled={savingFamily}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Nombre</Label>
-                            <Input
-                              value={addPersonaDraft.nombre}
-                              onChange={(e) =>
-                                setAddPersonaDraft((prev) => ({
-                                  ...prev,
-                                  nombre: e.target.value,
-                                }))
-                              }
-                              disabled={savingFamily}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Apellido</Label>
-                            <Input
-                              value={addPersonaDraft.apellido}
-                              onChange={(e) =>
-                                setAddPersonaDraft((prev) => ({
-                                  ...prev,
-                                  apellido: e.target.value,
-                                }))
-                              }
-                              disabled={savingFamily}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Teléfono</Label>
-                            <Input
-                              value={addPersonaDraft.telefono}
-                              onChange={(e) =>
-                                setAddPersonaDraft((prev) => ({
-                                  ...prev,
-                                  telefono: e.target.value,
-                                }))
-                              }
-                              disabled={savingFamily}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Celular</Label>
-                            <Input
-                              value={addPersonaDraft.celular}
-                              onChange={(e) =>
-                                setAddPersonaDraft((prev) => ({
-                                  ...prev,
-                                  celular: e.target.value,
-                                }))
-                              }
-                              disabled={savingFamily}
-                            />
-                          </div>
+                          {!addLookupLoading && !addPersonaReady && (
+                            <p className="text-xs text-muted-foreground">
+                              Ingresá un DNI de 7 a 10 dígitos para continuar.
+                            </p>
+                          )}
                         </div>
+
+                        {addPersonaExists && addLookupCompleted ? (
+                          <div className="space-y-2 rounded-md border bg-muted/50 p-3 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Nombre: </span>
+                              <span className="font-medium">
+                                {
+                                  `${addPersonaDraft.apellido}, ${addPersonaDraft.nombre}`
+                                    .trim()
+                                    .replace(/^,\s*/, "") || "—"
+                                }
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">DNI: </span>
+                              <span className="font-medium">{addDniValue}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Email: </span>
+                              <span className="font-medium">
+                                {addPersonaDraft.email || "—"}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-4">
+                              <div>
+                                <span className="text-muted-foreground">Teléfono: </span>
+                                <span className="font-medium">
+                                  {addPersonaDraft.telefono || "—"}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Celular: </span>
+                                <span className="font-medium">
+                                  {addPersonaDraft.celular || "—"}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Revisá la relación a continuación para completar el vínculo.
+                            </p>
+                          </div>
+                        ) : addPersonaReady ? (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label>Email</Label>
+                              <Input
+                                type="email"
+                                value={addPersonaDraft.email}
+                                onChange={(e) =>
+                                  setAddPersonaDraft((prev) => ({
+                                    ...prev,
+                                    email: e.target.value,
+                                  }))
+                                }
+                                disabled={savingFamily}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Nombre</Label>
+                              <Input
+                                value={addPersonaDraft.nombre}
+                                onChange={(e) =>
+                                  setAddPersonaDraft((prev) => ({
+                                    ...prev,
+                                    nombre: e.target.value,
+                                  }))
+                                }
+                                disabled={savingFamily}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Apellido</Label>
+                              <Input
+                                value={addPersonaDraft.apellido}
+                                onChange={(e) =>
+                                  setAddPersonaDraft((prev) => ({
+                                    ...prev,
+                                    apellido: e.target.value,
+                                  }))
+                                }
+                                disabled={savingFamily}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Teléfono</Label>
+                              <Input
+                                value={addPersonaDraft.telefono}
+                                onChange={(e) =>
+                                  setAddPersonaDraft((prev) => ({
+                                    ...prev,
+                                    telefono: e.target.value,
+                                  }))
+                                }
+                                disabled={savingFamily}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Celular</Label>
+                              <Input
+                                value={addPersonaDraft.celular}
+                                onChange={(e) =>
+                                  setAddPersonaDraft((prev) => ({
+                                    ...prev,
+                                    celular: e.target.value,
+                                  }))
+                                }
+                                disabled={savingFamily}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Ingresá un DNI válido para buscar familiares existentes o crear uno nuevo.
+                          </p>
+                        )}
+
                         <Separator />
                         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
                           <div className="space-y-2">
@@ -1265,7 +1439,7 @@ export default function AlumnoPerfilPage() {
                             <Select
                               value={addRol ?? ""}
                               onValueChange={(value) => setAddRol(value as RolVinculo)}
-                              disabled={savingFamily}
+                              disabled={savingFamily || !addPersonaReady}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccioná un rol" />
@@ -1284,7 +1458,7 @@ export default function AlumnoPerfilPage() {
                               id="add-es-tutor"
                               checked={addEsTutor}
                               onCheckedChange={(value) => setAddEsTutor(Boolean(value))}
-                              disabled={savingFamily}
+                              disabled={savingFamily || !addPersonaReady}
                             />
                             <Label htmlFor="add-es-tutor">Tutor legal</Label>
                           </div>
@@ -1298,8 +1472,13 @@ export default function AlumnoPerfilPage() {
                         >
                           Cancelar
                         </Button>
-                        <Button onClick={handleSaveFamily} disabled={savingFamily}>
-                          {savingFamily && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button
+                          onClick={handleSaveFamily}
+                          disabled={savingFamily || !addPersonaReady}
+                        >
+                          {savingFamily && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
                           Guardar familiar
                         </Button>
                       </DialogFooter>

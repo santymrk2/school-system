@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/useToast";
+import { toast } from "sonner";
 import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api"; // ← import del cliente API
 import * as DTO from "@/types/api-generated";
@@ -98,8 +98,6 @@ export default function PostulacionPage() {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [communicationsAuthorized, setCommunicationsAuthorized] =
     useState(false);
-  const { toast } = useToast();
-
   const handleInputChange = (
     field: string,
     value: any,
@@ -355,21 +353,18 @@ export default function PostulacionPage() {
 
     setErrors(newErrors);
     if (!ok) {
-      const details = [
+      const description = [
         missingRequired ? "Completá los campos obligatorios." : null,
         invalidBirthDate
           ? "La fecha de nacimiento debe ser al menos dos años anterior a hoy."
           : null,
+        dniInvalid ? "El DNI debe tener entre 7 y 10 dígitos." : null,
       ]
         .filter(Boolean)
         .join(" ");
-      toast({
-        title: dniInvalid
-          ? "El DNI debe tener entre 7 y 10 dígitos."
-          : "Completa los campos obligatorios.",
-        title: "Revisá los datos del aspirante.",
-        description: details || undefined,
-        variant: "destructive",
+
+      toast.error("Revisá los datos del aspirante.", {
+        description: description || undefined,
       });
     }
     return ok;
@@ -422,7 +417,7 @@ export default function PostulacionPage() {
 
     setErrors(newErrors);
     if (!ok) {
-      const descriptions = [
+      const description = [
         "Ingresá nombre, apellido, DNI y un email de contacto para continuar.",
         invalidBirthDate
           ? "Revisá también la fecha de nacimiento: debe ser al menos dos años anterior a hoy."
@@ -430,10 +425,9 @@ export default function PostulacionPage() {
       ]
         .filter(Boolean)
         .join(" ");
-      toast({
-        title: "Completá los datos de al menos un familiar.",
-        description: descriptions,
-        variant: "destructive",
+
+      toast.error("Completá los datos de al menos un familiar.", {
+        description: description || undefined,
       });
     }
     return ok;
@@ -456,11 +450,9 @@ export default function PostulacionPage() {
     }
     setErrors(newErrors);
     if (!ok) {
-      toast({
-        title: "Completá la información del hogar.",
+      toast.error("Completá la información del hogar.", {
         description:
           "Seleccioná la conectividad y detallá dispositivos e idiomas hablados.",
-        variant: "destructive",
       });
     }
     return ok;
@@ -487,19 +479,14 @@ export default function PostulacionPage() {
 
   const handleSubmit = async () => {
     if (!communicationsAuthorized) {
-      toast({
-        title: "Debes autorizar comunicaciones por email.",
-        variant: "destructive",
-      });
+      toast.error("Debes autorizar comunicaciones por email.");
       return;
     }
 
     if (formData.fechaNacimiento && !isBirthDateValid(formData.fechaNacimiento)) {
-      toast({
-        title: "Fecha de nacimiento inválida",
+      toast.error("Fecha de nacimiento inválida", {
         description:
           "La fecha de nacimiento del aspirante debe ser al menos dos años anterior a hoy.",
-        variant: "destructive",
       });
       return;
     }
@@ -509,11 +496,9 @@ export default function PostulacionPage() {
       return fecha ? !isBirthDateValid(fecha) : false;
     });
     if (familiaresInvalidos) {
-      toast({
-        title: "Fecha de nacimiento inválida",
+      toast.error("Fecha de nacimiento inválida", {
         description:
           "Verificá las fechas de nacimiento de los familiares: deben ser al menos dos años anteriores a hoy.",
-        variant: "destructive",
       });
       return;
     }
@@ -585,7 +570,7 @@ export default function PostulacionPage() {
       };
       await api.solicitudesAdmision.create(solicitudPayload);
 
-      toast({ title: "Postulación enviada con éxito.", variant: "default" });
+      toast.success("Postulación enviada con éxito.");
 
       setFormData({ ...initialFormData, familiares: [] });
       setAspirantePersonaPreview(null);
@@ -595,10 +580,7 @@ export default function PostulacionPage() {
       setCurrentStep(1);
     } catch (err: any) {
       console.error(err);
-      toast({
-        title: `Error al enviar: ${err?.message ?? "No se pudo enviar"}`,
-        variant: "destructive",
-      });
+      toast.error(`Error al enviar: ${err?.message ?? "No se pudo enviar"}`);
     }
   };
 

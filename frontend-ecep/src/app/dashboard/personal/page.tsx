@@ -35,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/hooks/useToast";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api";
@@ -232,7 +232,6 @@ function getLicenseStart(licencia: LicenciaDTO) {
 export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -825,35 +824,27 @@ export default function PersonalPage() {
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (!newPersona.nombre || !newPersona.apellido || !newPersona.dni) {
-        toast({
-          title: "Datos incompletos",
+        toast.error("Datos incompletos", {
           description: "Nombre, apellido y DNI son obligatorios.",
-          variant: "destructive",
         });
         return;
       }
       const dniValue = formatDni(newPersona.dni);
       if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
-        toast({
-          title: "DNI inválido",
+        toast.error("DNI inválido", {
           description: "El DNI debe tener entre 7 y 10 dígitos numéricos.",
-          variant: "destructive",
         });
         return;
       }
       if (!newEmpleado.rolEmpleado) {
-        toast({
-          title: "Rol requerido",
+        toast.error("Rol requerido", {
           description: "Seleccione el rol institucional del personal.",
-          variant: "destructive",
         });
         return;
       }
       if (!newEmpleado.cargo) {
-        toast({
-          title: "Cargo requerido",
+        toast.error("Cargo requerido", {
           description: "Ingrese el cargo actual del personal.",
-          variant: "destructive",
         });
         return;
       }
@@ -861,11 +852,9 @@ export default function PersonalPage() {
         newPersona.fechaNacimiento &&
         !isBirthDateValid(newPersona.fechaNacimiento)
       ) {
-        toast({
-          title: "Fecha de nacimiento inválida",
+        toast.error("Fecha de nacimiento inválida", {
           description:
             "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
-          variant: "destructive",
         });
         return;
       }
@@ -877,11 +866,9 @@ export default function PersonalPage() {
         fechaFinFormacion &&
         fechaFinFormacion < fechaInicioFormacion
       ) {
-        toast({
-          title: "Fechas de formación inválidas",
+        toast.error("Fechas de formación inválidas", {
           description:
             "La fecha de finalización no puede ser anterior a la de inicio.",
-          variant: "destructive",
         });
         return;
       }
@@ -960,8 +947,7 @@ export default function PersonalPage() {
           });
         }
 
-        toast({
-          title: "Personal registrado",
+        toast.success("Personal registrado", {
           description: "El nuevo miembro del personal fue creado correctamente.",
         });
         setCreateDialogOpen(false);
@@ -972,53 +958,38 @@ export default function PersonalPage() {
           error?.response?.data?.message ??
           error?.message ??
           "No se pudo registrar al personal.";
-        toast({ title: "Error", description, variant: "destructive" });
+        toast.error("Error al crear personal", { description });
       } finally {
         setCreatingPersonal(false);
       }
     },
-    [
-      formacionNotas,
-      newEmpleado,
-      newFormacion,
-      newPersona,
-      refreshData,
-      toast,
-    ],
+    [formacionNotas, newEmpleado, newFormacion, newPersona, refreshData],
   );
 
   const handleCreateLicense = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (!newLicense.empleadoId) {
-        toast({
-          title: "Seleccione personal",
+        toast.error("Seleccione personal", {
           description: "Debe elegir a quién corresponde la licencia.",
-          variant: "destructive",
         });
         return;
       }
       if (!newLicense.tipoLicencia) {
-        toast({
-          title: "Tipo requerido",
+        toast.error("Tipo requerido", {
           description: "Seleccione el tipo de licencia.",
-          variant: "destructive",
         });
         return;
       }
       if (!newLicense.fechaInicio) {
-        toast({
-          title: "Fecha requerida",
+        toast.error("Fecha requerida", {
           description: "Ingrese la fecha de inicio de la licencia.",
-          variant: "destructive",
         });
         return;
       }
       if (!newLicense.motivo.trim()) {
-        toast({
-          title: "Motivo requerido",
+        toast.error("Motivo requerido", {
           description: "Detalle el motivo de la licencia.",
-          variant: "destructive",
         });
         return;
       }
@@ -1028,10 +999,8 @@ export default function PersonalPage() {
         newLicense.fechaInicio &&
         newLicense.fechaFin < newLicense.fechaInicio
       ) {
-        toast({
-          title: "Fechas de licencia inválidas",
+        toast.error("Fechas de licencia inválidas", {
           description: "La fecha de fin no puede ser anterior a la de inicio.",
-          variant: "destructive",
         });
         return;
       }
@@ -1051,8 +1020,7 @@ export default function PersonalPage() {
           observaciones: newLicense.observaciones.trim() || undefined,
         };
         await api.licencias.create(payload);
-        toast({
-          title: "Licencia registrada",
+        toast.success("Licencia registrada", {
           description: "La licencia se registró correctamente.",
         });
         setLicenseDialogOpen(false);
@@ -1063,12 +1031,12 @@ export default function PersonalPage() {
           error?.response?.data?.message ??
           error?.message ??
           "No se pudo registrar la licencia.";
-        toast({ title: "Error", description, variant: "destructive" });
+        toast.error("Error al registrar licencia", { description });
       } finally {
         setCreatingLicense(false);
       }
     },
-    [newLicense, refreshData, toast],
+    [newLicense, refreshData],
   );
 
   const handleOpenLicenseDialog = useCallback(

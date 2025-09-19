@@ -44,6 +44,7 @@ export function ActiveTrimestreBadge({ className }: ActiveTrimestreBadgeProps) {
 
   if (loading || (!label && !description)) return null;
 
+
   return (
     <div
       className={cn(

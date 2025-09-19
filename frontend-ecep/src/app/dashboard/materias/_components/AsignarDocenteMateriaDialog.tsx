@@ -62,6 +62,7 @@ export default function AsignarDocenteMateriaDialog({
   const [desde, setDesde] = useState<string>(today());
   const [hasta, setHasta] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const isSuplente = rol === "SUPLENTE";
 
   const opciones = useMemo(() => {
     const bloqueadoId = rol === "TITULAR" ? ocupados?.suplenteId : ocupados?.titularId;
@@ -80,24 +81,44 @@ export default function AsignarDocenteMateriaDialog({
     }
   }, [empleadoId, ocupados?.suplenteId, ocupados?.titularId, rol]);
 
-  const canSubmit = !!empleadoId && !!rol && !!desde;
+  useEffect(() => {
+    if (!isSuplente) {
+      setDesde(today());
+      setHasta("");
+    }
+  }, [isSuplente]);
+
+  const canSubmit =
+    !!empleadoId && !!rol && (!isSuplente || (!!desde && !!hasta));
 
   const guardar = async () => {
     if (!canSubmit || saving) return;
-    if (hasta && desde && hasta < desde) {
-      toast.error("La fecha hasta no puede ser anterior a la fecha desde.");
-      return;
+    if (isSuplente) {
+      if (!desde) {
+        toast.error("Seleccioná la fecha de inicio de la suplencia.");
+        return;
+      }
+      if (!hasta) {
+        toast.error("Seleccioná la fecha de fin de la suplencia.");
+        return;
+      }
+      if (hasta < desde) {
+        toast.error("La fecha hasta no puede ser anterior a la fecha desde.");
+        return;
+      }
     }
     try {
       setSaving(true);
-      const hastaValue = hasta ? hasta : "9999-12-31";
-      await api.asignacionDocenteMateria.create({
+      const payload: any = {
         seccionMateriaId: seccionMateria.id,
         empleadoId: Number(empleadoId),
         rol,
-        vigenciaDesde: desde,
-        vigenciaHasta: hastaValue as any,
-      } as any);
+      };
+      if (isSuplente) {
+        payload.vigenciaDesde = desde;
+        payload.vigenciaHasta = hasta as any;
+      }
+      await api.asignacionDocenteMateria.create(payload);
       onCreated();
       onClose();
     } catch (e: any) {
@@ -143,24 +164,30 @@ export default function AsignarDocenteMateriaDialog({
             </SelectContent>
           </Select>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm mb-1 block">Desde</label>
-              <Input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-              />
+          {isSuplente ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm mb-1 block">Desde</label>
+                <Input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm mb-1 block">Hasta</label>
+                <Input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm mb-1 block">Hasta (opcional)</label>
-              <Input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-              />
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              La vigencia del titular se actualizará automáticamente desde hoy.
+            </p>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>

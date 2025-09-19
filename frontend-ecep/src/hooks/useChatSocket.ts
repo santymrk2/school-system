@@ -52,7 +52,13 @@ export default function useChatSocket() {
     setConnectionStatus("connecting");
     console.log("🔌 Intentando conectar WebSocket...");
 
-    const socketUrl = `${API_BASE}/ws`;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    const socketUrl =
+      token && token.trim()
+        ? `${API_BASE}/ws?token=${encodeURIComponent(token)}`
+        : `${API_BASE}/ws`;
 
     const socket = new SockJS(socketUrl, undefined, {
       transports: ["websocket", "xhr-streaming", "xhr-polling"],
@@ -60,10 +66,8 @@ export default function useChatSocket() {
         "xhr-streaming": { withCredentials: true },
         "xhr-polling": { withCredentials: true },
       },
+      withCredentials: true,
     } as any);
-
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const stompClient = new Client({
       webSocketFactory: () => socket,

@@ -51,6 +51,45 @@ function patchUserRoles<T extends Record<string, any>>(
   const roles = extractRawRoles(u);
   return { ...u, roles };
 }
+
+function resolveSharedCookieDomain(hostname: string): string | null {
+  const trimmed = hostname.trim().toLowerCase();
+
+  if (!trimmed) return null;
+  if (trimmed === "localhost" || trimmed === "127.0.0.1") return null;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(trimmed)) return null;
+
+  const parts = trimmed.split(".").filter(Boolean);
+  if (parts.length < 2) return null;
+
+  return `.${parts.slice(-2).join(".")}`;
+}
+
+function writeTokenCookie(token: string | null) {
+  if (typeof window === "undefined") return;
+
+  const baseParts = [
+    `token=${token ?? ""}`,
+    "Path=/",
+    "SameSite=Lax",
+    token ? `Max-Age=${60 * 60 * 8}` : "Max-Age=0",
+  ];
+
+  const secure = window.location.protocol === "https:";
+  const sharedDomain = resolveSharedCookieDomain(window.location.hostname);
+
+  const applyCookie = (domainAttr?: string) => {
+    const parts = [...baseParts];
+    if (domainAttr) parts.push(`Domain=${domainAttr}`);
+    if (secure) parts.push("Secure");
+    document.cookie = parts.join("; ");
+  };
+
+  applyCookie();
+  if (sharedDomain) {
+    applyCookie(sharedDomain);
+  }
+}
 interface AuthContextProps {
   user: PersonaResumenDTO | null;
   loading: boolean;
@@ -165,7 +204,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
         localStorage.setItem("token", auth.token);
         // Si tu backend NO setea cookie httpOnly, dejamos una cookie legible
         // para que el middleware te vea (dev/rápido). En prod, preferí Set-Cookie httpOnly desde el server.
-        document.cookie = `token=${auth.token}; Path=/; Max-Age=${60 * 60 * 8}; SameSite=Lax`;
+        writeTokenCookie(auth.token);
       }
 
       // Ahora traemos el usuario y roles reales
@@ -213,7 +252,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
         // limpiar token de localStorage y cookie para el middleware
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          document.cookie = "token=; Max-Age=0; Path=/; SameSite=Lax";
+          writeTokenCookie(null);
         }
         router.replace("/");
       });

@@ -54,12 +54,22 @@ export default function useChatSocket() {
 
     const socketUrl = `${API_BASE}/ws`;
 
-    const socket = new SockJS(socketUrl);
+    const socket = new SockJS(socketUrl, undefined, {
+      transports: ["websocket", "xhr-streaming", "xhr-polling"],
+      transportOptions: {
+        "xhr-streaming": { withCredentials: true },
+        "xhr-polling": { withCredentials: true },
+      },
+    } as any);
+
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const stompClient = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 1000,
       debug: (str) => console.log("STOMP:", str),
+      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     stompClient.onConnect = (frame) => {

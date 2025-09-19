@@ -22,6 +22,7 @@ import type {
   AsistenciaAlumnoResumenDTO,
 } from "@/types/api-generated";
 import { toast } from "sonner";
+import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 
 function fmt(iso?: string) {
   if (!iso) return "—";
@@ -157,6 +158,7 @@ export default function SeccionHistorialPage() {
               Turno: {seccion?.turno ?? "—"}
             </p>
             {secErr && <p className="text-sm text-red-600">{secErr}</p>}
+            <ActiveTrimestreBadge className="mt-2" />
           </div>
 
           <div className="flex items-center gap-2">

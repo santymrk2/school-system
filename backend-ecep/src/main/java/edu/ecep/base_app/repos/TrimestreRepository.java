@@ -4,6 +4,7 @@ import edu.ecep.base_app.domain.Trimestre;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface TrimestreRepository extends JpaRepository<Trimestre, Long> {
@@ -12,4 +13,6 @@ public interface TrimestreRepository extends JpaRepository<Trimestre, Long> {
     Optional<Trimestre> findTopByInicioLessThanEqualAndFinGreaterThanEqualOrderByInicioDesc(
             LocalDate fecha1, LocalDate fecha2
     );
+
+    List<Trimestre> findByPeriodoEscolarIdOrderByOrdenAsc(Long periodoEscolarId);
 }

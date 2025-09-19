@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import {
   Dialog,
   DialogContent,
@@ -143,10 +144,7 @@ export default function DetalleDiaDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Cargando…
-          </div>
+          <LoadingState label="Cargando asistencia…" />
         ) : (
           <div className="space-y-4">
             <div className="border rounded p-3 text-sm">

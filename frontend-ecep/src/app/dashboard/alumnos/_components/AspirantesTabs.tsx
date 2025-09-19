@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { toast } from "sonner";
 import {
   Card,
@@ -208,11 +209,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
   }, [detailOpen, selected]);
 
   if (loading) {
-    return (
-      <div className="text-sm text-muted-foreground py-8">
-        Cargando solicitudes…
-      </div>
-    );
+    return <LoadingState label="Cargando solicitudes…" />;
   }
 
   if (error) {

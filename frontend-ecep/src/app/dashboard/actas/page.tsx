@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
@@ -597,7 +598,7 @@ export default function AccidentesIndexPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {loading && <div className="text-sm">Cargando…</div>}
+                {loading && <LoadingState label="Cargando actas…" />}
                 {!loading &&
                   filtered.map((a) => {
                     const isCerrada = a.estado.toUpperCase() === "CERRADA";

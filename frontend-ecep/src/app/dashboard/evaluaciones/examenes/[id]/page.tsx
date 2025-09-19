@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { api } from "@/services/api";
@@ -347,7 +348,7 @@ export default function ExamenDetailPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm">Cargando examen…</div>
+        <LoadingState label="Cargando examen…" />
       </DashboardLayout>
     );
   }

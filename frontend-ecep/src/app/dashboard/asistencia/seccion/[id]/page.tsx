@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJornadaDialog";
 import {
   Card,
@@ -224,7 +225,7 @@ export default function SeccionHistorialPage() {
         </div>
 
         {loadingPeriod ? (
-          <div className="text-sm">Cargando trimestres…</div>
+          <LoadingState label="Cargando trimestres…" />
         ) : !trimestresDelPeriodo.length ? (
           <div className="text-sm text-muted-foreground">
             No hay trimestres configurados para el período actual.
@@ -266,7 +267,7 @@ export default function SeccionHistorialPage() {
                     </div>
                   ) : (
                     <>
-                      {loading && <div className="text-sm">Cargando…</div>}
+                      {loading && <LoadingState label="Cargando asistencia…" />}
                       {err && (
                         <div className="text-sm text-red-600">{err}</div>
                       )}

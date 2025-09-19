@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -318,8 +319,8 @@ export default function ComunicadosPage() {
         {/* Feed */}
         {loading ? (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Cargando…
+            <CardContent className="p-6">
+              <LoadingState label="Cargando comunicados…" />
             </CardContent>
           </Card>
         ) : (

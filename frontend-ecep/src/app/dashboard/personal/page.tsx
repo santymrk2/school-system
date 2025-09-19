@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -1050,14 +1051,7 @@ export default function PersonalPage() {
     [setLicenseDialogOpen, setNewLicense],
   );
 
-  const renderLoadingState = () => (
-    <div className="flex h-48 items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      <span className="ml-2 text-sm text-muted-foreground">
-        Cargando información…
-      </span>
-    </div>
-  );
+  const renderLoadingState = () => <LoadingState label="Cargando información…" />;
 
   const renderErrorState = () => (
     <Alert variant="destructive">

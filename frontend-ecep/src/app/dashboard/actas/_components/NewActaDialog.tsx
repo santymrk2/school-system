@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { api } from "@/services/api";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import type {
@@ -330,7 +331,7 @@ export default function NewActaDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="text-sm">Cargando…</div>
+          <LoadingState label="Cargando información…" />
         ) : (
           <div className="space-y-4">
             {/* Alumno (autocomplete) */}

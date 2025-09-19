@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -1368,8 +1369,8 @@ export default function ReportesPage() {
                 )}
 
                 {loadingBoletines && !boletinError ? (
-                  <div className="rounded-lg border border-dashed bg-muted/50 p-6 text-sm text-muted-foreground">
-                    Cargando información académica…
+                  <div className="rounded-lg border border-dashed bg-muted/50 p-6">
+                    <LoadingState label="Cargando información académica…" />
                   </div>
                 ) : !selectedSectionId ? (
                   <div className="rounded-lg border border-dashed bg-muted/50 p-6 text-sm text-muted-foreground">
@@ -1819,8 +1820,8 @@ export default function ReportesPage() {
                 )}
 
                 {loadingAttendance && !attendanceError && (
-                  <div className="rounded-lg border border-dashed bg-muted/60 p-6 text-sm text-muted-foreground">
-                    Cargando asistencia…
+                  <div className="rounded-lg border border-dashed bg-muted/60 p-6">
+                    <LoadingState label="Cargando asistencia…" />
                   </div>
                 )}
 
@@ -2049,8 +2050,8 @@ export default function ReportesPage() {
                 )}
 
                 {loadingTeacherAbsences && !teacherError && (
-                  <div className="rounded-lg border border-dashed bg-muted/60 p-6 text-sm text-muted-foreground">
-                    Cargando inasistencias docentes…
+                  <div className="rounded-lg border border-dashed bg-muted/60 p-6">
+                    <LoadingState label="Cargando inasistencias docentes…" />
                   </div>
                 )}
 
@@ -2222,8 +2223,8 @@ export default function ReportesPage() {
                     )}
 
                     {loadingActasRegistro && !actaErrorMsg && (
-                      <div className="rounded-lg border border-dashed bg-muted/60 p-4 text-sm text-muted-foreground">
-                        Cargando actas…
+                      <div className="rounded-lg border border-dashed bg-muted/60 p-4">
+                        <LoadingState label="Cargando actas…" />
                       </div>
                     )}
 

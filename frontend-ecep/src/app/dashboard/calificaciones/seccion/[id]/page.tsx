@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { api } from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import CierrePrimarioView from "./_views/CierrePrimarioView";
@@ -70,7 +71,7 @@ export default function CalificacionesSeccionPage() {
           </div>
         </div>
 
-        {loading && <div className="text-sm">Cargando…</div>}
+        {loading && <LoadingState label="Cargando sección…" />}
         {error && <div className="text-sm text-red-600">{error}</div>}
 
         {!loading && !error && (

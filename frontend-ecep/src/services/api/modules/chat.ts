@@ -12,4 +12,8 @@ export const chat = {
     http.get<DTO.PersonaResumenDTO[]>("/api/chat/active-chats"),
   getUnreadCounts: () =>
     http.get<Record<number, number>>("/api/chat/unread-count"),
+  getOnlineStatus: (personaIds: number[]) =>
+    http.get<Record<number, boolean>>("/api/chat/online-status", {
+      params: { personaIds },
+    }),
 };

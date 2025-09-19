@@ -40,10 +40,15 @@ export default function useChatSocket() {
   const [connected, setConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("connecting");
+  const [onlineUsers, setOnlineUsers] = useState<Record<number, boolean>>({});
+  const [typingUsers, setTypingUsers] = useState<Record<number, boolean>>({});
   const { user } = useAuth();
 
   const client = useRef<Client | null>(null);
   const subscriptions = useRef<StompSubscription[]>([]);
+  const typingTimeouts = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
 
   // 🔹 Conectar WebSocket
   const connect = useCallback(() => {
@@ -88,6 +93,21 @@ export default function useChatSocket() {
           if (!message.body) return;
           const msg = normalizeMessage(JSON.parse(message.body));
           console.log("📥 Mensaje recibido del backend:", msg);
+
+          const senderId = Number(msg.emisorId ?? 0);
+          if (senderId) {
+            const pendingTimeout = typingTimeouts.current.get(senderId);
+            if (pendingTimeout) {
+              clearTimeout(pendingTimeout);
+              typingTimeouts.current.delete(senderId);
+            }
+            setTypingUsers((prev) => {
+              if (!prev[senderId]) return prev;
+              const next = { ...prev };
+              delete next[senderId];
+              return next;
+            });
+          }
 
           setMessages((prev) => {
             // Buscar mensaje optimista para reemplazar
@@ -135,6 +155,105 @@ export default function useChatSocket() {
         }),
       );
 
+      subscriptions.current.push(
+        stompClient.subscribe("/user/queue/read-receipts", (message) => {
+          if (!message.body) return;
+          try {
+            const payload = JSON.parse(message.body) as {
+              readerId?: number | string;
+            };
+            const readerId = Number(payload?.readerId);
+            if (!readerId) return;
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.receptorId === readerId && !msg.leido
+                  ? { ...msg, leido: true }
+                  : msg,
+              ),
+            );
+          } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+              console.error("Error procesando read receipt", error);
+            }
+          }
+        }),
+      );
+
+      subscriptions.current.push(
+        stompClient.subscribe("/user/queue/online-status", (message) => {
+          if (!message.body) return;
+          try {
+            const payload = JSON.parse(message.body) as {
+              userId?: number | string;
+              isOnline?: boolean;
+            };
+            const targetId = Number(payload?.userId);
+            if (!targetId) return;
+
+            setOnlineUsers((prev) => ({
+              ...prev,
+              [targetId]: Boolean(payload?.isOnline),
+            }));
+          } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+              console.error("Error procesando estado online", error);
+            }
+          }
+        }),
+      );
+
+      subscriptions.current.push(
+        stompClient.subscribe("/user/queue/typing", (message) => {
+          if (!message.body) return;
+          try {
+            const payload = JSON.parse(message.body) as {
+              userId?: number | string;
+              typing?: boolean;
+            };
+            const senderId = Number(payload?.userId);
+            if (!senderId) return;
+
+            const isTyping = Boolean(payload?.typing);
+            if (!isTyping) {
+              const timeout = typingTimeouts.current.get(senderId);
+              if (timeout) {
+                clearTimeout(timeout);
+                typingTimeouts.current.delete(senderId);
+              }
+              setTypingUsers((prev) => {
+                if (!prev[senderId]) return prev;
+                const next = { ...prev };
+                delete next[senderId];
+                return next;
+              });
+              return;
+            }
+
+            setTypingUsers((prev) => ({ ...prev, [senderId]: true }));
+
+            const existingTimeout = typingTimeouts.current.get(senderId);
+            if (existingTimeout) {
+              clearTimeout(existingTimeout);
+            }
+            const timeout = setTimeout(() => {
+              typingTimeouts.current.delete(senderId);
+              setTypingUsers((prev) => {
+                if (!prev[senderId]) return prev;
+                const next = { ...prev };
+                delete next[senderId];
+                return next;
+              });
+            }, 4000);
+            typingTimeouts.current.set(senderId, timeout);
+          } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+              console.error("Error procesando evento typing", error);
+            }
+          }
+        }),
+      );
+
       // Suscripción a errores
       subscriptions.current.push(
         stompClient.subscribe("/user/queue/errors", (message) => {
@@ -158,20 +277,22 @@ export default function useChatSocket() {
   }, []);
 
   // 🔹 Reconectar manual
-  const reconnect = () => {
-    disconnect();
-    connect();
-  };
-
-  // 🔹 Desconectar limpiamente
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
     subscriptions.current.forEach((sub) => sub.unsubscribe());
     subscriptions.current = [];
     client.current?.deactivate();
     client.current = null;
     setConnected(false);
     setConnectionStatus("disconnected");
-  };
+    typingTimeouts.current.forEach((timeout) => clearTimeout(timeout));
+    typingTimeouts.current.clear();
+    setTypingUsers({});
+  }, []);
+
+  const reconnect = useCallback(() => {
+    disconnect();
+    connect();
+  }, [connect, disconnect]);
 
   // 🔹 Enviar mensaje
 
@@ -205,8 +326,57 @@ export default function useChatSocket() {
     return true;
   };
 
+  const sendTyping = useCallback(
+    (receptorId: number, typing: boolean) => {
+      if (!client.current || !connected) {
+        return false;
+      }
+
+      const payload = { receptorId, typing };
+      client.current.publish({
+        destination: "/app/chat.typing",
+        body: JSON.stringify(payload),
+      });
+      return true;
+    },
+    [connected],
+  );
+
   // 🔹 Marcar mensajes como leídos
-  const markRead = async (otherUserId: number) => {
+  const refreshOnlineStatus = useCallback(async (personaIds: number[]) => {
+    const uniqueIds = Array.from(
+      new Set(
+        (personaIds || [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0),
+      ),
+    );
+
+    if (uniqueIds.length === 0) return;
+
+    try {
+      const { data } = await api.chat.getOnlineStatus(uniqueIds);
+      const entries = Object.entries(data ?? {});
+      if (!entries.length) return;
+
+      setOnlineUsers((prev) => {
+        const next = { ...prev };
+        for (const [key, value] of entries) {
+          const id = Number(key);
+          if (Number.isFinite(id) && id > 0) {
+            next[id] = Boolean(value);
+          }
+        }
+        return next;
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error al obtener estado en línea", error);
+      }
+    }
+  }, []);
+
+  const markRead = useCallback(async (otherUserId: number) => {
     try {
       console.log("📡 Marcando mensajes como leídos de usuario:", otherUserId);
       await api.chat.markRead(otherUserId);
@@ -219,10 +389,10 @@ export default function useChatSocket() {
     } catch (err) {
       console.error("Error al marcar mensajes como leídos:", err);
     }
-  };
+  }, []);
 
   // 🔹 Cargar historial desde la API
-  const loadHistory = async (otherUserId: number) => {
+  const loadHistory = useCallback(async (otherUserId: number) => {
     try {
       console.log("📡 Cargando historial de usuario:", otherUserId);
       const { data } = await api.chat.history(otherUserId);
@@ -231,12 +401,12 @@ export default function useChatSocket() {
       console.error("Error al cargar historial:", err);
       setMessages([]); // Evitar que queden mensajes viejos si falla
     }
-  };
+  }, []);
   // 🔹 Conectar al montar
   useEffect(() => {
     connect();
     return () => disconnect();
-  }, [connect]);
+  }, [connect, disconnect]);
 
   return {
     messages,
@@ -246,5 +416,9 @@ export default function useChatSocket() {
     reconnect,
     markRead,
     loadHistory,
+    onlineUsers,
+    typingUsers,
+    refreshOnlineStatus,
+    sendTyping,
   };
 }

@@ -132,12 +132,6 @@ export default function AlumnoPerfilPage() {
     const formatted = String(value).replace(/_/g, " ").toLowerCase();
     return formatted.replace(/\b\w/g, (char) => char.toUpperCase());
   };
-  const addDniValue = formatDni(addPersonaDraft.dni);
-  const addDniValid = addDniValue.length >= 7 && addDniValue.length <= 10;
-  const addPersonaExists = Boolean(addPersonaId);
-  const addPersonaReady =
-    addPersonaExists ||
-    (addDniValid && addLookupCompleted && !addLookupLoading);
 
   const [editOpen, setEditOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -183,6 +177,13 @@ export default function AlumnoPerfilPage() {
   const [addEsTutor, setAddEsTutor] = useState(false);
   const [savingFamily, setSavingFamily] = useState(false);
   const [familiaresCatalog, setFamiliaresCatalog] = useState<FamiliarDTO[]>([]);
+
+  const addDniValue = formatDni(addPersonaDraft.dni);
+  const addDniValid = addDniValue.length >= 7 && addDniValue.length <= 10;
+  const addPersonaExists = Boolean(addPersonaId);
+  const addPersonaReady =
+    addPersonaExists ||
+    (addDniValid && addLookupCompleted && !addLookupLoading);
 
   useEffect(() => {
     if (credentialsDialogOpen) {

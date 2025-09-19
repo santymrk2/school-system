@@ -45,14 +45,31 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                         break;
                     }
                 }
-            }
-            if (token != null) {
-                log.info("🍪 Cookie token recibida: {}", token);
-            } else {
-                log.warn("⚠️ Cookie token NO recibida");
+                if (token != null && !token.isBlank()) {
+                    log.info("🍪 Cookie token recibida para handshake");
+                }
             }
 
-            if (token != null && jwtService.validateToken(token)) {
+            if (token == null || token.isBlank()) {
+                String paramToken = req.getParameter("token");
+                if (paramToken != null && !paramToken.isBlank()) {
+                    token = paramToken;
+                    log.info("🔗 Token recibido vía query parameter en handshake");
+                }
+            }
+
+            if (token == null || token.isBlank()) {
+                String authHeader = req.getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String headerToken = authHeader.substring(7);
+                    if (!headerToken.isBlank()) {
+                        token = headerToken;
+                        log.info("📝 Token recibido desde header Authorization en handshake");
+                    }
+                }
+            }
+
+            if (token != null && !token.isBlank() && jwtService.validateToken(token)) {
                 String email = jwtService.extractUsername(token);
                 Optional<Persona> personaOpt = personaRepository.findByEmail(email);
 
@@ -63,6 +80,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                     return true;
                 }
             }
+            log.warn("⚠️ No se pudo autenticar el handshake de WebSocket");
         }
         return false;
     }

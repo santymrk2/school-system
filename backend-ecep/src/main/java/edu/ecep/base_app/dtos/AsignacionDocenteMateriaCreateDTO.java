@@ -18,7 +18,6 @@ public class AsignacionDocenteMateriaCreateDTO {
     Long empleadoId;
     @NotNull
     RolMateria rol;
-    @NotNull
     LocalDate vigenciaDesde;
     LocalDate vigenciaHasta;
 }

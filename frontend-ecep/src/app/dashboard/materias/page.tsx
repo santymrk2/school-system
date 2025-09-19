@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
@@ -123,7 +124,7 @@ export default function MateriasPage() {
         </div>
 
         {loading ? (
-          <div className="text-sm">Cargando…</div>
+          <LoadingState label="Cargando secciones…" />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((s) => (

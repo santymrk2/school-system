@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import {
   Card,
   CardContent,
@@ -191,7 +192,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {loadingMsgs ? (
-                <p className="text-sm text-muted-foreground">Cargando…</p>
+                <LoadingState label="Cargando mensajes…" />
               ) : recentMsgs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No hay mensajes recientes

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { api } from "@/services/api";
@@ -178,7 +179,9 @@ export default function EvaluacionesIndexPage() {
           </div>
         </div>
 
-        {(loading || loadingScope) && <div className="text-sm">Cargando…</div>}
+        {(loading || loadingScope) && (
+          <LoadingState label="Cargando evaluaciones…" />
+        )}
         {(error || errorScope) && (
           <div className="text-sm text-red-600">
             {String(error ?? errorScope)}

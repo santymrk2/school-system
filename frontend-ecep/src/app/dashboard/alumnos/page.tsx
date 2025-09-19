@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import type * as DTO from "@/types/api-generated";
@@ -152,7 +153,7 @@ export default function AlumnosIndexPage() {
           </div>
         )}
 
-        {loading && <div className="text-sm">Cargando…</div>}
+        {loading && <LoadingState label="Cargando información…" />}
         {error && <div className="text-sm text-red-600">{String(error)}</div>}
 
         {/* FAMILY: lista de hijos */}
@@ -205,7 +206,7 @@ export default function AlumnosIndexPage() {
                 </CardHeader>
                 <CardContent>
                   {loadingAlumnos ? (
-                    <div className="text-sm text-muted-foreground py-6">Cargando alumnos…</div>
+                    <LoadingState label="Cargando alumnos…" />
                   ) : errorAlumnos ? (
                     <div className="text-sm text-red-600 py-6">{errorAlumnos}</div>
                   ) : !alumnosFiltrados.length ? (

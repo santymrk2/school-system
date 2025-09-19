@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { api } from "@/services/api";
 import {
   JornadaAsistenciaDTO,
@@ -313,7 +314,7 @@ export default function JornadaPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm">Cargando…</div>
+        <LoadingState label="Cargando jornada…" />
       </DashboardLayout>
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { api } from "@/services/api";
 import type {
   ActaAccidenteDTO,
@@ -160,7 +161,7 @@ export default function EditActaDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="text-sm">Cargando…</div>
+          <LoadingState label="Cargando acta…" />
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

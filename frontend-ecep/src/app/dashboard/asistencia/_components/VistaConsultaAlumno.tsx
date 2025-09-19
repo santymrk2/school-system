@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import {
   Card,
   CardHeader,
@@ -71,7 +72,7 @@ export default function VistaConsultaAlumno() {
   const ausentes = detallesAlumno.filter((d) => d.estado === "AUSENTE").length;
   const pct = Math.round((presentes / total) * 100);
 
-  if (loading) return <p className="p-4">Cargando…</p>;
+  if (loading) return <LoadingState label="Cargando información…" />;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">

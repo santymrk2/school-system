@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import {
   Card,
   CardHeader,
@@ -134,7 +135,7 @@ export default function VistaDireccion() {
     }
   };
 
-  if (loading) return <p className="p-4">Cargando…</p>;
+  if (loading) return <LoadingState label="Cargando información…" />;
 
   return (
     <div className="space-y-6">

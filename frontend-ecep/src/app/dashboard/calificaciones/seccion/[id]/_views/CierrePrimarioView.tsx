@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/services/api";
+import LoadingState from "@/components/common/LoadingState";
 import {
   Card,
   CardContent,
@@ -606,7 +607,9 @@ export default function CierrePrimarioView({
 
       {(loading || loadingRows) && (
         <Card>
-          <CardContent className="py-6 text-sm">Cargando…</CardContent>
+          <CardContent className="py-6">
+            <LoadingState label="Cargando calificaciones…" />
+          </CardContent>
         </Card>
       )}
 

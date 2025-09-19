@@ -11,6 +11,7 @@ import type {
   TrimestreDTO,
   SeccionMateriaDTO,
 } from "@/types/api-generated";
+import LoadingState from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -253,7 +254,7 @@ export default function NotasExamenDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="text-sm p-2">Cargando…</div>
+          <LoadingState label="Cargando notas…" />
         ) : errorMsg ? (
           <div className="text-sm text-red-600">{errorMsg}</div>
         ) : (

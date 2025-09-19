@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -818,22 +819,12 @@ export default function PagosPage() {
 
   const renderCuotasTab = () => {
     if (authLoading) {
-      return (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
-          información...
-        </div>
-      );
+      return <LoadingState label="Cargando información…" />;
     }
 
     if (isFamily) {
       if (hijosLoading || cuotasLoading) {
-        return (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Preparando tus
-            cuotas...
-          </div>
-        );
+        return <LoadingState label="Preparando tus cuotas…" />;
       }
 
       if (!hijos.length) {
@@ -1089,10 +1080,7 @@ export default function PagosPage() {
             </CardHeader>
             <CardContent>
               {cuotasLoading ? (
-                <div className="flex items-center justify-center py-10 text-muted-foreground">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
-                  cuotas...
-                </div>
+                <LoadingState label="Cargando cuotas…" />
               ) : !cuotasOrdenadasAdmin.length ? (
                 <p className="text-sm text-muted-foreground">
                   Aún no se registraron cuotas. Creá la primera para comenzar.
@@ -1204,10 +1192,7 @@ export default function PagosPage() {
           </CardHeader>
           <CardContent>
             {pagosLoading ? (
-              <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
-                pagos...
-              </div>
+              <LoadingState label="Cargando pagos…" />
             ) : !pagosOrdenados.length ? (
               <p className="text-sm text-muted-foreground">
                 Aún no hay pagos registrados.
@@ -1365,10 +1350,7 @@ export default function PagosPage() {
           </CardHeader>
           <CardContent>
             {recibosLoading ? (
-              <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando
-                recibos...
-              </div>
+              <LoadingState label="Cargando recibos…" />
             ) : !listado.length ? (
               <p className="text-sm text-muted-foreground">
                 {isAdmin
@@ -1735,10 +1717,7 @@ export default function PagosPage() {
                   <Label>Secciones</Label>
                   <div className="max-h-60 space-y-2 overflow-auto rounded-md border p-3 text-sm">
                     {seccionesLoading ? (
-                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Cargando
-                        secciones...
-                      </div>
+                      <LoadingState label="Cargando secciones…" className="h-48" iconClassName="h-4 w-4" />
                     ) : !seccionesOrdenadas.length ? (
                       <p className="text-muted-foreground">
                         No hay secciones disponibles para generar cuotas.

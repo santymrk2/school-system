@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -138,7 +139,7 @@ export default function VistaDocente() {
     }
   };
 
-  if (loading) return <p className="p-4">Cargando…</p>;
+  if (loading) return <LoadingState label="Cargando información…" />;
 
   return (
     <>

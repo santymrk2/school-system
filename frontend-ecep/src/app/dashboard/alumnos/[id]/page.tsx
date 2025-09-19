@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
@@ -962,7 +963,7 @@ export default function AlumnoPerfilPage() {
           </div>
         </div>
 
-        {loading && <div className="text-sm">Cargando…</div>}
+        {loading && <LoadingState label="Cargando información del alumno…" />}
         {error && <div className="text-sm text-red-600">{error}</div>}
 
         {!loading && !error && alumno && (

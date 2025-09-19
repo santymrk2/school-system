@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import LoadingState from "@/components/common/LoadingState";
 import {
   Dialog,
   DialogContent,
@@ -435,9 +436,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {loading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Cargando datos...
-            </div>
+            <LoadingState label="Cargando datos…" />
           ) : trimestresOrdenados.length ? (
             trimestresOrdenados.map((tri) => {
               const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);

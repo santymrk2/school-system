@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { api } from "@/services/api";
 import {
   Card,
@@ -77,7 +78,7 @@ export default function CalificacionesIndexPage() {
             <Badge variant="outline">Inicial: {inicial.length}</Badge>
           </div>
         )}
-        {loading && <div className="text-sm">Cargando…</div>}
+        {loading && <LoadingState label="Cargando secciones…" />}
 
         {!loading && (
           <Tabs

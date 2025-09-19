@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export default function SeccionAlumnosPage() {
 
         {/* Contenido: solo alumnos */}
         {loading ? (
-          <div className="text-sm">Cargando…</div>
+          <LoadingState label="Cargando alumnos…" />
         ) : error ? (
           <div className="text-sm text-red-600">
             Ocurrió un error al cargar los alumnos.

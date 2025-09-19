@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/services/api";
+import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -61,7 +62,7 @@ export default function InformeInicialView({
     return m;
   }, [informes]);
 
-  if (loading) return <div className="text-sm">Cargando…</div>;
+  if (loading) return <LoadingState label="Cargando informes…" />;
 
   return (
     <div className="space-y-4">

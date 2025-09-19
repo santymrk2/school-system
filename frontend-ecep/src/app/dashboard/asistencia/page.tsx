@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
+import LoadingState from "@/components/common/LoadingState";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole, SeccionDTO, Turno } from "@/types/api-generated";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
@@ -156,7 +157,7 @@ function TeacherView() {
     error: countsError,
   } = useSectionStudentCounts(secciones);
 
-  if (loading) return <div className="text-sm">Cargando secciones…</div>;
+  if (loading) return <LoadingState label="Cargando secciones…" />;
   if (error) return <div className="text-sm text-red-600">{String(error)}</div>;
   if (!secciones.length)
     return <div className="text-sm">No tenés secciones asignadas.</div>;
@@ -277,7 +278,7 @@ function DirectivoView() {
 
   return (
     <div className="space-y-4">
-      {loading && <div className="text-sm">Cargando secciones…</div>}
+      {loading && <LoadingState label="Cargando secciones…" />}
       {err && <div className="text-sm text-red-600">{err}</div>}
       {countsError && <div className="text-sm text-red-600">{countsError}</div>}
 

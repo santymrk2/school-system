@@ -45,6 +45,8 @@ export function Step2({
     { value: RolVinculo.OTRO, label: "Otro/a" },
   ];
 
+  const hasError = (key: string) => Boolean(errors?.[key]);
+
   return (
     <div className="space-y-4">
       {/* ——— Título + Botón ——— */}
@@ -78,205 +80,206 @@ export function Step2({
 
       {/* ——— Lista de Formularios de cada Familiar ——— */}
       <div className="space-y-6">
-        {familiares.map((f, i) => (
-          <div key={i} className="border rounded-lg p-4">
-            <h4 className="font-medium mb-4">Familiar {i + 1}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Relación */}
-              <div>
-                <Label htmlFor={`tipoRelacion-${i}`}>Relación</Label>
-                <Select
-                  id={`tipoRelacion-${i}`}
-                  value={f.tipoRelacion}
-                  onValueChange={(v) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i ? { ...x, tipoRelacion: v as string } : x,
-                      ),
-                      { errorKeys: [`familiares.${i}.tipoRelacion`] },
-                    )
-                  }
-                  className={cn(
-                    errors[`familiares.${i}.tipoRelacion`] &&
-                      "border-destructive",
-                  )}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione relación" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {relationshipOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        {familiares.map((f, i) => {
+          const entryKey = `familiares.${i}`;
+          const familiarKey = `${entryKey}.familiar`;
+          const tipoRelacionError = hasError(`${entryKey}.tipoRelacion`);
+          const nombreError = hasError(`${familiarKey}.nombre`);
+          const apellidoError = hasError(`${familiarKey}.apellido`);
+          const dniError = hasError(`${familiarKey}.dni`);
+          const fechaNacimientoError = hasError(`${familiarKey}.fechaNacimiento`);
+          const emailError = hasError(`${familiarKey}.emailContacto`);
 
-              {/* Nombre */}
-              <div>
-                <Label htmlFor={`familiar-nombre-${i}`}>Nombre</Label>
-                <Input
-                  id={`familiar-nombre-${i}`}
-                  value={f.familiar?.nombre ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                nombre: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
-                      { errorKeys: [`familiares.${i}.familiar.nombre`] },
-                    )
-                  }
-                  placeholder="Nombre"
-                  className={cn(
-                    errors[`familiares.${i}.familiar.nombre`] &&
-                      "border-destructive",
-                  )}
-                />
-              </div>
+          return (
+            <div key={i} className="border rounded-lg p-4">
+              <h4 className="font-medium mb-4">Familiar {i + 1}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Relación */}
+                <div>
+                  <Label htmlFor={`tipoRelacion-${i}`}>Relación</Label>
+                  <Select
+                    id={`tipoRelacion-${i}`}
+                    value={f.tipoRelacion}
+                    onValueChange={(v) =>
+                      handleInputChange(
+                        "familiares",
+                        familiares.map((x, j) =>
+                          j === i ? { ...x, tipoRelacion: v as string } : x,
+                        ),
+                        { errorKeys: [`familiares.${i}.tipoRelacion`] },
+                      )
+                    }
+                  >
+                    <SelectTrigger
+                      aria-invalid={tipoRelacionError || undefined}
+                      className={cn(tipoRelacionError && "border-destructive")}
+                    >
+                      <SelectValue placeholder="Seleccione relación" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {relationshipOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Apellido */}
-              <div>
-                <Label htmlFor={`familiar-apellido-${i}`}>Apellido</Label>
-                <Input
-                  id={`familiar-apellido-${i}`}
-                  value={f.familiar?.apellido ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                apellido: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
-                      { errorKeys: [`familiares.${i}.familiar.apellido`] },
-                    )
-                  }
-                  placeholder="Apellido"
-                  className={cn(
-                    errors[`familiares.${i}.familiar.apellido`] &&
-                      "border-destructive",
-                  )}
-                />
-              </div>
+                {/* Nombre */}
+                <div>
+                  <Label htmlFor={`familiar-nombre-${i}`}>Nombre</Label>
+                  <Input
+                    id={`familiar-nombre-${i}`}
+                    value={f.familiar?.nombre ?? ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "familiares",
+                        familiares.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                familiar: {
+                                  ...x.familiar!,
+                                  nombre: e.target.value,
+                                },
+                              }
+                            : x,
+                        ),
+                        { errorKeys: [`familiares.${i}.familiar.nombre`] },
+                      )
+                    }
+                    placeholder="Nombre"
+                    aria-invalid={nombreError || undefined}
+                    className={cn(nombreError && "border-destructive")}
+                  />
+                </div>
 
-              {/* DNI */}
-              <div>
-                <Label htmlFor={`familiar-dni-${i}`}>DNI</Label>
-                <Input
-                  id={`familiar-dni-${i}`}
-                  inputMode="numeric"
-                  pattern="\d*"
-                  minLength={7}
-                  maxLength={10}
-                  value={f.familiar?.dni ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                dni: formatDni(e.target.value),
-                              },
-                            }
-                          : x,
-                      ),
-                      { errorKeys: [`familiares.${i}.familiar.dni`] },
-                    )
-                  }
-                  placeholder="12345678"
-                  className={cn(
-                    errors[`familiares.${i}.familiar.dni`] &&
-                      "border-destructive",
-                  )}
-                />
-              </div>
+                {/* Apellido */}
+                <div>
+                  <Label htmlFor={`familiar-apellido-${i}`}>Apellido</Label>
+                  <Input
+                    id={`familiar-apellido-${i}`}
+                    value={f.familiar?.apellido ?? ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "familiares",
+                        familiares.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                familiar: {
+                                  ...x.familiar!,
+                                  apellido: e.target.value,
+                                },
+                              }
+                            : x,
+                        ),
+                        { errorKeys: [`familiares.${i}.familiar.apellido`] },
+                      )
+                    }
+                    placeholder="Apellido"
+                    aria-invalid={apellidoError || undefined}
+                    className={cn(apellidoError && "border-destructive")}
+                  />
+                </div>
 
-              {/* Fecha de Nacimiento */}
-              <div>
-                <Label htmlFor={`familiar-fecha-${i}`}>
-                  Fecha de Nacimiento
-                </Label>
-                <Input
-                  id={`familiar-fecha-${i}`}
-                  type="date"
-                  max={maxBirthDate}
-                  value={f.familiar?.fechaNacimiento ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                fechaNacimiento: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
-                      { errorKeys: [`familiares.${i}.familiar.fechaNacimiento`] },
-                    )
-                  }
-                  className={cn(
-                    errors[`familiares.${i}.familiar.fechaNacimiento`] &&
-                      "border-destructive",
-                  )}
-                />
-              </div>
+                {/* DNI */}
+                <div>
+                  <Label htmlFor={`familiar-dni-${i}`}>DNI</Label>
+                  <Input
+                    id={`familiar-dni-${i}`}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    minLength={7}
+                    maxLength={10}
+                    value={f.familiar?.dni ?? ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "familiares",
+                        familiares.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                familiar: {
+                                  ...x.familiar!,
+                                  dni: formatDni(e.target.value),
+                                },
+                              }
+                            : x,
+                        ),
+                        { errorKeys: [`familiares.${i}.familiar.dni`] },
+                      )
+                    }
+                    placeholder="12345678"
+                    aria-invalid={dniError || undefined}
+                    className={cn(dniError && "border-destructive")}
+                  />
+                </div>
 
-              {/* Email */}
-              <div>
-                <Label htmlFor={`familiar-email-${i}`}>Email</Label>
-                <Input
-                  id={`familiar-email-${i}`}
-                  type="email"
-                  value={f.familiar?.emailContacto ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                emailContacto: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
-                      { errorKeys: [`familiares.${i}.familiar.emailContacto`] },
-                    )
-                  }
-                  placeholder="email@dominio.com"
-                  className={cn(
-                    errors[`familiares.${i}.familiar.emailContacto`] &&
-                      "border-destructive",
-                  )}
-                />
-              </div>
+                {/* Fecha de Nacimiento */}
+                <div>
+                  <Label htmlFor={`familiar-fecha-${i}`}>
+                    Fecha de Nacimiento
+                  </Label>
+                  <Input
+                    id={`familiar-fecha-${i}`}
+                    type="date"
+                    max={maxBirthDate}
+                    value={f.familiar?.fechaNacimiento ?? ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "familiares",
+                        familiares.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                familiar: {
+                                  ...x.familiar!,
+                                  fechaNacimiento: e.target.value,
+                                },
+                              }
+                            : x,
+                        ),
+                        { errorKeys: [`familiares.${i}.familiar.fechaNacimiento`] },
+                      )
+                    }
+                    aria-invalid={fechaNacimientoError || undefined}
+                    className={cn(
+                      fechaNacimientoError && "border-destructive",
+                    )}
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <Label htmlFor={`familiar-email-${i}`}>Email</Label>
+                  <Input
+                    id={`familiar-email-${i}`}
+                    type="email"
+                    value={f.familiar?.emailContacto ?? ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "familiares",
+                        familiares.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                familiar: {
+                                  ...x.familiar!,
+                                  emailContacto: e.target.value,
+                                },
+                              }
+                            : x,
+                        ),
+                        { errorKeys: [`familiares.${i}.familiar.emailContacto`] },
+                      )
+                    }
+                    placeholder="email@dominio.com"
+                    aria-invalid={emailError || undefined}
+                    className={cn(emailError && "border-destructive")}
+                  />
+                </div>
 
               {/* Teléfono */}
               <div>
@@ -374,7 +377,8 @@ export function Step2({
               </div>
             </div>
           </div>
-        ))}
+        );
+      })}
       </div>
     </div>
   );

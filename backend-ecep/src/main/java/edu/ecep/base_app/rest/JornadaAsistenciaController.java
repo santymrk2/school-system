@@ -14,6 +14,7 @@ import java.time.LocalDate;
 
 import edu.ecep.base_app.dtos.JornadaAsistenciaCreateDTO;
 import edu.ecep.base_app.dtos.JornadaAsistenciaDTO;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -40,12 +41,12 @@ public class JornadaAsistenciaController {
     }
 
     @GetMapping(params = {"seccionId","fecha"})
-    public ResponseEntity<JornadaAsistenciaDTO> bySeccionFecha(
+    public List<JornadaAsistenciaDTO> bySeccionFecha(
             @RequestParam Long seccionId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         return service.findBySeccionAndFecha(seccionId, fecha)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(List::of)
+                .orElseGet(Collections::emptyList);
     }
 
 

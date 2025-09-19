@@ -155,32 +155,76 @@ export default function JornadaPage() {
     if (!previousRow) return;
     const previousEstado = previousRow?.estado;
     const previousDetalleId = previousRow?.detalleId;
+    const previousObservacion = previousRow?.observacion;
     const alreadySelected = previousEstado === estado;
     if (alreadySelected) return;
 
+    const currentDetalle =
+      previousDetalleId != null
+        ? detalles.find((d) => d.id === previousDetalleId)
+        : undefined;
+    const observacion = currentDetalle?.observacion ?? previousObservacion ?? null;
+
     setRows((prev) =>
-      prev.map((r) => (r.matriculaId === matriculaId ? { ...r, estado } : r)),
+      prev.map((r) =>
+        r.matriculaId === matriculaId
+          ? { ...r, estado, observacion: observacion ?? undefined }
+          : r,
+      ),
     );
     setUpdating((prev) => ({ ...prev, [matriculaId]: true }));
 
-    let existing = detalles.find((d) => d.matriculaId === matriculaId);
-    let existingId = existing?.id;
+    let targetDetalleId = previousDetalleId ?? null;
 
     try {
-      if (existing && existingId != null) {
+      if (targetDetalleId != null) {
         try {
-          await api.detallesAsistencia.update(existingId, {
+          await api.detallesAsistencia.update(targetDetalleId, {
             estado,
-            observacion: existing.observacion ?? null,
+            observacion,
           } as any);
-          setDetalles((prev) =>
-            prev.map((d) =>
-              d.id === existingId ? { ...d, estado } : d,
+
+          setDetalles((prev) => {
+            const index = prev.findIndex((d) => d.id === targetDetalleId);
+            if (index === -1) {
+              return [
+                ...prev,
+                {
+                  id: targetDetalleId,
+                  jornadaId,
+                  matriculaId,
+                  estado,
+                  observacion,
+                } as DetalleAsistenciaDTO,
+              ];
+            }
+
+            const next = [...prev];
+            next[index] = {
+              ...next[index],
+              estado,
+              observacion,
+            };
+            return next;
+          });
+
+          setRows((prev) =>
+            prev.map((r) =>
+              r.matriculaId === matriculaId
+                ? {
+                    ...r,
+                    estado,
+                    detalleId: targetDetalleId,
+                    observacion: observacion ?? undefined,
+                  }
+                : r,
             ),
           );
+
+          return;
         } catch (error: any) {
           if (error?.response?.status === 404) {
-            setDetalles((prev) => prev.filter((d) => d.id !== existingId));
+            setDetalles((prev) => prev.filter((d) => d.id !== targetDetalleId));
             setRows((prev) =>
               prev.map((r) =>
                 r.matriculaId === matriculaId
@@ -188,20 +232,19 @@ export default function JornadaPage() {
                   : r,
               ),
             );
-            existing = undefined;
-            existingId = undefined;
+            targetDetalleId = null;
           } else {
             throw error;
           }
         }
       }
 
-      if (!existing) {
+      if (targetDetalleId == null) {
         const body: DetalleAsistenciaCreateDTO = {
           jornadaId,
           matriculaId,
           estado,
-          observacion: previousRow?.observacion ?? null,
+          observacion,
         } as any;
 
         const resp = await api.detallesAsistencia.create(body);
@@ -217,14 +260,19 @@ export default function JornadaPage() {
           jornadaId,
           matriculaId,
           estado,
-          observacion: previousRow?.observacion ?? null,
+          observacion,
         } as DetalleAsistenciaDTO;
 
         setDetalles((prev) => [...prev, newDetalle]);
         setRows((prev) =>
           prev.map((r) =>
             r.matriculaId === matriculaId
-              ? { ...r, estado, detalleId: createdId }
+              ? {
+                  ...r,
+                  estado,
+                  detalleId: createdId,
+                  observacion: observacion ?? undefined,
+                }
               : r,
           ),
         );
@@ -244,7 +292,12 @@ export default function JornadaPage() {
       setRows((prev) =>
         prev.map((r) =>
           r.matriculaId === matriculaId
-            ? { ...r, estado: previousEstado, detalleId: previousDetalleId }
+            ? {
+                ...r,
+                estado: previousEstado,
+                detalleId: previousDetalleId,
+                observacion: previousObservacion,
+              }
             : r,
         ),
       );

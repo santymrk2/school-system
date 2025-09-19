@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import type React from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,13 @@ export default function ChatComponent() {
     useState<PersonaResumenDTO | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingStateRef = useRef<{ targetId: number | null; isTyping: boolean }>(
+    {
+      targetId: null,
+      isTyping: false,
+    },
+  );
   const { user } = useAuth();
 
   const {
@@ -82,6 +90,10 @@ export default function ChatComponent() {
     reconnect,
     markRead,
     loadHistory,
+    onlineUsers,
+    typingUsers,
+    refreshOnlineStatus,
+    sendTyping,
   } = useChatSocket();
 
   useEffect(() => {
@@ -171,6 +183,54 @@ export default function ChatComponent() {
 
   useEffect(() => {
     if (!selectedPersona) return;
+    const otherId = selectedPersona.id;
+    if (!otherId) return;
+
+    const hasUnread = messages.some(
+      (msg) => msg.emisorId === otherId && !msg.leido,
+    );
+
+    if (!hasUnread) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await markRead(otherId);
+        if (!cancelled) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [otherId]: 0,
+          }));
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("No se pudo marcar como leído", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, selectedPersona, markRead]);
+
+  useEffect(() => {
+    return () => {
+      if (
+        typingStateRef.current.isTyping &&
+        typingStateRef.current.targetId != null
+      ) {
+        sendTyping(typingStateRef.current.targetId, false);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [sendTyping]);
+
+  useEffect(() => {
+    if (!selectedPersona) return;
     const refreshed = activeChats.find(
       (chat) => chat.id === selectedPersona.id,
     );
@@ -178,6 +238,32 @@ export default function ChatComponent() {
       setSelectedPersona(refreshed);
     }
   }, [activeChats, selectedPersona]);
+
+  useEffect(() => {
+    if (!activeChats.length) return;
+    refreshOnlineStatus(activeChats.map((chat) => chat.id));
+  }, [activeChats, refreshOnlineStatus]);
+
+  useEffect(() => {
+    const previousTarget = typingStateRef.current.targetId;
+    if (
+      previousTarget &&
+      previousTarget !== selectedUserId &&
+      typingStateRef.current.isTyping
+    ) {
+      sendTyping(previousTarget, false);
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    typingStateRef.current = {
+      targetId: selectedUserId ?? null,
+      isTyping: false,
+    };
+  }, [selectedUserId, sendTyping]);
 
   const openChat = async (persona: PersonaResumenDTO) => {
     setActiveChats((prev) =>
@@ -194,12 +280,71 @@ export default function ChatComponent() {
       [persona.id]: 0,
     }));
 
+    refreshOnlineStatus([persona.id]);
     setOpenChatDialog(false);
+  };
+
+  const finalizeTyping = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    const { targetId, isTyping } = typingStateRef.current;
+    if (isTyping && targetId != null) {
+      sendTyping(targetId, false);
+    }
+    typingStateRef.current = {
+      targetId: selectedUserId ?? null,
+      isTyping: false,
+    };
+  };
+
+  const handleTypingActivity = () => {
+    if (!connected || selectedUserId == null) return;
+
+    if (
+      !typingStateRef.current.isTyping ||
+      typingStateRef.current.targetId !== selectedUserId
+    ) {
+      if (
+        typingStateRef.current.isTyping &&
+        typingStateRef.current.targetId != null &&
+        typingStateRef.current.targetId !== selectedUserId
+      ) {
+        sendTyping(typingStateRef.current.targetId, false);
+      }
+      sendTyping(selectedUserId, true);
+      typingStateRef.current = {
+        targetId: selectedUserId,
+        isTyping: true,
+      };
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      const { targetId, isTyping } = typingStateRef.current;
+      if (isTyping && targetId != null) {
+        sendTyping(targetId, false);
+      }
+      typingStateRef.current = {
+        targetId,
+        isTyping: false,
+      };
+      typingTimeoutRef.current = null;
+    }, 1500);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    handleTypingActivity();
   };
 
   const handleSend = () => {
     if (!newMessage.trim() || selectedUserId == null) return;
     sendMessage(selectedUserId, newMessage.trim());
+    finalizeTyping();
     setNewMessage("");
   };
 
@@ -245,6 +390,30 @@ export default function ChatComponent() {
     const isOwn = message.emisorId === user?.id;
     const isOptimistic = message.id < 0;
 
+    const filledDotClass = isOwn
+      ? "inline-flex h-2 w-2 rounded-full bg-primary-foreground"
+      : "inline-flex h-2 w-2 rounded-full bg-primary";
+    const outlineDotClass = isOwn
+      ? "inline-flex h-2 w-2 rounded-full border border-primary-foreground"
+      : "inline-flex h-2 w-2 rounded-full border border-primary";
+
+    let statusContent: JSX.Element | null = null;
+
+    if (isOwn) {
+      if (isOptimistic) {
+        statusContent = <span className={outlineDotClass} />;
+      } else if (message.leido) {
+        statusContent = (
+          <span className="flex items-center gap-1">
+            <span className={filledDotClass} />
+            <span className={filledDotClass} />
+          </span>
+        );
+      } else {
+        statusContent = <span className={filledDotClass} />;
+      }
+    }
+
     return (
       <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-3`}>
         <div
@@ -259,13 +428,14 @@ export default function ChatComponent() {
           `}
         >
           <p className="text-sm">{message.contenido}</p>
-          <div className="flex justify-between items-center mt-1">
+          <div className="mt-1 flex items-end justify-between gap-2">
             <span className="text-xs opacity-70">
               {dayjs(message.fechaEnvio).format("HH:mm")}
             </span>
-            {isOptimistic && <span className="text-xs ml-2">⏳</span>}
-            {!isOptimistic && isOwn && (
-              <span className="text-xs ml-2">{message.leido ? "✓✓" : "✓"}</span>
+            {statusContent && (
+              <span className="ml-2 flex items-center gap-1 opacity-80">
+                {statusContent}
+              </span>
             )}
           </div>
         </div>
@@ -290,12 +460,25 @@ export default function ChatComponent() {
   const showChatList = !selectedPersona || isMd;
   const showChatView = selectedPersona && (isMd || !showChatList);
 
+  const selectedPersonaId = selectedPersona?.id ?? null;
+  const selectedTyping =
+    selectedPersonaId != null ? typingUsers[selectedPersonaId] : false;
+  const selectedOnline =
+    selectedPersonaId != null ? onlineUsers[selectedPersonaId] : undefined;
+  const selectedStatus = selectedPersonaId
+    ? selectedTyping
+      ? "Escribiendo..."
+      : selectedOnline
+        ? "En línea"
+        : "Desconectado"
+    : "";
+
   return (
     <DashboardLayout>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex h-[calc(100vh-12rem)] md:h-[calc(100vh-12rem)]">
+      <div className="flex h-full flex-col p-4 md:p-8 pt-6">
+        <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
           {showChatList && (
-            <div className="w-full md:w-1/3 flex-shrink-0 flex flex-col bg-background md:border-r md:border-border">
+            <div className="flex w-full min-h-0 flex-col bg-background md:w-1/3 md:flex-none md:border-r md:border-border">
               <div className="px-4 py-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Chats</h2>
@@ -414,7 +597,7 @@ export default function ChatComponent() {
           )}
 
           {showChatView && selectedPersona && (
-            <div className="flex-1 flex flex-col bg-background">
+            <div className="flex flex-1 min-h-0 flex-col bg-background">
               <div className="p-4 flex items-center gap-3">
                 {!isMd && (
                   <Button
@@ -437,9 +620,7 @@ export default function ChatComponent() {
                   <h3 className="font-semibold text-sm">
                     {getPersonaDisplayName(selectedPersona)}
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {connected ? "En línea" : "Desconectado"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{selectedStatus}</p>
                 </div>
               </div>
 
@@ -456,7 +637,7 @@ export default function ChatComponent() {
                 <div className="flex gap-2">
                   <Input
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
                     placeholder="Escribí un mensaje..."
                     disabled={!connected || selectedUserId == null}

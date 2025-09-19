@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Plus, UserPlus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import { api } from "@/services/api";
 import type {
   SeccionDTO,
@@ -231,7 +231,6 @@ export default function MateriasSeccionPage() {
           variant="outline"
           onClick={() => router.push("/dashboard/materias")}
         >
-          <ArrowLeft className="h-4 w-4 mr-1" />
           Volver
         </Button>
 

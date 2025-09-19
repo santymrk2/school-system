@@ -297,7 +297,10 @@ export default function FamiliarPerfilPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
-        <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={() => router.back()}>
+          Volver
+        </Button>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Perfil del Familiar</h2>
             <p className="text-muted-foreground">ID: {familiarId}</p>
@@ -423,9 +426,6 @@ export default function FamiliarPerfilPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            <Button variant="outline" onClick={() => router.back()}>
-              Volver
-            </Button>
           </div>
         </div>
 

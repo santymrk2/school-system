@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, School, Clock3 } from "lucide-react";
+import { School, Clock3 } from "lucide-react";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { toast } from "sonner";
 
@@ -357,8 +357,8 @@ export default function ExamenDetailPage() {
     return (
       <DashboardLayout>
         <div className="p-6 space-y-4">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+          <Button variant="outline" onClick={() => router.back()}>
+            Volver
           </Button>
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
@@ -372,8 +372,8 @@ export default function ExamenDetailPage() {
     return (
       <DashboardLayout>
         <div className="p-6 space-y-4">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+          <Button variant="outline" onClick={() => router.back()}>
+            Volver
           </Button>
           <div className="rounded-md border p-4 text-sm">
             No encontramos datos para el examen solicitado.
@@ -386,11 +386,9 @@ export default function ExamenDetailPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => router.back()}>
+          Volver
+        </Button>
 
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>

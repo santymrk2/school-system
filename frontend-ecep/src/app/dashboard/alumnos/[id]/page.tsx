@@ -867,8 +867,11 @@ export default function AlumnoPerfilPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
+        <Button variant="outline" onClick={() => router.back()}>
+          Volver
+        </Button>
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">
               Perfil del Alumno
@@ -1120,9 +1123,6 @@ export default function AlumnoPerfilPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            <Button variant="outline" onClick={() => router.back()}>
-              Volver
-            </Button>
           </div>
         </div>
 

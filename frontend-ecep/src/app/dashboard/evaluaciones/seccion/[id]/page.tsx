@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Edit, Plus, ArrowLeft, School, Clock3 } from "lucide-react";
+import { Calendar, Edit, Plus, School, Clock3 } from "lucide-react";
 import NotasExamenDialog from "@/app/dashboard/evaluaciones/_components/NotasExamenDialog";
 import { toast } from "sonner";
 
@@ -259,6 +259,12 @@ export default function SeccionEvaluacionesPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/evaluaciones")}
+        >
+          Volver
+        </Button>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Evaluaciones</h1>
@@ -423,12 +429,6 @@ export default function SeccionEvaluacionesPage() {
               </DialogContent>
             </Dialog>
 
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/evaluaciones")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-            </Button>
           </div>
         </div>
 

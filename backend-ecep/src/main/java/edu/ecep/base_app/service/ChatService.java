@@ -8,7 +8,9 @@ import edu.ecep.base_app.repos.MensajeRepository;
 import edu.ecep.base_app.repos.PersonaRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -20,11 +22,13 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ChatService {
 
     private final MensajeRepository mensajeRepository;
     private final PersonaRepository personaRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final String CHANNEL = "chat";
     private static final String ONLINE_USERS_KEY = "chat:online_users";
@@ -56,7 +60,7 @@ public class ChatService {
 
         // Convertir a DTO y publicar en Redis
         ChatMessageDTO dto = toDto(saved);
-        redisTemplate.convertAndSend(CHANNEL, dto);
+        publishMessage(dto);
 
         return saved;
     }
@@ -72,10 +76,14 @@ public class ChatService {
 
     public void markRead(Long userId, Long otherUserId) {
         mensajeRepository.markAsRead(userId, otherUserId);
-        redisTemplate.opsForValue().set(
-                "chat:last_read:" + userId + ":" + otherUserId,
-                System.currentTimeMillis()
-        );
+        try {
+            redisTemplate.opsForValue().set(
+                    "chat:last_read:" + userId + ":" + otherUserId,
+                    System.currentTimeMillis()
+            );
+        } catch (Exception ex) {
+            log.warn("No se pudo actualizar el cache de lecturas en Redis para {}->{}, continuando", userId, otherUserId, ex);
+        }
     }
 
     public Map<Long, Long> getUnreadCounts(Long userId) {
@@ -93,21 +101,34 @@ public class ChatService {
     }
 
     public void setUserOnline(Long userId) {
-        redisTemplate.opsForSet().add(ONLINE_USERS_KEY, userId.toString());
-        redisTemplate.opsForValue().set(USER_LAST_SEEN_KEY + userId, System.currentTimeMillis());
+        try {
+            redisTemplate.opsForSet().add(ONLINE_USERS_KEY, userId.toString());
+            redisTemplate.opsForValue().set(USER_LAST_SEEN_KEY + userId, System.currentTimeMillis());
+        } catch (Exception ex) {
+            log.warn("No se pudo registrar al usuario {} como online en Redis", userId, ex);
+        }
     }
 
     public void setUserOffline(Long userId) {
-        redisTemplate.opsForSet().remove(ONLINE_USERS_KEY, userId.toString());
-        redisTemplate.opsForValue().set(USER_LAST_SEEN_KEY + userId, System.currentTimeMillis());
+        try {
+            redisTemplate.opsForSet().remove(ONLINE_USERS_KEY, userId.toString());
+            redisTemplate.opsForValue().set(USER_LAST_SEEN_KEY + userId, System.currentTimeMillis());
+        } catch (Exception ex) {
+            log.warn("No se pudo registrar al usuario {} como offline en Redis", userId, ex);
+        }
     }
 
     public Map<Long, Boolean> getOnlineStatus(List<Long> userIds) {
-        return userIds.stream()
-                .collect(Collectors.toMap(
-                        id -> id,
-                        id -> redisTemplate.opsForSet().isMember(ONLINE_USERS_KEY, id.toString())
-                ));
+        try {
+            return userIds.stream()
+                    .collect(Collectors.toMap(
+                            id -> id,
+                            id -> Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(ONLINE_USERS_KEY, id.toString()))
+                    ));
+        } catch (Exception ex) {
+            log.warn("No se pudo consultar el estado online en Redis, devolviendo todo como offline", ex);
+            return userIds.stream().collect(Collectors.toMap(id -> id, id -> Boolean.FALSE));
+        }
     }
 
     public List<Long> getUserContacts(Long userId) {
@@ -124,5 +145,22 @@ public class ChatService {
         dto.setFechaEnvio(mensaje.getFechaEnvio());
         dto.setLeido(mensaje.getLeido());
         return dto;
+    }
+
+    private void publishMessage(ChatMessageDTO dto) {
+        try {
+            redisTemplate.convertAndSend(CHANNEL, dto);
+        } catch (Exception ex) {
+            log.warn("No se pudo publicar el mensaje en Redis, usando envío directo", ex);
+            try {
+                messagingTemplate.convertAndSendToUser(
+                        dto.getReceptorId().toString(),
+                        "/queue/messages",
+                        dto
+                );
+            } catch (Exception fallbackEx) {
+                log.error("Falló el envío directo del mensaje {}", dto.getId(), fallbackEx);
+            }
+        }
     }
 }

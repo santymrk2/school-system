@@ -129,11 +129,14 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
       )
       .map((t) => t.id);
 
+    const trimestreActivo = trimestresDelPeriodo.find((t) => !norm.closed(t));
+
     return {
       periodo: elegido,
       trimestresDelPeriodo,
       allTriIds,
       activeTriIdsToday,
+      trimestreActivo,
     };
   }, [periodos, trimestres, today, preferOpen]);
 
@@ -155,6 +158,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
     periodoEscolar: computed.periodo,
     trimestres, // crudo
     trimestresDelPeriodo: computed.trimestresDelPeriodo,
+    trimestreActivo: computed.trimestreActivo,
     triIds: computed.allTriIds,
     activeTriIdsToday: computed.activeTriIdsToday,
     hoyISO: today,

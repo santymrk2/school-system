@@ -3,16 +3,17 @@ package edu.ecep.base_app.mappers;
 import edu.ecep.base_app.domain.Trimestre;
 import edu.ecep.base_app.dtos.TrimestreCreateDTO;
 import edu.ecep.base_app.dtos.TrimestreDTO;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.Mappings;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
-
-import org.mapstruct.*;
-
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
 public interface TrimestreMapper {
 
+    @Mapping(target = "periodoEscolarId", source = "periodoEscolar.id")
     TrimestreDTO toDto(Trimestre entity);
 
     @Mapping(target = "id", ignore = true)
@@ -23,6 +24,7 @@ public interface TrimestreMapper {
     @Mapping(target = "activo", ignore = true)
     @Mapping(target = "fechaEliminacion", ignore = true)
     @Mapping(target = "cerrado", ignore = true)
+    @Mapping(target = "periodoEscolar", source = "periodoEscolarId")
     Trimestre toEntity(TrimestreCreateDTO dto);
 
     // Merge de campos no nulos desde DTO -> entity, sin tocar id/cerrado/BaseEntity
@@ -35,7 +37,8 @@ public interface TrimestreMapper {
             @Mapping(target = "createdBy", ignore = true),
             @Mapping(target = "modifiedBy", ignore = true),
             @Mapping(target = "activo", ignore = true),
-            @Mapping(target = "fechaEliminacion", ignore = true)
+            @Mapping(target = "fechaEliminacion", ignore = true),
+            @Mapping(target = "periodoEscolar", ignore = true)
     })
     void updateEntityFromDto(TrimestreDTO dto, @MappingTarget Trimestre entity);
 }

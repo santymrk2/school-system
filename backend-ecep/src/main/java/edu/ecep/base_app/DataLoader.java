@@ -276,7 +276,10 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         t.setOrden(orden);
         t.setInicio(inicio);
         t.setFin(fin);
-        t.setCerrado(false);
+        // Deja abierto solo el primer trimestre del período inicial. Los restantes
+        // comienzan cerrados para respetar la secuencia (solo se habilita el
+        // siguiente cuando el anterior finaliza).
+        t.setCerrado(orden > 1);
         return trimestreRepository.save(t);
     }
 

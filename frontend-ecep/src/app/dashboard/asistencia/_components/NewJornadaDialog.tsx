@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/services/api";
 import { toast } from "sonner";
 import type { SeccionDTO, TrimestreDTO } from "@/types/api-generated";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 type Props = {
   seccion: SeccionDTO;
@@ -51,12 +52,21 @@ function formatHumanDate(dateString?: string) {
   return `${weekday} ${day} de ${month}, ${year}`;
 }
 
+const triInicio = (t: TrimestreDTO) =>
+  ((t as any).inicio ?? (t as any).fechaInicio ?? (t as any).fecha_inicio ??
+    "") as string;
+const triFin = (t: TrimestreDTO) =>
+  ((t as any).fin ?? (t as any).fechaFin ?? (t as any).fecha_fin ??
+    "") as string;
+
 export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const [open, setOpen] = useState(false);
   const [fecha, setFecha] = useState<string>(hoyISO());
   const [creating, setCreating] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
   const [busyDates, setBusyDates] = useState<Set<string>>(new Set());
+  const { getTrimestreByDate, trimestreActivo, trimestresDelPeriodo } =
+    useActivePeriod();
 
   const computeDateError = useCallback(
     (value: string, existing: Set<string> | null = null): string | null => {
@@ -147,25 +157,29 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         return;
       }
 
-      const triResp = await api.trimestres.list();
-      const trimestres = (triResp.data ?? []) as TrimestreDTO[];
-      let tri = trimestres.find((t) => {
-        const fi = t.fechaInicio ?? `${currentYear}-01-01`;
-        const ff = t.fechaFin ?? `${currentYear}-12-31`;
-        return fecha >= fi && fecha <= ff;
-      });
-
+      let tri = getTrimestreByDate(fecha) ?? undefined;
+      if (tri?.cerrado) {
+        tri = undefined;
+      }
       if (!tri) {
-        tri = trimestres.find((t) => {
-          const fiYear = t.fechaInicio ? new Date(t.fechaInicio).getFullYear() : null;
-          const ffYear = t.fechaFin ? new Date(t.fechaFin).getFullYear() : null;
-          return fiYear === currentYear || ffYear === currentYear;
-        });
+        tri =
+          trimestreActivo ??
+          trimestresDelPeriodo.find((t) => t.cerrado === false) ??
+          undefined;
       }
 
       if (!tri) {
         toast.warning(
-            "No encontramos un trimestre para la fecha seleccionada en el año actual.",
+          "No encontramos un trimestre activo para la fecha seleccionada.",
+        );
+        return;
+      }
+
+      const inicioTri = triInicio(tri);
+      const finTri = triFin(tri);
+      if (!inicioTri || !finTri || fecha < inicioTri || fecha > finTri) {
+        toast.warning(
+          "La fecha seleccionada no pertenece al trimestre activo.",
         );
         return;
       }

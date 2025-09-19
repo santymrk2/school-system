@@ -202,16 +202,24 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     });
   }, [periodoActual, trimestres]);
 
+  const trimestresOrdenados = useMemo(
+    () =>
+      [...trimestresPeriodo].sort(
+        (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
+      ),
+    [trimestresPeriodo],
+  );
+
   useEffect(() => {
     const next: Record<number, TrimestreDraft> = {};
-    for (const t of trimestresPeriodo) {
+    for (const t of trimestresOrdenados) {
       next[t.id] = {
         inicio: getTriInicio(t),
         fin: getTriFin(t),
       };
     }
     setDrafts(next);
-  }, [trimestresPeriodo]);
+  }, [trimestresOrdenados]);
 
   const handleDraftChange = (
     id: number,
@@ -257,6 +265,37 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       return;
     }
 
+    const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
+    const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
+    const siguiente =
+      idx >= 0 && idx < trimestresOrdenados.length - 1
+        ? trimestresOrdenados[idx + 1]
+        : undefined;
+
+    if (previo) {
+      const finPrevio = getTriFin(previo);
+      if (finPrevio && draft.inicio < finPrevio) {
+        toast.error(
+          `La fecha desde debe ser igual o posterior al fin del trimestre ${
+            previo.orden ?? ""
+          }`,
+        );
+        return;
+      }
+    }
+
+    if (siguiente) {
+      const inicioSiguiente = getTriInicio(siguiente);
+      if (inicioSiguiente && draft.fin > inicioSiguiente) {
+        toast.error(
+          `La fecha hasta debe ser igual o anterior al inicio del trimestre ${
+            siguiente.orden ?? ""
+          }`,
+        );
+        return;
+      }
+    }
+
     try {
       setSavingTrimestreId(tri.id);
       await api.trimestres.update(tri.id, {
@@ -277,6 +316,28 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   };
 
   const handleToggleTrimestre = async (tri: TrimestreDTO) => {
+    const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
+    if (idx === -1) {
+      toast.error("No se pudo identificar el trimestre seleccionado");
+      return;
+    }
+    const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
+    const hayOtroAbierto = trimestresOrdenados.some(
+      (t) => t.id !== tri.id && t.cerrado === false,
+    );
+    if (tri.cerrado) {
+      if (hayOtroAbierto) {
+        toast.error("Cerrá el trimestre activo antes de abrir otro");
+        return;
+      }
+      if (previo && !previo.cerrado) {
+        toast.error(
+          `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`,
+        );
+        return;
+      }
+    }
+
     try {
       setTogglingTrimestreId(tri.id);
       if (tri.cerrado) {
@@ -372,8 +433,15 @@ function DireccionConfig({ open }: DireccionConfigProps) {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Cargando datos...
             </div>
-          ) : trimestresPeriodo.length ? (
-            trimestresPeriodo.map((tri) => {
+          ) : trimestresOrdenados.length ? (
+            trimestresOrdenados.map((tri) => {
+              const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
+              const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
+              const hayOtroAbierto = trimestresOrdenados.some(
+                (t) => t.id !== tri.id && t.cerrado === false,
+              );
+              const puedeAbrir =
+                !tri.cerrado || (!hayOtroAbierto && (!previo || previo.cerrado));
               const draft = drafts[tri.id] ?? { inicio: "", fin: "" };
               return (
                 <div
@@ -398,7 +466,20 @@ function DireccionConfig({ open }: DireccionConfigProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleTrimestre(tri)}
-                      disabled={togglingTrimestreId === tri.id || loading}
+                      disabled={
+                        togglingTrimestreId === tri.id ||
+                        loading ||
+                        (tri.cerrado && !puedeAbrir)
+                      }
+                      title={
+                        tri.cerrado && !puedeAbrir
+                          ? hayOtroAbierto
+                            ? "Cerrá el trimestre activo para habilitar este"
+                            : previo && !previo.cerrado
+                              ? `Cerrá antes el trimestre ${previo.orden ?? "anterior"}`
+                              : undefined
+                          : undefined
+                      }
                     >
                       {tri.cerrado ? "Reabrir" : "Cerrar"}
                     </Button>

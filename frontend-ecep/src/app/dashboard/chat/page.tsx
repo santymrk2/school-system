@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -296,133 +295,127 @@ export default function ChatComponent() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex h-[calc(100vh-12rem)] md:h-[calc(100vh-12rem)]">
           {showChatList && (
-            <div className="w-full md:w-1/3 flex-shrink-0">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <CardTitle className="text-lg">Chats</CardTitle>
-                    <Dialog
-                      open={openChatDialog}
-                      onOpenChange={setOpenChatDialog}
-                    >
-                      <DialogTrigger asChild>
-                        <Button size="icon">
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Nuevo Chat</DialogTitle>
-                          <DialogDescription>
-                            Buscá y seleccioná una persona para iniciar la
-                            conversación.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <Input
-                          placeholder="Escribí para buscar..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        <ScrollArea className="h-64">
-                          <div className="space-y-2">
-                            {personas
-                              .filter(
-                                (p) =>
-                                  !activeChats.some((ac) => ac.id === p.id),
-                              )
-                              .map((p) => (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  className="w-full p-2 rounded hover:bg-muted text-left"
-                                  onClick={() => openChat(p)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarFallback>
-                                        {getPersonaInitials(p)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <p className="font-medium text-sm">
-                                        {getPersonaDisplayName(p)}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {getPersonaEmail(p)}
-                                      </p>
-                                    </div>
+            <div className="w-full md:w-1/3 flex-shrink-0 flex flex-col bg-background md:border-r md:border-border">
+              <div className="px-4 py-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Chats</h2>
+                  <Dialog open={openChatDialog} onOpenChange={setOpenChatDialog}>
+                    <DialogTrigger asChild>
+                      <Button size="icon">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Nuevo Chat</DialogTitle>
+                        <DialogDescription>
+                          Buscá y seleccioná una persona para iniciar la
+                          conversación.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Input
+                        placeholder="Escribí para buscar..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                      <ScrollArea className="h-64">
+                        <div className="space-y-2">
+                          {personas
+                            .filter(
+                              (p) => !activeChats.some((ac) => ac.id === p.id),
+                            )
+                            .map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className="w-full p-2 rounded hover:bg-muted text-left"
+                                onClick={() => openChat(p)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback>
+                                      {getPersonaInitials(p)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">
+                                      {getPersonaDisplayName(p)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {getPersonaEmail(p)}
+                                    </p>
                                   </div>
-                                </button>
-                              ))}
-                            {personas.length === 0 && (
-                              <p className="px-2 text-sm text-muted-foreground">
-                                Escribí para buscar personas con acceso al
-                                sistema.
-                              </p>
+                                </div>
+                              </button>
+                            ))}
+                          {personas.length === 0 && (
+                            <p className="px-2 text-sm text-muted-foreground">
+                              Escribí para buscar personas con acceso al
+                              sistema.
+                            </p>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <ConnectionStatus />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  {activeChats.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No hay chats activos. Usá el botón "+" para iniciar uno
+                      nuevo.
+                    </div>
+                  ) : (
+                    <div className="space-y-1 p-2">
+                      {activeChats.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => openChat(p)}
+                          className={`
+                            flex w-full items-center space-x-3 p-3 rounded-lg transition-colors
+                            ${
+                              selectedPersona?.id === p.id
+                                ? "bg-primary/10 border border-primary/20"
+                                : "hover:bg-muted"
+                            }
+                          `}
+                        >
+                          <div className="relative">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback>
+                                {getPersonaInitials(p)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {(unreadCounts[p.id] ?? 0) > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                {unreadCounts[p.id]}
+                              </span>
                             )}
                           </div>
-                        </ScrollArea>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <ConnectionStatus />
-                </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0">
-                  <ScrollArea className="h-full">
-                    {activeChats.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground">
-                        No hay chats activos. Usá el botón "+" para iniciar uno
-                        nuevo.
-                      </div>
-                    ) : (
-                      <div className="space-y-1 p-2">
-                        {activeChats.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => openChat(p)}
-                            className={`
-                              flex w-full items-center space-x-3 p-3 rounded-lg transition-colors
-                              ${
-                                selectedPersona?.id === p.id
-                                  ? "bg-primary/10 border border-primary/20"
-                                  : "hover:bg-muted"
-                              }
-                            `}
-                          >
-                            <div className="relative">
-                              <Avatar className="h-10 w-10">
-                                <AvatarFallback>
-                                  {getPersonaInitials(p)}
-                                </AvatarFallback>
-                              </Avatar>
-                              {(unreadCounts[p.id] ?? 0) > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                                  {unreadCounts[p.id]}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0 text-left">
-                              <p className="font-medium truncate text-sm">
-                                {getPersonaDisplayName(p)}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {getPersonaEmail(p)}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                          <div className="flex-1 min-w-0 text-left">
+                            <p className="font-medium truncate text-sm">
+                              {getPersonaDisplayName(p)}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {getPersonaEmail(p)}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
             </div>
           )}
 
           {showChatView && selectedPersona && (
-            <div className="flex-1 flex flex-col bg-background border rounded-lg">
-              <div className="p-4 flex items-center gap-3 bg-background rounded-lg">
+            <div className="flex-1 flex flex-col bg-background">
+              <div className="p-4 flex items-center gap-3">
                 {!isMd && (
                   <Button
                     variant="ghost"
@@ -459,7 +452,7 @@ export default function ChatComponent() {
                 </div>
               </ScrollArea>
 
-              <div className="p-4 bg-background rounded-lg">
+              <div className="p-4">
                 <div className="flex gap-2">
                   <Input
                     value={newMessage}

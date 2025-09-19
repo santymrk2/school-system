@@ -196,7 +196,7 @@ export default function EvaluacionesIndexPage() {
               return (
                 <Card
                   key={s.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  className="hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition-shadow cursor-pointer"
                   onClick={() =>
                     router.push(`/dashboard/evaluaciones/seccion/${s.id}`)
                   }

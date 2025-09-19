@@ -130,7 +130,7 @@ export default function MateriasPage() {
             {filtered.map((s) => (
               <Card
                 key={s.id}
-                className="hover:shadow-md transition-shadow"
+                className=" hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition-shadow"
                 onClick={() =>
                   router.push(`/dashboard/materias/seccion/${s.id}`)
                 }

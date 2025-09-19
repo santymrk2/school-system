@@ -476,16 +476,19 @@ export default function ChatComponent() {
   return (
     <DashboardLayout>
       <div className="flex h-full flex-col p-4 md:p-8 pt-6">
-        <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+        <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl bg-background">
           {showChatList && (
             <div className="flex w-full min-h-0 flex-col bg-background md:w-1/3 md:flex-none md:border-r md:border-border">
               <div className="px-4 py-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Chats</h2>
-                  <Dialog open={openChatDialog} onOpenChange={setOpenChatDialog}>
+                  <h2 className="text-xl font-semibold">Chats</h2>
+                  <Dialog
+                    open={openChatDialog}
+                    onOpenChange={setOpenChatDialog}
+                  >
                     <DialogTrigger asChild>
                       <Button size="icon">
-                        <Plus className="h-4 w-4" />
+                        <Plus className="size-6" />
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -620,7 +623,9 @@ export default function ChatComponent() {
                   <h3 className="font-semibold text-sm">
                     {getPersonaDisplayName(selectedPersona)}
                   </h3>
-                  <p className="text-xs text-muted-foreground">{selectedStatus}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedStatus}
+                  </p>
                 </div>
               </div>
 

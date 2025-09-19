@@ -103,7 +103,7 @@ export default function CalificacionesIndexPage() {
                 {primario.map((s: any) => (
                   <Card
                     key={s.id}
-                    className="hover:shadow-md transition cursor-pointer"
+                    className="hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition cursor-pointer"
                     onClick={() =>
                       router.push(`/dashboard/calificaciones/seccion/${s.id}`)
                     }
@@ -139,7 +139,7 @@ export default function CalificacionesIndexPage() {
                 {inicial.map((s: any) => (
                   <Card
                     key={s.id}
-                    className="hover:shadow-md transition cursor-pointer"
+                    className="hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition cursor-pointer"
                     onClick={() =>
                       router.push(`/dashboard/calificaciones/seccion/${s.id}`)
                     }

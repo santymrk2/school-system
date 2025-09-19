@@ -304,7 +304,7 @@ function DirectivoView() {
             return (
               <Card
                 key={s.id}
-                className="hover:shadow-md transition-shadow cursor-pointer"
+                className="transition-shadow cursor-pointer hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary"
                 onClick={() =>
                   router.push(`/dashboard/asistencia/seccion/${s.id}`)
                 }

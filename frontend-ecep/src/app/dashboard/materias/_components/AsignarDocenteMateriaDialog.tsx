@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { api } from "@/services/api";
 import type { SeccionMateriaDTO, MateriaDTO } from "@/types/api-generated";
+import { toast } from "sonner";
 
 type Materia = MateriaDTO;
 type SeccionMateria = SeccionMateriaDTO;
@@ -84,7 +85,7 @@ export default function AsignarDocenteMateriaDialog({
   const guardar = async () => {
     if (!canSubmit || saving) return;
     if (hasta && desde && hasta < desde) {
-      alert("La fecha hasta no puede ser anterior a la fecha desde.");
+      toast.error("La fecha hasta no puede ser anterior a la fecha desde.");
       return;
     }
     try {
@@ -100,7 +101,7 @@ export default function AsignarDocenteMateriaDialog({
       onCreated();
       onClose();
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudo asignar el docente a la materia.",

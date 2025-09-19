@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function EditActaDialog({
   acta,
@@ -109,23 +110,23 @@ export default function EditActaDialog({
       setSaving(true);
 
       if (!fecha) {
-        alert("Seleccioná una fecha válida.");
+        toast.error("Seleccioná una fecha válida.");
         return;
       }
       if (!hora) {
-        alert("Ingresá la hora del suceso.");
+        toast.error("Ingresá la hora del suceso.");
         return;
       }
       if (!lugar.trim()) {
-        alert("El lugar del suceso es obligatorio.");
+        toast.error("El lugar del suceso es obligatorio.");
         return;
       }
       if (!descripcion.trim()) {
-        alert("La descripción es obligatoria.");
+        toast.error("La descripción es obligatoria.");
         return;
       }
       if (!acciones.trim()) {
-        alert("Cargá las acciones realizadas.");
+        toast.error("Cargá las acciones realizadas.");
         return;
       }
 

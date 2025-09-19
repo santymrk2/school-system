@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/services/api";
 import type { MateriaDTO, SeccionDTO } from "@/types/api-generated";
+import { toast } from "sonner";
 
 type Materia = MateriaDTO;
 type Seccion = SeccionDTO;
@@ -75,7 +76,7 @@ export default function AddMateriaToSeccionDialog({
       onCreated();
       onClose();
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudo agregar la materia a la sección.",

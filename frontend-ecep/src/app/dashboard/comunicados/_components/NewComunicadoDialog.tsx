@@ -35,6 +35,7 @@ import { Megaphone, Loader2 } from "lucide-react";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { toast } from "sonner";
 
 type Props = {
   open?: boolean;
@@ -138,7 +139,7 @@ export default function NewComunicadoDialog({
       changeOpen(false);
       onCreated?.();
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudo crear el comunicado",

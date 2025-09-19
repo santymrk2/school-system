@@ -5,7 +5,11 @@ import type { ComponentProps } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { cn } from "@/lib/utils";
-import { formatTrimestreRange, getTrimestreEstado } from "@/lib/trimestres";
+import {
+  formatTrimestreRange,
+  getTrimestreEstado,
+  TRIMESTRE_ESTADO_LABEL,
+} from "@/lib/trimestres";
 
 interface ActiveTrimestreBadgeProps {
   className?: string;
@@ -26,17 +30,20 @@ export function ActiveTrimestreBadge({ className }: ActiveTrimestreBadgeProps) {
 
     description = range ?? "";
 
+    const estadoBaseLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
+
     switch (estado) {
       case "activo":
-        label = `Trimestre${numeroLabel} activo`;
+        label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
         variant = "outline";
         break;
       case "cerrado":
-        label = `Trimestre${numeroLabel} cerrado`;
+        label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
         variant = "secondary";
         break;
+      case "inactivo":
       default:
-        label = `Trimestre${numeroLabel} sin estado`;
+        label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
         variant = "secondary";
         break;
     }

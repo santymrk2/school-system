@@ -185,8 +185,13 @@ export default function SeccionEvaluacionesPage() {
         alert("La fecha seleccionada no coincide con un trimestre configurado.");
         return;
       }
-      if (getTrimestreEstado(tri) === "cerrado") {
-        alert("La fecha seleccionada cae en un trimestre cerrado.");
+      const estado = getTrimestreEstado(tri);
+      if (estado !== "activo") {
+        alert(
+          estado === "cerrado"
+            ? "La fecha seleccionada cae en un trimestre cerrado."
+            : "El trimestre seleccionado aún no está activo.",
+        );
         return;
       }
 

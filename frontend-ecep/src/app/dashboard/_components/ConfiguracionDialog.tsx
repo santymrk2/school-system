@@ -25,6 +25,8 @@ import { api } from "@/services/api";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import {
+  TRIMESTRE_ESTADO_BADGE_VARIANT,
+  TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
   getTrimestreFin,
   getTrimestreInicio,
@@ -416,16 +418,11 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   };
 
   const periodoAbierto = periodoActual?.activo !== false;
-  const estadoBadgeVariant: Record<TrimestreEstado, "default" | "secondary" | "destructive" | "outline"> = {
-    activo: "default",
-    cerrado: "destructive",
-    "sin-estado": "secondary",
-  };
-  const estadoBadgeLabel: Record<TrimestreEstado, string> = {
-    activo: "Activo",
-    cerrado: "Cerrado",
-    "sin-estado": "Sin estado",
-  };
+  const estadoBadgeVariant: Record<
+    TrimestreEstado,
+    "default" | "secondary" | "destructive" | "outline"
+  > = TRIMESTRE_ESTADO_BADGE_VARIANT;
+  const estadoBadgeLabel: Record<TrimestreEstado, string> = TRIMESTRE_ESTADO_LABEL;
 
   return (
     <div className="space-y-6">

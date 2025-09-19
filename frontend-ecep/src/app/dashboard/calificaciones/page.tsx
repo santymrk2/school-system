@@ -85,9 +85,13 @@ export default function CalificacionesIndexPage() {
             onValueChange={(v) => setTab(v as "primario" | "inicial")}
             className="flex flex-col gap-6"
           >
-            <TabsList className="inline-flex flex-wrap items-center gap-2 self-start">
-              <TabsTrigger value="primario">Primario</TabsTrigger>
-              <TabsTrigger value="inicial">Inicial</TabsTrigger>
+            <TabsList className="flex w-full flex-col gap-2 self-stretch sm:inline-flex sm:w-auto sm:flex-row">
+              <TabsTrigger className="w-full sm:w-auto" value="primario">
+                Primario
+              </TabsTrigger>
+              <TabsTrigger className="w-full sm:w-auto" value="inicial">
+                Inicial
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="primario" className="space-y-4">

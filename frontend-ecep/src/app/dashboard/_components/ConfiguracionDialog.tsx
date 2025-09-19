@@ -20,9 +20,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/services/api";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
+import {
+  getTrimestreEstado,
+  getTrimestreFin,
+  getTrimestreInicio,
+  resolveTrimestrePeriodoId,
+  type TrimestreEstado,
+} from "@/lib/trimestres";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -32,36 +40,6 @@ interface ConfiguracionDialogProps {
   currentRole: UserRole | null;
   roles: UserRole[];
 }
-
-const toDateInput = (value?: string | null) => {
-  if (!value) return "";
-  return value.slice(0, 10);
-};
-
-const resolvePeriodoId = (t: TrimestreDTO, fallback?: number | null) =>
-  t.periodoEscolarId ??
-  (t as any).periodoId ??
-  (t as any).periodoEscolar?.id ??
-  fallback ??
-  undefined;
-
-const getTriInicio = (t: TrimestreDTO) =>
-  toDateInput(
-    t.inicio ??
-      (t as any).fechaInicio ??
-      (t as any).inicio ??
-      (t as any).fecha_inicio ??
-      null,
-  );
-
-const getTriFin = (t: TrimestreDTO) =>
-  toDateInput(
-    t.fin ??
-      (t as any).fechaFin ??
-      (t as any).fin ??
-      (t as any).fecha_fin ??
-      null,
-  );
 
 const resolveErrorMessage = (error: unknown, fallback: string) => {
   if (!error) return fallback;
@@ -90,29 +68,33 @@ export function ConfiguracionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Configuración</DialogTitle>
-          <DialogDescription>
-            Administrá las preferencias disponibles para tu rol actual.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl overflow-hidden p-0 sm:max-h-[85vh]">
+        <div className="flex h-full max-h-[85vh] flex-col">
+          <DialogHeader className="border-b px-6 py-4">
+            <DialogTitle>Configuración</DialogTitle>
+            <DialogDescription>
+              Administrá las preferencias disponibles para tu rol actual.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {tieneDireccion ? (
-            currentRole === UserRole.DIRECTOR ? (
-              <DireccionConfig open={open} />
-            ) : (
-              <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-                Seleccioná el rol <strong>Dirección</strong> para acceder a la
-                configuración institucional.
-              </div>
-            )
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No hay configuraciones disponibles para tu rol actual.
-            </p>
-          )}
+          <ScrollArea className="flex-1 px-6 pb-6">
+            <div className="space-y-6 pr-2">
+              {tieneDireccion ? (
+                currentRole === UserRole.DIRECTOR ? (
+                  <DireccionConfig open={open} />
+                ) : (
+                  <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+                    Seleccioná el rol <strong>Dirección</strong> para acceder a la
+                    configuración institucional.
+                  </div>
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No hay configuraciones disponibles para tu rol actual.
+                </p>
+              )}
+            </div>
+          </ScrollArea>
         </div>
       </DialogContent>
     </Dialog>
@@ -136,6 +118,10 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   const [savingTrimestreId, setSavingTrimestreId] = useState<number | null>(null);
   const [togglingTrimestreId, setTogglingTrimestreId] =
     useState<number | null>(null);
+  const [togglingEstado, setTogglingEstado] = useState<
+    Extract<TrimestreEstado, "activo" | "cerrado">
+    | null
+  >(null);
   const [closingPeriodo, setClosingPeriodo] = useState(false);
   const [openingPeriodo, setOpeningPeriodo] = useState(false);
   const [creatingPeriodo, setCreatingPeriodo] = useState(false);
@@ -197,7 +183,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   const trimestresPeriodo = useMemo(() => {
     if (!periodoActual?.id) return [];
     return trimestres.filter((t) => {
-      const periodoId = resolvePeriodoId(t);
+      const periodoId = resolveTrimestrePeriodoId(t);
       return periodoId === periodoActual.id;
     });
   }, [periodoActual, trimestres]);
@@ -214,8 +200,8 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     const next: Record<number, TrimestreDraft> = {};
     for (const t of trimestresOrdenados) {
       next[t.id] = {
-        inicio: getTriInicio(t),
-        fin: getTriFin(t),
+        inicio: getTrimestreInicio(t),
+        fin: getTrimestreFin(t),
       };
     }
     setDrafts(next);
@@ -239,8 +225,8 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     setDrafts((prev) => ({
       ...prev,
       [tri.id]: {
-        inicio: getTriInicio(tri),
-        fin: getTriFin(tri),
+        inicio: getTrimestreInicio(tri),
+        fin: getTrimestreFin(tri),
       },
     }));
   };
@@ -249,7 +235,8 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     const draft = drafts[tri.id];
     if (!draft) return false;
     return (
-      draft.inicio !== getTriInicio(tri) || draft.fin !== getTriFin(tri)
+      draft.inicio !== getTrimestreInicio(tri) ||
+      draft.fin !== getTrimestreFin(tri)
     );
   };
 
@@ -273,7 +260,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
         : undefined;
 
     if (previo) {
-      const finPrevio = getTriFin(previo);
+      const finPrevio = getTrimestreFin(previo);
       if (finPrevio && draft.inicio < finPrevio) {
         toast.error(
           `La fecha desde debe ser igual o posterior al fin del trimestre ${
@@ -285,7 +272,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     }
 
     if (siguiente) {
-      const inicioSiguiente = getTriInicio(siguiente);
+      const inicioSiguiente = getTrimestreInicio(siguiente);
       if (inicioSiguiente && draft.fin > inicioSiguiente) {
         toast.error(
           `La fecha hasta debe ser igual o anterior al inicio del trimestre ${
@@ -299,7 +286,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     try {
       setSavingTrimestreId(tri.id);
       await api.trimestres.update(tri.id, {
-        periodoEscolarId: resolvePeriodoId(tri, periodoActual?.id),
+        periodoEscolarId: resolveTrimestrePeriodoId(tri, periodoActual?.id),
         orden: tri.orden,
         inicio: draft.inicio,
         fin: draft.fin,
@@ -315,22 +302,31 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     }
   };
 
-  const handleToggleTrimestre = async (tri: TrimestreDTO) => {
+  const handleSetEstadoTrimestre = async (
+    tri: TrimestreDTO,
+    estado: Extract<TrimestreEstado, "activo" | "cerrado">,
+  ) => {
     const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
     if (idx === -1) {
       toast.error("No se pudo identificar el trimestre seleccionado");
       return;
     }
+
+    const estadoActual = getTrimestreEstado(tri);
+    if (estadoActual === estado) return;
+
     const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
-    const hayOtroAbierto = trimestresOrdenados.some(
-      (t) => t.id !== tri.id && t.cerrado === false,
+    const estadoPrevio = previo ? getTrimestreEstado(previo) : null;
+    const hayOtroActivo = trimestresOrdenados.some(
+      (t) => t.id !== tri.id && getTrimestreEstado(t) === "activo",
     );
-    if (tri.cerrado) {
-      if (hayOtroAbierto) {
+
+    if (estado === "activo") {
+      if (hayOtroActivo) {
         toast.error("Cerrá el trimestre activo antes de abrir otro");
         return;
       }
-      if (previo && !previo.cerrado) {
+      if (previo && estadoPrevio !== "cerrado") {
         toast.error(
           `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`,
         );
@@ -340,9 +336,10 @@ function DireccionConfig({ open }: DireccionConfigProps) {
 
     try {
       setTogglingTrimestreId(tri.id);
-      if (tri.cerrado) {
+      setTogglingEstado(estado);
+      if (estado === "activo") {
         await api.trimestres.reabrir(tri.id);
-        toast.success("Trimestre reabierto");
+        toast.success("Trimestre activado");
       } else {
         await api.trimestres.cerrar(tri.id);
         toast.success("Trimestre cerrado");
@@ -357,6 +354,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       );
     } finally {
       setTogglingTrimestreId(null);
+      setTogglingEstado(null);
     }
   };
 
@@ -418,6 +416,16 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   };
 
   const periodoAbierto = periodoActual?.activo !== false;
+  const estadoBadgeVariant: Record<TrimestreEstado, "default" | "secondary" | "destructive" | "outline"> = {
+    activo: "default",
+    cerrado: "destructive",
+    "sin-estado": "secondary",
+  };
+  const estadoBadgeLabel: Record<TrimestreEstado, string> = {
+    activo: "Activo",
+    cerrado: "Cerrado",
+    "sin-estado": "Sin estado",
+  };
 
   return (
     <div className="space-y-6">
@@ -437,12 +445,35 @@ function DireccionConfig({ open }: DireccionConfigProps) {
             trimestresOrdenados.map((tri) => {
               const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
               const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
-              const hayOtroAbierto = trimestresOrdenados.some(
-                (t) => t.id !== tri.id && t.cerrado === false,
+              const estado = getTrimestreEstado(tri);
+              const estadoPrevio = previo ? getTrimestreEstado(previo) : null;
+              const hayOtroActivo = trimestresOrdenados.some(
+                (t) => t.id !== tri.id && getTrimestreEstado(t) === "activo",
               );
-              const puedeAbrir =
-                !tri.cerrado || (!hayOtroAbierto && (!previo || previo.cerrado));
               const draft = drafts[tri.id] ?? { inicio: "", fin: "" };
+              const activarDisabledReason =
+                estado === "activo"
+                  ? "Este trimestre ya está activo."
+                  : hayOtroActivo
+                    ? "Cerrá el trimestre activo antes de abrir otro."
+                    : previo && estadoPrevio !== "cerrado"
+                      ? `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`
+                      : null;
+              const activarDisabled =
+                loading ||
+                togglingTrimestreId === tri.id ||
+                !!activarDisabledReason;
+              const cerrarDisabled =
+                loading ||
+                togglingTrimestreId === tri.id ||
+                estado === "cerrado";
+              const activarBusy =
+                togglingTrimestreId === tri.id && togglingEstado === "activo";
+              const cerrarBusy =
+                togglingTrimestreId === tri.id && togglingEstado === "cerrado";
+              const activarLabel =
+                estado === "cerrado" ? "Reabrir" : "Marcar activo";
+              const cerrarLabel = estado === "cerrado" ? "Cerrado" : "Cerrar";
               return (
                 <div
                   key={tri.id}
@@ -455,34 +486,48 @@ function DireccionConfig({ open }: DireccionConfigProps) {
                       </p>
                       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                         <span>
-                          Período {resolvePeriodoId(tri, periodoActual?.id) ?? "—"}
+                          Período {resolveTrimestrePeriodoId(tri, periodoActual?.id) ?? "—"}
                         </span>
-                        <Badge variant={tri.cerrado ? "destructive" : "outline"}>
-                          {tri.cerrado ? "Cerrado" : "Abierto"}
+                        <Badge
+                          variant={estadoBadgeVariant[estado] ?? "outline"}
+                        >
+                          {estadoBadgeLabel[estado]}
                         </Badge>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleTrimestre(tri)}
-                      disabled={
-                        togglingTrimestreId === tri.id ||
-                        loading ||
-                        (tri.cerrado && !puedeAbrir)
-                      }
-                      title={
-                        tri.cerrado && !puedeAbrir
-                          ? hayOtroAbierto
-                            ? "Cerrá el trimestre activo para habilitar este"
-                            : previo && !previo.cerrado
-                              ? `Cerrá antes el trimestre ${previo.orden ?? "anterior"}`
-                              : undefined
-                          : undefined
-                      }
-                    >
-                      {tri.cerrado ? "Reabrir" : "Cerrar"}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetEstadoTrimestre(tri, "activo")}
+                        disabled={activarDisabled}
+                        title={activarDisabledReason ?? undefined}
+                      >
+                        {activarBusy ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Actualizando
+                          </span>
+                        ) : (
+                          activarLabel
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetEstadoTrimestre(tri, "cerrado")}
+                        disabled={cerrarDisabled}
+                      >
+                        {cerrarBusy ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Cerrando
+                          </span>
+                        ) : (
+                          cerrarLabel
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">

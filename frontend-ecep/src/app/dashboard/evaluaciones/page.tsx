@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 
 function isPrimario(s: SeccionDTO): boolean {
   const n = (s as any)?.nivel as NivelAcademico | undefined;
@@ -173,6 +174,7 @@ export default function EvaluacionesIndexPage() {
               <Badge variant="outline">Primario</Badge>
               <Badge variant="outline">Período {periodoEscolarId ?? "—"}</Badge>
             </div>
+            <ActiveTrimestreBadge className="mt-2" />
           </div>
         </div>
 

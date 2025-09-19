@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getTrimestreEstado, isFechaDentroDeTrimestre } from "@/lib/trimestres";
 
 type Row = {
   matriculaId: number;
@@ -51,18 +52,14 @@ export default function NotasExamenDialog({
     const triId = (evaluacion as any)?.trimestreId as number | undefined;
     if (triId) return triId;
     if (!fecha) return undefined;
-    const tri = trimestres.find(
-      (t) =>
-        fecha >= ((t as any).fechaInicio ?? "0000-00-00") &&
-        fecha <= ((t as any).fechaFin ?? "9999-12-31"),
-    );
+    const tri = trimestres.find((t) => isFechaDentroDeTrimestre(fecha, t));
     return tri?.id;
   }, [evaluacion, trimestres, fecha]);
 
   const trimestreCerrado = useMemo(() => {
     if (!trimestreId) return false;
     const tri = trimestres.find((t) => t.id === trimestreId);
-    return !!tri?.cerrado;
+    return getTrimestreEstado(tri) === "cerrado";
   }, [trimestres, trimestreId]);
 
   const fetchSeccionIdFromEval = async (): Promise<number> => {

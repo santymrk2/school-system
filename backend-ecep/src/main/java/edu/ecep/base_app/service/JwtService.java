@@ -1,6 +1,6 @@
 package edu.ecep.base_app.service;
 
-import edu.ecep.base_app.domain.Usuario;
+import edu.ecep.base_app.domain.Persona;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 @Service
@@ -23,14 +24,15 @@ public class JwtService {
     private Long expiration;
 
     // Generar token
-    public String generateToken(Usuario usuario) {
+    public String generateToken(Persona persona) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", usuario.getRoles());
-        claims.put("email", usuario.getEmail());
+        claims.put("roles", persona.getRoles() == null ? Set.of() : persona.getRoles());
+        claims.put("email", persona.getEmail());
+        claims.put("personaId", persona.getId());
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(usuario.getEmail())
+                .setSubject(persona.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(SignatureAlgorithm.HS256, secret)

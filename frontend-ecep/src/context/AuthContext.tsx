@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/services/api";
-import type { UsuarioBusquedaDTO, AuthResponse } from "@/types/api-generated";
+import type { PersonaResumenDTO, AuthResponse } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import { normalizeRole } from "@/lib/auth-roles"; // asegúrate de tener este helper
 
@@ -52,7 +52,7 @@ function patchUserRoles<T extends Record<string, any>>(
   return { ...u, roles };
 }
 interface AuthContextProps {
-  user: UsuarioBusquedaDTO | null;
+  user: PersonaResumenDTO | null;
   loading: boolean;
 
   // sesión
@@ -80,7 +80,7 @@ const AuthCtx = createContext<AuthContextProps>({
 export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UsuarioBusquedaDTO | null>(null);
+  const [user, setUser] = useState<PersonaResumenDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRoleState] = useState<UserRole | null>(null);
 

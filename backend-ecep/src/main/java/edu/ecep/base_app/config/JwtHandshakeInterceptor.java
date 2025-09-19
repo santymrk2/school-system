@@ -1,9 +1,10 @@
 package edu.ecep.base_app.config;
 
-import edu.ecep.base_app.domain.Usuario;
-import edu.ecep.base_app.repos.UsuarioRepository;
+import edu.ecep.base_app.domain.Persona;
+import edu.ecep.base_app.repos.PersonaRepository;
 import edu.ecep.base_app.service.JwtService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.Optional;
 
@@ -22,11 +22,11 @@ import java.util.Optional;
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
     private final JwtService jwtService;
-    private final UsuarioRepository usuarioRepository;
+    private final PersonaRepository personaRepository;
 
-    public JwtHandshakeInterceptor(JwtService jwtService, UsuarioRepository usuarioRepository) {
+    public JwtHandshakeInterceptor(JwtService jwtService, PersonaRepository personaRepository) {
         this.jwtService = jwtService;
-        this.usuarioRepository = usuarioRepository;
+        this.personaRepository = personaRepository;
     }
 
     @Override
@@ -54,12 +54,12 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
             if (token != null && jwtService.validateToken(token)) {
                 String email = jwtService.extractUsername(token);
-                Optional<Usuario> userOpt = usuarioRepository.findByEmail(email);
+                Optional<Persona> personaOpt = personaRepository.findByEmail(email);
 
-                if (userOpt.isPresent()) {
-                    Usuario usuario = userOpt.get();
-                    log.info("✅ Usuario autenticado en WS: {}", usuario.getId());
-                    attributes.put("user", usuario.getId().toString());
+                if (personaOpt.isPresent()) {
+                    Persona persona = personaOpt.get();
+                    log.info("✅ Persona autenticada en WS: {}", persona.getId());
+                    attributes.put("user", persona.getId().toString());
                     return true;
                 }
             }

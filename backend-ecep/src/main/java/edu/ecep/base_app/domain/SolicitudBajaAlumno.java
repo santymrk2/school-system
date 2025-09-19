@@ -20,5 +20,5 @@ public class SolicitudBajaAlumno extends BaseEntity {
     private String motivo;
     private String motivoRechazo; // obligatorio si RECHAZADA
     private OffsetDateTime fechaDecision;
-    private Long decididoPorUsuarioId;
+    private Long decididoPorPersonaId;
 }

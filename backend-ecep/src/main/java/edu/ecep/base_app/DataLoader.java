@@ -23,7 +23,6 @@ import java.util.function.Consumer;
 public class DataLoader implements org.springframework.boot.CommandLineRunner {
 
     // === Auth / Personas ===
-    private final UsuarioRepository usuarioRepository;
     private final PersonaRepository personaRepository;
     private final EmpleadoRepository empleadoRepository;
 
@@ -127,20 +126,11 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
 
     private void ensureAdminAndUser() {
         // ADMIN
-        Usuario admin = usuarioRepository.findByEmail("admin@example.com").orElseGet(() -> {
-            Usuario u = new Usuario();
-            u.setEmail("admin@example.com");
-            u.setPassword(encoder.encode("admin123"));
-            u.setUserRoles(Set.of(UserRole.ADMIN, UserRole.TEACHER, UserRole.ALTERNATE, UserRole.FAMILY, UserRole.DIRECTOR));
-            return usuarioRepository.save(u);
-        });
-
-        // Persona + Empleado asociados al ADMIN
         Persona directoraP = ensurePersona("Nancy", "Carbone", "9999999");
-        if (directoraP.getUsuario() == null || !admin.getId().equals(directoraP.getUsuario().getId())) {
-            directoraP.setUsuario(admin);
-            personaRepository.save(directoraP);
-        }
+        directoraP = ensurePersonaCredentials(directoraP,
+                "admin@example.com",
+                "admin123",
+                Set.of(UserRole.ADMIN, UserRole.TEACHER, UserRole.ALTERNATE, UserRole.FAMILY, UserRole.DIRECTOR));
         ensureEmpleado(directoraP, per -> {
             per.setCuil("20123456789");
             per.setCargo("Directora");
@@ -149,16 +139,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         });
 
         // USER
-        Usuario user = usuarioRepository.findByEmail("user@example.com").orElseGet(() -> {
-            Usuario u = new Usuario();
-            u.setEmail("user@example.com");
-            u.setPassword(encoder.encode("user123"));
-            u.setUserRoles(Set.of(UserRole.SECRETARY));
-            return usuarioRepository.save(u);
-        });
-
         Persona josefinaP = ensurePersona("Josefina", "Bacan", "88888888");
-        // Datos biográficos en Persona
         josefinaP.setFechaNacimiento(LocalDate.of(1920, 5, 15));
         josefinaP.setGenero("Masculino");
         josefinaP.setEstadoCivil("Casado");
@@ -166,20 +147,20 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         josefinaP.setDomicilio("Calle Falsa 3");
         josefinaP.setTelefono("12344321");
         josefinaP.setCelular("1231434321");
-        if (josefinaP.getUsuario() == null || !user.getId().equals(josefinaP.getUsuario().getId())) {
-            josefinaP.setUsuario(user);
-        }
-        personaRepository.save(josefinaP);
+        josefinaP = ensurePersonaCredentials(josefinaP,
+                "user@example.com",
+                "user123",
+                Set.of(UserRole.SECRETARY));
 
         ensureEmpleado(josefinaP, per -> {
             per.setCuil("2888888885");
             per.setCargo("Limpieza");
             per.setFechaIngreso(LocalDate.now());
             per.setObservacionesGenerales("");
-            per.setRolEmpleado(RolEmpleado.SECRETARIA); // o ADMINISTRACION según tu modelo
+            per.setRolEmpleado(RolEmpleado.SECRETARIA);
         });
 
-        log.info("Usuarios base + Personas/Empleado vinculados correctamente.");
+        log.info("Personas con credenciales base cargadas correctamente.");
     }
 
     // =========================================================================
@@ -195,6 +176,23 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             p.setApellido(apellido);
             return personaRepository.save(p);
         });
+    }
+
+    private Persona ensurePersonaCredentials(Persona persona, String email, String rawPassword, Set<UserRole> roles) {
+        if (email != null) {
+            persona.setEmail(email);
+        }
+        if (rawPassword != null && !rawPassword.isBlank()) {
+            if (persona.getPassword() == null || !encoder.matches(rawPassword, persona.getPassword())) {
+                persona.setPassword(encoder.encode(rawPassword));
+            }
+        }
+        if (roles != null && !roles.isEmpty()) {
+            persona.setRoles(new HashSet<>(roles));
+        } else if (persona.getRoles() == null) {
+            persona.setRoles(new HashSet<>());
+        }
+        return personaRepository.save(persona);
     }
 
     /** Asegura Empleado 1:1 (PK compartida con Persona por @MapsId). */
@@ -585,29 +583,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
      *  - crea un docente de INICIAL con usuario y dos salas.
      */
     private void ensureDocenteDemoUserYAsignacion(Empleado docentePrimario, Seccion seccionPrimariaExistente) {
-        // Usuario docente de PRIMARIO
         final String emailPrim = "docente@example.com";
-        Usuario uPrim = usuarioRepository.findByEmail(emailPrim).orElseGet(() -> {
-            Usuario nu = new Usuario();
-            nu.setEmail(emailPrim);
-            nu.setPassword(encoder.encode("docente123"));
-            nu.setUserRoles(Set.of(UserRole.TEACHER));
-            return usuarioRepository.save(nu);
-        });
-        if (uPrim.getUserRoles() == null || !uPrim.getUserRoles().contains(UserRole.TEACHER)) {
-            var roles = uPrim.getUserRoles() == null ? new HashSet<UserRole>() : new HashSet<>(uPrim.getUserRoles());
-            roles.add(UserRole.USER);
-            roles.add(UserRole.TEACHER);
-            uPrim.setUserRoles(roles);
-            usuarioRepository.save(uPrim);
-        }
-
-        // Vincular Usuario ↔ Persona del Empleado
         Persona perDoc = docentePrimario.getPersona();
-        if (perDoc.getUsuario() == null || !Objects.equals(perDoc.getUsuario().getId(), uPrim.getId())) {
-            perDoc.setUsuario(uPrim);
-            personaRepository.save(perDoc);
-        }
+        ensurePersonaCredentials(perDoc, emailPrim, "docente123", Set.of(UserRole.USER, UserRole.TEACHER));
 
         // Asignación vigente a la sección pasada por parámetro
         LocalDate hoy = LocalDate.now();
@@ -655,27 +633,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
 
         // Docente de INICIAL con dos salas
         final String emailIni = "inicial@example.com";
-        Usuario uIni = usuarioRepository.findByEmail(emailIni).orElseGet(() -> {
-            Usuario nu = new Usuario();
-            nu.setEmail(emailIni);
-            nu.setPassword(encoder.encode("inicial123"));
-            nu.setUserRoles(Set.of(UserRole.TEACHER));
-            return usuarioRepository.save(nu);
-        });
-        if (uIni.getUserRoles() == null || !uIni.getUserRoles().contains(UserRole.TEACHER)) {
-            var roles = uIni.getUserRoles() == null ? new HashSet<UserRole>() : new HashSet<>(uIni.getUserRoles());
-            roles.add(UserRole.USER);
-            roles.add(UserRole.TEACHER);
-            uIni.setUserRoles(roles);
-            usuarioRepository.save(uIni);
-        }
-
         Empleado docenteInicial = ensureDocente("Ana", "López", "40222333", "20111222330");
         Persona perIni = docenteInicial.getPersona();
-        if (perIni.getUsuario() == null || !Objects.equals(perIni.getUsuario().getId(), uIni.getId())) {
-            perIni.setUsuario(uIni);
-            personaRepository.save(perIni);
-        }
+        ensurePersonaCredentials(perIni, emailIni, "inicial123", Set.of(UserRole.USER, UserRole.TEACHER));
 
         Seccion sala4_2A = ensureSeccion(periodo, NivelAcademico.INICIAL, "Sala 4", "A", Turno.MANANA);
         Seccion sala5_3B = ensureSeccion(periodo, NivelAcademico.INICIAL, "Sala 5", "B", Turno.TARDE);

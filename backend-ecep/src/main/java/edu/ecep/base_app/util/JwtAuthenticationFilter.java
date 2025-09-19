@@ -1,30 +1,30 @@
 package edu.ecep.base_app.util;
 
-import edu.ecep.base_app.domain.Usuario;
-import edu.ecep.base_app.repos.UsuarioRepository;
+import edu.ecep.base_app.domain.Persona;
+import edu.ecep.base_app.repos.PersonaRepository;
 import edu.ecep.base_app.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final JwtService jwtService;
+    private final PersonaRepository personaRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -37,15 +37,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (jwt != null) {
             jwtService.safeExtractUsername(jwt).ifPresent(email -> {
                 if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                    usuarioRepository.findByEmail(email).ifPresent(usuario -> {
+                    personaRepository.findByEmail(email).ifPresent(persona -> {
                         if (jwtService.validateToken(jwt)) {
                             UsernamePasswordAuthenticationToken authToken =
                                     new UsernamePasswordAuthenticationToken(
-                                            usuario.getId().toString(),
+                                            persona.getId().toString(),
                                             null,
-                                            usuario.getAuthorities()
+                                            buildAuthorities(persona)
                                     );
-                            authToken.setDetails(usuario); // Guarda info extra
+                            authToken.setDetails(persona);
                             SecurityContextHolder.getContext().setAuthentication(authToken);
                         }
                     });
@@ -54,6 +54,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private Set<SimpleGrantedAuthority> buildAuthorities(Persona persona) {
+        if (persona.getRoles() == null) {
+            return Set.of();
+        }
+        return persona.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                .collect(Collectors.toSet());
     }
 
     // Extrae el token desde Cookie o Header Authorization

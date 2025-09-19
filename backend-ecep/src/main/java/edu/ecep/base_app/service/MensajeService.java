@@ -1,26 +1,26 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Mensaje;
-import edu.ecep.base_app.domain.Usuario;
+import edu.ecep.base_app.domain.Persona;
 import edu.ecep.base_app.dtos.MensajeDTO;
 import edu.ecep.base_app.repos.MensajeRepository;
-import edu.ecep.base_app.repos.UsuarioRepository;
+import edu.ecep.base_app.repos.PersonaRepository;
 import edu.ecep.base_app.util.NotFoundException;
-import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 
 @Service
 public class MensajeService {
 
     private final MensajeRepository mensajeRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final PersonaRepository personaRepository;
 
     public MensajeService(final MensajeRepository mensajeRepository,
-            final UsuarioRepository usuarioRepository) {
+                          final PersonaRepository personaRepository) {
         this.mensajeRepository = mensajeRepository;
-        this.usuarioRepository = usuarioRepository;
+        this.personaRepository = personaRepository;
     }
 
     public List<MensajeDTO> findAll() {
@@ -69,10 +69,10 @@ public class MensajeService {
         mensaje.setAsunto(mensajeDTO.getAsunto());
         mensaje.setContenido(mensajeDTO.getContenido());
         mensaje.setLeido(mensajeDTO.getLeido());
-        final Usuario emisor = mensajeDTO.getEmisor() == null ? null : usuarioRepository.findById(mensajeDTO.getEmisor())
+        final Persona emisor = mensajeDTO.getEmisor() == null ? null : personaRepository.findById(mensajeDTO.getEmisor())
                 .orElseThrow(() -> new NotFoundException("emisor not found"));
         mensaje.setEmisor(emisor);
-        final Usuario receptor = mensajeDTO.getReceptor() == null ? null : usuarioRepository.findById(mensajeDTO.getReceptor())
+        final Persona receptor = mensajeDTO.getReceptor() == null ? null : personaRepository.findById(mensajeDTO.getReceptor())
                 .orElseThrow(() -> new NotFoundException("receptor not found"));
         mensaje.setReceptor(receptor);
         return mensaje;

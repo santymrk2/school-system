@@ -14,14 +14,47 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { useRef, useState } from "react";
-import type { PersonaUsuarioDTO } from "@/types/entities";
+import type { PersonaResumenDTO } from "@/types/api-generated";
 
 interface Props {
   searchTerm: string;
   onSearchChange: (v: string) => void;
-  results: PersonaUsuarioDTO[];
-  onSelect: (p: PersonaUsuarioDTO) => void;
+  results: PersonaResumenDTO[];
+  onSelect: (p: PersonaResumenDTO) => void;
 }
+
+const getPersonaInitials = (persona: PersonaResumenDTO) => {
+  const base =
+    persona.nombreCompleto ||
+    [persona.nombre, persona.apellido].filter(Boolean).join(" ") ||
+    persona.email ||
+    "";
+  if (!base) return "?";
+  const letters = base
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk.charAt(0).toUpperCase());
+  return letters.length ? letters.join("") : base.charAt(0).toUpperCase();
+};
+
+const getPersonaDisplayName = (persona: PersonaResumenDTO) => {
+  if (persona.nombreCompleto && persona.nombreCompleto.trim()) {
+    return persona.nombreCompleto;
+  }
+  const composed = [persona.apellido, persona.nombre]
+    .filter((value) => value && value.trim())
+    .join(", ");
+  if (composed) return composed;
+  if (persona.email) return persona.email;
+  if (persona.dni) return `DNI ${persona.dni}`;
+  return `Persona ${persona.id}`;
+};
+
+const getPersonaEmail = (persona: PersonaResumenDTO) => persona.email ?? "Sin email";
+
+const getPersonaTipo = (persona: PersonaResumenDTO) => persona.tipoPersona ?? "—";
 
 export function PersonSearchDropdown({
   searchTerm,
@@ -76,15 +109,14 @@ export function PersonSearchDropdown({
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs">
-                    {p.nombre.charAt(0)}
-                    {p.apellido.charAt(0)}
+                    {getPersonaInitials(p)}
                   </div>
                   <div>
                     <p className="text-sm font-medium">
-                      {p.nombre} {p.apellido}
+                      {getPersonaDisplayName(p)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {p.email} ({p.tipo})
+                      {getPersonaEmail(p)} ({getPersonaTipo(p)})
                     </p>
                   </div>
                 </div>

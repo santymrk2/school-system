@@ -1,20 +1,32 @@
 package edu.ecep.base_app.rest;
 
-import edu.ecep.base_app.dtos.PersonaDTO; // si no tenés, podés devolver un map básico
-import edu.ecep.base_app.dtos.PersonaCreateDTO;
-import edu.ecep.base_app.dtos.PersonaUpdateDTO;
-import edu.ecep.base_app.dtos.PersonaUsuarioLinkDTO;
-import edu.ecep.base_app.mappers.PersonaMapper;
-import edu.ecep.base_app.repos.*;
 import edu.ecep.base_app.domain.Persona;
-import edu.ecep.base_app.domain.Usuario;
+import edu.ecep.base_app.dtos.PersonaCreateDTO;
+import edu.ecep.base_app.dtos.PersonaDTO;
+import edu.ecep.base_app.dtos.PersonaUpdateDTO;
+import edu.ecep.base_app.mappers.PersonaMapper;
+import edu.ecep.base_app.repos.AlumnoRepository;
+import edu.ecep.base_app.repos.AspiranteRepository;
+import edu.ecep.base_app.repos.EmpleadoRepository;
+import edu.ecep.base_app.repos.FamiliarRepository;
+import edu.ecep.base_app.repos.PersonaRepository;
 import edu.ecep.base_app.util.NotFoundException;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-import jakarta.validation.constraints.Pattern;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/api/personas")
@@ -27,10 +39,9 @@ public class PersonaController {
     private final EmpleadoRepository empleadoRepository;
     private final FamiliarRepository familiarRepository;
     private final AspiranteRepository aspiranteRepository;
-    private final UsuarioRepository usuarioRepository;
     private final PersonaMapper personaMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    // PersonaController
     @GetMapping("/{personaId}")
     public ResponseEntity<PersonaDTO> get(@PathVariable Long personaId) {
         Persona p = personaRepository.findById(personaId)
@@ -50,68 +61,63 @@ public class PersonaController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','SECRETARY','COORDINATOR')")
     public ResponseEntity<Long> create(@RequestBody @Validated PersonaCreateDTO dto) {
         if (personaRepository.existsByDni(dto.getDni())) {
             throw new IllegalArgumentException("Ya existe una persona con ese DNI");
         }
+        if (dto.getEmail() != null && personaRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Ya existe una persona con ese email");
+        }
         Persona entity = personaMapper.toEntity(dto);
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            entity.setPassword(passwordEncoder.encode(dto.getPassword()));
+        } else {
+            entity.setPassword(null);
+        }
+        if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
+            entity.setRoles(new HashSet<>(dto.getRoles()));
+        } else {
+            entity.setRoles(new HashSet<>());
+        }
         Persona saved = personaRepository.save(entity);
         return new ResponseEntity<>(saved.getId(), HttpStatus.CREATED);
     }
 
     @PutMapping("/{personaId}")
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','SECRETARY','COORDINATOR')")
     public ResponseEntity<Void> update(@PathVariable Long personaId,
                                        @RequestBody @Validated PersonaUpdateDTO dto) {
         Persona entity = personaRepository.findById(personaId)
                 .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
+
+        if (dto.getDni() != null && !dto.getDni().equals(entity.getDni())
+                && personaRepository.existsByDni(dto.getDni())) {
+            throw new IllegalArgumentException("Ya existe una persona con ese DNI");
+        }
+        if (dto.getEmail() != null && !dto.getEmail().equals(entity.getEmail())
+                && personaRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Ya existe una persona con ese email");
+        }
+
+        String originalPassword = entity.getPassword();
+
         personaMapper.update(entity, dto);
-        personaRepository.save(entity);
-        return ResponseEntity.noContent().build();
-    }
 
-    @PostMapping("/{personaId}/link-usuario")
-    public ResponseEntity<Void> linkUsuario(@PathVariable Long personaId,
-                                            @RequestBody @Validated PersonaUsuarioLinkDTO request) {
-        Persona persona = personaRepository.findById(personaId)
-                .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
-
-        Usuario current = persona.getUsuario();
-        if (current != null) {
-            if (current.getId().equals(request.usuarioId())) {
-                return ResponseEntity.noContent().build();
+        if (dto.getPassword() != null) {
+            if (!dto.getPassword().isBlank()) {
+                entity.setPassword(passwordEncoder.encode(dto.getPassword()));
+            } else {
+                entity.setPassword(originalPassword);
             }
-            throw new IllegalStateException("La persona ya está vinculada a un usuario");
+        }
+        if (dto.getRoles() != null) {
+            entity.setRoles(new HashSet<>(dto.getRoles()));
+        } else if (entity.getRoles() == null) {
+            entity.setRoles(new HashSet<>());
         }
 
-        Usuario usuario = usuarioRepository.findById(request.usuarioId())
-                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
-
-        if (usuario.getPersona() != null && !usuario.getPersona().getId().equals(personaId)) {
-            throw new IllegalStateException("El usuario ya está vinculado a otra persona");
-        }
-
-        persona.setUsuario(usuario);
-        usuario.setPersona(persona);
-        personaRepository.save(persona);
-        usuarioRepository.save(usuario);
-
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{personaId}/unlink-usuario")
-    public ResponseEntity<Void> unlinkUsuario(@PathVariable Long personaId) {
-        Persona persona = personaRepository.findById(personaId)
-                .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
-
-        Usuario usuario = persona.getUsuario();
-        if (usuario != null) {
-            persona.setUsuario(null);
-            personaRepository.save(persona);
-
-            usuario.setPersona(null);
-            usuarioRepository.save(usuario);
-        }
-
+        personaRepository.save(entity);
         return ResponseEntity.noContent().build();
     }
 
@@ -122,10 +128,10 @@ public class PersonaController {
                 .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
 
         RolesPersonaDTO dto = new RolesPersonaDTO(
-                alumnoRepository.existsByPersonaId(personaId),     // ya lo tenés en el repo de alumno
-                empleadoRepository.existsByPersonaId(personaId),   // ya lo tenés en el repo de empleado  [oai_citation:8‡repo.txt](file-service://file-LASNrXoaoxpsQRihikYxQX)
-                familiarRepository.existsByPersonaId(personaId),   // existe en tu repo de familiar  [oai_citation:9‡dtos.txt](file-service://file-2K2ZUDBA9dEooKRDQE77Py)
-                aspiranteRepository.existsByPersonaId(personaId)   // existe en tu repo de aspirante  [oai_citation:10‡repo.txt](file-service://file-LASNrXoaoxpsQRihikYxQX)
+                alumnoRepository.existsByPersonaId(personaId),
+                empleadoRepository.existsByPersonaId(personaId),
+                familiarRepository.existsByPersonaId(personaId),
+                aspiranteRepository.existsByPersonaId(personaId)
         );
         return ResponseEntity.ok(dto);
     }

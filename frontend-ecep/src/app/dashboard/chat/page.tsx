@@ -25,7 +25,9 @@ import useChatSocket from "@/hooks/useChatSocket";
 
 dayjs.extend(relativeTime);
 
-const getPersonaDisplayName = (persona: PersonaResumenDTO | null | undefined) => {
+const getPersonaDisplayName = (
+  persona: PersonaResumenDTO | null | undefined,
+) => {
   if (!persona) return "Sin nombre";
   if (persona.nombreCompleto && persona.nombreCompleto.trim()) {
     return persona.nombreCompleto;
@@ -40,7 +42,8 @@ const getPersonaDisplayName = (persona: PersonaResumenDTO | null | undefined) =>
 };
 
 const getPersonaInitials = (persona: PersonaResumenDTO | null | undefined) => {
-  const source = persona?.nombreCompleto ||
+  const source =
+    persona?.nombreCompleto ||
     [persona?.nombre, persona?.apellido].filter(Boolean).join(" ") ||
     persona?.email ||
     "";
@@ -66,9 +69,8 @@ export default function ChatComponent() {
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [selectedPersona, setSelectedPersona] = useState<PersonaResumenDTO | null>(
-    null,
-  );
+  const [selectedPersona, setSelectedPersona] =
+    useState<PersonaResumenDTO | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -152,7 +154,9 @@ export default function ChatComponent() {
 
     (async () => {
       try {
-        const { data } = await api.personasCore.getResumen(lastMessage.emisorId);
+        const { data } = await api.personasCore.getResumen(
+          lastMessage.emisorId,
+        );
         if (data) {
           setActiveChats((prev) =>
             prev.some((chat) => chat.id === data.id) ? prev : [...prev, data],
@@ -168,7 +172,9 @@ export default function ChatComponent() {
 
   useEffect(() => {
     if (!selectedPersona) return;
-    const refreshed = activeChats.find((chat) => chat.id === selectedPersona.id);
+    const refreshed = activeChats.find(
+      (chat) => chat.id === selectedPersona.id,
+    );
     if (refreshed && refreshed !== selectedPersona) {
       setSelectedPersona(refreshed);
     }
@@ -288,12 +294,6 @@ export default function ChatComponent() {
   return (
     <DashboardLayout>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Chat</h2>
-            <p className="text-muted-foreground">Mensajes privados</p>
-          </div>
-        </div>
         <div className="flex h-[calc(100vh-12rem)] md:h-[calc(100vh-12rem)]">
           {showChatList && (
             <div className="w-full md:w-1/3 flex-shrink-0">
@@ -314,7 +314,8 @@ export default function ChatComponent() {
                         <DialogHeader>
                           <DialogTitle>Nuevo Chat</DialogTitle>
                           <DialogDescription>
-                            Buscá y seleccioná una persona para iniciar la conversación.
+                            Buscá y seleccioná una persona para iniciar la
+                            conversación.
                           </DialogDescription>
                         </DialogHeader>
                         <Input
@@ -325,7 +326,10 @@ export default function ChatComponent() {
                         <ScrollArea className="h-64">
                           <div className="space-y-2">
                             {personas
-                              .filter((p) => !activeChats.some((ac) => ac.id === p.id))
+                              .filter(
+                                (p) =>
+                                  !activeChats.some((ac) => ac.id === p.id),
+                              )
                               .map((p) => (
                                 <button
                                   key={p.id}
@@ -335,7 +339,9 @@ export default function ChatComponent() {
                                 >
                                   <div className="flex items-center gap-2">
                                     <Avatar className="h-8 w-8">
-                                      <AvatarFallback>{getPersonaInitials(p)}</AvatarFallback>
+                                      <AvatarFallback>
+                                        {getPersonaInitials(p)}
+                                      </AvatarFallback>
                                     </Avatar>
                                     <div>
                                       <p className="font-medium text-sm">
@@ -350,7 +356,8 @@ export default function ChatComponent() {
                               ))}
                             {personas.length === 0 && (
                               <p className="px-2 text-sm text-muted-foreground">
-                                Escribí para buscar personas con acceso al sistema.
+                                Escribí para buscar personas con acceso al
+                                sistema.
                               </p>
                             )}
                           </div>
@@ -364,7 +371,8 @@ export default function ChatComponent() {
                   <ScrollArea className="h-full">
                     {activeChats.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground">
-                        No hay chats activos. Usá el botón "+" para iniciar uno nuevo.
+                        No hay chats activos. Usá el botón "+" para iniciar uno
+                        nuevo.
                       </div>
                     ) : (
                       <div className="space-y-1 p-2">
@@ -384,7 +392,9 @@ export default function ChatComponent() {
                           >
                             <div className="relative">
                               <Avatar className="h-10 w-10">
-                                <AvatarFallback>{getPersonaInitials(p)}</AvatarFallback>
+                                <AvatarFallback>
+                                  {getPersonaInitials(p)}
+                                </AvatarFallback>
                               </Avatar>
                               {(unreadCounts[p.id] ?? 0) > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
@@ -426,7 +436,9 @@ export default function ChatComponent() {
                   </Button>
                 )}
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>{getPersonaInitials(selectedPersona)}</AvatarFallback>
+                  <AvatarFallback>
+                    {getPersonaInitials(selectedPersona)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm">
@@ -459,7 +471,9 @@ export default function ChatComponent() {
                   />
                   <Button
                     onClick={handleSend}
-                    disabled={!connected || !newMessage.trim() || selectedUserId == null}
+                    disabled={
+                      !connected || !newMessage.trim() || selectedUserId == null
+                    }
                     size="icon"
                   >
                     <Send className="h-4 w-4" />

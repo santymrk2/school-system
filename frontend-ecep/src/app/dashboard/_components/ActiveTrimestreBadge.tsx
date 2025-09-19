@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import type { ComponentProps } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { cn } from "@/lib/utils";
@@ -13,32 +14,36 @@ interface ActiveTrimestreBadgeProps {
 export function ActiveTrimestreBadge({ className }: ActiveTrimestreBadgeProps) {
   const { trimestreActivo, loading } = useActivePeriod();
 
-  if (loading) return null;
+  let label = "Sin trimestre activo";
+  let description = "";
+  let variant: ComponentProps<typeof Badge>["variant"] = "secondary";
 
-  const { label, description, variant } = useMemo(() => {
-    if (!trimestreActivo) {
-      return {
-        label: "Sin trimestre activo",
-        description: "",
-        variant: "secondary" as const,
-      };
-    }
+  if (trimestreActivo) {
     const estado = getTrimestreEstado(trimestreActivo);
-    const range = formatTrimestreRange(trimestreActivo) ?? "";
-    const numero = trimestreActivo.orden ?? "";
+    const range = formatTrimestreRange(trimestreActivo);
+    const numero = trimestreActivo.orden;
     const numeroLabel = numero ? ` ${numero}` : "";
-    const labelByEstado: Record<string, string> = {
-      activo: `Trimestre${numeroLabel} activo`,
-      "sin-estado": `Trimestre${numeroLabel} sin estado`,
-    };
-    return {
-      label: labelByEstado[estado] ?? `Trimestre ${numero}`,
-      description: range,
-      variant: estado === "activo" ? "outline" : "secondary",
-    };
-  }, [trimestreActivo]);
 
-  if (!label && !description) return null;
+    description = range ?? "";
+
+    switch (estado) {
+      case "activo":
+        label = `Trimestre${numeroLabel} activo`;
+        variant = "outline";
+        break;
+      case "cerrado":
+        label = `Trimestre${numeroLabel} cerrado`;
+        variant = "secondary";
+        break;
+      default:
+        label = `Trimestre${numeroLabel} sin estado`;
+        variant = "secondary";
+        break;
+    }
+  }
+
+  if (loading || (!label && !description)) return null;
+
 
   return (
     <div

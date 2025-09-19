@@ -8,7 +8,9 @@ import java.time.LocalDate;
 public class PersonaCreateDTO {
     @NotBlank String nombre;
     @NotBlank String apellido;
-    @NotBlank String dni;
+    @NotBlank
+    @Pattern(regexp = "\\d{7,10}", message = "El DNI debe tener entre 7 y 10 dígitos numéricos")
+    String dni;
 
     LocalDate fechaNacimiento;
     String genero;

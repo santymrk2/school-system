@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/hooks/useAuth";
+import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import {
@@ -831,6 +832,15 @@ export default function PersonalPage() {
         });
         return;
       }
+      const dniValue = formatDni(newPersona.dni);
+      if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
+        toast({
+          title: "DNI inválido",
+          description: "El DNI debe tener entre 7 y 10 dígitos numéricos.",
+          variant: "destructive",
+        });
+        return;
+      }
       if (!newEmpleado.rolEmpleado) {
         toast({
           title: "Rol requerido",
@@ -880,7 +890,7 @@ export default function PersonalPage() {
         const personaPayload = {
           nombre: newPersona.nombre,
           apellido: newPersona.apellido,
-          dni: newPersona.dni,
+          dni: dniValue,
           fechaNacimiento: newPersona.fechaNacimiento || undefined,
           genero: newPersona.genero || undefined,
           estadoCivil: newPersona.estadoCivil || undefined,
@@ -1789,10 +1799,16 @@ export default function PersonalPage() {
                       id="nuevo-dni"
                       value={newPersona.dni}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, dni: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          dni: formatDni(event.target.value),
+                        }))
                       }
                       placeholder="Documento"
                       inputMode="numeric"
+                      pattern="\d*"
+                      minLength={7}
+                      maxLength={10}
                       required
                     />
                   </div>

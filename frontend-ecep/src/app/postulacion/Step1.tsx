@@ -14,7 +14,11 @@ import {
 import { Curso, Turno } from "@/types/api-generated";
 import type { PostulacionFormData } from "./types";
 import { cn } from "@/lib/utils";
+
+import { formatDni } from "@/lib/form-utils";
+
 import { maxBirthDate } from "@/lib/form-utils";
+
 
 interface Props {
   formData: PostulacionFormData;
@@ -75,12 +79,11 @@ export function Step1({
             id="dni"
             type="text"
             inputMode="numeric"
+            pattern="\d*"
             minLength={7}
-            maxLength={9}
+            maxLength={10}
             value={formData.dni || ""}
-            onChange={(e) =>
-              handleInputChange("dni", e.target.value.replace(/\D/g, ""))
-            }
+            onChange={(e) => handleInputChange("dni", formatDni(e.target.value))}
             placeholder="12345678"
             className={cn(errors.dni && "border-destructive")}
           />

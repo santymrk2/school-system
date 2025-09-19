@@ -29,6 +29,11 @@ import type {
   TrimestreDTO,
   DetalleAsistenciaCreateDTO,
 } from "@/types/api-generated";
+import {
+  getTrimestreFin,
+  getTrimestreInicio,
+  isFechaDentroDeTrimestre,
+} from "@/lib/trimestres";
 
 function fmt(d?: string | null) {
   if (!d) return "";
@@ -126,10 +131,7 @@ export default function NuevaAsistenciaDialog({
     setDateError(computeDateError(fecha));
   }, [open, fecha, busyDates, computeDateError]);
 
-  const dentro =
-    !!trimestre &&
-    fecha >= fmt(trimestre?.fechaInicio ?? undefined) &&
-    fecha <= fmt(trimestre?.fechaFin ?? undefined);
+  const dentro = isFechaDentroDeTrimestre(fecha, trimestre);
   const marcar = (matriculaId: number, estado: EstadoAsistencia) =>
     setMarcas((m) => ({ ...m, [matriculaId]: estado }));
 
@@ -208,8 +210,8 @@ export default function NuevaAsistenciaDialog({
             <Input
               type="date"
               value={fecha}
-              min={fmt(trimestre?.fechaInicio ?? undefined)}
-              max={fmt(trimestre?.fechaFin ?? undefined)}
+              min={getTrimestreInicio(trimestre) || undefined}
+              max={getTrimestreFin(trimestre) || undefined}
               onChange={(e) => {
                 const value = e.target.value;
                 setFecha(value);

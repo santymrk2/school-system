@@ -12,6 +12,8 @@ import type {
   EvaluacionDTO,
 } from "@/types/api-generated";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
+import { getTrimestreEstado } from "@/lib/trimestres";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +52,7 @@ export default function SeccionEvaluacionesPage() {
   const { id } = useParams<{ id: string }>();
   const seccionId = Number(id);
   const router = useRouter();
-  const { trimestres } = useActivePeriod();
+  const { getTrimestreByDate } = useActivePeriod();
 
   // Data
   const [loading, setLoading] = useState(true);
@@ -178,13 +180,13 @@ export default function SeccionEvaluacionesPage() {
       setCreating(true);
 
       // Resolver trimestre por fecha
-      const tri = trimestres.find(
-        (t) =>
-          fecha >= ((t as any).fechaInicio ?? "0000-00-00") &&
-          fecha <= ((t as any).fechaFin ?? "9999-12-31"),
-      );
-      if (!tri || (tri as any).cerrado) {
-        alert("La fecha seleccionada no cae en un trimestre activo.");
+      const tri = getTrimestreByDate(fecha);
+      if (!tri) {
+        alert("La fecha seleccionada no coincide con un trimestre configurado.");
+        return;
+      }
+      if (getTrimestreEstado(tri) === "cerrado") {
+        alert("La fecha seleccionada cae en un trimestre cerrado.");
         return;
       }
 
@@ -265,6 +267,7 @@ export default function SeccionEvaluacionesPage() {
                 {evaluaciones.length === 1 ? "examen" : "exámenes"}
               </Badge>
             </div>
+            <ActiveTrimestreBadge className="mt-2" />
           </div>
           <div className="flex items-center gap-2">
             {/* Filtro materia */}

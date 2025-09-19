@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJornadaDialog";
+import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 
 /* =========================
    PAGE
@@ -44,6 +45,7 @@ export default function AsistenciaPage() {
                   ? "Dirección — Seguimiento integral por secciones y alumnos"
                   : "Consulta"}
             </p>
+            <ActiveTrimestreBadge className="mt-2" />
           </div>
         </header>
 

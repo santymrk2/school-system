@@ -830,12 +830,15 @@ export interface TrimestreCreateDTO {
   fin?: ISODate;
 }
 
+export type TrimestreEstadoApi = "activo" | "inactivo" | "cerrado";
+
 export interface TrimestreDTO {
   id: number;
   periodoEscolarId?: number;
   orden?: number;
   inicio?: ISODate;
   fin?: ISODate;
+  estado?: TrimestreEstadoApi | null;
   cerrado?: boolean;
 }
 

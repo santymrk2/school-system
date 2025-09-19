@@ -191,7 +191,7 @@ export default function NotasExamenDialog({
       toast.error(
         trimestreEstado === "cerrado"
           ? "Trimestre cerrado. Solo lectura."
-          : "El trimestre aún no está activo.",
+          : "Trimestre inactivo. Solo lectura.",
       );
       return;
     }
@@ -263,7 +263,7 @@ export default function NotasExamenDialog({
               <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2 mb-2">
                 {trimestreEstado === "cerrado"
                   ? "Este trimestre está cerrado. Solo lectura."
-                  : "Este trimestre todavía no está activo."}
+                  : "Este trimestre está inactivo. Solo lectura."}
               </div>
             )}
 

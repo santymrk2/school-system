@@ -95,7 +95,7 @@ export default function VistaDocente() {
     const t =
       trimestres.find(
         (tr) =>
-          getTrimestreEstado(tr) !== "cerrado" &&
+          getTrimestreEstado(tr) === "activo" &&
           isFechaDentroDeTrimestre(nowKey, tr),
       ) ?? null;
 

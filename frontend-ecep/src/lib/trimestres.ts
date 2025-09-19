@@ -1,6 +1,9 @@
 "use client";
 
-import type { TrimestreDTO } from "@/types/api-generated";
+import type {
+  TrimestreDTO,
+  TrimestreEstadoApi,
+} from "@/types/api-generated";
 
 const toDateInput = (value?: string | null) => {
   if (!value) return "";
@@ -41,12 +44,29 @@ export const resolveTrimestrePeriodoId = (
 
 export type TrimestreEstado = "cerrado" | "activo" | "inactivo";
 
+const normalizeEstado = (estado?: unknown): TrimestreEstado | null => {
+  if (typeof estado === "string" && estado.trim()) {
+    const normalized = estado.trim().toLowerCase();
+    if (normalized === "activo" || normalized === "inactivo" || normalized === "cerrado") {
+      return normalized as TrimestreEstado;
+    }
+  }
+  return null;
+};
+
 export const getTrimestreEstado = (
   t?: MaybeTrimestre | TrimestreDTO | null,
 ): TrimestreEstado => {
   if (!t) return "inactivo";
-  if (t.cerrado === true) return "cerrado";
-  if (t.cerrado === false) return "activo";
+
+  const rawEstado = (t as MaybeTrimestre & { estado?: TrimestreEstadoApi | string | null })?.estado;
+  const normalized = normalizeEstado(rawEstado ?? undefined);
+  if (normalized) return normalized;
+
+  const rawCerrado = (t as MaybeTrimestre & { cerrado?: boolean | null })?.cerrado;
+  if (rawCerrado === true) return "cerrado";
+  if (rawCerrado === false) return "activo";
+
   return "inactivo";
 };
 

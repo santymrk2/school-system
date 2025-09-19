@@ -3,7 +3,6 @@ package edu.ecep.base_app.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
@@ -20,5 +19,7 @@ public class Trimestre extends BaseEntity {
     @Column(nullable=false) private Integer orden;
     @Column(nullable=false) private LocalDate inicio;
     @Column(nullable=false) private LocalDate fin;
-    @Column(nullable=false) private boolean cerrado = false;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TrimestreEstado estado = TrimestreEstado.INACTIVO;
 }

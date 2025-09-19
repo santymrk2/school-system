@@ -459,17 +459,28 @@ function DireccionConfig({ open }: DireccionConfigProps) {
                 loading ||
                 togglingTrimestreId === tri.id ||
                 !!activarDisabledReason;
+              const cerrarDisabledReason =
+                estado === "cerrado"
+                  ? "Este trimestre ya está cerrado."
+                  : estado === "inactivo"
+                    ? "Activá el trimestre antes de cerrarlo."
+                    : null;
               const cerrarDisabled =
                 loading ||
                 togglingTrimestreId === tri.id ||
-                estado === "cerrado";
+                estado !== "activo";
               const activarBusy =
                 togglingTrimestreId === tri.id && togglingEstado === "activo";
               const cerrarBusy =
                 togglingTrimestreId === tri.id && togglingEstado === "cerrado";
               const activarLabel =
-                estado === "cerrado" ? "Reabrir" : "Marcar activo";
-              const cerrarLabel = estado === "cerrado" ? "Cerrado" : "Cerrar";
+                estado === "cerrado" ? "Reabrir" : "Activar";
+              const cerrarLabel =
+                estado === "cerrado"
+                  ? "Cerrado"
+                  : estado === "inactivo"
+                    ? "Inactivo"
+                    : "Cerrar";
               return (
                 <div
                   key={tri.id}
@@ -513,6 +524,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
                         size="sm"
                         onClick={() => handleSetEstadoTrimestre(tri, "cerrado")}
                         disabled={cerrarDisabled}
+                        title={cerrarDisabledReason ?? undefined}
                       >
                         {cerrarBusy ? (
                           <span className="flex items-center gap-2">

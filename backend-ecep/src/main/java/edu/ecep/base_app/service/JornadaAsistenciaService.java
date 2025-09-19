@@ -1,6 +1,7 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Trimestre;
+import edu.ecep.base_app.domain.TrimestreEstado;
 import edu.ecep.base_app.repos.*;
 import edu.ecep.base_app.dtos.*;
 import edu.ecep.base_app.mappers.*;
@@ -42,8 +43,8 @@ public class JornadaAsistenciaService {
         // validar trimestre y que no esté cerrado
         Trimestre tri = trimRepo.findById(dto.getTrimestreId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trimestre no encontrado"));
-        if (Boolean.TRUE.equals(tri.isCerrado())) {
-            throw new IllegalArgumentException("El trimestre está cerrado");
+        if (tri.getEstado() != TrimestreEstado.ACTIVO) {
+            throw new IllegalArgumentException("El trimestre no está activo");
         }
         return repo.save(mapper.toEntity(dto)).getId();
     }

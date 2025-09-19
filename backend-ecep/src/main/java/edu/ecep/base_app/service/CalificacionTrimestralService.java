@@ -1,6 +1,7 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Trimestre;
+import edu.ecep.base_app.domain.TrimestreEstado;
 import edu.ecep.base_app.dtos.CalificacionTrimestralCreateDTO;
 import edu.ecep.base_app.dtos.CalificacionTrimestralDTO;
 import edu.ecep.base_app.mappers.CalificacionTrimestralMapper;
@@ -23,7 +24,9 @@ public class CalificacionTrimestralService {
     }
     public Long create(CalificacionTrimestralCreateDTO dto){
         Trimestre tri = trimRepo.findById(dto.getTrimestreId()).orElseThrow(() -> new NotFoundException("No encontrado"));
-        if(tri.isCerrado()) throw new IllegalArgumentException("Trimestre cerrado");
+        if(tri.getEstado() != TrimestreEstado.ACTIVO) {
+            throw new IllegalArgumentException("El trimestre no está activo");
+        }
         if(repo.existsByTrimestreIdAndSeccionMateriaIdAndMatriculaId(dto.getTrimestreId(), dto.getSeccionMateriaId(), dto.getMatriculaId()))
             throw new IllegalArgumentException("Calificación trimestral duplicada");
         return repo.save(mapper.toEntity(dto)).getId();
@@ -32,7 +35,9 @@ public class CalificacionTrimestralService {
     public void update(Long id, CalificacionTrimestralDTO dto){
         var entity = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
         var trimestre = trimRepo.findById(dto.getTrimestreId()).orElseThrow(() -> new NotFoundException("No encontrado"));
-        if(trimestre.isCerrado()) throw new IllegalArgumentException("Trimestre cerrado");
+        if(trimestre.getEstado() != TrimestreEstado.ACTIVO) {
+            throw new IllegalArgumentException("El trimestre no está activo");
+        }
         mapper.update(entity, dto);
         repo.save(entity);
     }

@@ -20,6 +20,7 @@ import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useFamilyAlumnos } from "@/hooks/useFamilyAlumnos";
 import NewComunicadoDialog from "./_components/NewComunicadoDialog";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -256,7 +257,7 @@ export default function ComunicadosPage() {
       await api.comunicados.delete(id);
       await refresh();
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudo eliminar el comunicado",

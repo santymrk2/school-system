@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, School, Clock3 } from "lucide-react";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { toast } from "sonner";
 
 const fechaLargaFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "long",
@@ -279,9 +280,9 @@ export default function ExamenDetailPage() {
       await Promise.all(pending);
       const refreshed = await api.resultadosEvaluacion.byEvaluacion(examenId);
       setResultados(refreshed.data ?? []);
-      alert("Notas guardadas.");
+      toast.success("Notas guardadas.");
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudieron guardar las notas.",
@@ -322,7 +323,7 @@ export default function ExamenDetailPage() {
       }
       setEditOpen(false);
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No pudimos actualizar los datos del examen.",

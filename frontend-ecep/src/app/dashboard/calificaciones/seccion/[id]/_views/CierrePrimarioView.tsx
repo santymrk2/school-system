@@ -38,6 +38,7 @@ import {
   type TrimestreEstado,
 } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const CONCEPTOS = Object.values(CalificacionConceptual).filter(
   (value): value is CalificacionConceptual => typeof value === "string",
@@ -488,10 +489,10 @@ export default function CierrePrimarioView({
       // 2) refresco base para ver IDs y estado real
       const { data: all } = await api.calificaciones.list();
       setCalifs(all ?? []);
-      alert("Calificaciones guardadas.");
+      toast.success("Calificaciones guardadas.");
     } catch (e: any) {
       console.error(e);
-      alert(e?.response?.data?.message ?? "No se pudo guardar.");
+      toast.error(e?.response?.data?.message ?? "No se pudo guardar.");
     } finally {
       setSaving(false);
     }

@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Edit, Plus, ArrowLeft, School, Clock3 } from "lucide-react";
 import NotasExamenDialog from "@/app/dashboard/evaluaciones/_components/NotasExamenDialog";
+import { toast } from "sonner";
 
 const fechaFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "medium",
@@ -182,12 +183,12 @@ export default function SeccionEvaluacionesPage() {
       // Resolver trimestre por fecha
       const tri = getTrimestreByDate(fecha);
       if (!tri) {
-        alert("La fecha seleccionada no coincide con un trimestre configurado.");
+        toast.error("La fecha seleccionada no coincide con un trimestre configurado.");
         return;
       }
       const estado = getTrimestreEstado(tri);
       if (estado !== "activo") {
-        alert(
+        toast.error(
           estado === "cerrado"
             ? "La fecha seleccionada cae en un trimestre cerrado."
             : "El trimestre seleccionado aún no está activo.",
@@ -197,7 +198,7 @@ export default function SeccionEvaluacionesPage() {
 
       const year = Number(fecha.slice(0, 4));
       if (Number.isNaN(year) || year !== currentYear) {
-        alert(`La fecha debe pertenecer al año ${currentYear}.`);
+        toast.error(`La fecha debe pertenecer al año ${currentYear}.`);
         return;
       }
 
@@ -205,14 +206,14 @@ export default function SeccionEvaluacionesPage() {
       const materiaIdNum =
         newMateriaId && newMateriaId !== "all" ? Number(newMateriaId) : NaN;
       if (!materiaIdNum || Number.isNaN(materiaIdNum)) {
-        alert("Seleccioná una materia.");
+        toast.error("Seleccioná una materia.");
         return;
       }
       const sm = (secMats ?? []).find(
         (x: any) => x.seccionId === seccionId && x.materiaId === materiaIdNum,
       );
       if (!sm) {
-        alert("No se encontró la materia para esta sección.");
+        toast.error("No se encontró la materia para esta sección.");
         return;
       }
 
@@ -236,7 +237,7 @@ export default function SeccionEvaluacionesPage() {
       setNewMateriaId("");
       setRefreshKey((k) => k + 1);
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudo registrar el examen.",

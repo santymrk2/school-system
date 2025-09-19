@@ -30,6 +30,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const min2DaysISO = () => {
@@ -253,11 +254,11 @@ export default function NewActaDialog({
 
   const submit = async () => {
     if (!alumnoId) {
-      alert("Seleccioná un alumno de la lista.");
+      toast.error("Seleccioná un alumno de la lista.");
       return;
     }
     if (!fecha || fecha < min2DaysISO() || fecha > todayISO()) {
-      alert("Fecha inválida: solo hoy o 2 días previos.");
+      toast.error("Fecha inválida: solo hoy o 2 días previos.");
       return;
     }
     if (
@@ -266,7 +267,7 @@ export default function NewActaDialog({
       !descripcion.trim() ||
       !acciones.trim()
     ) {
-      alert("Completá hora, lugar, descripción y acciones.");
+      toast.error("Completá hora, lugar, descripción y acciones.");
       return;
     }
 
@@ -307,7 +308,7 @@ export default function NewActaDialog({
       onCreated?.();
     } catch (e: any) {
       console.error("Error creando acta", e?.response?.data ?? e);
-      alert(
+      toast.error(
         e?.response?.data?.message ?? e?.message ?? "No se pudo crear el acta.",
       );
     } finally {

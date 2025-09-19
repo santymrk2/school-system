@@ -25,6 +25,7 @@ import {
   isFechaDentroDeTrimestre,
   type TrimestreEstado,
 } from "@/lib/trimestres";
+import { toast } from "sonner";
 
 type Row = {
   matriculaId: number;
@@ -186,7 +187,7 @@ export default function NotasExamenDialog({
 
   const save = async () => {
     if (trimestreSoloLectura) {
-      alert(
+      toast.error(
         trimestreEstado === "cerrado"
           ? "Trimestre cerrado. Solo lectura."
           : "El trimestre aún no está activo.",
@@ -229,10 +230,10 @@ export default function NotasExamenDialog({
 
       await Promise.all(pending);
 
-      alert("Notas guardadas.");
+      toast.success("Notas guardadas.");
       onOpenChange(false);
     } catch (e: any) {
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           e?.message ??
           "No se pudieron guardar las notas.",

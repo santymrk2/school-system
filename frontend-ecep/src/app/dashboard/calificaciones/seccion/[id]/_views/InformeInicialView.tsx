@@ -19,6 +19,7 @@ import {
   TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
 } from "@/lib/trimestres";
+import { toast } from "sonner";
 
 export default function InformeInicialView({
   seccionId,
@@ -154,7 +155,7 @@ function TrimestreInformeTile({
       setOpen(false);
     } catch (e: any) {
       console.error(e);
-      alert(
+      toast.error(
         e?.response?.data?.message ??
           "Tu backend aún no expone UPDATE para informes. Pedilo o habilítalo.",
       );

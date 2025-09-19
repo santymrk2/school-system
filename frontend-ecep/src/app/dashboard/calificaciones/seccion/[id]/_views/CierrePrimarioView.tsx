@@ -20,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CalificacionConceptual, EvaluacionDTO, ResultadoEvaluacionDTO } from "@/types/api-generated";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -59,6 +60,18 @@ export default function CierrePrimarioView({
   const [loadingPromedios, setLoadingPromedios] = useState(false);
   const [alumnos, setAlumnos] = useState<any[]>([]);
   const [califs, setCalifs] = useState<any[]>([]);
+  const [attendanceByMatricula, setAttendanceByMatricula] = useState<
+    Record<
+      number,
+      {
+        percentage: number | null;
+        presents: number;
+        absents: number;
+        total: number;
+        hasData: boolean;
+      }
+    >
+  >({});
 
   // UI
   const [triId, setTriId] = useState<string>("");
@@ -67,6 +80,7 @@ export default function CierrePrimarioView({
   const [loading, setLoading] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
 
   // carga base
   useEffect(() => {
@@ -142,10 +156,14 @@ export default function CierrePrimarioView({
     [seccionMaterias, materiasPorId],
   );
 
-  const triCerrado = useMemo(() => {
-    const t = trimestres.find((x) => x.id === Number(triId));
-    return !!t?.cerrado;
+  const activeTrimestre = useMemo(() => {
+    if (!triId) return null;
+    return trimestres.find((x) => x.id === Number(triId)) ?? null;
   }, [trimestres, triId]);
+
+  const triCerrado = useMemo(() => {
+    return !!activeTrimestre?.cerrado;
+  }, [activeTrimestre]);
 
   useEffect(() => {
     if (loading) return;
@@ -296,6 +314,108 @@ export default function CierrePrimarioView({
     };
   }, [triId, smId, seccionId]);
 
+  useEffect(() => {
+    const start = (activeTrimestre as any)?.fechaInicio;
+    const end = (activeTrimestre as any)?.fechaFin;
+
+    if (!triId || !start || !end) {
+      setAttendanceByMatricula({});
+      setLoadingAttendance(false);
+      return;
+    }
+
+    let alive = true;
+    (async () => {
+      try {
+        setLoadingAttendance(true);
+        const { data } = await api.asistencias.resumenPorAlumno(
+          seccionId,
+          start,
+          end,
+        );
+        if (!alive) return;
+
+        const map: Record<
+          number,
+          {
+            percentage: number | null;
+            presents: number;
+            absents: number;
+            total: number;
+            hasData: boolean;
+          }
+        > = {};
+
+        for (const item of data ?? []) {
+          const rawMatriculaId =
+            (item as any)?.matriculaId ??
+            (item as any)?.alumnoId ??
+            (item as any)?.id;
+          if (typeof rawMatriculaId !== "number") {
+            continue;
+          }
+
+          const presents = typeof item.presentes === "number" ? item.presentes : 0;
+          const absents = typeof item.ausentes === "number" ? item.ausentes : 0;
+          const totalFromDto =
+            typeof (item as any)?.total === "number"
+              ? (item as any).total
+              : typeof item.totalClases === "number"
+                ? item.totalClases
+                : undefined;
+          const computedTotal =
+            typeof totalFromDto === "number"
+              ? totalFromDto
+              : presents + absents > 0
+                ? presents + absents
+                : 0;
+          const rawPercentage =
+            item.porcentaje != null
+              ? Number(item.porcentaje)
+              : computedTotal > 0
+                ? (presents / computedTotal) * 100
+                : null;
+          const percentage =
+            rawPercentage != null
+              ? Math.max(0, Math.min(100, Number(rawPercentage.toFixed(2))))
+              : null;
+
+          map[rawMatriculaId] = {
+            percentage,
+            presents,
+            absents,
+            total: computedTotal,
+            hasData:
+              computedTotal > 0 ||
+              presents > 0 ||
+              absents > 0 ||
+              percentage != null,
+          };
+        }
+
+        if (alive) {
+          setAttendanceByMatricula(map);
+        }
+      } catch (error) {
+        console.error(
+          "[CierrePrimarioView] No se pudo obtener el resumen de asistencia",
+          error,
+        );
+        if (alive) {
+          setAttendanceByMatricula({});
+        }
+      } finally {
+        if (alive) {
+          setLoadingAttendance(false);
+        }
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [activeTrimestre, seccionId, triId]);
+
   const onSet = (matId: number, field: keyof Row, val: any) => {
     setRows((prev) =>
       prev.map((r) => (r.matriculaId === matId ? { ...r, [field]: val } : r)),
@@ -338,7 +458,10 @@ export default function CierrePrimarioView({
             (existing.observaciones ?? "") !== (r.observaciones ?? "");
 
           if (changed) {
-            await api.calificaciones.update(existing.id, payload);
+            await api.calificaciones.update(existing.id, {
+              ...payload,
+              id: existing.id,
+            });
           }
         }
       }
@@ -357,27 +480,29 @@ export default function CierrePrimarioView({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Trimestre</CardTitle>
-              <CardDescription>
-                Elegí el periodo que querés trabajar.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>Configurar calificaciones</CardTitle>
+          <CardDescription>
+            Elegí el trimestre y la materia para gestionar las notas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Trimestre</Label>
               {triOpts.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   No hay trimestres configurados.
-                </div>
+                </p>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                   {triOpts.map((o) => {
                     const active = String(o.id) === triId;
                     return (
                       <Button
                         key={o.id}
+                        type="button"
                         variant={active ? "default" : "outline"}
                         className={cn(
                           "justify-between",
@@ -396,182 +521,253 @@ export default function CierrePrimarioView({
                   })}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Materia</CardTitle>
-              <CardDescription>
-                Seleccioná la materia de la sección.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Materia</Label>
               {matOpts.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   No hay materias asignadas a esta sección.
-                </div>
+                </p>
               ) : (
-                <ScrollArea className="h-[240px] pr-2">
-                  <div className="flex flex-col gap-2">
-                    {matOpts.map((o) => {
-                      const active = String(o.id) === smId;
-                      return (
-                        <Button
-                          key={o.id}
-                          variant={active ? "default" : "outline"}
-                          className={cn(
-                            "justify-start text-left",
-                            !active && "bg-muted/40 hover:bg-muted",
-                          )}
-                          onClick={() => setSmId(String(o.id))}
-                        >
-                          {o.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
+                <Select
+                  value={smId || undefined}
+                  onValueChange={(value) => setSmId(String(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccioná una materia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {matOpts.map((o) => (
+                      <SelectItem key={o.id} value={String(o.id)}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <div className="space-y-4">
-          {(loading || loadingRows) && (
-            <Card>
-              <CardContent className="py-6 text-sm">Cargando…</CardContent>
-            </Card>
-          )}
+      {(loading || loadingRows) && (
+        <Card>
+          <CardContent className="py-6 text-sm">Cargando…</CardContent>
+        </Card>
+      )}
 
-          {!loading && !loadingRows && (!triId || !smId) && (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
-                Seleccioná un trimestre y una materia para cargar
-                calificaciones.
-              </CardContent>
-            </Card>
-          )}
+      {!loading && !loadingRows && (!triId || !smId) && (
+        <Card>
+          <CardContent className="py-6 text-sm text-muted-foreground">
+            Seleccioná un trimestre y una materia para cargar calificaciones.
+          </CardContent>
+        </Card>
+      )}
 
-          {!loading && !loadingRows && triId && smId && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Listado de alumnos</CardTitle>
-                <CardDescription>
-                  Registrá la nota conceptual y observaciones para cada
-                  estudiante.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {triCerrado && (
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <Badge variant="destructive">Trimestre cerrado</Badge>
-                    <span className="text-muted-foreground">
-                      Los datos se muestran solo para consulta.
-                    </span>
-                  </div>
-                )}
-                <ScrollArea className="max-h-[60vh]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[40%]">Alumno</TableHead>
-                        <TableHead className="w-[20%]">
-                          Promedio exámenes
-                        </TableHead>
-                        <TableHead className="w-[20%]">
-                          Nota conceptual
-                        </TableHead>
-                        <TableHead>Observaciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {rows.map((r) => {
-                        const promedio = promediosExamenes[r.matriculaId];
-                        return (
-                          <TableRow key={r.matriculaId}>
-                            <TableCell className="font-medium">
-                              {r.nombre}
-                            </TableCell>
-                            <TableCell>
-                              {loadingPromedios ? (
-                                <span className="text-xs text-muted-foreground">
-                                  Calculando…
+      {!loading && !loadingRows && triId && smId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Listado de alumnos</CardTitle>
+            <CardDescription>
+              Registrá la nota conceptual y observaciones para cada estudiante.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {triCerrado && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="destructive">Trimestre cerrado</Badge>
+                <span className="text-muted-foreground">
+                  Los datos se muestran solo para consulta.
+                </span>
+              </div>
+            )}
+            <ScrollArea className="max-h-[60vh]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[32%]">Alumno</TableHead>
+                    <TableHead className="w-[22%]">
+                      Promedio asistencia
+                    </TableHead>
+                    <TableHead className="w-[18%]">
+                      Promedio exámenes
+                    </TableHead>
+                    <TableHead className="w-[18%]">Nota conceptual</TableHead>
+                    <TableHead>Observaciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => {
+                    const promedio = promediosExamenes[r.matriculaId];
+                    const attendance = attendanceByMatricula[r.matriculaId];
+                    const attendancePercentRaw =
+                      attendance?.percentage ?? null;
+                    const absencePercentRaw =
+                      attendance && attendance.total > 0
+                        ? Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(
+                                (
+                                  ((attendance.total - attendance.presents) /
+                                    (attendance.total || 1)) *
+                                  100
+                                ).toFixed(2),
+                              ),
+                            ),
+                          )
+                        : attendancePercentRaw != null
+                          ? Math.max(
+                              0,
+                              Math.min(
+                                100,
+                                Number((100 - attendancePercentRaw).toFixed(2)),
+                              ),
+                            )
+                          : null;
+                    const safeAttendancePercent =
+                      attendancePercentRaw != null
+                        ? Math.max(0, Math.min(100, attendancePercentRaw))
+                        : 0;
+                    const safeAbsencePercent =
+                      absencePercentRaw != null
+                        ? Math.max(0, Math.min(100, absencePercentRaw))
+                        : Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number((100 - safeAttendancePercent).toFixed(2)),
+                            ),
+                          );
+
+                    return (
+                      <TableRow key={r.matriculaId}>
+                        <TableCell className="font-medium">{r.nombre}</TableCell>
+                        <TableCell>
+                          {loadingAttendance ? (
+                            <span className="text-xs text-muted-foreground">
+                              Calculando…
+                            </span>
+                          ) : attendance?.hasData ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                <span>
+                                  Asistió
+                                  {" "}
+                                  {safeAttendancePercent.toLocaleString("es-AR", {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0,
+                                  })}
+                                  %
                                 </span>
-                              ) : promedio != null ? (
-                                promedio.toLocaleString("es-AR", {
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2,
-                                })
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={r.notaConceptual ?? "__none"}
-                                onValueChange={(v) =>
-                                  onSet(
-                                    r.matriculaId,
-                                    "notaConceptual",
-                                    v === "__none"
-                                      ? null
-                                      : (v as CalificacionConceptual),
-                                  )
-                                }
-                                disabled={triCerrado}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seleccioná" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none">—</SelectItem>
-                                  {CONCEPTOS.map((c) => (
-                                    <SelectItem key={c} value={c}>
-                                      {c.replace("_", " ")}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={r.observaciones ?? ""}
-                                onChange={(e) =>
-                                  onSet(
-                                    r.matriculaId,
-                                    "observaciones",
-                                    e.target.value,
-                                  )
-                                }
-                                disabled={triCerrado}
-                                placeholder="Opcional"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-                {rows.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No hay alumnos inscriptos en esta materia para el trimestre
-                    seleccionado.
-                  </p>
-                )}
-              </CardContent>
-              {!triCerrado && rows.length > 0 && (
-                <CardFooter className="flex justify-end">
-                  <Button onClick={save} disabled={saving}>
-                    Guardar cambios
-                  </Button>
-                </CardFooter>
-              )}
-            </Card>
+                                <span>
+                                  Faltó
+                                  {" "}
+                                  {safeAbsencePercent.toLocaleString("es-AR", {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0,
+                                  })}
+                                  %
+                                </span>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full bg-emerald-500"
+                                  style={{
+                                    width: `${safeAttendancePercent}%`,
+                                  }}
+                                />
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">
+                                {attendance.presents} presentes
+                                {attendance.total > 0 && (
+                                  <>
+                                    {" "}/ {attendance.total} clases
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Sin registros
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {loadingPromedios ? (
+                            <span className="text-xs text-muted-foreground">
+                              Calculando…
+                            </span>
+                          ) : promedio != null ? (
+                            promedio.toLocaleString("es-AR", {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 2,
+                            })
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={r.notaConceptual ?? "__none"}
+                            onValueChange={(v) =>
+                              onSet(
+                                r.matriculaId,
+                                "notaConceptual",
+                                v === "__none" ? null : (v as CalificacionConceptual),
+                              )
+                            }
+                            disabled={triCerrado}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccioná" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none">—</SelectItem>
+                              {CONCEPTOS.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c.replace("_", " ")}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={r.observaciones ?? ""}
+                            onChange={(e) =>
+                              onSet(
+                                r.matriculaId,
+                                "observaciones",
+                                e.target.value,
+                              )
+                            }
+                            disabled={triCerrado}
+                            placeholder="Opcional"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+            {rows.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No hay alumnos inscriptos en esta materia para el trimestre seleccionado.
+              </p>
+            )}
+          </CardContent>
+          {!triCerrado && rows.length > 0 && (
+            <CardFooter className="flex justify-end">
+              <Button onClick={save} disabled={saving}>
+                Guardar cambios
+              </Button>
+            </CardFooter>
           )}
-        </div>
-      </div>
+        </Card>
+      )}
     </div>
   );
 }

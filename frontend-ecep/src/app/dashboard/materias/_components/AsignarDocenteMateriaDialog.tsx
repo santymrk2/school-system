@@ -83,6 +83,10 @@ export default function AsignarDocenteMateriaDialog({
 
   const guardar = async () => {
     if (!canSubmit || saving) return;
+    if (hasta && desde && hasta < desde) {
+      alert("La fecha hasta no puede ser anterior a la fecha desde.");
+      return;
+    }
     try {
       setSaving(true);
       const hastaValue = hasta ? hasta : "9999-12-31";

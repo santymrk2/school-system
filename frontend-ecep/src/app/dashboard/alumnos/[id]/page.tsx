@@ -37,6 +37,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { api } from "@/services/api";
+import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type {
   AlumnoDTO,
   FamiliarDTO,
@@ -461,6 +462,16 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
+    if (
+      personaDraft.fechaNacimiento &&
+      !isBirthDateValid(personaDraft.fechaNacimiento)
+    ) {
+      toast.error(
+        "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
+      );
+      return;
+    }
+
     setSavingProfile(true);
     const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -818,6 +829,7 @@ export default function AlumnoPerfilPage() {
                         <Label>Fecha de nacimiento</Label>
                         <Input
                           type="date"
+                          max={maxBirthDate}
                           value={personaDraft.fechaNacimiento}
                           onChange={(e) =>
                             setPersonaDraft((prev) => ({

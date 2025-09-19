@@ -14,6 +14,7 @@ import {
 import { Curso, Turno } from "@/types/api-generated";
 import type { PostulacionFormData } from "./types";
 import { cn } from "@/lib/utils";
+import { maxBirthDate } from "@/lib/form-utils";
 
 interface Props {
   formData: PostulacionFormData;
@@ -98,9 +99,7 @@ export function Step1({
           <Input
             id="fechaNacimiento"
             type="date"
-            max={new Date(new Date().setFullYear(new Date().getFullYear() - 1))
-              .toISOString()
-              .slice(0, 10)}
+            max={maxBirthDate}
             value={formData.fechaNacimiento || ""}
             onChange={(e) =>
               handleInputChange("fechaNacimiento", e.target.value)

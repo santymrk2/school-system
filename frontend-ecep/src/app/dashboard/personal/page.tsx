@@ -38,6 +38,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
+import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import {
   RolEmpleado,
   UserRole,
@@ -846,6 +847,34 @@ export default function PersonalPage() {
         });
         return;
       }
+      if (
+        newPersona.fechaNacimiento &&
+        !isBirthDateValid(newPersona.fechaNacimiento)
+      ) {
+        toast({
+          title: "Fecha de nacimiento inválida",
+          description:
+            "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const fechaInicioFormacion = newFormacion.fechaInicio.trim();
+      const fechaFinFormacion = newFormacion.fechaFin.trim();
+      if (
+        fechaInicioFormacion &&
+        fechaFinFormacion &&
+        fechaFinFormacion < fechaInicioFormacion
+      ) {
+        toast({
+          title: "Fechas de formación inválidas",
+          description:
+            "La fecha de finalización no puede ser anterior a la de inicio.",
+          variant: "destructive",
+        });
+        return;
+      }
       setCreatingPersonal(true);
       try {
         const personaPayload = {
@@ -979,6 +1008,19 @@ export default function PersonalPage() {
         toast({
           title: "Motivo requerido",
           description: "Detalle el motivo de la licencia.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (
+        newLicense.fechaFin &&
+        newLicense.fechaInicio &&
+        newLicense.fechaFin < newLicense.fechaInicio
+      ) {
+        toast({
+          title: "Fechas de licencia inválidas",
+          description: "La fecha de fin no puede ser anterior a la de inicio.",
           variant: "destructive",
         });
         return;
@@ -1759,6 +1801,7 @@ export default function PersonalPage() {
                     <Input
                       id="nuevo-fecha-nac"
                       type="date"
+                      max={maxBirthDate}
                       value={newPersona.fechaNacimiento}
                       onChange={(event) =>
                         setNewPersona((prev) => ({ ...prev, fechaNacimiento: event.target.value }))
@@ -2015,9 +2058,19 @@ export default function PersonalPage() {
                       id="nuevo-fecha-inicio-formacion"
                       type="date"
                       value={newFormacion.fechaInicio}
-                      onChange={(event) =>
-                        setNewFormacion((prev) => ({ ...prev, fechaInicio: event.target.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setNewFormacion((prev) => {
+                          if (!value) {
+                            return { ...prev, fechaInicio: value };
+                          }
+                          const next = { ...prev, fechaInicio: value };
+                          if (prev.fechaFin && prev.fechaFin < value) {
+                            next.fechaFin = value;
+                          }
+                          return next;
+                        });
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
@@ -2026,9 +2079,18 @@ export default function PersonalPage() {
                       id="nuevo-fecha-fin-formacion"
                       type="date"
                       value={newFormacion.fechaFin}
-                      onChange={(event) =>
-                        setNewFormacion((prev) => ({ ...prev, fechaFin: event.target.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setNewFormacion((prev) => {
+                          if (!value) {
+                            return { ...prev, fechaFin: value };
+                          }
+                          if (prev.fechaInicio && value < prev.fechaInicio) {
+                            return { ...prev, fechaFin: prev.fechaInicio };
+                          }
+                          return { ...prev, fechaFin: value };
+                        });
+                      }}
                     />
                   </div>
                 </div>
@@ -2158,9 +2220,19 @@ export default function PersonalPage() {
                     id="licencia-inicio"
                     type="date"
                     value={newLicense.fechaInicio}
-                    onChange={(event) =>
-                      setNewLicense((prev) => ({ ...prev, fechaInicio: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setNewLicense((prev) => {
+                        if (!value) {
+                          return { ...prev, fechaInicio: value };
+                        }
+                        const next = { ...prev, fechaInicio: value };
+                        if (prev.fechaFin && prev.fechaFin < value) {
+                          next.fechaFin = value;
+                        }
+                        return next;
+                      });
+                    }}
                     required
                   />
                 </div>
@@ -2170,9 +2242,18 @@ export default function PersonalPage() {
                     id="licencia-fin"
                     type="date"
                     value={newLicense.fechaFin}
-                    onChange={(event) =>
-                      setNewLicense((prev) => ({ ...prev, fechaFin: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setNewLicense((prev) => {
+                        if (!value) {
+                          return { ...prev, fechaFin: value };
+                        }
+                        if (prev.fechaInicio && value < prev.fechaInicio) {
+                          return { ...prev, fechaFin: prev.fechaInicio };
+                        }
+                        return { ...prev, fechaFin: value };
+                      });
+                    }}
                   />
                 </div>
               </div>

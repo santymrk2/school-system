@@ -83,6 +83,10 @@ export default function VistaDireccion() {
         toast.error("Completá fechas");
         return;
       }
+      if (nuevoTrimestre.inicio > nuevoTrimestre.fin) {
+        toast.error("La fecha de inicio no puede ser posterior a la de fin");
+        return;
+      }
       await api.trimestres.create({
         periodoEscolarId: 1,
         orden: (trimestres.length % 3) + 1,

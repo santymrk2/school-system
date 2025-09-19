@@ -12,10 +12,24 @@ export function formatDni(s: string) {
   return s.replace(/\D/g, "").slice(0, 9);
 }
 
-// Fecha máxima: personas de al menos 1 año
-const today = new Date();
-today.setFullYear(today.getFullYear() - 1);
-export const maxBirthDate = today.toISOString().slice(0, 10);
+const MIN_BIRTH_AGE_YEARS = 2;
+
+export function getBirthDateLimitIso(reference: Date = new Date()) {
+  const limit = new Date(reference);
+  limit.setFullYear(limit.getFullYear() - MIN_BIRTH_AGE_YEARS);
+  return limit.toISOString().slice(0, 10);
+}
+
+// Fecha máxima: personas de al menos 2 años
+export const maxBirthDate = getBirthDateLimitIso();
+
+export function isBirthDateValid(
+  value?: string | null,
+  reference: Date = new Date(),
+) {
+  if (!value) return true;
+  return value <= getBirthDateLimitIso(reference);
+}
 
 // Tipado parcial de los datos del Step 1
 export interface Step1Data {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/services/api";
+import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type * as DTO from "@/types/api-generated";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
@@ -182,6 +183,15 @@ export default function AltaAlumnoPage() {
   const handleCrearAlumno = async () => {
     if (!alumnoForm.seccionId) {
       toast.error("Seleccioná una sección para matricular al alumno");
+      return;
+    }
+    if (
+      personaForm.fechaNacimiento &&
+      !isBirthDateValid(personaForm.fechaNacimiento)
+    ) {
+      toast.error(
+        "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
+      );
       return;
     }
     setCreatingAlumno(true);
@@ -388,6 +398,7 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
         <label className="text-sm font-medium text-muted-foreground">Fecha de nacimiento</label>
         <Input
           type="date"
+          max={maxBirthDate}
           value={values.fechaNacimiento}
           onChange={(e) => onChange("fechaNacimiento", e.target.value)}
         />

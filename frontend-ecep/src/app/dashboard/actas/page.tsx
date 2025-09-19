@@ -509,13 +509,25 @@ export default function AccidentesIndexPage() {
             <Input
               type="date"
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFromDate(value);
+                if (value && toDate && value > toDate) {
+                  setToDate(value);
+                }
+              }}
             />
             <span className="text-xs text-muted-foreground">a</span>
             <Input
               type="date"
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setToDate(value);
+                if (value && fromDate && value < fromDate) {
+                  setFromDate(value);
+                }
+              }}
             />
           </div>
 

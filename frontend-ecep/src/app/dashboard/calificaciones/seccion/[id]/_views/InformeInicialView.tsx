@@ -14,6 +14,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  TRIMESTRE_ESTADO_BADGE_VARIANT,
+  TRIMESTRE_ESTADO_LABEL,
+  getTrimestreEstado,
+} from "@/lib/trimestres";
 
 export default function InformeInicialView({
   seccionId,
@@ -113,7 +118,12 @@ function TrimestreInformeTile({
 }) {
   const [open, setOpen] = useState(false);
   const [desc, setDesc] = useState(existing?.descripcion ?? "");
-  const cerrado = !!trimestre?.cerrado;
+  const estado = getTrimestreEstado(trimestre);
+  const esCerrado = estado === "cerrado";
+  const esSoloLectura = estado !== "activo";
+  const estadoBadgeVariant =
+    TRIMESTRE_ESTADO_BADGE_VARIANT[estado] ?? "secondary";
+  const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado];
 
   useEffect(() => {
     setDesc(existing?.descripcion ?? "");
@@ -153,9 +163,9 @@ function TrimestreInformeTile({
 
   return (
     <Card className="border-dashed">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Trimestre {trimestre.orden}</CardTitle>
-        {cerrado && <Badge variant="destructive">Cerrado</Badge>}
+        <Badge variant={estadoBadgeVariant}>{estadoLabel}</Badge>
       </CardHeader>
       <CardContent>
         {existing ? (
@@ -163,7 +173,7 @@ function TrimestreInformeTile({
             <div className="text-sm whitespace-pre-wrap">
               {existing.descripcion}
             </div>
-            {!cerrado && (
+            {!esSoloLectura && (
               <div className="mt-2">
                 <Dialog open={open} onOpenChange={setOpen}>
                   <DialogTrigger asChild>
@@ -201,8 +211,12 @@ function TrimestreInformeTile({
           </>
         ) : (
           <>
-            {cerrado ? (
-              <div className="text-sm text-muted-foreground">Sin informe.</div>
+            {esSoloLectura ? (
+              <div className="text-sm text-muted-foreground">
+                {esCerrado
+                  ? "Sin informe."
+                  : "Trimestre inactivo. Aún no habilitado."}
+              </div>
             ) : (
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>

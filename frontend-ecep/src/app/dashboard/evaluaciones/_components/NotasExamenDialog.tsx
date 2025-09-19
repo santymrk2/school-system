@@ -20,7 +20,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getTrimestreEstado, isFechaDentroDeTrimestre } from "@/lib/trimestres";
+import {
+  getTrimestreEstado,
+  isFechaDentroDeTrimestre,
+  type TrimestreEstado,
+} from "@/lib/trimestres";
 
 type Row = {
   matriculaId: number;
@@ -56,11 +60,13 @@ export default function NotasExamenDialog({
     return tri?.id;
   }, [evaluacion, trimestres, fecha]);
 
-  const trimestreCerrado = useMemo(() => {
-    if (!trimestreId) return false;
+  const trimestreEstado = useMemo<TrimestreEstado>(() => {
+    if (!trimestreId) return "activo";
     const tri = trimestres.find((t) => t.id === trimestreId);
-    return getTrimestreEstado(tri) === "cerrado";
+    return getTrimestreEstado(tri);
   }, [trimestres, trimestreId]);
+
+  const trimestreSoloLectura = trimestreEstado !== "activo";
 
   const fetchSeccionIdFromEval = async (): Promise<number> => {
     const smId = (evaluacion as any)?.seccionMateriaId as number | undefined;
@@ -179,8 +185,12 @@ export default function NotasExamenDialog({
   };
 
   const save = async () => {
-    if (trimestreCerrado) {
-      alert("Trimestre cerrado. Solo lectura.");
+    if (trimestreSoloLectura) {
+      alert(
+        trimestreEstado === "cerrado"
+          ? "Trimestre cerrado. Solo lectura."
+          : "El trimestre aún no está activo.",
+      );
       return;
     }
     try {
@@ -247,9 +257,11 @@ export default function NotasExamenDialog({
           <div className="text-sm text-red-600">{errorMsg}</div>
         ) : (
           <>
-            {trimestreCerrado && (
+            {trimestreSoloLectura && (
               <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2 mb-2">
-                Este trimestre está cerrado. Solo lectura.
+                {trimestreEstado === "cerrado"
+                  ? "Este trimestre está cerrado. Solo lectura."
+                  : "Este trimestre todavía no está activo."}
               </div>
             )}
 
@@ -274,7 +286,7 @@ export default function NotasExamenDialog({
                           : String(r.notaNumerica)
                       }
                       onChange={(e) => setNota(r.matriculaId, e.target.value)}
-                      disabled={trimestreCerrado}
+                      disabled={trimestreSoloLectura}
                     />
                   </div>
                   <div className="col-span-6">
@@ -283,7 +295,7 @@ export default function NotasExamenDialog({
                       placeholder="Observación"
                       value={r.observaciones ?? ""}
                       onChange={(e) => setObs(r.matriculaId, e.target.value)}
-                      disabled={trimestreCerrado}
+                      disabled={trimestreSoloLectura}
                     />
                   </div>
                 </div>
@@ -294,7 +306,7 @@ export default function NotasExamenDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button onClick={save} disabled={saving || trimestreCerrado}>
+              <Button onClick={save} disabled={saving || trimestreSoloLectura}>
                 {saving ? "Guardando…" : "Guardar"}
               </Button>
             </div>

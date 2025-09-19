@@ -39,15 +39,30 @@ export const resolveTrimestrePeriodoId = (
   (t as any)?.periodoEscolar?.id ??
   (fallback ?? undefined);
 
-export type TrimestreEstado = "cerrado" | "activo" | "sin-estado";
+export type TrimestreEstado = "cerrado" | "activo" | "inactivo";
 
 export const getTrimestreEstado = (
   t?: MaybeTrimestre | TrimestreDTO | null,
 ): TrimestreEstado => {
-  if (!t) return "sin-estado";
+  if (!t) return "inactivo";
   if (t.cerrado === true) return "cerrado";
   if (t.cerrado === false) return "activo";
-  return "sin-estado";
+  return "inactivo";
+};
+
+export const TRIMESTRE_ESTADO_LABEL: Record<TrimestreEstado, string> = {
+  activo: "Activo",
+  inactivo: "Inactivo",
+  cerrado: "Cerrado",
+};
+
+export const TRIMESTRE_ESTADO_BADGE_VARIANT: Record<
+  TrimestreEstado,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  activo: "default",
+  inactivo: "secondary",
+  cerrado: "destructive",
 };
 
 const formatSimpleDate = (iso?: string) => {

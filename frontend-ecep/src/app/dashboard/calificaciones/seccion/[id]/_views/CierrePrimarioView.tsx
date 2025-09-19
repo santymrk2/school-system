@@ -31,6 +31,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TRIMESTRE_ESTADO_BADGE_VARIANT,
+  TRIMESTRE_ESTADO_LABEL,
+  getTrimestreEstado,
+  type TrimestreEstado,
+} from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
 
 const CONCEPTOS = Object.values(CalificacionConceptual).filter(
@@ -43,6 +49,26 @@ type Row = {
   nombre: string;
   notaConceptual?: CalificacionConceptual | null;
   observaciones?: string | null;
+};
+
+type AttendanceResume = {
+  percentage: number | null;
+  presents: number;
+  absents: number;
+  total: number;
+  hasData: boolean;
+};
+
+type DisplayRow = Row & {
+  promedio?: number;
+  attendance?: AttendanceResume;
+  safeAttendancePercent: number;
+  safeAbsencePercent: number;
+};
+
+const toPercent = (value: number | null | undefined): number | null => {
+  if (value == null || Number.isNaN(value)) return null;
+  return Math.max(0, Math.min(100, Number(value.toFixed(2))));
 };
 
 export default function CierrePrimarioView({
@@ -61,16 +87,7 @@ export default function CierrePrimarioView({
   const [alumnos, setAlumnos] = useState<any[]>([]);
   const [califs, setCalifs] = useState<any[]>([]);
   const [attendanceByMatricula, setAttendanceByMatricula] = useState<
-    Record<
-      number,
-      {
-        percentage: number | null;
-        presents: number;
-        absents: number;
-        total: number;
-        hasData: boolean;
-      }
-    >
+    Record<number, AttendanceResume>
   >({});
 
   // UI
@@ -114,16 +131,22 @@ export default function CierrePrimarioView({
     };
   }, [seccionId, hoy]);
 
-  const triOpts = useMemo(
+  const triOpts = useMemo<
+    { id: number; label: string; estado: TrimestreEstado }[]
+  >(
     () =>
       (trimestres ?? [])
         .slice()
         .sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
-        .map((t: any) => ({
-          id: t.id,
-          label: `Trimestre ${t.orden}`,
-          cerrado: !!t.cerrado,
-        })),
+        .map((t: any) => {
+          const estado = getTrimestreEstado(t);
+          const numero = t.orden ?? t.id;
+          return {
+            id: t.id,
+            label: numero ? `Trimestre ${numero}` : "Trimestre",
+            estado,
+          };
+        }),
     [trimestres],
   );
 
@@ -161,14 +184,19 @@ export default function CierrePrimarioView({
     return trimestres.find((x) => x.id === Number(triId)) ?? null;
   }, [trimestres, triId]);
 
-  const triCerrado = useMemo(() => {
-    return !!activeTrimestre?.cerrado;
+  const activeTrimestreEstado = useMemo<TrimestreEstado>(() => {
+    return getTrimestreEstado(activeTrimestre);
   }, [activeTrimestre]);
+
+  const triCerrado = activeTrimestreEstado === "cerrado";
+  const triSoloLectura = activeTrimestreEstado !== "activo";
 
   useEffect(() => {
     if (loading) return;
     if (!triId && triOpts.length > 0) {
-      setTriId(String(triOpts[0].id));
+      const preferred =
+        triOpts.find((o) => o.estado === "activo") ?? triOpts[0];
+      setTriId(String(preferred.id));
     }
   }, [loading, triId, triOpts]);
 
@@ -335,16 +363,7 @@ export default function CierrePrimarioView({
         );
         if (!alive) return;
 
-        const map: Record<
-          number,
-          {
-            percentage: number | null;
-            presents: number;
-            absents: number;
-            total: number;
-            hasData: boolean;
-          }
-        > = {};
+        const map: Record<number, AttendanceResume> = {};
 
         for (const item of data ?? []) {
           const rawMatriculaId =
@@ -478,6 +497,37 @@ export default function CierrePrimarioView({
     }
   };
 
+  const enrichedRows: DisplayRow[] = useMemo(
+    () =>
+      rows.map((r) => {
+        const promedio = promediosExamenes[r.matriculaId];
+        const attendance = attendanceByMatricula[r.matriculaId];
+        const attendancePercent = toPercent(attendance?.percentage ?? null);
+        const absencePercent =
+          attendance && attendance.total > 0
+            ? toPercent(
+                ((attendance.total - attendance.presents) /
+                  (attendance.total || 1)) *
+                  100,
+              )
+            : attendancePercent != null
+              ? toPercent(100 - attendancePercent)
+              : null;
+        const safeAttendancePercent = attendancePercent ?? 0;
+        const safeAbsencePercent =
+          absencePercent ?? toPercent(100 - safeAttendancePercent) ?? 0;
+
+        return {
+          ...r,
+          promedio,
+          attendance,
+          safeAttendancePercent,
+          safeAbsencePercent,
+        };
+      }),
+    [rows, promediosExamenes, attendanceByMatricula],
+  );
+
   return (
     <div className="space-y-6">
       <Card>
@@ -496,26 +546,29 @@ export default function CierrePrimarioView({
                   No hay trimestres configurados.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {triOpts.map((o) => {
                     const active = String(o.id) === triId;
+                    const estadoLabel = TRIMESTRE_ESTADO_LABEL[o.estado] ?? "";
+                    const badgeVariant =
+                      TRIMESTRE_ESTADO_BADGE_VARIANT[o.estado] ?? "secondary";
                     return (
                       <Button
                         key={o.id}
                         type="button"
                         variant={active ? "default" : "outline"}
                         className={cn(
-                          "justify-between",
+                          "w-full justify-between gap-2 text-left",
                           !active && "bg-muted/40 hover:bg-muted",
                         )}
                         onClick={() => setTriId(String(o.id))}
                       >
                         <span>{o.label}</span>
-                        {o.cerrado && (
-                          <Badge variant="destructive" className="ml-3">
-                            Cerrado
+                        {estadoLabel ? (
+                          <Badge variant={badgeVariant} className="ml-2">
+                            {estadoLabel}
                           </Badge>
-                        )}
+                        ) : null}
                       </Button>
                     );
                   })}
@@ -573,193 +626,273 @@ export default function CierrePrimarioView({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {triCerrado && (
+            {triSoloLectura && (
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="destructive">Trimestre cerrado</Badge>
+                <Badge variant={triCerrado ? "destructive" : "secondary"}>
+                  {triCerrado ? "Trimestre cerrado" : "Trimestre inactivo"}
+                </Badge>
                 <span className="text-muted-foreground">
-                  Los datos se muestran solo para consulta.
+                  {triCerrado
+                    ? "Los datos se muestran solo para consulta."
+                    : "Este trimestre aún no está habilitado para carga."}
                 </span>
               </div>
             )}
-            <ScrollArea className="max-h-[60vh]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[32%]">Alumno</TableHead>
-                    <TableHead className="w-[22%]">
-                      Promedio asistencia
-                    </TableHead>
-                    <TableHead className="w-[18%]">
-                      Promedio exámenes
-                    </TableHead>
-                    <TableHead className="w-[18%]">Nota conceptual</TableHead>
-                    <TableHead>Observaciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((r) => {
-                    const promedio = promediosExamenes[r.matriculaId];
-                    const attendance = attendanceByMatricula[r.matriculaId];
-                    const attendancePercentRaw =
-                      attendance?.percentage ?? null;
-                    const absencePercentRaw =
-                      attendance && attendance.total > 0
-                        ? Math.max(
-                            0,
-                            Math.min(
-                              100,
-                              Number(
-                                (
-                                  ((attendance.total - attendance.presents) /
-                                    (attendance.total || 1)) *
-                                  100
-                                ).toFixed(2),
-                              ),
-                            ),
-                          )
-                        : attendancePercentRaw != null
-                          ? Math.max(
-                              0,
-                              Math.min(
-                                100,
-                                Number((100 - attendancePercentRaw).toFixed(2)),
-                              ),
-                            )
-                          : null;
-                    const safeAttendancePercent =
-                      attendancePercentRaw != null
-                        ? Math.max(0, Math.min(100, attendancePercentRaw))
-                        : 0;
-                    const safeAbsencePercent =
-                      absencePercentRaw != null
-                        ? Math.max(0, Math.min(100, absencePercentRaw))
-                        : Math.max(
-                            0,
-                            Math.min(
-                              100,
-                              Number((100 - safeAttendancePercent).toFixed(2)),
-                            ),
-                          );
-
-                    return (
-                      <TableRow key={r.matriculaId}>
-                        <TableCell className="font-medium">{r.nombre}</TableCell>
-                        <TableCell>
-                          {loadingAttendance ? (
-                            <span className="text-xs text-muted-foreground">
-                              Calculando…
-                            </span>
-                          ) : attendance?.hasData ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                                <span>
-                                  Asistió
-                                  {" "}
-                                  {safeAttendancePercent.toLocaleString("es-AR", {
-                                    minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0,
-                                  })}
-                                  %
-                                </span>
-                                <span>
-                                  Faltó
-                                  {" "}
-                                  {safeAbsencePercent.toLocaleString("es-AR", {
-                                    minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0,
-                                  })}
-                                  %
-                                </span>
-                              </div>
-                              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                                <div
-                                  className="h-full bg-emerald-500"
-                                  style={{
-                                    width: `${safeAttendancePercent}%`,
-                                  }}
-                                />
-                              </div>
-                              <div className="text-[11px] text-muted-foreground">
-                                {attendance.presents} presentes
-                                {attendance.total > 0 && (
-                                  <>
-                                    {" "}/ {attendance.total} clases
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Sin registros
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {loadingPromedios ? (
-                            <span className="text-xs text-muted-foreground">
-                              Calculando…
-                            </span>
-                          ) : promedio != null ? (
-                            promedio.toLocaleString("es-AR", {
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 2,
-                            })
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={r.notaConceptual ?? "__none"}
-                            onValueChange={(v) =>
-                              onSet(
-                                r.matriculaId,
-                                "notaConceptual",
-                                v === "__none" ? null : (v as CalificacionConceptual),
-                              )
-                            }
-                            disabled={triCerrado}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccioná" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none">—</SelectItem>
-                              {CONCEPTOS.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  {c.replace("_", " ")}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={r.observaciones ?? ""}
-                            onChange={(e) =>
-                              onSet(
-                                r.matriculaId,
-                                "observaciones",
-                                e.target.value,
-                              )
-                            }
-                            disabled={triCerrado}
-                            placeholder="Opcional"
-                          />
-                        </TableCell>
+            <div className="hidden md:block">
+              <div className="w-full overflow-x-auto">
+                <ScrollArea className="max-h-[60vh]">
+                  <Table className="min-w-[720px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[32%]">Alumno</TableHead>
+                        <TableHead className="w-[22%]">Promedio asistencia</TableHead>
+                        <TableHead className="w-[18%]">Promedio exámenes</TableHead>
+                        <TableHead className="w-[18%]">Nota conceptual</TableHead>
+                        <TableHead>Observaciones</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-            {rows.length === 0 && (
+                    </TableHeader>
+                    <TableBody>
+                      {enrichedRows.map((row) => {
+                        const promedio = row.promedio;
+                        const attendance = row.attendance;
+
+                        return (
+                          <TableRow key={row.matriculaId}>
+                            <TableCell className="font-medium">{row.nombre}</TableCell>
+                            <TableCell>
+                              {loadingAttendance ? (
+                                <span className="text-xs text-muted-foreground">
+                                  Calculando…
+                                </span>
+                              ) : attendance?.hasData ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                    <span>
+                                      Asistió{" "}
+                                      {row.safeAttendancePercent.toLocaleString("es-AR", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0,
+                                      })}
+                                      %
+                                    </span>
+                                    <span>
+                                      Faltó{" "}
+                                      {row.safeAbsencePercent.toLocaleString("es-AR", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0,
+                                      })}
+                                      %
+                                    </span>
+                                  </div>
+                                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                    <div
+                                      className="h-full bg-emerald-500"
+                                      style={{ width: `${row.safeAttendancePercent}%` }}
+                                    />
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground">
+                                    {attendance.presents} presentes
+                                    {attendance.total > 0 && (
+                                      <>
+                                        {" "}/ {attendance.total} clases
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  Sin registros
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {loadingPromedios ? (
+                                <span className="text-xs text-muted-foreground">
+                                  Calculando…
+                                </span>
+                              ) : promedio != null ? (
+                                promedio.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2,
+                                })
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={row.notaConceptual ?? "__none"}
+                                onValueChange={(v) =>
+                                  onSet(
+                                    row.matriculaId,
+                                    "notaConceptual",
+                                    v === "__none" ? null : (v as CalificacionConceptual),
+                                  )
+                                }
+                                disabled={triSoloLectura}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccioná" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none">—</SelectItem>
+                                  {CONCEPTOS.map((c) => (
+                                    <SelectItem key={c} value={c}>
+                                      {c.replace("_", " ")}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={row.observaciones ?? ""}
+                                onChange={(e) =>
+                                  onSet(row.matriculaId, "observaciones", e.target.value)
+                                }
+                                disabled={triSoloLectura}
+                                placeholder="Opcional"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
+            </div>
+            <div className="space-y-3 md:hidden">
+              {enrichedRows.map((row) => {
+                const promedio = row.promedio;
+                const attendance = row.attendance;
+
+                return (
+                  <div
+                    key={row.matriculaId}
+                    className="space-y-3 rounded-lg border bg-muted/30 p-4"
+                  >
+                    <div className="text-sm font-medium">{row.nombre}</div>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Promedio asistencia
+                        </p>
+                        {loadingAttendance ? (
+                          <span className="text-xs text-muted-foreground">
+                            Calculando…
+                          </span>
+                        ) : attendance?.hasData ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                              <span>
+                                Asistió{" "}
+                                {row.safeAttendancePercent.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 0,
+                                })}
+                                %
+                              </span>
+                              <span>
+                                Faltó{" "}
+                                {row.safeAbsencePercent.toLocaleString("es-AR", {
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 0,
+                                })}
+                                %
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full bg-emerald-500"
+                                style={{ width: `${row.safeAttendancePercent}%` }}
+                              />
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {attendance.presents} presentes
+                              {attendance.total > 0 && (
+                                <>
+                                  {" "}/ {attendance.total} clases
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Sin registros
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Promedio exámenes
+                        </p>
+                        {loadingPromedios ? (
+                          <span className="text-xs text-muted-foreground">
+                            Calculando…
+                          </span>
+                        ) : promedio != null ? (
+                          promedio.toLocaleString("es-AR", {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2,
+                          })
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Nota conceptual
+                        </p>
+                        <Select
+                          value={row.notaConceptual ?? "__none"}
+                          onValueChange={(v) =>
+                            onSet(
+                              row.matriculaId,
+                              "notaConceptual",
+                              v === "__none" ? null : (v as CalificacionConceptual),
+                            )
+                          }
+                          disabled={triSoloLectura}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleccioná" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">—</SelectItem>
+                            {CONCEPTOS.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c.replace("_", " ")}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Observaciones
+                        </p>
+                        <Input
+                          value={row.observaciones ?? ""}
+                          onChange={(e) =>
+                            onSet(row.matriculaId, "observaciones", e.target.value)
+                          }
+                          disabled={triSoloLectura}
+                          placeholder="Opcional"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {enrichedRows.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 No hay alumnos inscriptos en esta materia para el trimestre seleccionado.
               </p>
             )}
           </CardContent>
-          {!triCerrado && rows.length > 0 && (
+          {!triSoloLectura && enrichedRows.length > 0 && (
             <CardFooter className="flex justify-end">
               <Button onClick={save} disabled={saving}>
                 Guardar cambios

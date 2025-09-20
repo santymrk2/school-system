@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useViewerScope } from "./useViewerScope";
 import { useActivePeriod } from "./useActivePeriod";
 import { useScopedSecciones } from "./useScopedSecciones";
-import { useFamilyAlumnos } from "@/hooks/useFamilyAlumnos";
+import { useViewerAlumnosLite } from "@/hooks/useViewerAlumnosLite";
 
 /**
  * Unifica la “pantalla índice”:
@@ -37,26 +37,24 @@ export function useScopedIndex(opts?: {
 
   // Hijos para family
   const {
-    alumnos,
-    loading: loadingHijos,
-    error: errorHijos,
-  } = useFamilyAlumnos?.() ?? {
-    alumnos: [],
-    loading: false,
-    error: null,
-  };
+    alumnos: viewerAlumnos,
+    loading: loadingViewerAlumnos,
+    error: errorViewerAlumnos,
+  } = useViewerAlumnosLite();
+
+  const isFamilyLike = type === "family" || type === "student";
 
   const loading =
-    loadingPeriodo || (type === "family" ? loadingHijos : loadingSecs);
-  const error = type === "family" ? errorHijos : errorSecs;
+    loadingPeriodo || (isFamilyLike ? loadingViewerAlumnos : loadingSecs);
+  const error = isFamilyLike ? errorViewerAlumnos : errorSecs;
 
   return useMemo(() => {
-    if (type === "family") {
+    if (type === "family" || type === "student") {
       return {
-        scope: "family" as const,
+        scope: (type === "family" ? "family" : "student") as const,
         loading,
         error,
-        hijos: alumnos, // array de AlumnoLiteDTO
+        hijos: viewerAlumnos, // array de AlumnoLiteDTO
         secciones: [] as any[], // vacío en family
         titularBySeccionId: new Map<number, string>(),
         periodoEscolarId,
@@ -68,7 +66,7 @@ export function useScopedIndex(opts?: {
       scope: (type === "staff" ? "staff" : "teacher") as const,
       loading,
       error,
-      hijos: [] as any[], // vacío si no es family
+      hijos: [] as any[], // vacío si no es family/student
       secciones, // array de SeccionDTO
       titularBySeccionId,
       periodoEscolarId,
@@ -78,7 +76,7 @@ export function useScopedIndex(opts?: {
     type,
     loading,
     error,
-    alumnos,
+    viewerAlumnos,
     secciones,
     titularBySeccionId,
     periodoEscolarId,

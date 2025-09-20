@@ -13,15 +13,18 @@ export function useViewerScope() {
     const isStaff = roles.some((r) => ROLES_STAFF.has(r));
     const isTeacher = roles.includes("TEACHER");
     const isFamily = roles.includes("FAMILY");
+    const isStudent = roles.includes("STUDENT");
 
     // prioridad: si es staff, lo tratamos como staff (aunque también sea teacher)
-    const type: "staff" | "teacher" | "family" | "guest" = isStaff
+    const type: "staff" | "teacher" | "family" | "student" | "guest" = isStaff
       ? "staff"
       : isTeacher
         ? "teacher"
         : isFamily
           ? "family"
-          : "guest";
+          : isStudent
+            ? "student"
+            : "guest";
 
     return {
       type,

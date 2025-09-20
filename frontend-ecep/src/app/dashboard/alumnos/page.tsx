@@ -63,7 +63,7 @@ export default function AlumnosIndexPage() {
   const { hoyISO } = useActivePeriod();
 
   useEffect(() => {
-    if (scope === "family") return;
+    if (scope === "family" || scope === "student") return;
     let cancelled = false;
     (async () => {
       setLoadingAlumnos(true);
@@ -125,10 +125,12 @@ export default function AlumnosIndexPage() {
                 ? `Período escolar activo: #${periodoEscolarId ?? "—"} • Hoy: ${hoyISO}`
                 : scope === "teacher"
                   ? "Gestión de alumnos por sección"
-                  : "Vista de hijos y perfiles"}
+                  : scope === "student"
+                    ? "Consulta de mi información académica"
+                    : "Vista de hijos y perfiles"}
             </div>
           </div>
-          {scope !== "family" && (
+          {(scope === "staff" || scope === "teacher") && (
             <div className="flex items-center space-x-2">
               <Button onClick={() => router.push("/dashboard/alumnos/alta")}>
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -139,7 +141,7 @@ export default function AlumnosIndexPage() {
         </div>
 
         {/* Search global (para Aspirantes / Historial) */}
-        {scope !== "family" && (
+        {(scope === "staff" || scope === "teacher") && (
           <div className="flex items-center space-x-2">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -156,13 +158,18 @@ export default function AlumnosIndexPage() {
         {loading && <LoadingState label="Cargando información…" />}
         {error && <div className="text-sm text-red-600">{String(error)}</div>}
 
-        {/* FAMILY: lista de hijos */}
-        {!loading && !error && scope === "family" && (
-          <FamilyView hijos={hijos} />
+        {/* FAMILY / STUDENT: lista de hijos o matrícula propia */}
+        {!loading && !error && (scope === "family" || scope === "student") && (
+          <FamilyView
+            hijos={hijos}
+            title={scope === "student" ? "Mi matrícula" : "Mis hijos/as"}
+          />
         )}
 
         {/* STAFF / TEACHER: Tabs */}
-        {!loading && !error && scope !== "family" && (
+        {!loading &&
+          !error &&
+          (scope === "staff" || scope === "teacher") && (
           <Tabs
             value={selectedTab}
             onValueChange={(v) => setSelectedTab(v as any)}

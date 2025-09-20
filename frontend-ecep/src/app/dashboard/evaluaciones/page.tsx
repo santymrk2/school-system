@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
+import FamilyEvaluationsView from "@/app/dashboard/evaluaciones/_components/FamilyEvaluationsView";
 
 function isPrimario(s: SeccionDTO): boolean {
   const n = (s as any)?.nivel as NivelAcademico | undefined;
@@ -52,6 +53,7 @@ export default function EvaluacionesIndexPage() {
     error: errorScope,
     secciones,
     titularBySeccionId,
+    hijos,
   } = useScopedIndex({ includeTitularSec: true });
 
   const [loading, setLoading] = useState(true);
@@ -163,7 +165,35 @@ export default function EvaluacionesIndexPage() {
     materiaNombreById,
   ]);
 
-  const title = scope === "teacher" ? "Examenes" : "Examenes";
+  if (scope === "family" || scope === "student") {
+    return (
+      <DashboardLayout>
+        <div className="p-4 md:p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">
+                {scope === "student" ? "Mis evaluaciones" : "Evaluaciones"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Consultá calificaciones y observaciones de las materias
+                cursadas.
+              </p>
+              <ActiveTrimestreBadge className="mt-2" />
+            </div>
+          </div>
+
+          <FamilyEvaluationsView
+            alumnos={hijos}
+            scope={scope}
+            initialLoading={loadingScope}
+            initialError={errorScope ? String(errorScope) : null}
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const title = scope === "teacher" ? "Exámenes" : "Exámenes";
 
   return (
     <DashboardLayout>

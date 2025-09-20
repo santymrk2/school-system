@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeRole } from "@/lib/auth-roles";
 import { UserRole, SeccionDTO, Turno } from "@/types/api-generated";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -20,18 +21,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJornadaDialog";
 import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
+import FamilyAttendanceView from "@/app/dashboard/asistencia/_components/FamilyAttendanceView";
 
 /* =========================
    PAGE
 ========================= */
 export default function AsistenciaPage() {
-  const { selectedRole } = useAuth();
-  const isTeacher = selectedRole === UserRole.TEACHER;
-  const isDireccion =
-    selectedRole === UserRole.DIRECTOR ||
-    selectedRole === UserRole.ADMIN ||
-    selectedRole === UserRole.SECRETARY ||
-    selectedRole === UserRole.COORDINATOR;
+  const { user, selectedRole } = useAuth();
+
+  const normalizedRole = useMemo(() => {
+    if (selectedRole) return selectedRole;
+    const first = user?.roles?.[0];
+    return first ? normalizeRole(first) : null;
+  }, [selectedRole, user]);
+
+  const isTeacher =
+    normalizedRole === UserRole.TEACHER ||
+    normalizedRole === UserRole.ALTERNATE;
+  const isDireccion = normalizedRole
+    ? [
+        UserRole.DIRECTOR,
+        UserRole.ADMIN,
+        UserRole.SECRETARY,
+        UserRole.COORDINATOR,
+      ].includes(normalizedRole)
+    : false;
 
   return (
     <DashboardLayout>
@@ -55,18 +69,10 @@ export default function AsistenciaPage() {
         ) : isDireccion ? (
           <DirectivoView />
         ) : (
-          <ConsultaPlaceholder />
+          <FamilyAttendanceView />
         )}
       </div>
     </DashboardLayout>
-  );
-}
-
-function ConsultaPlaceholder() {
-  return (
-    <div className="text-sm text-muted-foreground">
-      (Aquí podrías renderizar la vista de alumno/familia si corresponde.)
-    </div>
   );
 }
 

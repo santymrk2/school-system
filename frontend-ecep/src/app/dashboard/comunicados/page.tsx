@@ -39,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { UserRole } from "@/types/api-generated";
 
 const alcanceFilterOptions = [
   { value: "ALL", label: "Todos los alcances" },
@@ -114,13 +115,16 @@ function preview(text: string, max = 220) {
 }
 
 export default function ComunicadosPage() {
-  const { type, roles } = useViewerScope();
+  const { type, activeRole } = useViewerScope();
+  const role = activeRole ?? null;
 
-  const isDirector = roles.includes("DIRECTOR");
-  const isAdmin = roles.includes("ADMIN");
-  const isSecret = roles.includes("SECRETARY");
-  const isTeacher = roles.includes("TEACHER");
-  const isAdminLike = isDirector || isAdmin || isSecret;
+  const isDirector = role === UserRole.DIRECTOR;
+  const isAdmin = role === UserRole.ADMIN;
+  const isSecret = role === UserRole.SECRETARY;
+  const isCoordinator = role === UserRole.COORDINATOR;
+  const isTeacher =
+    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
+  const isAdminLike = isDirector || isAdmin || isSecret || isCoordinator;
   const canCreate = isAdminLike || isTeacher;
 
   const { periodoEscolarId } = useActivePeriod();

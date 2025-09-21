@@ -36,6 +36,7 @@ import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { toast } from "sonner";
+import { UserRole } from "@/types/api-generated";
 
 type Props = {
   open?: boolean;
@@ -59,12 +60,15 @@ export default function NewComunicadoDialog({
   onCreated,
   asButton,
 }: Props) {
-  const { roles } = useViewerScope();
-  const isDirector = roles.includes("DIRECTOR");
-  const isAdmin = roles.includes("ADMIN");
-  const isSecret = roles.includes("SECRETARY");
-  const isTeacher = roles.includes("TEACHER");
-  const isAdminLike = isDirector || isAdmin || isSecret;
+  const { activeRole } = useViewerScope();
+  const role = activeRole ?? null;
+  const isDirector = role === UserRole.DIRECTOR;
+  const isAdmin = role === UserRole.ADMIN;
+  const isSecret = role === UserRole.SECRETARY;
+  const isCoordinator = role === UserRole.COORDINATOR;
+  const isTeacher =
+    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
+  const isAdminLike = isDirector || isAdmin || isSecret || isCoordinator;
 
   const { periodoEscolarId } = useActivePeriod();
   const { secciones } = useScopedSecciones({

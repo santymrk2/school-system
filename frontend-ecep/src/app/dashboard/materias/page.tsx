@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { api } from "@/services/api";
+import { UserRole } from "@/types/api-generated";
 import type { SeccionDTO, NivelAcademico } from "@/types/api-generated";
 
 type Seccion = SeccionDTO;
@@ -43,12 +44,13 @@ function isPrimario(s: Seccion) {
 
 export default function MateriasPage() {
   const router = useRouter();
-  const { roles } = useViewerScope();
+  const { activeRole } = useViewerScope();
   const { periodoEscolarId } = useActivePeriod();
 
-  const isDirector = roles.includes("DIRECTOR");
-  const isSecret = roles.includes("SECRETARY");
-  const isAdmin = roles.includes("ADMIN");
+  const role = activeRole ?? null;
+  const isDirector = role === UserRole.DIRECTOR;
+  const isSecret = role === UserRole.SECRETARY;
+  const isAdmin = role === UserRole.ADMIN;
   if (!isDirector && !isSecret && !isAdmin) {
     return (
       <DashboardLayout>

@@ -48,6 +48,7 @@ import type {
   EstadoActaAccidente,
   EmpleadoDTO,
 } from "@/types/api-generated";
+import { UserRole } from "@/types/api-generated";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -70,13 +71,15 @@ type ActaVM = {
 };
 
 export default function AccidentesIndexPage() {
-  const { roles, type } = useViewerScope();
+  const { activeRole } = useViewerScope();
   const { periodoEscolarId, hoyISO } = useActivePeriod();
 
-  const isDirector = type === "staff" && roles.includes("DIRECTOR");
-  const isAdmin = type === "staff" && roles.includes("ADMIN");
-  const isSecret = type === "staff" && roles.includes("SECRETARY");
-  const isTeacher = roles.includes("TEACHER");
+  const role = activeRole ?? null;
+  const isDirector = role === UserRole.DIRECTOR;
+  const isAdmin = role === UserRole.ADMIN;
+  const isSecret = role === UserRole.SECRETARY;
+  const isTeacher =
+    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
   const noAccess = !isDirector && !isAdmin && !isSecret && !isTeacher;
 
   const canCreate = isDirector || isSecret || isAdmin || isTeacher;

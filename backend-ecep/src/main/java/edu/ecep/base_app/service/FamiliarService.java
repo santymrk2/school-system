@@ -63,10 +63,11 @@ public class FamiliarService {
         }
 
         Familiar entity = mapper.toEntity(dto);
-        entity.setPersona(persona);
-        entity.setId(persona.getId());
+        entity.setPersona(persona); // dejar que @MapsId copie el id de Persona
 
-        return familiarRepository.save(entity).getId();
+        Familiar saved = familiarRepository.save(entity);
+        Long familiarId = saved.getId();
+        return familiarId != null ? familiarId : persona.getId();
     }
 
     public void update(Long id, FamiliarDTO dto) {

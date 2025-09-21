@@ -49,6 +49,7 @@ public class FamiliarService {
         return familiarRepository.findById(id).map(mapper::toDto).orElseThrow(NotFoundException::new);
     }
 
+    @Transactional
     public Long create(FamiliarDTO dto) {
         if (dto.getPersonaId() == null) {
             throw new IllegalArgumentException("Debe enviar personaId");
@@ -63,6 +64,8 @@ public class FamiliarService {
 
         Familiar entity = mapper.toEntity(dto);
         entity.setPersona(persona);
+        entity.setId(persona.getId());
+
         return familiarRepository.save(entity).getId();
     }
 

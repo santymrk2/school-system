@@ -10,10 +10,11 @@ public interface FamiliarMapper {
     @Mapping(target = "personaId", source = "persona.id")
     FamiliarDTO toDto(Familiar e);
 
-    @Mapping(target = "persona", source = "personaId")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "persona", ignore = true)
     Familiar toEntity(FamiliarDTO dto);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "persona", source = "personaId")
+    @Mapping(target = "persona", ignore = true)
     void update(@MappingTarget Familiar e, FamiliarDTO dto);
 }

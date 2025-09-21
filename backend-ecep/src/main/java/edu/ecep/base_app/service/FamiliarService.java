@@ -65,6 +65,7 @@ public class FamiliarService {
         Familiar entity = mapper.toEntity(dto);
         entity.setPersona(persona);
         entity.setId(persona.getId());
+
         return familiarRepository.save(entity).getId();
     }
 

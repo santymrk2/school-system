@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { School, Clock3 } from "lucide-react";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { toast } from "sonner";
+import { UserRole } from "@/types/api-generated";
 
 const fechaLargaFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "long",
@@ -66,10 +67,16 @@ export default function ExamenDetailPage() {
   const params = useParams<{ id: string }>();
   const examenId = Number(params?.id);
   const router = useRouter();
-  const { roles } = useViewerScope();
+  const { activeRole } = useViewerScope();
+  const role = activeRole ?? null;
 
-  const isStaff = roles.includes("ADMIN") || roles.includes("DIRECTOR") || roles.includes("SECRETARY");
-  const isTeacher = roles.includes("TEACHER");
+  const isStaff =
+    role === UserRole.ADMIN ||
+    role === UserRole.DIRECTOR ||
+    role === UserRole.SECRETARY ||
+    role === UserRole.COORDINATOR;
+  const isTeacher =
+    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
   const canEdit = isStaff || isTeacher;
 
   const [loading, setLoading] = useState(true);

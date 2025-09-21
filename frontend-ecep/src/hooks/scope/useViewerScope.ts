@@ -2,36 +2,90 @@
 
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeRole, normalizeRoles } from "@/lib/auth-roles";
+import { UserRole } from "@/types/api-generated";
 
-const ROLES_STAFF = new Set(["ADMIN", "DIRECTOR", "SECRETARY"]);
+type ViewerScopeType = "staff" | "teacher" | "family" | "student" | "guest";
+
+const STAFF_ROLES = new Set<UserRole>([
+  UserRole.ADMIN,
+  UserRole.DIRECTOR,
+  UserRole.SECRETARY,
+  UserRole.COORDINATOR,
+]);
+
+const TEACHER_ROLES = new Set<UserRole>([
+  UserRole.TEACHER,
+  UserRole.ALTERNATE,
+]);
+
+const ROLE_PRIORITY: UserRole[] = [
+  UserRole.DIRECTOR,
+  UserRole.ADMIN,
+  UserRole.SECRETARY,
+  UserRole.COORDINATOR,
+  UserRole.TEACHER,
+  UserRole.ALTERNATE,
+  UserRole.FAMILY,
+  UserRole.STUDENT,
+  UserRole.USER,
+];
+
+function resolveType(
+  role: UserRole | null,
+  available: UserRole[],
+): ViewerScopeType {
+  if (role) {
+    if (STAFF_ROLES.has(role)) return "staff";
+    if (TEACHER_ROLES.has(role)) return "teacher";
+    if (role === UserRole.FAMILY) return "family";
+    if (role === UserRole.STUDENT) return "student";
+  }
+
+  if (available.some((r) => STAFF_ROLES.has(r))) return "staff";
+  if (available.some((r) => TEACHER_ROLES.has(r))) return "teacher";
+  if (available.includes(UserRole.FAMILY)) return "family";
+  if (available.includes(UserRole.STUDENT)) return "student";
+
+  return "guest";
+}
+
+function pickActiveRole(
+  selected: UserRole | null,
+  available: UserRole[],
+): UserRole | null {
+  if (selected && available.includes(selected)) {
+    return selected;
+  }
+
+  for (const role of ROLE_PRIORITY) {
+    if (available.includes(role)) {
+      return role;
+    }
+  }
+
+  return available[0] ?? null;
+}
 
 export function useViewerScope() {
-  const { user } = useAuth();
-  const roles = (user?.roles ?? []).map((r: any) => String(r).toUpperCase());
+  const { user, selectedRole } = useAuth();
 
   return useMemo(() => {
-    const isStaff = roles.some((r) => ROLES_STAFF.has(r));
-    const isTeacher = roles.includes("TEACHER");
-    const isFamily = roles.includes("FAMILY");
-    const isStudent = roles.includes("STUDENT");
+    const availableRoles = normalizeRoles(user?.roles);
+    const normalizedSelected = selectedRole
+      ? normalizeRole(selectedRole)
+      : null;
+    const activeRole = pickActiveRole(normalizedSelected, availableRoles);
 
-    // prioridad: si es staff, lo tratamos como staff (aunque también sea teacher)
-    const type: "staff" | "teacher" | "family" | "student" | "guest" = isStaff
-      ? "staff"
-      : isTeacher
-        ? "teacher"
-        : isFamily
-          ? "family"
-          : isStudent
-            ? "student"
-            : "guest";
+    const type = resolveType(activeRole, availableRoles);
 
     return {
       type,
-      roles,
-      // personaId = Personal.id para teacher, Familiar.id para family (según tu backend)
+      roles: availableRoles.map((r) => r.toString()),
+      activeRole,
+      availableRoles,
       personaId: user?.personaId ?? null,
       user,
     };
-  }, [roles, user]);
+  }, [selectedRole, user]);
 }

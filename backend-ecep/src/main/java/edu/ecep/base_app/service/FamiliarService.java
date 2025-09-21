@@ -1,11 +1,13 @@
 package edu.ecep.base_app.service;
 
 import edu.ecep.base_app.domain.Familiar;
+import edu.ecep.base_app.domain.Persona;
 import edu.ecep.base_app.dtos.FamiliarDTO;
 import edu.ecep.base_app.mappers.FamiliarMapper;
 import edu.ecep.base_app.repos.AlumnoFamiliarRepository;
 import edu.ecep.base_app.repos.AspiranteFamiliarRepository;
 import edu.ecep.base_app.repos.FamiliarRepository;
+import edu.ecep.base_app.repos.PersonaRepository;
 import edu.ecep.base_app.util.NotFoundException;
 import java.util.List;
 
@@ -22,17 +24,20 @@ public class FamiliarService {
 
     private final AlumnoFamiliarRepository alumnoFamiliarRepository;
     private final AspiranteFamiliarRepository aspiranteFamiliarRepository;
+    private final PersonaRepository personaRepository;
     private final FamiliarMapper mapper;
 
     public FamiliarService(
             FamiliarRepository familiarRepository,
             AlumnoFamiliarRepository alumnoFamiliarRepository,
             AspiranteFamiliarRepository aspiranteFamiliarRepository,
+            PersonaRepository personaRepository,
             FamiliarMapper mapper
     ) {
         this.familiarRepository = familiarRepository;
         this.alumnoFamiliarRepository = alumnoFamiliarRepository;
         this.aspiranteFamiliarRepository = aspiranteFamiliarRepository;
+        this.personaRepository = personaRepository;
         this.mapper = mapper;
     }
 
@@ -45,11 +50,33 @@ public class FamiliarService {
     }
 
     public Long create(FamiliarDTO dto) {
-        return familiarRepository.save(mapper.toEntity(dto)).getId();
+        if (dto.getPersonaId() == null) {
+            throw new IllegalArgumentException("Debe enviar personaId");
+        }
+
+        Persona persona = personaRepository.findById(dto.getPersonaId())
+                .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
+
+        if (familiarRepository.existsByPersonaId(persona.getId())) {
+            throw new IllegalArgumentException("La persona ya tiene rol Familiar");
+        }
+
+        Familiar entity = mapper.toEntity(dto);
+        entity.setPersona(persona);
+        return familiarRepository.save(entity).getId();
     }
 
     public void update(Long id, FamiliarDTO dto) {
         Familiar entity = familiarRepository.findById(id).orElseThrow(NotFoundException::new);
+        if (dto.getPersonaId() != null) {
+            Long currentPersonaId = entity.getPersona() != null ? entity.getPersona().getId() : null;
+            if (!dto.getPersonaId().equals(currentPersonaId)) {
+                throw new IllegalArgumentException(
+                        "No se puede cambiar la persona de un Familiar. Elimine y cree uno nuevo con el personaId correcto."
+                );
+            }
+        }
+
         mapper.update(entity, dto);
         familiarRepository.save(entity);
     }

@@ -239,15 +239,23 @@ export default function AccidentesIndexPage() {
               .catch(() => []),
           ),
         );
-        const nombreSeccion = (s: SeccionDTO) =>
-          `${s.gradoSala ?? ""} ${s.division ?? ""} • ${s.turno ?? ""}`.trim() ||
-          `Sección #${s.id}`;
+        const nombreSeccion = (s: SeccionDTO) => {
+          const base = `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim();
+          const turno = String(s.turno ?? "").trim();
+          if (base && turno) return `${base} (${turno})`;
+          if (base) return base;
+          return `Sección #${s.id}`;
+        };
         // asignar
         secciones.forEach((s, idx) => {
-          const etiqueta = nombreSeccion(s);
-          for (const au of chunks[idx] as any[]) {
+          const roster = Array.isArray(chunks[idx]) ? chunks[idx] : [];
+          for (const au of roster as any[]) {
             const id = au.alumnoId ?? au.id;
-            if (id != null && !map.has(id)) map.set(id, etiqueta);
+            if (id == null || map.has(id)) continue;
+            const etiqueta =
+              (au.seccionNombre as string | undefined | null)?.trim() ||
+              nombreSeccion(s);
+            map.set(id, etiqueta);
           }
         });
         if (alive) setAlumnoSeccion(map);

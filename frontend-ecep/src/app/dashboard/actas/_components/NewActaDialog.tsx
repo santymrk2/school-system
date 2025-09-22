@@ -187,7 +187,11 @@ export default function NewActaDialog({
               ",",
             );
           const seccion =
-            a.seccion ?? a.seccionActual?.nombre ?? a.gradoSala ?? null;
+            a.seccionNombre ??
+            a.seccion ??
+            a.seccionActual?.nombre ??
+            a.gradoSala ??
+            null;
           return {
             id,
             display: `${full} — ${seccion ?? "Sin sección"}`,

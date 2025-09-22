@@ -36,10 +36,34 @@ const ensureWsEndpoint = (value: string): string => {
   }
 };
 
+const isLoopbackHostname = (hostname: string): boolean => {
+  const normalized = hostname.replace(/\.$/, "").toLowerCase();
+
+  if (normalized === "localhost" || normalized === "::1") return true;
+
+  if (/^127(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(normalized)) return true;
+
+  return false;
+};
+
 const alignProtocolWithPage = (value: string): string => {
   if (!value || typeof window === "undefined") return value;
 
   if (window.location.protocol !== "https:") return value;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    const protocol = url.protocol.toLowerCase();
+
+    if (
+      (protocol === "http:" || protocol === "ws:") &&
+      isLoopbackHostname(url.hostname)
+    ) {
+      return value;
+    }
+  } catch (_error) {
+    // Ignoramos errores al parsear la URL; en esos casos aplicamos la lógica de fallback.
+  }
 
   if (/^http:\/\//i.test(value)) {
     return value.replace(/^http:/i, "https:");

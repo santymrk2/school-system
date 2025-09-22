@@ -124,45 +124,26 @@ export default function SeccionHistorialPage() {
   const [historial, setHistorial] = useState<AsistenciaDiaDTO[]>([]);
   const [resumen, setResumen] = useState<AsistenciaAlumnoResumenDTO[]>([]);
 
-  if (isAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — El perfil de Administración no tiene acceso a Asistencia.
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!isTeacher && !isStaff) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isTeacher && scopedLoading) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <LoadingState label="Verificando acceso a la sección…" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isTeacher && !teacherHasAccess) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — Esta sección no pertenece a tus asignaciones.
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const accessStatus = useMemo(
+    () => {
+      if (isAdmin) return "admin" as const;
+      if (!isTeacher && !isStaff) return "forbidden" as const;
+      if (isTeacher && scopedLoading) return "checking" as const;
+      if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
+      return "ok" as const;
+    },
+    [
+      isAdmin,
+      isTeacher,
+      isStaff,
+      scopedLoading,
+      teacherHasAccess,
+    ],
+  );
 
   useEffect(() => {
+    if (accessStatus !== "ok") return;
+
     if (!trimestresDelPeriodo.length) {
       setSelectedTrimestreId("");
       return;
@@ -179,9 +160,11 @@ export default function SeccionHistorialPage() {
           : String(trimestresDelPeriodo[0].id);
       return active;
     });
-  }, [trimestresDelPeriodo, trimestreActivo]);
+  }, [accessStatus, trimestresDelPeriodo, trimestreActivo]);
 
   useEffect(() => {
+    if (accessStatus !== "ok") return;
+
     (async () => {
       try {
         setLoadingSec(true);
@@ -199,7 +182,7 @@ export default function SeccionHistorialPage() {
         setLoadingSec(false);
       }
     })();
-  }, [seccionId]);
+  }, [accessStatus, seccionId]);
 
   const loadAll = useCallback(
     async (rangeFrom: string, rangeTo: string) => {
@@ -230,6 +213,8 @@ export default function SeccionHistorialPage() {
   );
 
   useEffect(() => {
+    if (accessStatus !== "ok") return;
+
     if (!Number.isFinite(seccionId)) return;
     if (!selectedTrimestreId) {
       setLoading(false);
@@ -249,7 +234,46 @@ export default function SeccionHistorialPage() {
     selectedRange?.from,
     selectedRange?.to,
     loadAll,
+    accessStatus,
   ]);
+
+  if (accessStatus === "admin") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Asistencia.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "forbidden") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "checking") {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <LoadingState label="Verificando acceso a la sección…" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "notAssigned") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — Esta sección no pertenece a tus asignaciones.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

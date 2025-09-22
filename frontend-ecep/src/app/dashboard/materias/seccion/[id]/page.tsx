@@ -116,45 +116,22 @@ export default function MateriasSeccionPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  if (isAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — El perfil de Administración no tiene acceso a Materias.
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!isStaff && !isTeacher) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — No tenés acceso a esta sección.
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isTeacher && scopedLoading) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <LoadingState label="Verificando acceso a la sección…" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isTeacher && !teacherHasAccess) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — Esta sección no pertenece a tus asignaciones.
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const accessStatus = useMemo(
+    () => {
+      if (isAdmin) return "admin" as const;
+      if (!isStaff && !isTeacher) return "forbidden" as const;
+      if (isTeacher && scopedLoading) return "checking" as const;
+      if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
+      return "ok" as const;
+    },
+    [
+      isAdmin,
+      isStaff,
+      isTeacher,
+      scopedLoading,
+      teacherHasAccess,
+    ],
+  );
 
   const materiasById = useMemo(
     () => new Map(materias.map((m) => [m.id, m])),
@@ -183,6 +160,8 @@ export default function MateriasSeccionPage() {
   const turnoBadgeLabel = formatTurnoLabel(seccion?.turno);
 
   useEffect(() => {
+    if (accessStatus !== "ok") return;
+
     let alive = true;
     (async () => {
       try {
@@ -269,7 +248,47 @@ export default function MateriasSeccionPage() {
     return () => {
       alive = false;
     };
-  }, [seccionId, refreshKey]);
+  }, [accessStatus, seccionId, refreshKey]);
+
+  if (accessStatus === "admin") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Materias.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "forbidden") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — No tenés acceso a esta sección.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "checking") {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <LoadingState label="Verificando acceso a la sección…" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "notAssigned") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — Esta sección no pertenece a tus asignaciones.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const titularVigente = (smId: number) =>
     (asignacionesBySm.get(smId) ?? []).find(

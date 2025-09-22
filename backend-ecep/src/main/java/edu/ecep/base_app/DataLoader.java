@@ -381,126 +381,87 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         }
 
         for (SeccionData data : datosSecciones2025) {
-            if (data.seccion().getNivel() == NivelAcademico.PRIMARIO) {
-                crearEvaluacionConResultados(data, t1_2025, "Lengua", LocalDate.of(2025, 4, 10), 0.35);
-                crearEvaluacionConResultados(data, t1_2025, "Matemática", LocalDate.of(2025, 5, 8), 0.35);
-                asignarCalificaciones(data, t1_2025, List.of(
-                        calificacion("Lengua", 8.5, CalificacionConceptual.MUY_BUENO, "Lectura fluida y participación."),
-                        calificacion("Matemática", 8.0, CalificacionConceptual.BUENO, "Resuelve situaciones problemáticas."),
-                        calificacion("Ciencias Naturales", 8.7, CalificacionConceptual.MUY_BUENO, "Indaga y registra observaciones."),
-                        calificacion("Ciencias Sociales", 7.8, CalificacionConceptual.BUENO, "Interpreta hechos históricos.")
-                ));
-                crearEvaluacionConResultados(data, t2_2025, "Ciencias Naturales", LocalDate.of(2025, 7, 4), 0.30);
-                crearEvaluacionConResultados(data, t2_2025, "Inglés", LocalDate.of(2025, 7, 18), 0.20);
-                crearEvaluacionConResultados(data, t2_2025, "Educación Física", LocalDate.of(2025, 7, 25), 0.15);
-                crearEvaluacionConResultados(data, t2_2025, "Robótica Educativa", LocalDate.of(2025, 7, 30), 0.20);
-                asignarCalificaciones(data, t2_2025, List.of(
-                        calificacion("Ciencias Naturales", 8.6, CalificacionConceptual.MUY_BUENO, "Aplica método científico en equipo."),
-                        calificacion("Inglés", 8.1, CalificacionConceptual.BUENO, "Comprende consignas y dialoga."),
-                        calificacion("Educación Física", 9.0, CalificacionConceptual.EXCELENTE, "Demuestra coordinación y respeto."),
-                        calificacion("Robótica Educativa", 8.4, CalificacionConceptual.MUY_BUENO, "Programa secuencias con sensores.")
-                ));
-                crearEvaluacionConResultados(data, t3_2025, "Música", LocalDate.of(2025, 10, 7), 0.20);
-                crearEvaluacionConResultados(data, t3_2025, "Arte y Tecnología", LocalDate.of(2025, 10, 21), 0.20);
-                crearEvaluacionConResultados(data, t3_2025, "Teatro Integrador", LocalDate.of(2025, 10, 30), 0.15);
-                crearEvaluacionConResultados(data, t3_2025, "Proyecto Integrador", LocalDate.of(2025, 11, 12), 0.25);
-                asignarCalificaciones(data, t3_2025, List.of(
-                        calificacion("Música", 8.9, CalificacionConceptual.MUY_BUENO, "Interpreta ritmos y melodías."),
-                        calificacion("Arte y Tecnología", 8.5, CalificacionConceptual.MUY_BUENO, "Integra herramientas digitales."),
-                        calificacion("Teatro Integrador", 9.2, CalificacionConceptual.EXCELENTE, "Construye escenas colaborativas."),
-                        calificacion("Proyecto Integrador", 8.7, CalificacionConceptual.MUY_BUENO, "Presenta proyectos interdisciplinarios.")
-                ));
-            } else {
-                crearEvaluacionConResultados(data, t1_2025, "Lenguaje Oral", LocalDate.of(2025, 4, 5), 0.20);
-                crearEvaluacionConResultados(data, t1_2025, "Juego Matemático", LocalDate.of(2025, 4, 18), 0.20);
-                asignarCalificaciones(data, t1_2025, List.of(
-                        calificacion("Lenguaje Oral", null, CalificacionConceptual.MUY_BUENO, "Se expresa con vocabulario variado."),
-                        calificacion("Juego Matemático", null, CalificacionConceptual.MUY_BUENO, "Reconoce cantidades y patrones."),
-                        calificacion("Expresión Corporal", null, CalificacionConceptual.EXCELENTE, "Disfruta y propone movimientos creativos.")
-                ));
-                crearEvaluacionConResultados(data, t2_2025, "Música y Arte", LocalDate.of(2025, 7, 2), 0.20);
-                crearEvaluacionConResultados(data, t2_2025, "Psicomotricidad", LocalDate.of(2025, 7, 9), 0.15);
-                asignarCalificaciones(data, t2_2025, List.of(
-                        calificacion("Música y Arte", null, CalificacionConceptual.MUY_BUENO, "Explora sonidos y ritmos."),
-                        calificacion("Psicomotricidad", null, CalificacionConceptual.EXCELENTE, "Coordina movimientos finos y gruesos.")
-                ));
-                crearEvaluacionConResultados(data, t3_2025, "Vida Cotidiana", LocalDate.of(2025, 10, 15), 0.15);
-                crearEvaluacionConResultados(data, t3_2025, "Exploración Digital", LocalDate.of(2025, 10, 22), 0.15);
-                asignarCalificaciones(data, t3_2025, List.of(
-                        calificacion("Vida Cotidiana", null, CalificacionConceptual.MUY_BUENO, "Organiza materiales con autonomía."),
-                        calificacion("Exploración Digital", null, CalificacionConceptual.MUY_BUENO, "Manipula dispositivos con cuidado."),
-                        calificacion("Expresión Corporal", null, CalificacionConceptual.MUY_BUENO, "Crea secuencias expresivas junto al grupo.")
-                ));
+            if (data.seccion().getNivel() != NivelAcademico.PRIMARIO) {
+                continue;
             }
+
+            crearEvaluacionConResultados(data, t1_2025, "Lengua", LocalDate.of(2025, 4, 10), 0.35);
+            crearEvaluacionConResultados(data, t1_2025, "Matemática", LocalDate.of(2025, 5, 8), 0.35);
+            asignarCalificaciones(data, t1_2025, List.of(
+                    calificacion("Lengua", 8.5, CalificacionConceptual.MUY_BUENO, "Lectura fluida y participación."),
+                    calificacion("Matemática", 8.0, CalificacionConceptual.BUENO, "Resuelve situaciones problemáticas."),
+                    calificacion("Ciencias Naturales", 8.7, CalificacionConceptual.MUY_BUENO, "Indaga y registra observaciones."),
+                    calificacion("Ciencias Sociales", 7.8, CalificacionConceptual.BUENO, "Interpreta hechos históricos.")
+            ));
+
+            crearEvaluacionConResultados(data, t2_2025, "Ciencias Naturales", LocalDate.of(2025, 7, 4), 0.35);
+            crearEvaluacionConResultados(data, t2_2025, "Inglés", LocalDate.of(2025, 7, 18), 0.25);
+            crearEvaluacionConResultados(data, t2_2025, "Educación Física", LocalDate.of(2025, 7, 25), 0.20);
+            asignarCalificaciones(data, t2_2025, List.of(
+                    calificacion("Ciencias Naturales", 8.6, CalificacionConceptual.MUY_BUENO, "Aplica método científico en equipo."),
+                    calificacion("Inglés", 8.1, CalificacionConceptual.BUENO, "Comprende consignas y dialoga."),
+                    calificacion("Educación Física", 9.0, CalificacionConceptual.EXCELENTE, "Demuestra coordinación y respeto.")
+            ));
+
+            crearEvaluacionConResultados(data, t3_2025, "Lengua", LocalDate.of(2025, 10, 7), 0.30);
+            crearEvaluacionConResultados(data, t3_2025, "Ciencias Sociales", LocalDate.of(2025, 10, 21), 0.30);
+            crearEvaluacionConResultados(data, t3_2025, "Música", LocalDate.of(2025, 11, 5), 0.20);
+            asignarCalificaciones(data, t3_2025, List.of(
+                    calificacion("Lengua", 8.8, CalificacionConceptual.MUY_BUENO, "Produce textos narrativos."),
+                    calificacion("Ciencias Sociales", 8.0, CalificacionConceptual.BUENO, "Analiza procesos comunitarios."),
+                    calificacion("Música", 8.9, CalificacionConceptual.MUY_BUENO, "Interpreta ritmos y melodías.")
+            ));
         }
 
         for (SeccionData data : datosSecciones2024) {
-            if (data.seccion().getNivel() == NivelAcademico.PRIMARIO) {
-                crearEvaluacionConResultados(data, t1_2024, "Lengua", LocalDate.of(2024, 4, 15), 0.30);
-                asignarCalificaciones(data, t1_2024, List.of(
-                        calificacion("Lengua", 7.5, CalificacionConceptual.BUENO, "Consolida procesos de lectoescritura.")
-                ));
-                crearEvaluacionConResultados(data, t2_2024, "Matemática", LocalDate.of(2024, 7, 4), 0.25);
-                crearEvaluacionConResultados(data, t2_2024, "Inglés", LocalDate.of(2024, 7, 18), 0.20);
-                asignarCalificaciones(data, t2_2024, List.of(
-                        calificacion("Matemática", 7.8, CalificacionConceptual.BUENO, "Aplica estrategias de cálculo."),
-                        calificacion("Inglés", 7.9, CalificacionConceptual.BUENO, "Comprende instrucciones simples."),
-                        calificacion("Educación Física", 8.4, CalificacionConceptual.MUY_BUENO, "Participa activamente en los juegos.")
-                ));
-                crearEvaluacionConResultados(data, t3_2024, "Proyecto Integrador", LocalDate.of(2024, 10, 9), 0.30);
-                asignarCalificaciones(data, t3_2024, List.of(
-                        calificacion("Arte y Tecnología", 8.2, CalificacionConceptual.MUY_BUENO, "Integra materiales reciclados."),
-                        calificacion("Proyecto Integrador", 8.4, CalificacionConceptual.MUY_BUENO, "Expone conclusiones con claridad."),
-                        calificacion("Robótica Educativa", 7.9, CalificacionConceptual.BUENO, "Resuelve desafíos de programación.")
-                ));
-            } else {
-                crearEvaluacionConResultados(data, t1_2024, "Lenguaje Oral", LocalDate.of(2024, 4, 12), 0.20);
-                asignarCalificaciones(data, t1_2024, List.of(
-                        calificacion("Lenguaje Oral", null, CalificacionConceptual.MUY_BUENO, "Relata experiencias cotidianas.")
-                ));
-                crearEvaluacionConResultados(data, t2_2024, "Música y Arte", LocalDate.of(2024, 7, 2), 0.20);
-                asignarCalificaciones(data, t2_2024, List.of(
-                        calificacion("Música y Arte", null, CalificacionConceptual.MUY_BUENO, "Reconoce sonidos y ritmos."),
-                        calificacion("Psicomotricidad", null, CalificacionConceptual.MUY_BUENO, "Coordina movimientos en circuitos.")
-                ));
-                crearEvaluacionConResultados(data, t3_2024, "Vida Cotidiana", LocalDate.of(2024, 10, 4), 0.15);
-                asignarCalificaciones(data, t3_2024, List.of(
-                        calificacion("Vida Cotidiana", null, CalificacionConceptual.MUY_BUENO, "Colabora en rutinas de higiene."),
-                        calificacion("Exploración Digital", null, CalificacionConceptual.MUY_BUENO, "Utiliza recursos tecnológicos con apoyo.")
-                ));
+            if (data.seccion().getNivel() != NivelAcademico.PRIMARIO) {
+                continue;
             }
+
+            crearEvaluacionConResultados(data, t1_2024, "Lengua", LocalDate.of(2024, 4, 15), 0.30);
+            asignarCalificaciones(data, t1_2024, List.of(
+                    calificacion("Lengua", 7.5, CalificacionConceptual.BUENO, "Consolida procesos de lectoescritura.")
+            ));
+
+            crearEvaluacionConResultados(data, t2_2024, "Matemática", LocalDate.of(2024, 7, 4), 0.30);
+            crearEvaluacionConResultados(data, t2_2024, "Inglés", LocalDate.of(2024, 7, 18), 0.20);
+            asignarCalificaciones(data, t2_2024, List.of(
+                    calificacion("Matemática", 7.8, CalificacionConceptual.BUENO, "Aplica estrategias de cálculo."),
+                    calificacion("Inglés", 7.9, CalificacionConceptual.BUENO, "Comprende instrucciones simples."),
+                    calificacion("Educación Física", 8.4, CalificacionConceptual.MUY_BUENO, "Participa activamente en los juegos.")
+            ));
+
+            crearEvaluacionConResultados(data, t3_2024, "Ciencias Naturales", LocalDate.of(2024, 10, 9), 0.30);
+            crearEvaluacionConResultados(data, t3_2024, "Ciencias Sociales", LocalDate.of(2024, 10, 23), 0.25);
+            crearEvaluacionConResultados(data, t3_2024, "Música", LocalDate.of(2024, 11, 6), 0.20);
+            asignarCalificaciones(data, t3_2024, List.of(
+                    calificacion("Ciencias Naturales", 8.2, CalificacionConceptual.MUY_BUENO, "Integra observaciones en informes."),
+                    calificacion("Ciencias Sociales", 7.9, CalificacionConceptual.BUENO, "Relaciona hechos históricos con la comunidad."),
+                    calificacion("Música", 8.1, CalificacionConceptual.BUENO, "Participa en ensambles vocales.")
+            ));
         }
 
         for (SeccionData data : datosSecciones2023) {
-            if (data.seccion().getNivel() == NivelAcademico.PRIMARIO) {
-                crearEvaluacionConResultados(data, t2_2023, "Matemática", LocalDate.of(2023, 7, 6), 0.25);
-                crearEvaluacionConResultados(data, t2_2023, "Robótica Educativa", LocalDate.of(2023, 7, 20), 0.20);
-                asignarCalificaciones(data, t2_2023, List.of(
-                        calificacion("Matemática", 7.6, CalificacionConceptual.BUENO, "Refuerza procedimientos de cálculo."),
-                        calificacion("Robótica Educativa", 7.8, CalificacionConceptual.BUENO, "Integra sensores en proyectos."),
-                        calificacion("Educación Física", 8.3, CalificacionConceptual.MUY_BUENO, "Muestra compromiso en los entrenamientos.")
-                ));
-                crearEvaluacionConResultados(data, t3_2023, "Proyecto Integrador", LocalDate.of(2023, 10, 11), 0.30);
-                crearEvaluacionConResultados(data, t3_2023, "Teatro Integrador", LocalDate.of(2023, 10, 24), 0.20);
-                asignarCalificaciones(data, t3_2023, List.of(
-                        calificacion("Proyecto Integrador", 8.1, CalificacionConceptual.MUY_BUENO, "Presenta soluciones creativas."),
-                        calificacion("Teatro Integrador", 8.8, CalificacionConceptual.MUY_BUENO, "Expresa emociones en escena."),
-                        calificacion("Música", 8.4, CalificacionConceptual.MUY_BUENO, "Mantiene el pulso grupal.")
-                ));
-            } else {
-                crearEvaluacionConResultados(data, t2_2023, "Música y Arte", LocalDate.of(2023, 7, 5), 0.20);
-                asignarCalificaciones(data, t2_2023, List.of(
-                        calificacion("Música y Arte", null, CalificacionConceptual.MUY_BUENO, "Canta canciones conocidas."),
-                        calificacion("Psicomotricidad", null, CalificacionConceptual.MUY_BUENO, "Participa de circuitos motrices.")
-                ));
-                crearEvaluacionConResultados(data, t3_2023, "Vida Cotidiana", LocalDate.of(2023, 10, 5), 0.15);
-                crearEvaluacionConResultados(data, t3_2023, "Exploración Digital", LocalDate.of(2023, 10, 18), 0.15);
-                asignarCalificaciones(data, t3_2023, List.of(
-                        calificacion("Vida Cotidiana", null, CalificacionConceptual.BUENO, "Adquiere hábitos de higiene."),
-                        calificacion("Exploración Digital", null, CalificacionConceptual.MUY_BUENO, "Reconoce iconos e interactúa."),
-                        calificacion("Lenguaje Oral", null, CalificacionConceptual.MUY_BUENO, "Comparte relatos familiares.")
-                ));
+            if (data.seccion().getNivel() != NivelAcademico.PRIMARIO) {
+                continue;
             }
+
+            crearEvaluacionConResultados(data, t2_2023, "Matemática", LocalDate.of(2023, 7, 6), 0.30);
+            crearEvaluacionConResultados(data, t2_2023, "Ciencias Naturales", LocalDate.of(2023, 7, 20), 0.25);
+            asignarCalificaciones(data, t2_2023, List.of(
+                    calificacion("Matemática", 7.6, CalificacionConceptual.BUENO, "Refuerza procedimientos de cálculo."),
+                    calificacion("Ciencias Naturales", 7.8, CalificacionConceptual.BUENO, "Integra observaciones científicas."),
+                    calificacion("Educación Física", 8.3, CalificacionConceptual.MUY_BUENO, "Muestra compromiso en los entrenamientos.")
+            ));
+
+            crearEvaluacionConResultados(data, t3_2023, "Lengua", LocalDate.of(2023, 10, 11), 0.30);
+            crearEvaluacionConResultados(data, t3_2023, "Ciencias Sociales", LocalDate.of(2023, 10, 24), 0.25);
+            crearEvaluacionConResultados(data, t3_2023, "Música", LocalDate.of(2023, 11, 7), 0.20);
+            asignarCalificaciones(data, t3_2023, List.of(
+                    calificacion("Lengua", 8.1, CalificacionConceptual.MUY_BUENO, "Presenta producciones orales con claridad."),
+                    calificacion("Ciencias Sociales", 8.0, CalificacionConceptual.BUENO, "Analiza procesos sociales relevantes."),
+                    calificacion("Música", 8.4, CalificacionConceptual.MUY_BUENO, "Mantiene el pulso grupal.")
+            ));
         }
 
         generarAsistenciasUltimos30Dias(datosSecciones2025.stream().map(SeccionData::seccion).toList(), t1_2025, t2_2025, t3_2025);
@@ -778,24 +739,12 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                 materia("Ciencias Sociales", titularKey),
                 materia("Inglés", "DOC_INGLES"),
                 materia("Educación Física", "DOC_EDFIS"),
-                materia("Música", "DOC_MUSICA"),
-                materia("Arte y Tecnología", "DOC_TECNO"),
-                materia("Robótica Educativa", "DOC_APOYO_TIC"),
-                materia("Teatro Integrador", "DOC_TEATRO"),
-                materia("Proyecto Integrador", "DOC_TUTOR")
+                materia("Música", "DOC_MUSICA")
         );
     }
 
     private List<MateriaAssignment> planInicial(String titularKey) {
-        return List.of(
-                materia("Lenguaje Oral", titularKey),
-                materia("Juego Matemático", titularKey),
-                materia("Expresión Corporal", titularKey),
-                materia("Música y Arte", "DOC_ARTES"),
-                materia("Vida Cotidiana", "DOC_TECNO"),
-                materia("Psicomotricidad", "DOC_PSICOMOTRICIDAD"),
-                materia("Exploración Digital", "DOC_APOYO_TIC")
-        );
+        return List.of();
     }
 
     private MateriaAssignment materia(String nombre, String docenteKey) {

@@ -8,31 +8,48 @@ import { useAuth } from "./useAuth";
 import { api } from "@/services/api";
 import { BASE as HTTP_BASE } from "@/services/api/http";
 
-const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+const sanitizeBaseUrl = (value?: string | null) => {
+  if (!value) return "";
 
-const removeApiSuffix = (value: string) => value.replace(/\/api$/i, "");
+  return value.trim().replace(/\/+$/, "").replace(/\/api$/i, "");
+};
 
 const ensureWsEndpoint = (value: string): string => {
   if (!value) return "";
 
-  try {
-    const url = new URL(value);
-    const cleanPath = url.pathname.replace(/\/+$/, "");
-    const targetPath = cleanPath.toLowerCase().endsWith("/ws")
+  const appendWs = (path: string) => {
+    const cleanPath = path.replace(/\/+$/, "");
+    return cleanPath.toLowerCase().endsWith("/ws")
       ? cleanPath || "/ws"
       : `${cleanPath}/ws`;
-    url.pathname = targetPath;
+  };
+
+  try {
+    const url = new URL(value);
+    url.pathname = appendWs(url.pathname);
     return url.toString();
   } catch (_error) {
     const match = value.match(/^([^?#]+)(.*)$/);
     const pathPart = match?.[1] ?? value;
     const suffix = match?.[2] ?? "";
-    const cleanPath = stripTrailingSlash(pathPart);
-    const targetPath = cleanPath.toLowerCase().endsWith("/ws")
-      ? cleanPath
-      : `${cleanPath}/ws`;
-    return `${targetPath}${suffix}`;
+    return `${appendWs(pathPart)}${suffix}`;
   }
+};
+
+const alignProtocolWithPage = (value: string): string => {
+  if (!value || typeof window === "undefined") return value;
+
+  if (window.location.protocol !== "https:") return value;
+
+  if (/^http:\/\//i.test(value)) {
+    return value.replace(/^http:/i, "https:");
+  }
+
+  if (/^ws:\/\//i.test(value)) {
+    return value.replace(/^ws:/i, "wss:");
+  }
+
+  return value;
 };
 
 const buildSocketUrl = (endpoint: string, rawToken?: string | null): string => {
@@ -54,18 +71,12 @@ const buildSocketUrl = (endpoint: string, rawToken?: string | null): string => {
 };
 
 const resolveSocketBase = () => {
-  const explicitWs = stripTrailingSlash(
-    (process.env.NEXT_PUBLIC_SOCKET_URL || "").trim(),
-  );
-  if (explicitWs) return removeApiSuffix(explicitWs);
+  const base =
+    sanitizeBaseUrl(process.env.NEXT_PUBLIC_SOCKET_URL) ||
+    sanitizeBaseUrl(process.env.NEXT_PUBLIC_API_URL) ||
+    sanitizeBaseUrl(HTTP_BASE);
 
-  const explicitApi = stripTrailingSlash(
-    (process.env.NEXT_PUBLIC_API_URL || "").trim(),
-  );
-  if (explicitApi) return removeApiSuffix(explicitApi);
-
-  const httpBase = stripTrailingSlash((HTTP_BASE || "").trim());
-  if (httpBase) return removeApiSuffix(httpBase);
+  if (base) return base;
 
   if (typeof window !== "undefined") {
     return `${window.location.protocol}//${window.location.host}`;
@@ -122,10 +133,8 @@ export default function useChatSocket() {
     setConnectionStatus("connecting");
     console.log("🔌 Intentando conectar WebSocket...");
 
-    const socketBaseRaw = resolveSocketBase();
-    const normalizedBase = stripTrailingSlash(socketBaseRaw);
-
-    if (!normalizedBase) {
+    const socketBase = resolveSocketBase();
+    if (!socketBase) {
       console.warn(
         "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
       );
@@ -135,7 +144,7 @@ export default function useChatSocket() {
     }
 
     const token = getAuthToken()?.trim() || null;
-    const socketEndpoint = ensureWsEndpoint(normalizedBase);
+    const socketEndpoint = ensureWsEndpoint(alignProtocolWithPage(socketBase));
 
     if (!socketEndpoint) {
       console.warn(

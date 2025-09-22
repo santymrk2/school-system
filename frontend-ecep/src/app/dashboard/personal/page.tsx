@@ -1994,7 +1994,8 @@ export default function PersonalPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestión de personal</h1>
           <p className="text-muted-foreground">
             Administra la información del personal docente y no docente, registra nuevas altas y
-            realiza el seguimiento de licencias.
+            realiza el seguimiento de licencias. Consultá los indicadores generales desde la
+            pestaña Reportes &gt; Licencias.
           </p>
         </div>
 

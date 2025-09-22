@@ -12,6 +12,47 @@ const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
 const removeApiSuffix = (value: string) => value.replace(/\/api$/i, "");
 
+const ensureWsEndpoint = (value: string): string => {
+  if (!value) return "";
+
+  try {
+    const url = new URL(value);
+    const cleanPath = url.pathname.replace(/\/+$/, "");
+    const targetPath = cleanPath.toLowerCase().endsWith("/ws")
+      ? cleanPath || "/ws"
+      : `${cleanPath}/ws`;
+    url.pathname = targetPath;
+    return url.toString();
+  } catch (_error) {
+    const match = value.match(/^([^?#]+)(.*)$/);
+    const pathPart = match?.[1] ?? value;
+    const suffix = match?.[2] ?? "";
+    const cleanPath = stripTrailingSlash(pathPart);
+    const targetPath = cleanPath.toLowerCase().endsWith("/ws")
+      ? cleanPath
+      : `${cleanPath}/ws`;
+    return `${targetPath}${suffix}`;
+  }
+};
+
+const buildSocketUrl = (endpoint: string, rawToken?: string | null): string => {
+  const token = rawToken?.trim();
+  if (!token) return endpoint;
+
+  try {
+    const url = new URL(endpoint);
+    url.searchParams.set("token", token);
+    return url.toString();
+  } catch (_error) {
+    const hashIndex = endpoint.indexOf("#");
+    const hasHash = hashIndex >= 0;
+    const base = hasHash ? endpoint.slice(0, hashIndex) : endpoint;
+    const hash = hasHash ? endpoint.slice(hashIndex) : "";
+    const separator = base.includes("?") ? "&" : "?";
+    return `${base}${separator}token=${encodeURIComponent(token)}${hash}`;
+  }
+};
+
 const resolveSocketBase = () => {
   const explicitWs = stripTrailingSlash(
     (process.env.NEXT_PUBLIC_SOCKET_URL || "").trim(),
@@ -84,7 +125,6 @@ export default function useChatSocket() {
     const socketBaseRaw = resolveSocketBase();
     const normalizedBase = stripTrailingSlash(socketBaseRaw);
 
-
     if (!normalizedBase) {
       console.warn(
         "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
@@ -94,13 +134,19 @@ export default function useChatSocket() {
       return;
     }
 
-    const token = getAuthToken();
+    const token = getAuthToken()?.trim() || null;
+    const socketEndpoint = ensureWsEndpoint(normalizedBase);
 
+    if (!socketEndpoint) {
+      console.warn(
+        "[useChatSocket] La URL base calculada para el socket es inválida.",
+      );
+      setConnected(false);
+      setConnectionStatus("disconnected");
+      return;
+    }
 
-    const socketUrl =
-      token && token.trim()
-        ? `${normalizedBase}/ws?token=${encodeURIComponent(token)}`
-        : `${normalizedBase}/ws`;
+    const socketUrl = buildSocketUrl(socketEndpoint, token);
 
     let socket: any;
     try {

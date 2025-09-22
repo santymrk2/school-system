@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import java.time.DayOfWeek;
 import java.util.function.Consumer;
@@ -47,6 +48,11 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     private final AsignacionDocenteSeccionRepository asigSecRepo;
     private final AsignacionDocenteMateriaRepository asigMatRepo;
 
+    // === Calificaciones y evaluaciones ===
+    private final EvaluacionRepository evaluacionRepository;
+    private final ResultadoEvaluacionRepository resultadoEvaluacionRepository;
+    private final CalificacionTrimestralRepository calificacionTrimestralRepository;
+
     // === Asistencias ===
     private final JornadaAsistenciaRepository jornadaRepo;
     private final DetalleAsistenciaRepository detalleRepo;
@@ -61,64 +67,455 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     public void run(String... args) {
         log.info("Iniciando carga de datos de prueba...");
 
-        // 0) Usuarios base + personas/perfiles imprescindibles
         ensureAdminAndUser();
 
-        // 1) Período 2025 + trimestres
-        PeriodoEscolar p2025 = ensurePeriodoEscolar(2025);
-        Trimestre t1 = ensureTrimestre(p2025, 1, LocalDate.of(2025, 3, 1), LocalDate.of(2025, 5, 31));
-        Trimestre t2 = ensureTrimestre(p2025, 2, LocalDate.of(2025, 6, 1), LocalDate.of(2025, 8, 31));
-        Trimestre t3 = ensureTrimestre(p2025, 3, LocalDate.of(2025, 9, 1), LocalDate.of(2025, 11, 30));
+        PeriodoEscolar periodo2025 = ensurePeriodoEscolar(2025);
+        Trimestre t1_2025 = ensureTrimestre(periodo2025, 1, LocalDate.of(2025, 3, 1), LocalDate.of(2025, 5, 31));
+        Trimestre t2_2025 = ensureTrimestre(periodo2025, 2, LocalDate.of(2025, 6, 1), LocalDate.of(2025, 8, 31));
+        Trimestre t3_2025 = ensureTrimestre(periodo2025, 3, LocalDate.of(2025, 9, 1), LocalDate.of(2025, 11, 30));
 
-        // 2) Secciones (solo PRIMARIO en este set)
-        Seccion primario1A = ensureSeccion(p2025, NivelAcademico.PRIMARIO, "1°", "A", Turno.MANANA);
-        Seccion primario2A = ensureSeccion(p2025, NivelAcademico.PRIMARIO, "2°", "A", Turno.TARDE);
+        PeriodoEscolar periodo2024 = ensurePeriodoEscolar(2024);
+        Trimestre t1_2024 = ensureTrimestre(periodo2024, 1, LocalDate.of(2024, 3, 1), LocalDate.of(2024, 5, 31));
+        Trimestre t2_2024 = ensureTrimestre(periodo2024, 2, LocalDate.of(2024, 6, 1), LocalDate.of(2024, 8, 31));
+        Trimestre t3_2024 = ensureTrimestre(periodo2024, 3, LocalDate.of(2024, 9, 1), LocalDate.of(2024, 11, 30));
 
-        // 3) Materias base y plan
-        Materia lengua = ensureMateria("Lengua");
-        Materia matematica = ensureMateria("Matemática");
-        ensureSeccionMateria(primario1A, lengua);
-        ensureSeccionMateria(primario1A, matematica);
-        ensureSeccionMateria(primario2A, lengua);
-        ensureSeccionMateria(primario2A, matematica);
+        List<DocenteSeed> docenteSeeds = List.of(
+                docente("DOC_PRI_1A", "Lucía", "Medina", "30112001", "20112000101", null, null, null, LocalDate.of(2017, 3, 1)),
+                docente("DOC_PRI_1B", "Gonzalo", "Rey", "30112002", "20112000102", null, null, null, LocalDate.of(2019, 3, 1)),
+                docente("DOC_PRI_2A", "María", "Cardozo", "30112003", "20112000103", null, null, null, LocalDate.of(2016, 3, 1)),
+                docente("DOC_PRI_2B", "Juan", "Barreiro", "30112004", "20112000104", null, null, null, LocalDate.of(2018, 3, 1)),
+                docente("DOC_PRI_3A", "Paula", "Quiroga", "30112005", "20112000105", null, null, null, LocalDate.of(2015, 3, 1)),
+                docente("DOC_PRI_3B", "Diego", "Benítez", "30112006", "20112000106", null, null, null, LocalDate.of(2014, 3, 1)),
+                docente("DOC_PRI_4A", "Carolina", "Rossi", "30112007", "20112000107", "docente@example.com", "docente123", Set.of(UserRole.USER, UserRole.TEACHER), LocalDate.of(2012, 3, 1)),
+                docente("DOC_PRI_4B", "Matías", "Funes", "30112008", "20112000108", null, null, null, LocalDate.of(2013, 3, 1)),
+                docente("DOC_PRI_5A", "Soledad", "Lagos", "30112009", "20112000109", null, null, null, LocalDate.of(2011, 3, 1)),
+                docente("DOC_PRI_5B", "Hernán", "Vidal", "30112010", "20112000110", null, null, null, LocalDate.of(2010, 3, 1)),
+                docente("DOC_PRI_6A", "Eliana", "Maldonado", "30112011", "20112000111", null, null, null, LocalDate.of(2009, 3, 1)),
+                docente("DOC_PRI_6B", "Roberto", "Salas", "30112012", "20112000112", null, null, null, LocalDate.of(2008, 3, 1)),
+                docente("DOC_INI_2A", "Ana", "López", "40222333", "20111222330", "inicial@example.com", "inicial123", Set.of(UserRole.USER, UserRole.TEACHER), LocalDate.of(2016, 2, 15)),
+                docente("DOC_INI_2B", "Gabriela", "Juarez", "40222334", "20111222331", null, null, null, LocalDate.of(2017, 2, 15)),
+                docente("DOC_INI_3A", "Silvio", "Ortega", "40222335", "20111222332", null, null, null, LocalDate.of(2018, 2, 15)),
+                docente("DOC_INI_3B", "Victoria", "Paz", "40222336", "20111222333", null, null, null, LocalDate.of(2015, 2, 15)),
+                docente("DOC_INGLES", "Paula", "Lagos", "30113001", "20113000101", null, null, null, LocalDate.of(2013, 4, 1)),
+                docente("DOC_EDFIS", "Adrián", "Domínguez", "30113002", "20113000102", null, null, null, LocalDate.of(2012, 4, 1)),
+                docente("DOC_MUSICA", "Nora", "Franco", "30113003", "20113000103", null, null, null, LocalDate.of(2011, 4, 1)),
+                docente("DOC_ARTES", "Miguel", "Oviedo", "30113004", "20113000104", null, null, null, LocalDate.of(2010, 4, 1)),
+                docente("DOC_TECNO", "Laura", "Pacheco", "30113005", "20113000105", null, null, null, LocalDate.of(2014, 4, 1)),
+                docente("DOC_APOYO_TIC", "Griselda", "Moya", "30113006", "20113000106", "tic@example.com", "tic123", Set.of(UserRole.USER, UserRole.TEACHER), LocalDate.of(2021, 3, 1)),
+                docente("DOC_ROBOTICA", "Hugo", "Santillán", "30113007", "20113000107", null, null, null, LocalDate.of(2016, 4, 1)),
+                docente("DOC_TEATRO", "Leonel", "Pereyra", "30113008", "20113000108", null, null, null, LocalDate.of(2018, 3, 1)),
+                docente("DOC_PSICOMOTRICIDAD", "Irene", "Montoya", "30113009", "20113000109", null, null, null, LocalDate.of(2019, 2, 1)),
+                docente("DOC_TUTOR", "Andrea", "Crespo", "30113010", "20113000110", null, null, null, LocalDate.of(2015, 2, 1))
+        );
 
-        // 4) Docentes titulares por sección y materias
-        LocalDate vigenciaTitularDesde = LocalDate.of(2025, 3, 1);
-        Empleado docPrim1A = ensureDocente("Mariana", "Suárez", "30111224", "20111222338");
-        Empleado docPrim2A = ensureDocente("Federico", "Acosta", "30111225", "20111222339");
+        Map<String, Empleado> docentes = ensureDocentes(docenteSeeds);
 
-        ensureTitularSeccion(docPrim1A, primario1A, vigenciaTitularDesde);
-        ensureTitularSeccion(docPrim2A, primario2A, vigenciaTitularDesde);
+        List<PersonaSeed> primario1AStudents = List.of(
+                alumno("Agustina", "Cabrera", "61010001", "Marcos", "Cabrera", "41010001", RolVinculo.PADRE, true),
+                alumno("Bautista", "Torres", "61010002", "Daniela", "Torres", "41010002", RolVinculo.MADRE, true),
+                alumno("Emma", "Navarro", "61010003", "Sonia", "Navarro", "41010003", RolVinculo.MADRE, true),
+                alumno("Franco", "Paredes", "61010004", "Pablo", "Paredes", "41010004", RolVinculo.PADRE, false),
+                alumno("Ignacio", "Vera", "61010005", "Lucía", "Vera", "41010005", RolVinculo.MADRE, true),
+                alumno("Joaquín", "Medina", "61010006", "Lucía", "Medina", "30112001", RolVinculo.MADRE, true),
+                alumno("Kiara", "Gómez", "61010007", "Hernán", "Gómez", "41010006", RolVinculo.PADRE, true),
+                alumno("Lautaro", "Cabrera", "61010008", "Marcos", "Cabrera", "41010001", RolVinculo.PADRE, true),
+                alumno("Milo", "Santillán", "61010009", "Hugo", "Santillán", "30113007", RolVinculo.PADRE, true),
+                alumno("Renata", "Pardo", "61010010", "Silvana", "Pardo", "41010007", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario1BStudents = List.of(
+                alumno("Camila", "Soria", "61011001", "Romina", "Soria", "41011001", RolVinculo.MADRE, true),
+                alumno("Delfina", "Bravo", "61011002", "Sergio", "Bravo", "41011002", RolVinculo.PADRE, true),
+                alumno("Ezequiel", "Luna", "61011003", "Carolina", "Luna", "41011003", RolVinculo.MADRE, true),
+                alumno("Juan Pedro", "Ledesma", "61011004", "Marcelo", "Ledesma", "41011004", RolVinculo.PADRE, true),
+                alumno("Malena", "Coria", "61011005", "Lorena", "Coria", "41011005", RolVinculo.MADRE, true),
+                alumno("Agustín", "Rey", "61011006", "Gonzalo", "Rey", "30112002", RolVinculo.PADRE, true),
+                alumno("Bianca", "Paz", "61011007", "Marcela", "Paz", "41011006", RolVinculo.MADRE, true),
+                alumno("Ciro", "Luna", "61011008", "Carolina", "Luna", "41011003", RolVinculo.MADRE, true),
+                alumno("Dolores", "Vidal", "61011009", "Hernán", "Vidal", "30112010", RolVinculo.PADRE, true),
+                alumno("Elio", "Domínguez", "61011010", "Adrián", "Domínguez", "30113002", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> primario2AStudents = List.of(
+                alumno("Abril", "Gallo", "62020001", "Hernán", "Gallo", "42020001", RolVinculo.PADRE, true),
+                alumno("Bruno", "Díaz", "62020002", "Laura", "Díaz", "42020002", RolVinculo.MADRE, true),
+                alumno("Candela", "Molina", "62020003", "Diego", "Molina", "42020003", RolVinculo.PADRE, true),
+                alumno("Jeremías", "Ruiz", "62020004", "Patricia", "Ruiz", "42020004", RolVinculo.MADRE, true),
+                alumno("Lola", "Quiroga", "62020005", "Paula", "Quiroga", "30112005", RolVinculo.MADRE, true),
+                alumno("Gael", "Quiroga", "62020006", "Paula", "Quiroga", "30112005", RolVinculo.MADRE, true),
+                alumno("Helena", "Díaz", "62020007", "Laura", "Díaz", "42020002", RolVinculo.MADRE, true),
+                alumno("Ian", "Gallo", "62020008", "Hernán", "Gallo", "42020001", RolVinculo.PADRE, true),
+                alumno("Julia", "Paredes", "62020009", "Rodolfo", "Paredes", "42020006", RolVinculo.PADRE, false),
+                alumno("Luca", "Roldán", "62020010", "Mónica", "Roldán", "42020007", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario2BStudents = List.of(
+                alumno("Ámbar", "Gutiérrez", "62021001", "Valeria", "Gutiérrez", "42021001", RolVinculo.MADRE, true),
+                alumno("Benicio", "Herrera", "62021002", "Emanuel", "Herrera", "42021002", RolVinculo.PADRE, true),
+                alumno("Catalina", "Rivas", "62021003", "Silvia", "Rivas", "42021003", RolVinculo.MADRE, true),
+                alumno("Ignacia", "Ferreyra", "62021004", "Gastón", "Ferreyra", "42021004", RolVinculo.PADRE, true),
+                alumno("Mateo", "Salto", "62021005", "Juliana", "Salto", "42021005", RolVinculo.MADRE, true),
+                alumno("Luna", "Herrera", "62021006", "Emanuel", "Herrera", "42021002", RolVinculo.PADRE, true),
+                alumno("Nina", "Rivas", "62021007", "Silvia", "Rivas", "42021003", RolVinculo.MADRE, true),
+                alumno("Oliver", "Salto", "62021008", "Juliana", "Salto", "42021005", RolVinculo.MADRE, true),
+                alumno("Pilar", "Domínguez", "62021009", "Adrián", "Domínguez", "30113002", RolVinculo.PADRE, true),
+                alumno("Thiago", "Ferreyra", "62021010", "Gimena", "Ferreyra", "42021006", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario3AStudents = List.of(
+                alumno("Álvaro", "Campos", "63030001", "Mariela", "Campos", "43030001", RolVinculo.MADRE, true),
+                alumno("Belén", "Vivas", "63030002", "Oscar", "Vivas", "43030002", RolVinculo.PADRE, true),
+                alumno("Facundo", "Cabrera", "63030003", "Natalia", "Cabrera", "43030003", RolVinculo.MADRE, true),
+                alumno("Martina", "Ponce", "63030004", "Esteban", "Ponce", "43030004", RolVinculo.PADRE, true),
+                alumno("Ramiro", "Núñez", "63030005", "Soledad", "Núñez", "43030005", RolVinculo.MADRE, true),
+                alumno("Uma", "Vivas", "63030006", "Oscar", "Vivas", "43030002", RolVinculo.PADRE, true),
+                alumno("Valentino", "Campos", "63030007", "Mariela", "Campos", "43030001", RolVinculo.MADRE, true),
+                alumno("Wendy", "Giménez", "63030008", "Raquel", "Giménez", "43030006", RolVinculo.MADRE, true),
+                alumno("Xavier", "Cabrera", "63030009", "Natalia", "Cabrera", "43030003", RolVinculo.MADRE, true),
+                alumno("Yago", "Montoya", "63030010", "Irene", "Montoya", "30113009", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario3BStudents = List.of(
+                alumno("Bianca", "Flores", "63031001", "Claudia", "Flores", "43031001", RolVinculo.MADRE, true),
+                alumno("Dante", "Pereyra", "63031002", "Rubén", "Pereyra", "43031002", RolVinculo.PADRE, true),
+                alumno("Julieta", "Sosa", "63031003", "Liliana", "Sosa", "43031003", RolVinculo.MADRE, true),
+                alumno("Valentino", "Medina", "63031004", "Lucía", "Medina", "30112001", RolVinculo.MADRE, true),
+                alumno("Ximena", "Acuña", "63031005", "Federico", "Acuña", "43031005", RolVinculo.PADRE, true),
+                alumno("Abril", "Flores", "63031006", "Claudia", "Flores", "43031001", RolVinculo.MADRE, true),
+                alumno("Benjamín", "Pereyra", "63031007", "Rubén", "Pereyra", "43031002", RolVinculo.PADRE, true),
+                alumno("Candela", "Paz", "63031008", "Victoria", "Paz", "40222336", RolVinculo.MADRE, true),
+                alumno("Dylan", "Salas", "63031009", "Roberto", "Salas", "30112012", RolVinculo.PADRE, true),
+                alumno("Elisa", "Godoy", "63031010", "Marcela", "Godoy", "43031006", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario4AStudents = List.of(
+                alumno("Antonella", "Suárez", "64040001", "Marcela", "Suárez", "44040001", RolVinculo.MADRE, true),
+                alumno("Brisa", "Carrizo", "64040002", "Jorge", "Carrizo", "44040002", RolVinculo.PADRE, true),
+                alumno("Esteban", "Giménez", "64040003", "Verónica", "Giménez", "44040003", RolVinculo.MADRE, true),
+                alumno("Faustino", "Del Río", "64040004", "Santiago", "Del Río", "44040004", RolVinculo.PADRE, true),
+                alumno("Brenda", "Rossi", "64040005", "Carolina", "Rossi", "30112007", RolVinculo.MADRE, true),
+                alumno("Gonzalo", "Rossi", "64040006", "Carolina", "Rossi", "30112007", RolVinculo.MADRE, true),
+                alumno("Helena", "Duarte", "64040007", "Nadia", "Duarte", "44040006", RolVinculo.MADRE, true),
+                alumno("Isidro", "Carrizo", "64040008", "Jorge", "Carrizo", "44040002", RolVinculo.PADRE, true),
+                alumno("Juliana", "Giménez", "64040009", "Verónica", "Giménez", "44040003", RolVinculo.MADRE, true),
+                alumno("Kevin", "Tissera", "64040010", "Griselda", "Tissera", "44040007", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario4BStudents = List.of(
+                alumno("Ciro", "Palacios", "64041001", "Nicolás", "Palacios", "44041001", RolVinculo.PADRE, true),
+                alumno("Elena", "Juarez", "64041002", "Gabriela", "Juarez", "40222334", RolVinculo.MADRE, true),
+                alumno("Felipe", "Soria", "64041003", "Claudio", "Soria", "44041003", RolVinculo.PADRE, true),
+                alumno("Maia", "Prado", "64041004", "Noelia", "Prado", "44041004", RolVinculo.MADRE, true),
+                alumno("Nahiara", "Ledesma", "64041005", "Gabriel", "Ledesma", "44041005", RolVinculo.PADRE, true),
+                alumno("Olivia", "Palacios", "64041006", "Nicolás", "Palacios", "44041001", RolVinculo.PADRE, true),
+                alumno("Priscila", "Juarez", "64041007", "Gabriela", "Juarez", "40222334", RolVinculo.MADRE, true),
+                alumno("Renzo", "Soria", "64041008", "Claudio", "Soria", "44041003", RolVinculo.PADRE, true),
+                alumno("Santino", "Prado", "64041009", "Noelia", "Prado", "44041004", RolVinculo.MADRE, true),
+                alumno("Tobías", "Funes", "64041010", "Matías", "Funes", "30112008", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> primario5AStudents = List.of(
+                alumno("Alma", "Cabrera", "65050001", "Mariano", "Cabrera", "45050001", RolVinculo.PADRE, true),
+                alumno("Bruno", "Benítez", "65050002", "Diego", "Benítez", "30112006", RolVinculo.PADRE, true),
+                alumno("Cecilia", "Vidal", "65050003", "Hernán", "Vidal", "30112010", RolVinculo.PADRE, true),
+                alumno("Lisandro", "Paez", "65050004", "Rocío", "Paez", "45050004", RolVinculo.MADRE, true),
+                alumno("Mora", "Roldán", "65050005", "Graciela", "Roldán", "45050005", RolVinculo.MADRE, true),
+                alumno("Noah", "Cabrera", "65050006", "Mariano", "Cabrera", "45050001", RolVinculo.PADRE, true),
+                alumno("Olivia", "Benítez", "65050007", "Diego", "Benítez", "30112006", RolVinculo.PADRE, true),
+                alumno("Pilar", "Vidal", "65050008", "Hernán", "Vidal", "30112010", RolVinculo.PADRE, true),
+                alumno("Quimey", "Roldán", "65050009", "Graciela", "Roldán", "45050005", RolVinculo.MADRE, true),
+                alumno("Renzo", "Lagos", "65050010", "Soledad", "Lagos", "30112009", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario5BStudents = List.of(
+                alumno("Celeste", "Giménez", "65051001", "Patricio", "Giménez", "45051001", RolVinculo.PADRE, true),
+                alumno("Dylan", "Espeche", "65051002", "Lucía", "Espeche", "45051002", RolVinculo.MADRE, true),
+                alumno("Magalí", "Peralta", "65051003", "Elvio", "Peralta", "45051003", RolVinculo.PADRE, true),
+                alumno("Santina", "Lugo", "65051004", "Adriana", "Lugo", "45051004", RolVinculo.MADRE, true),
+                alumno("Ulises", "Rivarola", "65051005", "Silvina", "Rivarola", "45051005", RolVinculo.MADRE, true),
+                alumno("Valen", "Moya", "65051006", "Griselda", "Moya", "30113006", RolVinculo.MADRE, true),
+                alumno("Wanda", "Giménez", "65051007", "Patricio", "Giménez", "45051001", RolVinculo.PADRE, true),
+                alumno("Xavier", "Espeche", "65051008", "Lucía", "Espeche", "45051002", RolVinculo.MADRE, true),
+                alumno("Yago", "Peralta", "65051009", "Elvio", "Peralta", "45051003", RolVinculo.PADRE, true),
+                alumno("Zoe", "Lugo", "65051010", "Adriana", "Lugo", "45051004", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> primario6AStudents = List.of(
+                alumno("Abram", "Montiel", "66060001", "Claudio", "Montiel", "46060001", RolVinculo.PADRE, true),
+                alumno("Catalina", "Prieto", "66060002", "Carina", "Prieto", "46060002", RolVinculo.MADRE, true),
+                alumno("Darío", "Campos", "66060003", "Marcelo", "Campos", "46060003", RolVinculo.PADRE, true),
+                alumno("Lucila", "Herrera", "66060004", "Emilia", "Herrera", "46060004", RolVinculo.MADRE, true),
+                alumno("Tomás", "Sarmiento", "66060005", "Sergio", "Sarmiento", "46060005", RolVinculo.PADRE, true),
+                alumno("Uma", "Montiel", "66060006", "Claudio", "Montiel", "46060001", RolVinculo.PADRE, true),
+                alumno("Valen", "Prieto", "66060007", "Carina", "Prieto", "46060002", RolVinculo.MADRE, true),
+                alumno("Wenceslao", "Campos", "66060008", "Marcelo", "Campos", "46060003", RolVinculo.PADRE, true),
+                alumno("Ximena", "Herrera", "66060009", "Emilia", "Herrera", "46060004", RolVinculo.MADRE, true),
+                alumno("Yair", "Sarmiento", "66060010", "Sergio", "Sarmiento", "46060005", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> primario6BStudents = List.of(
+                alumno("Ariana", "Balbi", "66061001", "Lilian", "Balbi", "46061001", RolVinculo.MADRE, true),
+                alumno("Emanuel", "Chávez", "66061002", "Mirta", "Chávez", "46061002", RolVinculo.MADRE, true),
+                alumno("Kiara", "Ocampo", "66061003", "Mariano", "Ocampo", "46061003", RolVinculo.PADRE, true),
+                alumno("Ramiro", "Paiva", "66061004", "Cecilia", "Paiva", "46061004", RolVinculo.MADRE, true),
+                alumno("Zoe", "Salas", "66061005", "Roberto", "Salas", "30112012", RolVinculo.PADRE, true),
+                alumno("Abril", "Balbi", "66061006", "Lilian", "Balbi", "46061001", RolVinculo.MADRE, true),
+                alumno("Bruno", "Chávez", "66061007", "Mirta", "Chávez", "46061002", RolVinculo.MADRE, true),
+                alumno("Catalina", "Ocampo", "66061008", "Mariano", "Ocampo", "46061003", RolVinculo.PADRE, true),
+                alumno("Delfina", "Paiva", "66061009", "Cecilia", "Paiva", "46061004", RolVinculo.MADRE, true),
+                alumno("Fiona", "Pereyra", "66061010", "Leonel", "Pereyra", "30113008", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> inicial2AStudents = List.of(
+                alumno("Aldana", "Lemos", "52020001", "Brenda", "Lemos", "32020001", RolVinculo.MADRE, true),
+                alumno("Benicio", "Campos", "52020002", "Carlos", "Campos", "32020002", RolVinculo.PADRE, true),
+                alumno("Cataleya", "Ibáñez", "52020003", "Julieta", "Ibáñez", "32020003", RolVinculo.MADRE, true),
+                alumno("Danna", "Robles", "52020004", "Mariano", "Robles", "32020004", RolVinculo.PADRE, true),
+                alumno("Gael", "Ortiz", "52020005", "Valeria", "Ortiz", "32020005", RolVinculo.MADRE, true),
+                alumno("Helena", "Moya", "52020006", "Griselda", "Moya", "30113006", RolVinculo.MADRE, true),
+                alumno("Ian", "Lemos", "52020007", "Brenda", "Lemos", "32020001", RolVinculo.MADRE, true),
+                alumno("Julián", "Campos", "52020008", "Carlos", "Campos", "32020002", RolVinculo.PADRE, true),
+                alumno("Kiara", "Ibáñez", "52020009", "Julieta", "Ibáñez", "32020003", RolVinculo.MADRE, true),
+                alumno("Luca", "Robles", "52020010", "Mariano", "Robles", "32020004", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> inicial2BStudents = List.of(
+                alumno("Bautista", "Funes", "52021001", "Matías", "Funes", "30112008", RolVinculo.PADRE, true),
+                alumno("Clara", "Borda", "52021002", "Noelia", "Borda", "32021002", RolVinculo.MADRE, true),
+                alumno("Felipe", "Godoy", "52021003", "Rodolfo", "Godoy", "32021003", RolVinculo.PADRE, true),
+                alumno("Martina", "Pereyra", "52021004", "Sabrina", "Pereyra", "32021004", RolVinculo.MADRE, true),
+                alumno("Uma", "Cabrera", "52021005", "Luciano", "Cabrera", "32021005", RolVinculo.PADRE, true),
+                alumno("Mateo", "Funes", "52021006", "Matías", "Funes", "30112008", RolVinculo.PADRE, true),
+                alumno("Nina", "Borda", "52021007", "Noelia", "Borda", "32021002", RolVinculo.MADRE, true),
+                alumno("Olivia", "Godoy", "52021008", "Rodolfo", "Godoy", "32021003", RolVinculo.PADRE, true),
+                alumno("Paz", "Pereyra", "52021009", "Sabrina", "Pereyra", "32021004", RolVinculo.MADRE, true),
+                alumno("Quimey", "Cabrera", "52021010", "Luciano", "Cabrera", "32021005", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> inicial3AStudents = List.of(
+                alumno("Amira", "Ledesma", "53030001", "Julián", "Ledesma", "33030001", RolVinculo.PADRE, true),
+                alumno("Camilo", "Duarte", "53030002", "Pamela", "Duarte", "33030002", RolVinculo.MADRE, true),
+                alumno("Isabella", "Ruiz", "53030003", "Marcos", "Ruiz", "33030003", RolVinculo.PADRE, true),
+                alumno("Jazmín", "Acosta", "53030004", "Carla", "Acosta", "33030004", RolVinculo.MADRE, true),
+                alumno("Mateo", "Vargas", "53030005", "Lorena", "Vargas", "33030005", RolVinculo.MADRE, true),
+                alumno("Lola", "Ledesma", "53030006", "Julián", "Ledesma", "33030001", RolVinculo.PADRE, true),
+                alumno("Mauro", "Duarte", "53030007", "Pamela", "Duarte", "33030002", RolVinculo.MADRE, true),
+                alumno("Nina", "Ruiz", "53030008", "Marcos", "Ruiz", "33030003", RolVinculo.PADRE, true),
+                alumno("Oriana", "Acosta", "53030009", "Carla", "Acosta", "33030004", RolVinculo.MADRE, true),
+                alumno("Pablo", "Vargas", "53030010", "Lorena", "Vargas", "33030005", RolVinculo.MADRE, true)
+        );
+        List<PersonaSeed> inicial3BStudents = List.of(
+                alumno("Belén", "Ríos", "53031001", "Patricia", "Ríos", "33031001", RolVinculo.MADRE, true),
+                alumno("Dante", "Molina", "53031002", "Gisela", "Molina", "33031002", RolVinculo.MADRE, true),
+                alumno("Lara", "Benítez", "53031003", "Diego", "Benítez", "30112006", RolVinculo.PADRE, true),
+                alumno("Renata", "Paz", "53031004", "Victoria", "Paz", "40222336", RolVinculo.MADRE, true),
+                alumno("Teo", "Correa", "53031005", "Ignacio", "Correa", "33031005", RolVinculo.PADRE, true),
+                alumno("Quimey", "Ríos", "53031006", "Patricia", "Ríos", "33031001", RolVinculo.MADRE, true),
+                alumno("Rafael", "Molina", "53031007", "Gisela", "Molina", "33031002", RolVinculo.MADRE, true),
+                alumno("Sofía", "Benítez", "53031008", "Diego", "Benítez", "30112006", RolVinculo.PADRE, true),
+                alumno("Tadeo", "Paz", "53031009", "Victoria", "Paz", "40222336", RolVinculo.MADRE, true),
+                alumno("Uma", "Correa", "53031010", "Ignacio", "Correa", "33031005", RolVinculo.PADRE, true)
+        );
 
-        ensureTitularMateriasDeSeccion(docPrim1A, primario1A, vigenciaTitularDesde);
-        ensureTitularMateriasDeSeccion(docPrim2A, primario2A, vigenciaTitularDesde);
+        LocalDate titularDesde2025 = LocalDate.of(2025, 3, 1);
+        LocalDate matriculaDesde2025 = LocalDate.of(2025, 3, 3);
 
+        List<SeccionSetup> seccionesPrimario2025 = List.of(
+                seccion("PRI-1A", NivelAcademico.PRIMARIO, "1°", "A", Turno.MANANA, "DOC_PRI_1A", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_1A"), primario1AStudents),
+                seccion("PRI-1B", NivelAcademico.PRIMARIO, "1°", "B", Turno.TARDE, "DOC_PRI_1B", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_1B"), primario1BStudents),
+                seccion("PRI-2A", NivelAcademico.PRIMARIO, "2°", "A", Turno.MANANA, "DOC_PRI_2A", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_2A"), primario2AStudents),
+                seccion("PRI-2B", NivelAcademico.PRIMARIO, "2°", "B", Turno.TARDE, "DOC_PRI_2B", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_2B"), primario2BStudents),
+                seccion("PRI-3A", NivelAcademico.PRIMARIO, "3°", "A", Turno.MANANA, "DOC_PRI_3A", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_3A"), primario3AStudents),
+                seccion("PRI-3B", NivelAcademico.PRIMARIO, "3°", "B", Turno.TARDE, "DOC_PRI_3B", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_3B"), primario3BStudents),
+                seccion("PRI-4A", NivelAcademico.PRIMARIO, "4°", "A", Turno.MANANA, "DOC_PRI_4A", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_4A"), primario4AStudents),
+                seccion("PRI-4B", NivelAcademico.PRIMARIO, "4°", "B", Turno.TARDE, "DOC_PRI_4B", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_4B"), primario4BStudents),
+                seccion("PRI-5A", NivelAcademico.PRIMARIO, "5°", "A", Turno.MANANA, "DOC_PRI_5A", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_5A"), primario5AStudents),
+                seccion("PRI-5B", NivelAcademico.PRIMARIO, "5°", "B", Turno.TARDE, "DOC_PRI_5B", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_5B"), primario5BStudents),
+                seccion("PRI-6A", NivelAcademico.PRIMARIO, "6°", "A", Turno.MANANA, "DOC_PRI_6A", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_6A"), primario6AStudents),
+                seccion("PRI-6B", NivelAcademico.PRIMARIO, "6°", "B", Turno.TARDE, "DOC_PRI_6B", titularDesde2025, matriculaDesde2025, planPrimario("DOC_PRI_6B"), primario6BStudents)
+        );
+        List<SeccionSetup> seccionesInicial2025 = List.of(
+                seccion("INI-2A", NivelAcademico.INICIAL, "2 Seccion", "A", Turno.MANANA, "DOC_INI_2A", titularDesde2025, matriculaDesde2025, planInicial("DOC_INI_2A"), inicial2AStudents),
+                seccion("INI-2B", NivelAcademico.INICIAL, "2 Seccion", "B", Turno.TARDE, "DOC_INI_2B", titularDesde2025, matriculaDesde2025, planInicial("DOC_INI_2B"), inicial2BStudents),
+                seccion("INI-3A", NivelAcademico.INICIAL, "3 Seccion", "A", Turno.MANANA, "DOC_INI_3A", titularDesde2025, matriculaDesde2025, planInicial("DOC_INI_3A"), inicial3AStudents),
+                seccion("INI-3B", NivelAcademico.INICIAL, "3 Seccion", "B", Turno.TARDE, "DOC_INI_3B", titularDesde2025, matriculaDesde2025, planInicial("DOC_INI_3B"), inicial3BStudents)
+        );
 
-        // 5) Alumnos + familiares + matrículas (3 por sección)
-        LocalDate desde = LocalDate.of(2025, 3, 3);
+        List<SeccionSetup> todasSecciones2025 = Stream.concat(seccionesPrimario2025.stream(), seccionesInicial2025.stream()).toList();
 
-        crearAlumnoConFamiliaYMatricula(primario1A, p2025, desde,
-                new PersonaSeed("Tomás", "González", "43000001", "Nadia", "González", "31000001"),
-                new PersonaSeed("Martina", "Sánchez", "43000002", "Rocío", "Sánchez", "31000002"),
-                new PersonaSeed("Isabella", "Romero", "43000003", "Gabriela", "Romero", "31000003"));
+        Set<String> materiasNombres = todasSecciones2025.stream()
+                .flatMap(s -> s.materias().stream().map(MateriaAssignment::materia))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, Materia> materiasCatalogo = ensureMateriasCatalogo(materiasNombres);
 
-        crearAlumnoConFamiliaYMatricula(primario2A, p2025, desde,
-                new PersonaSeed("Santiago", "Castro", "42000001", "Luciana", "Castro", "30000001"),
-                new PersonaSeed("Juan Ignacio", "Álvarez", "42000002", "Daniela", "Álvarez", "30000002"),
-                new PersonaSeed("Mía", "Herrera", "42000003", "Patricia", "Herrera", "30000003"));
+        List<SeccionData> datosSecciones2025 = new ArrayList<>();
+        for (SeccionSetup setup : todasSecciones2025) {
+            datosSecciones2025.add(ensureSeccionCompleta(periodo2025, setup, docentes, materiasCatalogo));
+        }
 
+        LocalDate titularDesde2024 = LocalDate.of(2024, 3, 1);
+        LocalDate matriculaDesde2024 = LocalDate.of(2024, 3, 4);
+        List<SeccionSetup> secciones2024 = List.of(
+                seccion("PRI-2024-1A", NivelAcademico.PRIMARIO, "1°", "A", Turno.MANANA, "DOC_PRI_1A", titularDesde2024, matriculaDesde2024, planPrimario("DOC_PRI_1A"), primario2AStudents.stream().limit(3).toList()),
+                seccion("PRI-2024-1B", NivelAcademico.PRIMARIO, "1°", "B", Turno.TARDE, "DOC_PRI_1B", titularDesde2024, matriculaDesde2024, planPrimario("DOC_PRI_1B"), primario2BStudents.stream().limit(3).toList()),
+                seccion("INI-2024-3A", NivelAcademico.INICIAL, "3 Seccion", "A", Turno.MANANA, "DOC_INI_3A", titularDesde2024, matriculaDesde2024, planInicial("DOC_INI_3A"), inicial3AStudents.stream().limit(3).toList())
+        );
 
+        Set<String> materias2024 = secciones2024.stream()
+                .flatMap(s -> s.materias().stream().map(MateriaAssignment::materia))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        materiasCatalogo.putAll(ensureMateriasCatalogo(materias2024));
 
-        // 6) Aspirantes de ejemplo (con familiar)
-        Aspirante aspirante1 = crearAspiranteConFamiliar(new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001"));
-        Aspirante aspirante2 = crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega",     "47000002", "Eliana", "Vega",     "33000002"));
+        List<SeccionData> datosSecciones2024 = new ArrayList<>();
+        for (SeccionSetup setup : secciones2024) {
+            datosSecciones2024.add(ensureSeccionCompleta(periodo2024, setup, docentes, materiasCatalogo));
+        }
+
+        PeriodoEscolar periodo2023 = ensurePeriodoEscolar(2023);
+        Trimestre t1_2023 = ensureTrimestre(periodo2023, 1, LocalDate.of(2023, 3, 1), LocalDate.of(2023, 5, 31));
+        Trimestre t2_2023 = ensureTrimestre(periodo2023, 2, LocalDate.of(2023, 6, 1), LocalDate.of(2023, 8, 31));
+        Trimestre t3_2023 = ensureTrimestre(periodo2023, 3, LocalDate.of(2023, 9, 1), LocalDate.of(2023, 11, 30));
+
+        LocalDate titularDesde2023 = LocalDate.of(2023, 3, 1);
+        LocalDate matriculaDesde2023 = LocalDate.of(2023, 3, 6);
+        List<SeccionSetup> secciones2023 = List.of(
+                seccion("PRI-2023-6A", NivelAcademico.PRIMARIO, "6°", "A", Turno.MANANA, "DOC_PRI_6A", titularDesde2023, matriculaDesde2023, planPrimario("DOC_PRI_6A"), primario6AStudents.stream().skip(3).limit(5).toList()),
+                seccion("PRI-2023-6B", NivelAcademico.PRIMARIO, "6°", "B", Turno.TARDE, "DOC_PRI_6B", titularDesde2023, matriculaDesde2023, planPrimario("DOC_PRI_6B"), primario6BStudents.stream().skip(3).limit(5).toList()),
+                seccion("INI-2023-2A", NivelAcademico.INICIAL, "2 Seccion", "A", Turno.MANANA, "DOC_INI_2A", titularDesde2023, matriculaDesde2023, planInicial("DOC_INI_2A"), inicial2AStudents.stream().limit(5).toList())
+        );
+
+        Set<String> materias2023 = secciones2023.stream()
+                .flatMap(s -> s.materias().stream().map(MateriaAssignment::materia))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        materiasCatalogo.putAll(ensureMateriasCatalogo(materias2023));
+
+        List<SeccionData> datosSecciones2023 = new ArrayList<>();
+        for (SeccionSetup setup : secciones2023) {
+            datosSecciones2023.add(ensureSeccionCompleta(periodo2023, setup, docentes, materiasCatalogo));
+        }
+
+        for (SeccionData data : datosSecciones2025) {
+            if (data.seccion().getNivel() == NivelAcademico.PRIMARIO) {
+                crearEvaluacionConResultados(data, t1_2025, "Lengua", LocalDate.of(2025, 4, 10), 0.35);
+                crearEvaluacionConResultados(data, t1_2025, "Matemática", LocalDate.of(2025, 5, 8), 0.35);
+                asignarCalificaciones(data, t1_2025, List.of(
+                        calificacion("Lengua", 8.5, CalificacionConceptual.MUY_BUENO, "Lectura fluida y participación."),
+                        calificacion("Matemática", 8.0, CalificacionConceptual.BUENO, "Resuelve situaciones problemáticas."),
+                        calificacion("Ciencias Naturales", 8.7, CalificacionConceptual.MUY_BUENO, "Indaga y registra observaciones."),
+                        calificacion("Ciencias Sociales", 7.8, CalificacionConceptual.BUENO, "Interpreta hechos históricos.")
+                ));
+                crearEvaluacionConResultados(data, t2_2025, "Ciencias Naturales", LocalDate.of(2025, 7, 4), 0.30);
+                crearEvaluacionConResultados(data, t2_2025, "Inglés", LocalDate.of(2025, 7, 18), 0.20);
+                crearEvaluacionConResultados(data, t2_2025, "Educación Física", LocalDate.of(2025, 7, 25), 0.15);
+                crearEvaluacionConResultados(data, t2_2025, "Robótica Educativa", LocalDate.of(2025, 7, 30), 0.20);
+                asignarCalificaciones(data, t2_2025, List.of(
+                        calificacion("Ciencias Naturales", 8.6, CalificacionConceptual.MUY_BUENO, "Aplica método científico en equipo."),
+                        calificacion("Inglés", 8.1, CalificacionConceptual.BUENO, "Comprende consignas y dialoga."),
+                        calificacion("Educación Física", 9.0, CalificacionConceptual.EXCELENTE, "Demuestra coordinación y respeto."),
+                        calificacion("Robótica Educativa", 8.4, CalificacionConceptual.MUY_BUENO, "Programa secuencias con sensores.")
+                ));
+                crearEvaluacionConResultados(data, t3_2025, "Música", LocalDate.of(2025, 10, 7), 0.20);
+                crearEvaluacionConResultados(data, t3_2025, "Arte y Tecnología", LocalDate.of(2025, 10, 21), 0.20);
+                crearEvaluacionConResultados(data, t3_2025, "Teatro Integrador", LocalDate.of(2025, 10, 30), 0.15);
+                crearEvaluacionConResultados(data, t3_2025, "Proyecto Integrador", LocalDate.of(2025, 11, 12), 0.25);
+                asignarCalificaciones(data, t3_2025, List.of(
+                        calificacion("Música", 8.9, CalificacionConceptual.MUY_BUENO, "Interpreta ritmos y melodías."),
+                        calificacion("Arte y Tecnología", 8.5, CalificacionConceptual.MUY_BUENO, "Integra herramientas digitales."),
+                        calificacion("Teatro Integrador", 9.2, CalificacionConceptual.EXCELENTE, "Construye escenas colaborativas."),
+                        calificacion("Proyecto Integrador", 8.7, CalificacionConceptual.MUY_BUENO, "Presenta proyectos interdisciplinarios.")
+                ));
+            } else {
+                crearEvaluacionConResultados(data, t1_2025, "Lenguaje Oral", LocalDate.of(2025, 4, 5), 0.20);
+                crearEvaluacionConResultados(data, t1_2025, "Juego Matemático", LocalDate.of(2025, 4, 18), 0.20);
+                asignarCalificaciones(data, t1_2025, List.of(
+                        calificacion("Lenguaje Oral", null, CalificacionConceptual.MUY_BUENO, "Se expresa con vocabulario variado."),
+                        calificacion("Juego Matemático", null, CalificacionConceptual.MUY_BUENO, "Reconoce cantidades y patrones."),
+                        calificacion("Expresión Corporal", null, CalificacionConceptual.EXCELENTE, "Disfruta y propone movimientos creativos.")
+                ));
+                crearEvaluacionConResultados(data, t2_2025, "Música y Arte", LocalDate.of(2025, 7, 2), 0.20);
+                crearEvaluacionConResultados(data, t2_2025, "Psicomotricidad", LocalDate.of(2025, 7, 9), 0.15);
+                asignarCalificaciones(data, t2_2025, List.of(
+                        calificacion("Música y Arte", null, CalificacionConceptual.MUY_BUENO, "Explora sonidos y ritmos."),
+                        calificacion("Psicomotricidad", null, CalificacionConceptual.EXCELENTE, "Coordina movimientos finos y gruesos.")
+                ));
+                crearEvaluacionConResultados(data, t3_2025, "Vida Cotidiana", LocalDate.of(2025, 10, 15), 0.15);
+                crearEvaluacionConResultados(data, t3_2025, "Exploración Digital", LocalDate.of(2025, 10, 22), 0.15);
+                asignarCalificaciones(data, t3_2025, List.of(
+                        calificacion("Vida Cotidiana", null, CalificacionConceptual.MUY_BUENO, "Organiza materiales con autonomía."),
+                        calificacion("Exploración Digital", null, CalificacionConceptual.MUY_BUENO, "Manipula dispositivos con cuidado."),
+                        calificacion("Expresión Corporal", null, CalificacionConceptual.MUY_BUENO, "Crea secuencias expresivas junto al grupo.")
+                ));
+            }
+        }
+
+        for (SeccionData data : datosSecciones2024) {
+            if (data.seccion().getNivel() == NivelAcademico.PRIMARIO) {
+                crearEvaluacionConResultados(data, t1_2024, "Lengua", LocalDate.of(2024, 4, 15), 0.30);
+                asignarCalificaciones(data, t1_2024, List.of(
+                        calificacion("Lengua", 7.5, CalificacionConceptual.BUENO, "Consolida procesos de lectoescritura.")
+                ));
+                crearEvaluacionConResultados(data, t2_2024, "Matemática", LocalDate.of(2024, 7, 4), 0.25);
+                crearEvaluacionConResultados(data, t2_2024, "Inglés", LocalDate.of(2024, 7, 18), 0.20);
+                asignarCalificaciones(data, t2_2024, List.of(
+                        calificacion("Matemática", 7.8, CalificacionConceptual.BUENO, "Aplica estrategias de cálculo."),
+                        calificacion("Inglés", 7.9, CalificacionConceptual.BUENO, "Comprende instrucciones simples."),
+                        calificacion("Educación Física", 8.4, CalificacionConceptual.MUY_BUENO, "Participa activamente en los juegos.")
+                ));
+                crearEvaluacionConResultados(data, t3_2024, "Proyecto Integrador", LocalDate.of(2024, 10, 9), 0.30);
+                asignarCalificaciones(data, t3_2024, List.of(
+                        calificacion("Arte y Tecnología", 8.2, CalificacionConceptual.MUY_BUENO, "Integra materiales reciclados."),
+                        calificacion("Proyecto Integrador", 8.4, CalificacionConceptual.MUY_BUENO, "Expone conclusiones con claridad."),
+                        calificacion("Robótica Educativa", 7.9, CalificacionConceptual.BUENO, "Resuelve desafíos de programación.")
+                ));
+            } else {
+                crearEvaluacionConResultados(data, t1_2024, "Lenguaje Oral", LocalDate.of(2024, 4, 12), 0.20);
+                asignarCalificaciones(data, t1_2024, List.of(
+                        calificacion("Lenguaje Oral", null, CalificacionConceptual.MUY_BUENO, "Relata experiencias cotidianas.")
+                ));
+                crearEvaluacionConResultados(data, t2_2024, "Música y Arte", LocalDate.of(2024, 7, 2), 0.20);
+                asignarCalificaciones(data, t2_2024, List.of(
+                        calificacion("Música y Arte", null, CalificacionConceptual.MUY_BUENO, "Reconoce sonidos y ritmos."),
+                        calificacion("Psicomotricidad", null, CalificacionConceptual.MUY_BUENO, "Coordina movimientos en circuitos.")
+                ));
+                crearEvaluacionConResultados(data, t3_2024, "Vida Cotidiana", LocalDate.of(2024, 10, 4), 0.15);
+                asignarCalificaciones(data, t3_2024, List.of(
+                        calificacion("Vida Cotidiana", null, CalificacionConceptual.MUY_BUENO, "Colabora en rutinas de higiene."),
+                        calificacion("Exploración Digital", null, CalificacionConceptual.MUY_BUENO, "Utiliza recursos tecnológicos con apoyo.")
+                ));
+            }
+        }
+
+        for (SeccionData data : datosSecciones2023) {
+            if (data.seccion().getNivel() == NivelAcademico.PRIMARIO) {
+                crearEvaluacionConResultados(data, t2_2023, "Matemática", LocalDate.of(2023, 7, 6), 0.25);
+                crearEvaluacionConResultados(data, t2_2023, "Robótica Educativa", LocalDate.of(2023, 7, 20), 0.20);
+                asignarCalificaciones(data, t2_2023, List.of(
+                        calificacion("Matemática", 7.6, CalificacionConceptual.BUENO, "Refuerza procedimientos de cálculo."),
+                        calificacion("Robótica Educativa", 7.8, CalificacionConceptual.BUENO, "Integra sensores en proyectos."),
+                        calificacion("Educación Física", 8.3, CalificacionConceptual.MUY_BUENO, "Muestra compromiso en los entrenamientos.")
+                ));
+                crearEvaluacionConResultados(data, t3_2023, "Proyecto Integrador", LocalDate.of(2023, 10, 11), 0.30);
+                crearEvaluacionConResultados(data, t3_2023, "Teatro Integrador", LocalDate.of(2023, 10, 24), 0.20);
+                asignarCalificaciones(data, t3_2023, List.of(
+                        calificacion("Proyecto Integrador", 8.1, CalificacionConceptual.MUY_BUENO, "Presenta soluciones creativas."),
+                        calificacion("Teatro Integrador", 8.8, CalificacionConceptual.MUY_BUENO, "Expresa emociones en escena."),
+                        calificacion("Música", 8.4, CalificacionConceptual.MUY_BUENO, "Mantiene el pulso grupal.")
+                ));
+            } else {
+                crearEvaluacionConResultados(data, t2_2023, "Música y Arte", LocalDate.of(2023, 7, 5), 0.20);
+                asignarCalificaciones(data, t2_2023, List.of(
+                        calificacion("Música y Arte", null, CalificacionConceptual.MUY_BUENO, "Canta canciones conocidas."),
+                        calificacion("Psicomotricidad", null, CalificacionConceptual.MUY_BUENO, "Participa de circuitos motrices.")
+                ));
+                crearEvaluacionConResultados(data, t3_2023, "Vida Cotidiana", LocalDate.of(2023, 10, 5), 0.15);
+                crearEvaluacionConResultados(data, t3_2023, "Exploración Digital", LocalDate.of(2023, 10, 18), 0.15);
+                asignarCalificaciones(data, t3_2023, List.of(
+                        calificacion("Vida Cotidiana", null, CalificacionConceptual.BUENO, "Adquiere hábitos de higiene."),
+                        calificacion("Exploración Digital", null, CalificacionConceptual.MUY_BUENO, "Reconoce iconos e interactúa."),
+                        calificacion("Lenguaje Oral", null, CalificacionConceptual.MUY_BUENO, "Comparte relatos familiares.")
+                ));
+            }
+        }
+
+        generarAsistenciasUltimos30Dias(datosSecciones2025.stream().map(SeccionData::seccion).toList(), t1_2025, t2_2025, t3_2025);
+        generarAsistenciasRango(datosSecciones2024.stream().map(SeccionData::seccion).toList(),
+                LocalDate.of(2024, 3, 4), LocalDate.of(2024, 11, 20), t1_2024, t2_2024, t3_2024);
+        generarAsistenciasRango(datosSecciones2023.stream().map(SeccionData::seccion).toList(),
+                LocalDate.of(2023, 3, 6), LocalDate.of(2023, 11, 15), t1_2023, t2_2023, t3_2023);
+
+        Aspirante aspirante1 = crearAspiranteConFamiliar(new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001", RolVinculo.MADRE, false));
+        Aspirante aspirante2 = crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega", "47000002", "Eliana", "Vega", "33000002", RolVinculo.MADRE, false));
         crearSolicitudesDemostracion(aspirante1, aspirante2);
-
-        // 7) Usuario docente demo + asignaciones + extra de datos/secciones
-        ensureDocenteDemoUserYAsignacion(docPrim1A, primario1A);
 
         log.info("⚡ Carga de datos completada.");
     }
+
 
     // =========================================================================
     // AUTENTICACIÓN Y PERSONAS (nueva forma)
@@ -314,15 +711,29 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                 });
     }
 
-    private void ensureSeccionMateria(Seccion s, Materia m) {
-        boolean exists = seccionMateriaRepository.findAll().stream()
-                .anyMatch(sm -> sm.getSeccion().getId().equals(s.getId()) && sm.getMateria().getId().equals(m.getId()));
-        if (!exists) {
-            SeccionMateria sm = new SeccionMateria();
-            sm.setSeccion(s);
-            sm.setMateria(m);
-            seccionMateriaRepository.save(sm);
+    private Map<String, Materia> ensureMateriasCatalogo(Set<String> nombres) {
+        Map<String, Materia> materias = new LinkedHashMap<>();
+        for (String nombre : nombres) {
+            materias.put(nombre, ensureMateria(nombre));
         }
+        return materias;
+    }
+
+    private SeccionMateria ensureSeccionMateriaEntity(Seccion seccion, Materia materia) {
+        return seccionMateriaRepository.findAll().stream()
+                .filter(sm -> sm.getSeccion().getId().equals(seccion.getId())
+                        && sm.getMateria().getId().equals(materia.getId()))
+                .findFirst()
+                .orElseGet(() -> {
+                    SeccionMateria sm = new SeccionMateria();
+                    sm.setSeccion(seccion);
+                    sm.setMateria(materia);
+                    return seccionMateriaRepository.save(sm);
+                });
+    }
+
+    private void ensureSeccionMateria(Seccion s, Materia m) {
+        ensureSeccionMateriaEntity(s, m);
     }
 
     // =========================================================================
@@ -338,6 +749,115 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             per.setRolEmpleado(RolEmpleado.DOCENTE);
             per.setFechaIngreso(LocalDate.of(2025, 3, 1));
         });
+    }
+
+    private Map<String, Empleado> ensureDocentes(List<DocenteSeed> seeds) {
+        Map<String, Empleado> docentes = new LinkedHashMap<>();
+        for (DocenteSeed seed : seeds) {
+            Empleado docente = ensureDocente(seed.nombre(), seed.apellido(), seed.dni(), seed.cuil());
+            if (seed.ingreso() != null && (docente.getFechaIngreso() == null || !docente.getFechaIngreso().equals(seed.ingreso()))) {
+                docente.setFechaIngreso(seed.ingreso());
+                empleadoRepository.save(docente);
+            }
+            if (seed.email() != null) {
+                Set<UserRole> roles = (seed.roles() != null && !seed.roles().isEmpty())
+                        ? seed.roles()
+                        : Set.of(UserRole.TEACHER);
+                ensurePersonaCredentials(docente.getPersona(), seed.email(), seed.password(), roles);
+            }
+            docentes.put(seed.key(), docente);
+        }
+        return docentes;
+    }
+
+    private List<MateriaAssignment> planPrimario(String titularKey) {
+        return List.of(
+                materia("Lengua", titularKey),
+                materia("Matemática", titularKey),
+                materia("Ciencias Naturales", titularKey),
+                materia("Ciencias Sociales", titularKey),
+                materia("Inglés", "DOC_INGLES"),
+                materia("Educación Física", "DOC_EDFIS"),
+                materia("Música", "DOC_MUSICA"),
+                materia("Arte y Tecnología", "DOC_TECNO"),
+                materia("Robótica Educativa", "DOC_APOYO_TIC"),
+                materia("Teatro Integrador", "DOC_TEATRO"),
+                materia("Proyecto Integrador", "DOC_TUTOR")
+        );
+    }
+
+    private List<MateriaAssignment> planInicial(String titularKey) {
+        return List.of(
+                materia("Lenguaje Oral", titularKey),
+                materia("Juego Matemático", titularKey),
+                materia("Expresión Corporal", titularKey),
+                materia("Música y Arte", "DOC_ARTES"),
+                materia("Vida Cotidiana", "DOC_TECNO"),
+                materia("Psicomotricidad", "DOC_PSICOMOTRICIDAD"),
+                materia("Exploración Digital", "DOC_APOYO_TIC")
+        );
+    }
+
+    private MateriaAssignment materia(String nombre, String docenteKey) {
+        return new MateriaAssignment(nombre, docenteKey, RolMateria.TITULAR);
+    }
+
+    private SeccionData ensureSeccionCompleta(PeriodoEscolar periodo, SeccionSetup setup,
+                                              Map<String, Empleado> docentes, Map<String, Materia> materiasCatalogo) {
+        Empleado titular = Optional.ofNullable(docentes.get(setup.docenteTitularKey()))
+                .orElseThrow(() -> new IllegalArgumentException("Docente no encontrado: " + setup.docenteTitularKey()));
+        Seccion seccion = ensureSeccion(periodo, setup.nivel(), setup.gradoSala(), setup.division(), setup.turno());
+        ensureTitularSeccion(titular, seccion, setup.vigenciaDesde());
+
+        Map<String, SeccionMateria> materias = new LinkedHashMap<>();
+        for (MateriaAssignment assignment : setup.materias()) {
+            Materia materia = materiasCatalogo.computeIfAbsent(assignment.materia(), this::ensureMateria);
+            SeccionMateria seccionMateria = ensureSeccionMateriaEntity(seccion, materia);
+            materias.put(assignment.materia(), seccionMateria);
+
+            Empleado docenteMateria = Optional.ofNullable(docentes.get(assignment.docenteKey()))
+                    .orElseThrow(() -> new IllegalArgumentException("Docente no encontrado: " + assignment.docenteKey()));
+            ensureTitularMateria(docenteMateria, seccionMateria, setup.vigenciaDesde(), assignment.rol());
+        }
+
+        List<Matricula> matriculas = crearAlumnoConFamiliaYMatricula(seccion, periodo, setup.matriculaDesde(),
+                setup.alumnos().toArray(new PersonaSeed[0]));
+        return new SeccionData(seccion, materias, matriculas);
+    }
+
+    private void ensureTitularMateria(Empleado docente, SeccionMateria seccionMateria, LocalDate desde, RolMateria rol) {
+        List<AsignacionDocenteMateria> asignaciones = asigMatRepo.findAll().stream()
+                .filter(a -> a.getSeccionMateria().getId().equals(seccionMateria.getId()))
+                .toList();
+
+        boolean yaAsignado = asignaciones.stream().anyMatch(a ->
+                a.getEmpleado() != null
+                        && docente.getId().equals(a.getEmpleado().getId())
+                        && a.getRol() == rol
+                        && Objects.equals(a.getVigenciaDesde(), desde)
+                        && a.getVigenciaHasta() == null);
+        if (yaAsignado) {
+            return;
+        }
+
+        if (rol == RolMateria.TITULAR) {
+            boolean overlap = asigMatRepo.hasTitularOverlap(seccionMateria.getId(), desde, LocalDate.of(9999, 12, 31), null);
+            boolean mismoDocente = asignaciones.stream().anyMatch(a ->
+                    a.getRol() == RolMateria.TITULAR
+                            && docente.getId().equals(a.getEmpleado().getId())
+                            && vigente(a.getVigenciaDesde(), a.getVigenciaHasta(), desde));
+            if (overlap && !mismoDocente) {
+                return;
+            }
+        }
+
+        AsignacionDocenteMateria asignacion = new AsignacionDocenteMateria();
+        asignacion.setSeccionMateria(seccionMateria);
+        asignacion.setEmpleado(docente);
+        asignacion.setRol(rol);
+        asignacion.setVigenciaDesde(desde);
+        asignacion.setVigenciaHasta(null);
+        asigMatRepo.save(asignacion);
     }
 
     private void ensureTitularSeccion(Empleado docente, Seccion seccion, LocalDate desde) {
@@ -382,14 +902,18 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     // ALUMNOS / FAMILIA / MATRÍCULAS
     // =========================================================================
 
-    private void crearAlumnoConFamiliaYMatricula(Seccion seccion, PeriodoEscolar periodo, LocalDate asignacionDesde, PersonaSeed... seeds) {
+    private List<Matricula> crearAlumnoConFamiliaYMatricula(Seccion seccion, PeriodoEscolar periodo, LocalDate asignacionDesde, PersonaSeed... seeds) {
+        List<Matricula> matriculas = new ArrayList<>();
         for (PersonaSeed ps : seeds) {
-            Alumno a = ensureAlumno(ps.nombre(), ps.apellido(), ps.dni());
-            Familiar f = ensureFamiliar(ps.famNombre(), ps.famApellido(), ps.famDni());
-            ensureVinculoAlumnoFamiliar(a, f, RolVinculo.MADRE, true);
-            Matricula m = ensureMatricula(a, periodo);
-            ensureMatriculaSeccionVigente(m, seccion, asignacionDesde);
+            Alumno alumno = ensureAlumno(ps.nombre(), ps.apellido(), ps.dni());
+            Familiar familiar = ensureFamiliar(ps.famNombre(), ps.famApellido(), ps.famDni());
+            RolVinculo vinculo = ps.rolVinculo() != null ? ps.rolVinculo() : RolVinculo.MADRE;
+            ensureVinculoAlumnoFamiliar(alumno, familiar, vinculo, ps.convive());
+            Matricula matricula = ensureMatricula(alumno, periodo);
+            ensureMatriculaSeccionVigente(matricula, seccion, asignacionDesde);
+            matriculas.add(matricula);
         }
+        return matriculas;
     }
 
     private Alumno ensureAlumno(String nombre, String apellido, String dni) {
@@ -437,21 +961,157 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     }
 
     // =========================================================================
+    // EVALUACIONES Y CALIFICACIONES
+    // =========================================================================
+
+    private void crearEvaluacionConResultados(SeccionData data, Trimestre trimestre, String materiaNombre, LocalDate fecha, double peso) {
+        SeccionMateria seccionMateria = data.materias().get(materiaNombre);
+        if (seccionMateria == null) {
+            return;
+        }
+        String tema = materiaNombre + " - Evaluación integradora";
+        Evaluacion evaluacion = ensureEvaluacion(seccionMateria, trimestre, fecha, tema, peso);
+        int index = 0;
+        for (Matricula matricula : data.matriculas()) {
+            double nota = 7.0 + (index % 4) * 0.8;
+            String concepto = conceptoResultado(nota);
+            ensureResultadoEvaluacion(evaluacion, matricula, nota, concepto, "Desempeño en " + materiaNombre.toLowerCase());
+            index++;
+        }
+    }
+
+    private Evaluacion ensureEvaluacion(SeccionMateria seccionMateria, Trimestre trimestre, LocalDate fecha, String tema, Double peso) {
+        return evaluacionRepository.findAll().stream()
+                .filter(e -> e.getSeccionMateria().getId().equals(seccionMateria.getId())
+                        && e.getTrimestre().getId().equals(trimestre.getId())
+                        && Objects.equals(e.getFecha(), fecha)
+                        && Objects.equals(e.getTema(), tema))
+                .findFirst()
+                .orElseGet(() -> {
+                    Evaluacion e = new Evaluacion();
+                    e.setSeccionMateria(seccionMateria);
+                    e.setTrimestre(trimestre);
+                    e.setFecha(fecha);
+                    e.setTema(tema);
+                    e.setPeso(peso);
+                    return evaluacionRepository.save(e);
+                });
+    }
+
+    private void ensureResultadoEvaluacion(Evaluacion evaluacion, Matricula matricula, Double nota, String notaConceptual, String observaciones) {
+        resultadoEvaluacionRepository.findByEvaluacionIdAndMatriculaId(evaluacion.getId(), matricula.getId())
+                .ifPresentOrElse(existing -> {
+                    boolean changed = !Objects.equals(existing.getNotaNumerica(), nota)
+                            || !Objects.equals(existing.getNotaConceptual(), notaConceptual)
+                            || !Objects.equals(existing.getObservaciones(), observaciones);
+                    if (changed) {
+                        existing.setNotaNumerica(nota);
+                        existing.setNotaConceptual(notaConceptual);
+                        existing.setObservaciones(observaciones);
+                        resultadoEvaluacionRepository.save(existing);
+                    }
+                }, () -> {
+                    ResultadoEvaluacion nuevo = new ResultadoEvaluacion();
+                    nuevo.setEvaluacion(evaluacion);
+                    nuevo.setMatricula(matricula);
+                    nuevo.setNotaNumerica(nota);
+                    nuevo.setNotaConceptual(notaConceptual);
+                    nuevo.setObservaciones(observaciones);
+                    resultadoEvaluacionRepository.save(nuevo);
+                });
+    }
+
+    private String conceptoResultado(double nota) {
+        if (nota >= 9.0) {
+            return "Excelente";
+        }
+        if (nota >= 8.0) {
+            return "Muy bueno";
+        }
+        if (nota >= 7.0) {
+            return "Bueno";
+        }
+        return "En proceso";
+    }
+
+    private void asignarCalificaciones(SeccionData data, Trimestre trimestre, List<CalificacionSeed> seeds) {
+        for (CalificacionSeed seed : seeds) {
+            SeccionMateria seccionMateria = data.materias().get(seed.materia());
+            if (seccionMateria == null) {
+                continue;
+            }
+            for (int i = 0; i < data.matriculas().size(); i++) {
+                Matricula matricula = data.matriculas().get(i);
+                Double nota = ajustarNota(seed.nota(), i);
+                ensureCalificacionTrimestral(trimestre, seccionMateria, matricula, nota, seed.conceptual(), seed.observaciones());
+            }
+        }
+    }
+
+    private void ensureCalificacionTrimestral(Trimestre trimestre, SeccionMateria seccionMateria, Matricula matricula,
+                                              Double nota, CalificacionConceptual conceptual, String observaciones) {
+        Optional<CalificacionTrimestral> existente = calificacionTrimestralRepository.findAll().stream()
+                .filter(ct -> ct.getTrimestre().getId().equals(trimestre.getId())
+                        && ct.getSeccionMateria().getId().equals(seccionMateria.getId())
+                        && ct.getMatricula().getId().equals(matricula.getId()))
+                .findFirst();
+        if (existente.isPresent()) {
+            CalificacionTrimestral ct = existente.get();
+            boolean changed = !Objects.equals(ct.getNotaNumerica(), nota)
+                    || ct.getNotaConceptual() != conceptual
+                    || !Objects.equals(ct.getObservaciones(), observaciones);
+            if (changed) {
+                ct.setNotaNumerica(nota);
+                ct.setNotaConceptual(conceptual);
+                ct.setObservaciones(observaciones);
+                calificacionTrimestralRepository.save(ct);
+            }
+        } else {
+            CalificacionTrimestral ct = new CalificacionTrimestral();
+            ct.setTrimestre(trimestre);
+            ct.setSeccionMateria(seccionMateria);
+            ct.setMatricula(matricula);
+            ct.setNotaNumerica(nota);
+            ct.setNotaConceptual(conceptual);
+            ct.setObservaciones(observaciones);
+            calificacionTrimestralRepository.save(ct);
+        }
+    }
+
+    private Double ajustarNota(Double base, int index) {
+        if (base == null) {
+            return null;
+        }
+        double ajuste = (index % 3) * 0.3 - 0.3;
+        double valor = Math.min(10d, Math.max(6d, base + ajuste));
+        return Math.round(valor * 10d) / 10d;
+    }
+
+    private CalificacionSeed calificacion(String materia, Double nota, CalificacionConceptual conceptual, String observaciones) {
+        return new CalificacionSeed(materia, nota, conceptual, observaciones);
+    }
+
+    // =========================================================================
     // ASISTENCIAS (demo)
     // =========================================================================
 
-    @SuppressWarnings("unused")
     private void generarAsistenciasUltimos30Dias(List<Seccion> secciones, Trimestre t1, Trimestre t2, Trimestre t3) {
         LocalDate hoy = LocalDate.now();
-        LocalDate inicio = hoy.minusDays(30);
-        Random rnd = new Random(12345);
+        generarAsistenciasRango(secciones, hoy.minusDays(30), hoy, t1, t2, t3);
+    }
+
+    private void generarAsistenciasRango(List<Seccion> secciones, LocalDate inicio, LocalDate fin, Trimestre... trimestres) {
+        if (secciones == null || secciones.isEmpty() || trimestres == null || trimestres.length == 0) {
+            return;
+        }
+        Random rnd = new Random(Objects.hash(inicio, fin));
 
         for (Seccion s : secciones) {
-            for (LocalDate fecha = inicio; !fecha.isAfter(hoy); fecha = fecha.plusDays(1)) {
+            for (LocalDate fecha = inicio; !fecha.isAfter(fin); fecha = fecha.plusDays(1)) {
                 if (fecha.getDayOfWeek() == DayOfWeek.SATURDAY || fecha.getDayOfWeek() == DayOfWeek.SUNDAY) continue;
 
-                Trimestre tri = pickTrimestrePorFecha(fecha, t1, t2, t3);
-                if (tri == null || tri.getEstado() != TrimestreEstado.ACTIVO) continue;
+                Trimestre tri = pickTrimestrePorFecha(fecha, trimestres);
+                if (tri == null) continue;
 
                 JornadaAsistencia j = ensureJornada(s, tri, fecha);
 
@@ -476,10 +1136,18 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         }
     }
 
-    private Trimestre pickTrimestrePorFecha(LocalDate f, Trimestre t1, Trimestre t2, Trimestre t3) {
-        if (!f.isBefore(t1.getInicio()) && !f.isAfter(t1.getFin())) return t1;
-        if (!f.isBefore(t2.getInicio()) && !f.isAfter(t2.getFin())) return t2;
-        if (!f.isBefore(t3.getInicio()) && !f.isAfter(t3.getFin())) return t3;
+    private Trimestre pickTrimestrePorFecha(LocalDate f, Trimestre... trimestres) {
+        if (trimestres == null) {
+            return null;
+        }
+        for (Trimestre trimestre : trimestres) {
+            if (trimestre == null) {
+                continue;
+            }
+            if (!f.isBefore(trimestre.getInicio()) && !f.isAfter(trimestre.getFin())) {
+                return trimestre;
+            }
+        }
         return null;
     }
 
@@ -503,7 +1171,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     private Aspirante crearAspiranteConFamiliar(PersonaSeed seed) {
         Aspirante a = ensureAspirante(seed.nombre(), seed.apellido(), seed.dni());
         Familiar f = ensureFamiliar(seed.famNombre(), seed.famApellido(), seed.famDni());
-        ensureVinculoAspiranteFamiliar(a, f, RolVinculo.MADRE, false);
+        RolVinculo rol = seed.rolVinculo() != null ? seed.rolVinculo() : RolVinculo.MADRE;
+        ensureVinculoAspiranteFamiliar(a, f, rol, seed.convive());
         return a;
     }
     private void crearSolicitudesDemostracion(Aspirante aspirantePendiente, Aspirante aspiranteProgramado) {
@@ -572,102 +1241,47 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     }
 
     // =========================================================================
-    // USUARIO DOCENTE DEMO + ASIGNACIONES EXTRA
-    // =========================================================================
-
-    /**
-     * Asocia el usuario docente@example.com al empleado recibido y lo asigna a la sección dada.
-     * Además:
-     *  - crea 4° B (Tarde) con plan y alumnos,
-     *  - crea un docente de INICIAL con usuario y dos salas.
-     */
-    private void ensureDocenteDemoUserYAsignacion(Empleado docentePrimario, Seccion seccionPrimariaExistente) {
-        final String emailPrim = "docente@example.com";
-        Persona perDoc = docentePrimario.getPersona();
-        ensurePersonaCredentials(perDoc, emailPrim, "docente123", Set.of(UserRole.USER, UserRole.TEACHER));
-
-        // Asignación vigente a la sección pasada por parámetro
-        LocalDate hoy = LocalDate.now();
-        boolean yaAsignado = asigSecRepo.findAll().stream().anyMatch(a ->
-                a.getSeccion() != null && seccionPrimariaExistente.getId().equals(a.getSeccion().getId()) &&
-                        a.getEmpleado() != null && docentePrimario.getId().equals(a.getEmpleado().getId()) &&
-                        vigente(a.getVigenciaDesde(), a.getVigenciaHasta(), hoy)
-        );
-        if (!yaAsignado) {
-            boolean hayTitularVig = asigSecRepo.findAll().stream().anyMatch(a ->
-                    a.getSeccion() != null && seccionPrimariaExistente.getId().equals(a.getSeccion().getId()) &&
-                            a.getRol() == RolSeccion.MAESTRO_TITULAR && vigente(a.getVigenciaDesde(), a.getVigenciaHasta(), hoy)
-            );
-            AsignacionDocenteSeccion asig = new AsignacionDocenteSeccion();
-            asig.setSeccion(seccionPrimariaExistente);
-            asig.setEmpleado(docentePrimario);
-            asig.setRol(hayTitularVig ? RolSeccion.PRECEPTOR : RolSeccion.MAESTRO_TITULAR);
-            asig.setVigenciaDesde(hoy.withDayOfMonth(1));
-            asig.setVigenciaHasta(null);
-            asigSecRepo.save(asig);
-        }
-
-        // Extra: agregar 4° B (Tarde) al docente primario con plan y alumnos
-        PeriodoEscolar periodo = seccionPrimariaExistente.getPeriodoEscolar() != null
-                ? seccionPrimariaExistente.getPeriodoEscolar()
-                : ensurePeriodoEscolar(LocalDate.now().getYear());
-
-        Seccion sec4B = ensureSeccion(periodo, NivelAcademico.PRIMARIO, "4°", "B", Turno.TARDE);
-
-        ensureTitularSeccion(docentePrimario, sec4B, hoy.withDayOfMonth(1));
-        Materia lengua = ensureMateria("Lengua");
-        Materia matematica = ensureMateria("Matemática");
-        ensureSeccionMateria(sec4B, lengua);
-        ensureSeccionMateria(sec4B, matematica);
-
-        LocalDate asignacionDesde = LocalDate.of(
-                periodo.getAnio() != null ? periodo.getAnio() : LocalDate.now().getYear(),
-                3, 3);
-        crearAlumnoConFamiliaYMatricula(
-                sec4B, periodo, asignacionDesde,
-                new PersonaSeed("Juan", "Pérez", "50010001", "Carlos", "Pérez", "30020001"),
-                new PersonaSeed("María", "González", "50010002", "Laura", "González", "30020002"),
-                new PersonaSeed("Lucas", "Benítez", "50010003", "Ana", "Benítez", "30020003")
-        );
-
-        // Docente de INICIAL con dos salas
-        final String emailIni = "inicial@example.com";
-        Empleado docenteInicial = ensureDocente("Ana", "López", "40222333", "20111222330");
-        Persona perIni = docenteInicial.getPersona();
-        ensurePersonaCredentials(perIni, emailIni, "inicial123", Set.of(UserRole.USER, UserRole.TEACHER));
-
-        Seccion sala4_2A = ensureSeccion(periodo, NivelAcademico.INICIAL, "Sala 4", "A", Turno.MANANA);
-        Seccion sala5_3B = ensureSeccion(periodo, NivelAcademico.INICIAL, "Sala 5", "B", Turno.TARDE);
-
-        ensureTitularSeccion(docenteInicial, sala4_2A, hoy.withDayOfMonth(1));
-        ensureTitularSeccion(docenteInicial, sala5_3B, hoy.withDayOfMonth(1));
-
-        LocalDate asignacionDesdeIni = LocalDate.of(
-                periodo.getAnio() != null ? periodo.getAnio() : LocalDate.now().getYear(),
-                3, 3);
-
-        crearAlumnoConFamiliaYMatricula(
-                sala4_2A, periodo, asignacionDesdeIni,
-                new PersonaSeed("Valentina", "Ortiz", "51010001", "María", "Ortiz", "31040001"),
-                new PersonaSeed("Benjamín", "Luna",  "51010002", "Juan",  "Luna",  "31040002"),
-                new PersonaSeed("Emma",      "Suarez","51010003", "Paula", "Suarez","31040003")
-        );
-
-        crearAlumnoConFamiliaYMatricula(
-                sala5_3B, periodo, asignacionDesdeIni,
-                new PersonaSeed("Thiago", "Molina", "51020001", "Laura", "Molina", "31050001"),
-                new PersonaSeed("Mora",   "Rojas",  "51020002", "Carlos","Rojas",  "31050002"),
-                new PersonaSeed("Sofia",  "Ibarra", "51020003", "Andrea","Ibarra", "31050003")
-        );
-        crearAspiranteConFamiliar(new PersonaSeed("Sofía", "Ramírez", "70030001", "Paula", "Ramírez", "31030001"));
-    }
-
-    // =========================================================================
     // UTILIDADES
     // =========================================================================
 
+    private DocenteSeed docente(String key, String nombre, String apellido, String dni, String cuil,
+                                String email, String password, Set<UserRole> roles, LocalDate ingreso) {
+        return new DocenteSeed(key, nombre, apellido, dni, cuil, email, password, roles, ingreso);
+    }
+
+    private PersonaSeed alumno(String nombre, String apellido, String dni,
+                               String famNombre, String famApellido, String famDni,
+                               RolVinculo rol, boolean convive) {
+        return new PersonaSeed(nombre, apellido, dni, famNombre, famApellido, famDni, rol, convive);
+    }
+
+    private SeccionSetup seccion(String key, NivelAcademico nivel, String gradoSala, String division, Turno turno,
+                                 String docenteTitularKey, LocalDate vigenciaDesde, LocalDate matriculaDesde,
+                                 List<MateriaAssignment> materias, List<PersonaSeed> alumnos) {
+        return new SeccionSetup(key, nivel, gradoSala, division, turno, docenteTitularKey, vigenciaDesde, matriculaDesde, materias, alumnos);
+    }
+
+    private record DocenteSeed(String key, String nombre, String apellido, String dni, String cuil,
+                               String email, String password, Set<UserRole> roles, LocalDate ingreso) {}
+
     private record PersonaSeed(String nombre, String apellido, String dni,
-                               String famNombre, String famApellido, String famDni) {}
+                               String famNombre, String famApellido, String famDni,
+                               RolVinculo rolVinculo, boolean convive) {
+        PersonaSeed(String nombre, String apellido, String dni,
+                    String famNombre, String famApellido, String famDni) {
+            this(nombre, apellido, dni, famNombre, famApellido, famDni, RolVinculo.MADRE, true);
+        }
+    }
+
+    private record MateriaAssignment(String materia, String docenteKey, RolMateria rol) {}
+
+    private record SeccionSetup(String key, NivelAcademico nivel, String gradoSala, String division, Turno turno,
+                                String docenteTitularKey, LocalDate vigenciaDesde, LocalDate matriculaDesde,
+                                List<MateriaAssignment> materias, List<PersonaSeed> alumnos) {}
+
+    private record SeccionData(Seccion seccion, Map<String, SeccionMateria> materias, List<Matricula> matriculas) {}
+
+    private record CalificacionSeed(String materia, Double nota, CalificacionConceptual conceptual, String observaciones) {}
 
     private boolean vigente(LocalDate desde, LocalDate hasta, LocalDate f) {
         boolean okDesde = (desde == null) || !f.isBefore(desde);

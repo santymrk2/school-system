@@ -80,6 +80,23 @@ export default function SeccionEvaluacionesPage() {
   const [filterMateriaId, setFilterMateriaId] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
 
+  const accessStatus = useMemo(
+    () => {
+      if (isAdmin) return "admin" as const;
+      if (!isTeacher && !isStaff) return "forbidden" as const;
+      if (isTeacher && scopedLoading) return "checking" as const;
+      if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
+      return "ok" as const;
+    },
+    [
+      isAdmin,
+      isTeacher,
+      isStaff,
+      scopedLoading,
+      teacherHasAccess,
+    ],
+  );
+
   // Nuevo examen
   const [openNew, setOpenNew] = useState(false);
   const todayISO = useMemo(
@@ -99,45 +116,9 @@ export default function SeccionEvaluacionesPage() {
   const [openNotas, setOpenNotas] = useState(false);
   const [selEval, setSelEval] = useState<EvaluacionDTO | null>(null);
 
-  if (isAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — El perfil de Administración no tiene acceso a Exámenes.
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!isTeacher && !isStaff) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isTeacher && scopedLoading) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <LoadingState label="Verificando acceso a la sección…" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isTeacher && !teacherHasAccess) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-sm">
-          403 — Esta sección no pertenece a tus asignaciones.
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   useEffect(() => {
+    if (accessStatus !== "ok") return;
+
     let alive = true;
     (async () => {
       try {
@@ -194,7 +175,45 @@ export default function SeccionEvaluacionesPage() {
     return () => {
       alive = false;
     };
-  }, [seccionId, filterMateriaId, refreshKey]);
+  }, [accessStatus, seccionId, filterMateriaId, refreshKey]);
+
+  if (accessStatus === "admin") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Exámenes.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "forbidden") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "checking") {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <LoadingState label="Verificando acceso a la sección…" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus === "notAssigned") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — Esta sección no pertenece a tus asignaciones.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const materiaNombreById = useMemo(() => {
     const m = new Map<number, string>();

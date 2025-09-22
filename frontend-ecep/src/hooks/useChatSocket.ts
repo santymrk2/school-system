@@ -14,28 +14,6 @@ const sanitizeBaseUrl = (value?: string | null) => {
   return value.trim().replace(/\/+$/, "").replace(/\/api$/i, "");
 };
 
-const ensureWsEndpoint = (value: string): string => {
-  if (!value) return "";
-
-  const appendWs = (path: string) => {
-    const cleanPath = path.replace(/\/+$/, "");
-    return cleanPath.toLowerCase().endsWith("/ws")
-      ? cleanPath || "/ws"
-      : `${cleanPath}/ws`;
-  };
-
-  try {
-    const url = new URL(value);
-    url.pathname = appendWs(url.pathname);
-    return url.toString();
-  } catch (_error) {
-    const match = value.match(/^([^?#]+)(.*)$/);
-    const pathPart = match?.[1] ?? value;
-    const suffix = match?.[2] ?? "";
-    return `${appendWs(pathPart)}${suffix}`;
-  }
-};
-
 const isLoopbackHostname = (hostname: string): boolean => {
   const normalized = hostname.replace(/\.$/, "").toLowerCase();
 
@@ -44,43 +22,6 @@ const isLoopbackHostname = (hostname: string): boolean => {
   if (/^127(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(normalized)) return true;
 
   return false;
-};
-
-const normalizeSocketScheme = (value: string): string => {
-  if (!value) return value;
-
-  if (/^wss:\/\//i.test(value)) {
-    return value.replace(/^wss:/i, "https:");
-  }
-
-  if (/^ws:\/\//i.test(value)) {
-    return value.replace(/^ws:/i, "http:");
-  }
-
-  return value;
-};
-
-const alignProtocolWithPage = (value: string): string => {
-  if (!value || typeof window === "undefined") return value;
-
-  if (window.location.protocol !== "https:") return value;
-
-  try {
-    const url = new URL(value, window.location.origin);
-    const protocol = url.protocol.toLowerCase();
-
-    if (protocol === "http:" && isLoopbackHostname(url.hostname)) {
-      return value;
-    }
-  } catch (_error) {
-    // Ignoramos errores al parsear la URL; en esos casos aplicamos la lógica de fallback.
-  }
-
-  if (/^http:\/\//i.test(value)) {
-    return value.replace(/^http:/i, "https:");
-  }
-
-  return value;
 };
 
 const buildSocketUrl = (endpoint: string, rawToken?: string | null): string => {
@@ -101,22 +42,123 @@ const buildSocketUrl = (endpoint: string, rawToken?: string | null): string => {
   }
 };
 
-const resolveSocketBase = () => {
-  const base =
-    sanitizeBaseUrl(process.env.NEXT_PUBLIC_SOCKET_URL) ||
-    sanitizeBaseUrl(process.env.NEXT_PUBLIC_API_URL) ||
-    sanitizeBaseUrl(HTTP_BASE);
+const resolveSocketBase = (): string[] => {
+  const candidates = [
+    sanitizeBaseUrl(process.env.NEXT_PUBLIC_SOCKET_URL),
+    sanitizeBaseUrl(process.env.NEXT_PUBLIC_API_URL),
+    sanitizeBaseUrl(HTTP_BASE),
+  ].filter(Boolean) as string[];
 
-  if (base) return base;
+  if (candidates.length) return candidates;
 
   if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.host}`;
+    return [
+      sanitizeBaseUrl(`${window.location.protocol}//${window.location.host}`),
+    ].filter(Boolean) as string[];
   }
 
   console.warn(
     "[useChatSocket] No se pudo resolver la URL base del API; usando cadena vacía.",
   );
-  return "";
+  return [];
+};
+
+type ResolvedSocketEndpoint = {
+  baseUrl: string;
+  sockJsUrl: string;
+  webSocketUrl: string;
+};
+
+const ensureWsPathname = (url: URL) => {
+  const rawPath = url.pathname || "/";
+  const trimmed = rawPath.replace(/\/+$/, "");
+  const segments = trimmed
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => segment.toLowerCase());
+
+  if (segments.includes("ws") || segments.includes("websocket")) {
+    url.pathname = trimmed || "/ws";
+    return;
+  }
+
+  url.pathname = `${trimmed}/ws`;
+};
+
+const convertProtocols = (url: URL) => {
+  const protocol = url.protocol.toLowerCase();
+
+  let httpProtocol: "http:" | "https:";
+  let wsProtocol: "ws:" | "wss:";
+
+  if (protocol === "http:" || protocol === "https:") {
+    httpProtocol = protocol;
+    wsProtocol = protocol === "https:" ? "wss:" : "ws:";
+  } else if (protocol === "ws:" || protocol === "wss:") {
+    httpProtocol = protocol === "wss:" ? "https:" : "http:";
+    wsProtocol = protocol;
+  } else {
+    return null;
+  }
+
+  const mustEnforceHttps =
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    httpProtocol === "http:" &&
+    !isLoopbackHostname(url.hostname);
+
+  if (mustEnforceHttps) {
+    httpProtocol = "https:";
+    wsProtocol = "wss:";
+  }
+
+  const httpUrl = new URL(url.toString());
+  const wsUrl = new URL(url.toString());
+
+  httpUrl.protocol = httpProtocol;
+  wsUrl.protocol = wsProtocol;
+
+  return { httpUrl, wsUrl };
+};
+
+const buildSocketEndpoints = (
+  baseValue: string,
+  token?: string | null,
+): ResolvedSocketEndpoint | null => {
+  if (!baseValue) return null;
+
+  const trimmed = baseValue.trim();
+  if (!trimmed) return null;
+
+  let parsed: URL | null = null;
+
+  try {
+    parsed = new URL(trimmed);
+  } catch (_error) {
+    if (typeof window !== "undefined") {
+      try {
+        parsed = new URL(trimmed, window.location.origin);
+      } catch (__error) {
+        parsed = null;
+      }
+    }
+  }
+
+  if (!parsed) return null;
+
+  ensureWsPathname(parsed);
+
+  const protocols = convertProtocols(parsed);
+  if (!protocols) return null;
+
+  const { httpUrl, wsUrl } = protocols;
+  const baseUrl = httpUrl.toString();
+
+  return {
+    baseUrl,
+    sockJsUrl: buildSocketUrl(baseUrl, token),
+    webSocketUrl: buildSocketUrl(wsUrl.toString(), token),
+  };
 };
 
 const getAuthToken = () => {
@@ -164,51 +206,25 @@ export default function useChatSocket() {
     setConnectionStatus("connecting");
     console.log("🔌 Intentando conectar WebSocket...");
 
-    const resolvedBase = resolveSocketBase();
-    if (!resolvedBase) {
-      console.warn(
-        "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
-      );
-      setConnected(false);
-      setConnectionStatus("disconnected");
-      return;
+    const token = getAuthToken()?.trim() || null;
+    const baseCandidates = resolveSocketBase();
+
+    let endpoints: ResolvedSocketEndpoint | null = null;
+    for (const candidate of baseCandidates) {
+      endpoints = buildSocketEndpoints(candidate, token);
+      if (endpoints) break;
     }
 
-    const token = getAuthToken()?.trim() || null;
-    const socketBase = normalizeSocketScheme(resolvedBase);
-    const socketEndpointCandidate = ensureWsEndpoint(
-      alignProtocolWithPage(socketBase),
-    );
-
-    const socketEndpoint = (() => {
-      if (!socketEndpointCandidate) return "";
-
-      try {
-        const parsed = new URL(socketEndpointCandidate);
-        const protocol = parsed.protocol.toLowerCase();
-        if (protocol === "http:" || protocol === "https:") {
-          return parsed.toString();
-        }
-      } catch (_error) {
-        // Si la URL no es absoluta, intentamos resolverla respecto al origen actual.
+    if (!endpoints && typeof window !== "undefined") {
+      const fallback = sanitizeBaseUrl(
+        `${window.location.protocol}//${window.location.host}`,
+      );
+      if (fallback) {
+        endpoints = buildSocketEndpoints(fallback, token);
       }
+    }
 
-      if (typeof window !== "undefined") {
-        try {
-          const parsed = new URL(socketEndpointCandidate, window.location.origin);
-          const protocol = parsed.protocol.toLowerCase();
-          if (protocol === "http:" || protocol === "https:") {
-            return parsed.toString();
-          }
-        } catch (_error) {
-          // Continuamos hacia la advertencia de URL inválida.
-        }
-      }
-
-      return "";
-    })();
-
-    if (!socketEndpoint) {
+    if (!endpoints) {
       console.warn(
         "[useChatSocket] La URL base calculada para el socket es inválida.",
       );
@@ -217,13 +233,13 @@ export default function useChatSocket() {
       return;
     }
 
-    const socketUrl = buildSocketUrl(socketEndpoint, token);
+    const { baseUrl, sockJsUrl, webSocketUrl } = endpoints;
 
-    let socket: any;
+    let socket: any = null;
+    connectingRef.current = true;
+
     try {
-      connectingRef.current = true;
-
-      socket = new SockJS(socketUrl, undefined, {
+      socket = new SockJS(sockJsUrl, undefined, {
         transports: ["websocket", "xhr-streaming", "xhr-polling"],
         transportOptions: {
           "xhr-streaming": { withCredentials: true },
@@ -232,12 +248,44 @@ export default function useChatSocket() {
         withCredentials: true,
       } as any);
     } catch (error) {
-      console.error("[useChatSocket] Error creando la conexión SockJS:", error);
-      setConnected(false);
-      setConnectionStatus("disconnected");
-      connectingRef.current = false;
+      console.error(
+        `[useChatSocket] Error creando la conexión SockJS (${baseUrl}):`,
+        error,
+      );
 
-      return;
+      const NativeWebSocket =
+        typeof window !== "undefined" && typeof window.WebSocket === "function"
+          ? window.WebSocket
+          : typeof globalThis !== "undefined" &&
+            typeof (globalThis as any).WebSocket === "function"
+          ? ((globalThis as any).WebSocket as typeof WebSocket)
+          : undefined;
+
+      if (!NativeWebSocket) {
+        console.warn(
+          "[useChatSocket] WebSocket API no disponible para usar fallback nativo.",
+        );
+        setConnected(false);
+        setConnectionStatus("disconnected");
+        connectingRef.current = false;
+        return;
+      }
+
+      try {
+        socket = new NativeWebSocket(webSocketUrl);
+        console.info(
+          "[useChatSocket] SockJS falló; usando WebSocket nativo como fallback.",
+        );
+      } catch (wsError) {
+        console.error(
+          "[useChatSocket] Error creando la conexión WebSocket nativa:",
+          wsError,
+        );
+        setConnected(false);
+        setConnectionStatus("disconnected");
+        connectingRef.current = false;
+        return;
+      }
     }
 
     const stompClient = new Client({

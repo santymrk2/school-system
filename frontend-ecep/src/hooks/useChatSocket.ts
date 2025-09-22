@@ -84,6 +84,7 @@ export default function useChatSocket() {
     const socketBaseRaw = resolveSocketBase();
     const normalizedBase = stripTrailingSlash(socketBaseRaw);
 
+
     if (!normalizedBase) {
       console.warn(
         "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
@@ -95,6 +96,7 @@ export default function useChatSocket() {
 
     const token = getAuthToken();
 
+
     const socketUrl =
       token && token.trim()
         ? `${normalizedBase}/ws?token=${encodeURIComponent(token)}`
@@ -103,6 +105,7 @@ export default function useChatSocket() {
     let socket: any;
     try {
       connectingRef.current = true;
+
       socket = new SockJS(socketUrl, undefined, {
         transports: ["websocket", "xhr-streaming", "xhr-polling"],
         transportOptions: {
@@ -116,6 +119,7 @@ export default function useChatSocket() {
       setConnected(false);
       setConnectionStatus("disconnected");
       connectingRef.current = false;
+
       return;
     }
 
@@ -479,6 +483,7 @@ export default function useChatSocket() {
   // 🔹 Conectar al montar
   useEffect(() => {
     if (!user || !selectedRole) {
+
       disconnect();
       setMessages([]);
       setOnlineUsers({});

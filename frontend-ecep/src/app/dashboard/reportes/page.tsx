@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
+import { LicenseSummaryCards } from "./_components/LicenseSummaryCards";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -63,7 +64,6 @@ import {
   Users,
   TrendingUp,
   AlertCircle,
-  CheckCircle,
   X,
   Clock,
   Search,
@@ -2089,56 +2089,13 @@ export default function ReportesPage() {
 
           {/* -------------------- Reporte de Licencias ----------------------- */}
           <TabsContent value="licencias" ref={reportRefs.licencias} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Personal registrado</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{personalSummary.total}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total de docentes y personal administrativo con legajo activo.
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Activos</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{personalSummary.activos}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Personal que actualmente presta servicio en la institución.
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">En licencia</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{personalSummary.enLicencia}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Integrantes con licencias activas según la situación declarada.
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Licencias registradas</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{licenseLoading ? "—" : licenseRows.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Historial de licencias cargadas en el sistema.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <LicenseSummaryCards
+              totalPersonal={personalSummary.total}
+              activos={personalSummary.activos}
+              enLicencia={personalSummary.enLicencia}
+              totalLicencias={licenseRows.length}
+              loadingLicencias={licenseLoading}
+            />
 
             <Card>
               <CardHeader>

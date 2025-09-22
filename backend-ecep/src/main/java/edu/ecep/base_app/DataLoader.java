@@ -1064,13 +1064,12 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
 
                 JornadaAsistencia j = ensureJornada(s, tri, fecha);
 
-                LocalDate finalFecha = fecha;
-                List<Matricula> mats = matriculaRepository.findAll().stream()
-                        .filter(m -> {
-                            List<MatriculaSeccionHistorial> h = matSecHistRepository.findVigente(m.getId(), finalFecha);
-                            return h.stream().anyMatch(x -> x.getSeccion() != null && s.getId().equals(x.getSeccion().getId()));
-                        })
-                        .toList();
+                List<Matricula> mats = matSecHistRepository.findActivosBySeccionOnDate(s.getId(), fecha).stream()
+                        .map(MatriculaSeccionHistorial::getMatricula)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.collectingAndThen(
+                                Collectors.toCollection(LinkedHashSet::new),
+                                ArrayList::new));
 
                 for (Matricula m : mats) {
                     if (detalleRepo.existsByJornadaIdAndMatriculaId(j.getId(), m.getId())) continue;
@@ -1101,9 +1100,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     }
 
     private JornadaAsistencia ensureJornada(Seccion s, Trimestre t, LocalDate fecha) {
-        return jornadaRepo.findAll().stream()
-                .filter(j -> j.getSeccion().getId().equals(s.getId()) && j.getFecha().equals(fecha))
-                .findFirst()
+        return jornadaRepo.findBySeccionIdAndFecha(s.getId(), fecha)
                 .orElseGet(() -> {
                     JornadaAsistencia j = new JornadaAsistencia();
                     j.setSeccion(s);

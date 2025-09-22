@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -52,23 +53,29 @@ public class FamiliarController {
             var p = al.getPersona();
             String nombre = Optional.ofNullable(p)
                     .map(px -> (px.getApellido() != null ? px.getApellido() : "") +
-                            (px.getNombre()   != null ? (", " + px.getNombre()) : ""))
+                            (px.getNombre() != null ? (", " + px.getNombre()) : ""))
                     .orElse("#" + al.getId());
 
-            return mats.stream().map(m -> {
+            return mats.stream().flatMap(m -> {
                 var vigente = historialRepo.findVigente(m.getId(), LocalDate.now()).stream().findFirst();
+                if (vigente.isEmpty()) {
+                    return Stream.empty();
+                }
                 var seccion = vigente.map(MatriculaSeccionHistorial::getSeccion);
                 Long seccionId = seccion.map(Seccion::getId).orElse(null);
+                if (seccionId == null) {
+                    return Stream.empty();
+                }
                 String seccionNombre = seccion.map(this::buildSeccionNombre).orElse(null);
                 var nivel = seccion.map(Seccion::getNivel).orElse(null);
-                return new AlumnoLiteDTO(
+                return Stream.of(new AlumnoLiteDTO(
                         m.getId(),
                         al.getId(),
                         nombre,
                         seccionId,
                         seccionNombre,
                         nivel
-                );
+                ));
             });
         }).toList();
     }

@@ -22,11 +22,13 @@ import type {
   TrimestreDTO,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
+import { resolveTrimestrePeriodoId } from "@/lib/trimestres";
 
 interface FamilyCalificacionesViewProps {
   alumnos: AlumnoLiteDTO[];
   initialLoading?: boolean;
   initialError?: string | null;
+  periodoEscolarId?: number | null;
 }
 
 interface MateriaResumen {
@@ -77,6 +79,7 @@ export default function FamilyCalificacionesView({
   alumnos,
   initialLoading,
   initialError,
+  periodoEscolarId,
 }: FamilyCalificacionesViewProps) {
   const [selectedMatriculaId, setSelectedMatriculaId] = useState<number | null>(
     null,
@@ -92,6 +95,9 @@ export default function FamilyCalificacionesView({
   const [trimestres, setTrimestres] = useState<TrimestreDTO[]>([]);
   const [calificaciones, setCalificaciones] = useState<CalificacionDTO[]>([]);
   const [informes, setInformes] = useState<InformeInicialDTO[]>([]);
+
+  const activePeriodId =
+    typeof periodoEscolarId === "number" ? periodoEscolarId : null;
 
   useEffect(() => {
     if (!alumnos.length) {
@@ -188,19 +194,65 @@ export default function FamilyCalificacionesView({
         }
         setMateriasPorSeccion(materiasMap);
 
-        const trimestresOrdenados = [...(trimestresRes.data ?? [])].sort(
-          (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
-        );
-        setTrimestres(trimestresOrdenados);
+        const allowedPeriodoIds = new Set<number>();
+        if (typeof periodoEscolarId === "number") {
+          allowedPeriodoIds.add(periodoEscolarId);
+        } else {
+          for (const sec of seccionesRes.data ?? []) {
+            const sid = sec.id;
+            if (sid == null || !seccionIds.includes(sid)) continue;
+            const pid =
+              (sec as any).periodoEscolarId ??
+              (sec as any).periodoId ??
+              (sec as any).periodoEscolar?.id ??
+              null;
+            if (typeof pid === "number") {
+              allowedPeriodoIds.add(pid);
+            }
+          }
+        }
 
-        const califs = (calificacionesRes.data ?? []).filter((cal) =>
-          matriculaIds.includes(cal.matriculaId ?? -1),
-        );
+        const allTrimestres = trimestresRes.data ?? [];
+        const filteredTrimestres =
+          allowedPeriodoIds.size > 0
+            ? allTrimestres.filter((tri) => {
+                const pid = resolveTrimestrePeriodoId(tri, null);
+                return typeof pid === "number" && allowedPeriodoIds.has(pid);
+              })
+            : allTrimestres;
+        setTrimestres(filteredTrimestres);
+
+        const allowedTrimestreIds =
+          allowedPeriodoIds.size > 0
+            ? new Set(
+                filteredTrimestres
+                  .map((tri) => tri.id)
+                  .filter((id): id is number => typeof id === "number"),
+              )
+            : null;
+
+        const califs = (calificacionesRes.data ?? []).filter((cal) => {
+          if (!matriculaIds.includes(cal.matriculaId ?? -1)) return false;
+          if (!allowedTrimestreIds || allowedTrimestreIds.size === 0) return true;
+          const triId =
+            cal.trimestreId ??
+            (cal as any).trimestreId ??
+            (cal as any).trimestre?.id ??
+            null;
+          return typeof triId === "number" && allowedTrimestreIds.has(triId);
+        });
         setCalificaciones(califs);
 
-        const informesFiltrados = (informesRes.data ?? []).filter((inf) =>
-          matriculaIds.includes(inf.matriculaId ?? -1),
-        );
+        const informesFiltrados = (informesRes.data ?? []).filter((inf) => {
+          if (!matriculaIds.includes(inf.matriculaId ?? -1)) return false;
+          if (!allowedTrimestreIds || allowedTrimestreIds.size === 0) return true;
+          const triId =
+            inf.trimestreId ??
+            (inf as any).trimestreId ??
+            (inf as any).trimestre?.id ??
+            null;
+          return typeof triId === "number" && allowedTrimestreIds.has(triId);
+        });
         setInformes(informesFiltrados);
       } catch (error: any) {
         if (!alive) return;
@@ -217,12 +269,27 @@ export default function FamilyCalificacionesView({
     return () => {
       alive = false;
     };
-  }, [matriculaIds, seccionIds]);
+  }, [matriculaIds, seccionIds, periodoEscolarId]);
 
   const trimestresOrdenados = useMemo(
     () => [...trimestres].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
     [trimestres],
   );
+
+  const trimestresPorPeriodo = useMemo(() => {
+    const map = new Map<number, TrimestreDTO[]>();
+    for (const tri of trimestres) {
+      const periodoId = resolveTrimestrePeriodoId(tri, undefined);
+      if (typeof periodoId !== "number") continue;
+      const lista = map.get(periodoId) ?? [];
+      lista.push(tri);
+      map.set(periodoId, lista);
+    }
+    for (const lista of map.values()) {
+      lista.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    }
+    return map;
+  }, [trimestres]);
 
   if (initialLoading) {
     return <LoadingState label="Cargando calificaciones…" />;
@@ -263,20 +330,62 @@ export default function FamilyCalificacionesView({
         const materiasSeccion = alumno.seccionId
           ? materiasPorSeccion.get(alumno.seccionId) ?? []
           : [];
-        const calificacionesAlumno = calificaciones.filter(
-          (cal) => cal.matriculaId === alumno.matriculaId,
+
+        const seccionPeriodoId = seccion
+          ? (seccion as any).periodoEscolarId ??
+            (seccion as any).periodoId ??
+            (seccion as any).periodoEscolar?.id ??
+            null
+          : null;
+        const basePorSeccion =
+          typeof seccionPeriodoId === "number"
+            ? trimestresPorPeriodo.get(seccionPeriodoId) ?? []
+            : [];
+        const basePorPeriodoActivo =
+          activePeriodId != null
+            ? trimestresPorPeriodo.get(activePeriodId) ?? []
+            : [];
+        const trimestresAlumnoBase =
+          basePorSeccion.length > 0 ? basePorSeccion : basePorPeriodoActivo;
+        const trimestresAlumno = trimestresAlumnoBase.length
+          ? trimestresAlumnoBase
+          : trimestresOrdenados;
+        const trimestreIdsAlumno = new Set(
+          trimestresAlumno
+            .map((tri) => tri.id)
+            .filter((id): id is number => typeof id === "number"),
         );
+
+        const calificacionesAlumno = calificaciones.filter((cal) => {
+          if (cal.matriculaId !== alumno.matriculaId) return false;
+          if (trimestreIdsAlumno.size === 0) return true;
+          const triId =
+            cal.trimestreId ??
+            (cal as any).trimestreId ??
+            (cal as any).trimestre?.id ??
+            null;
+          return typeof triId === "number" && trimestreIdsAlumno.has(triId);
+        });
         const calificacionesMap = new Map<string, CalificacionDTO>();
         for (const cal of calificacionesAlumno) {
           const smId = (cal as any).seccionMateriaId as number | undefined;
-          const triId = cal.trimestreId ?? (cal as any).trimestreId ?? null;
-          if (!smId || triId == null) continue;
+          const triId =
+            cal.trimestreId ??
+            (cal as any).trimestreId ??
+            (cal as any).trimestre?.id ??
+            null;
+          if (!smId || typeof triId !== "number") continue;
           calificacionesMap.set(`${smId}-${triId}`, cal);
         }
 
-        const informesAlumno = informes.filter(
-          (inf) => inf.matriculaId === alumno.matriculaId,
-        );
+        const informesAlumno = informes.filter((inf) => {
+          if (inf.matriculaId !== alumno.matriculaId) return false;
+          if (trimestreIdsAlumno.size === 0) return true;
+          return (
+            typeof inf.trimestreId === "number" &&
+            trimestreIdsAlumno.has(inf.trimestreId)
+          );
+        });
         const informesMap = new Map<number, InformeInicialDTO>();
         for (const inf of informesAlumno) {
           if (inf.trimestreId != null) {
@@ -341,7 +450,7 @@ export default function FamilyCalificacionesView({
                               </Badge>
                             </div>
                             <div className="mt-3 space-y-3 text-sm">
-                              {trimestresOrdenados.map((tri) => {
+                              {trimestresAlumno.map((tri) => {
                                 if (tri.id == null) return null;
                                 const cal = calificacionesMap.get(
                                   `${materia.seccionMateriaId}-${tri.id}`,
@@ -386,7 +495,7 @@ export default function FamilyCalificacionesView({
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
-                      {trimestresOrdenados.map((tri) => {
+                      {trimestresAlumno.map((tri) => {
                         if (tri.id == null) return null;
                         const informe = informesMap.get(tri.id);
                         return (

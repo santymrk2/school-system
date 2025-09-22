@@ -146,9 +146,15 @@ export default function CalificacionesSeccionPage() {
         {!loading && !error && (
           <>
             {nivel === "PRIMARIO" ? (
-              <CierrePrimarioView seccionId={seccionId} />
+              <CierrePrimarioView
+                seccionId={seccionId}
+                periodoEscolarId={seccion?.periodoEscolarId ?? null}
+              />
             ) : (
-              <InformeInicialView seccionId={seccionId} />
+              <InformeInicialView
+                seccionId={seccionId}
+                periodoEscolarId={seccion?.periodoEscolarId ?? null}
+              />
             )}
           </>
         )}

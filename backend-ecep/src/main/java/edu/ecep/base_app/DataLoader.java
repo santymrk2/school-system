@@ -464,6 +464,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             ));
         }
 
+        cerrarHistorialPeriodo(datosSecciones2024, t3_2024.getFin());
+        cerrarHistorialPeriodo(datosSecciones2023, t3_2023.getFin());
+
         generarAsistenciasUltimos30Dias(datosSecciones2025.stream().map(SeccionData::seccion).toList(), t1_2025, t2_2025, t3_2025);
         generarAsistenciasRango(datosSecciones2024.stream().map(SeccionData::seccion).toList(),
                 LocalDate.of(2024, 3, 4), LocalDate.of(2024, 11, 20), t1_2024, t2_2024, t3_2024);
@@ -906,6 +909,32 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             h.setSeccion(s);
             h.setDesde(desde);
             matSecHistRepository.save(h);
+        }
+    }
+
+    private void cerrarHistorialPeriodo(List<SeccionData> datos, LocalDate hasta) {
+        if (datos == null || datos.isEmpty() || hasta == null) {
+            return;
+        }
+        for (SeccionData data : datos) {
+            Long seccionId = data.seccion().getId();
+            if (seccionId == null) {
+                continue;
+            }
+            for (Matricula matricula : data.matriculas()) {
+                List<MatriculaSeccionHistorial> historiales =
+                        matSecHistRepository.findByMatriculaIdOrderByDesdeDesc(matricula.getId());
+                for (MatriculaSeccionHistorial historial : historiales) {
+                    if (historial.getSeccion() == null
+                            || !seccionId.equals(historial.getSeccion().getId())) {
+                        continue;
+                    }
+                    if (historial.getHasta() == null || historial.getHasta().isAfter(hasta)) {
+                        historial.setHasta(hasta);
+                        matSecHistRepository.save(historial);
+                    }
+                }
+            }
         }
     }
 

@@ -19,13 +19,16 @@ import {
   TRIMESTRE_ESTADO_BADGE_VARIANT,
   TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
+  resolveTrimestrePeriodoId,
 } from "@/lib/trimestres";
 import { toast } from "sonner";
 
 export default function InformeInicialView({
   seccionId,
+  periodoEscolarId,
 }: {
   seccionId: number;
+  periodoEscolarId?: number | null;
 }) {
   const hoy = new Date().toISOString().slice(0, 10);
   const [trimestres, setTrimestres] = useState<any[]>([]);
@@ -44,9 +47,27 @@ export default function InformeInicialView({
           api.informes.list(),
         ]);
         if (!alive) return;
-        setTrimestres(triRes.data ?? []);
+        const allTrimestres = triRes.data ?? [];
+        const filteredTrimestres =
+          typeof periodoEscolarId === "number"
+            ? allTrimestres.filter(
+                (t: any) =>
+                  resolveTrimestrePeriodoId(t, undefined) === periodoEscolarId,
+              )
+            : allTrimestres;
+        setTrimestres(filteredTrimestres);
         setAlumnos(aluRes.data ?? []);
-        setInformes(infRes.data ?? []);
+        const allowedTrimestreIds = new Set(
+          filteredTrimestres
+            .map((t: any) => t.id)
+            .filter((id: any) => typeof id === "number"),
+        );
+        const informesFiltrados = (infRes.data ?? []).filter((inf: any) => {
+          if (allowedTrimestreIds.size === 0) return true;
+          const triId = inf.trimestreId ?? (inf as any)?.trimestre?.id ?? null;
+          return typeof triId === "number" && allowedTrimestreIds.has(triId);
+        });
+        setInformes(informesFiltrados);
       } finally {
         if (alive) setLoading(false);
       }
@@ -54,7 +75,7 @@ export default function InformeInicialView({
     return () => {
       alive = false;
     };
-  }, [seccionId, hoy]);
+  }, [seccionId, hoy, periodoEscolarId]);
 
   const byKey = useMemo(() => {
     const m = new Map<string, any>();

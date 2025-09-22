@@ -46,6 +46,20 @@ const isLoopbackHostname = (hostname: string): boolean => {
   return false;
 };
 
+const normalizeSocketScheme = (value: string): string => {
+  if (!value) return value;
+
+  if (/^wss:\/\//i.test(value)) {
+    return value.replace(/^wss:/i, "https:");
+  }
+
+  if (/^ws:\/\//i.test(value)) {
+    return value.replace(/^ws:/i, "http:");
+  }
+
+  return value;
+};
+
 const alignProtocolWithPage = (value: string): string => {
   if (!value || typeof window === "undefined") return value;
 
@@ -55,10 +69,7 @@ const alignProtocolWithPage = (value: string): string => {
     const url = new URL(value, window.location.origin);
     const protocol = url.protocol.toLowerCase();
 
-    if (
-      (protocol === "http:" || protocol === "ws:") &&
-      isLoopbackHostname(url.hostname)
-    ) {
+    if (protocol === "http:" && isLoopbackHostname(url.hostname)) {
       return value;
     }
   } catch (_error) {
@@ -67,10 +78,6 @@ const alignProtocolWithPage = (value: string): string => {
 
   if (/^http:\/\//i.test(value)) {
     return value.replace(/^http:/i, "https:");
-  }
-
-  if (/^ws:\/\//i.test(value)) {
-    return value.replace(/^ws:/i, "wss:");
   }
 
   return value;
@@ -157,8 +164,8 @@ export default function useChatSocket() {
     setConnectionStatus("connecting");
     console.log("🔌 Intentando conectar WebSocket...");
 
-    const socketBase = resolveSocketBase();
-    if (!socketBase) {
+    const resolvedBase = resolveSocketBase();
+    if (!resolvedBase) {
       console.warn(
         "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
       );
@@ -168,7 +175,38 @@ export default function useChatSocket() {
     }
 
     const token = getAuthToken()?.trim() || null;
-    const socketEndpoint = ensureWsEndpoint(alignProtocolWithPage(socketBase));
+    const socketBase = normalizeSocketScheme(resolvedBase);
+    const socketEndpointCandidate = ensureWsEndpoint(
+      alignProtocolWithPage(socketBase),
+    );
+
+    const socketEndpoint = (() => {
+      if (!socketEndpointCandidate) return "";
+
+      try {
+        const parsed = new URL(socketEndpointCandidate);
+        const protocol = parsed.protocol.toLowerCase();
+        if (protocol === "http:" || protocol === "https:") {
+          return parsed.toString();
+        }
+      } catch (_error) {
+        // Si la URL no es absoluta, intentamos resolverla respecto al origen actual.
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          const parsed = new URL(socketEndpointCandidate, window.location.origin);
+          const protocol = parsed.protocol.toLowerCase();
+          if (protocol === "http:" || protocol === "https:") {
+            return parsed.toString();
+          }
+        } catch (_error) {
+          // Continuamos hacia la advertencia de URL inválida.
+        }
+      }
+
+      return "";
+    })();
 
     if (!socketEndpoint) {
       console.warn(

@@ -430,7 +430,7 @@ export function FamilyEvaluationsView({
               <CardTitle className="text-xl">
                 {alumnoSeleccionado.nombreCompleto}
               </CardTitle>
-              <CardDescription className="space-y-1 text-sm">
+              <div className="space-y-1 text-sm text-muted-foreground">
                 {alumnoSeleccionado.seccionNombre && (
                   <div>
                     Sección: {alumnoSeleccionado.seccionNombre}
@@ -439,7 +439,7 @@ export function FamilyEvaluationsView({
                 <div>
                   Nivel: {nivel === NivelAcademicoEnum.INICIAL ? "Inicial" : "Primario"}
                 </div>
-              </CardDescription>
+              </div>
             </div>
             <div className="flex gap-3 text-sm">
               <Badge variant="secondary" className="flex items-center gap-1">

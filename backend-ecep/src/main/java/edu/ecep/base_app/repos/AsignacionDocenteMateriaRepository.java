@@ -1,6 +1,7 @@
 package edu.ecep.base_app.repos;
 
 import edu.ecep.base_app.domain.AsignacionDocenteMateria;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,6 +10,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface AsignacionDocenteMateriaRepository extends JpaRepository<AsignacionDocenteMateria, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = {"seccionMateria", "empleado"})
+    List<AsignacionDocenteMateria> findAll();
+
     boolean existsByEmpleadoId(Long empleadoId); // +++
     @Query("""
       select (count(a) > 0) from AsignacionDocenteMateria a

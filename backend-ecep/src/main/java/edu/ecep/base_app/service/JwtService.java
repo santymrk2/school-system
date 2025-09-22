@@ -78,4 +78,18 @@ public class JwtService {
             return Optional.empty();
         }
     }
+
+    public Optional<Long> safeExtractPersonaId(String token) {
+        try {
+            Object personaId = extractAllClaims(token).get("personaId");
+            if (personaId instanceof Number number) {
+                return Optional.of(number.longValue());
+            }
+            if (personaId instanceof String str && !str.isBlank()) {
+                return Optional.of(Long.valueOf(str));
+            }
+        } catch (Exception ignored) {
+        }
+        return Optional.empty();
+    }
 }

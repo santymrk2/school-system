@@ -16,8 +16,11 @@ public interface AlumnoFamiliarRepository extends JpaRepository<AlumnoFamiliar, 
     boolean existsByAlumnoId(Long id);
 
     @Query("""
-         select af.alumno
+         select distinct alumno
          from AlumnoFamiliar af
+         join af.alumno alumno
+         join fetch alumno.persona
          where af.familiar.id = :familiarId
          """)
-    List<Alumno> findAlumnosByFamiliar(@Param("familiarId") Long familiarId);}
+    List<Alumno> findAlumnosByFamiliar(@Param("familiarId") Long familiarId);
+}

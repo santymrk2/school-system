@@ -70,14 +70,30 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             }
 
             if (token != null && !token.isBlank() && jwtService.validateToken(token)) {
-                String email = jwtService.extractUsername(token);
-                Optional<Persona> personaOpt = personaRepository.findByEmail(email);
+                Optional<Long> personaIdFromToken = jwtService.safeExtractPersonaId(token);
+                if (personaIdFromToken.isPresent()) {
+                    Long personaId = personaIdFromToken.get();
+                    Optional<Persona> personaOpt = personaRepository.findById(personaId);
+                    if (personaOpt.isPresent()) {
+                        log.info("✅ Persona autenticada en WS (claim personaId): {}", personaId);
+                        attributes.put("user", personaId.toString());
+                        return true;
+                    }
+                    log.warn("⚠️ Persona {} no encontrada al validar token via claim personaId", personaId);
+                }
 
-                if (personaOpt.isPresent()) {
-                    Persona persona = personaOpt.get();
-                    log.info("✅ Persona autenticada en WS: {}", persona.getId());
-                    attributes.put("user", persona.getId().toString());
-                    return true;
+                Optional<String> emailOpt = jwtService.safeExtractUsername(token);
+                if (emailOpt.isPresent()) {
+                    Optional<Persona> personaOpt = personaRepository.findByEmail(emailOpt.get());
+                    if (personaOpt.isPresent()) {
+                        Persona persona = personaOpt.get();
+                        log.info("✅ Persona autenticada en WS (fallback email): {}", persona.getId());
+                        attributes.put("user", persona.getId().toString());
+                        return true;
+                    }
+                    log.warn("⚠️ No se encontró persona con email {} para handshake", emailOpt.get());
+                } else {
+                    log.warn("⚠️ Token válido pero sin subject/email disponible");
                 }
             }
             log.warn("⚠️ No se pudo autenticar el handshake de WebSocket");

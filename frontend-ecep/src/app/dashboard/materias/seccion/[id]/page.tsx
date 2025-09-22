@@ -25,6 +25,9 @@ import type {
 } from "@/types/api-generated";
 import AddMateriaToSeccionDialog from "@/app/dashboard/materias/_components/AddMateriaToSeccionDialog";
 import AsignarDocenteMateriaDialog from "@/app/dashboard/materias/_components/AsignarDocenteMateriaDialog";
+import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
+import { UserRole } from "@/types/api-generated";
 
 type Seccion = SeccionDTO;
 type SM = SeccionMateriaDTO;
@@ -80,6 +83,19 @@ export default function MateriasSeccionPage() {
   const { id } = useParams<{ id: string }>();
   const seccionId = Number(id);
   const router = useRouter();
+  const { type, activeRole } = useViewerScope();
+  const {
+    loading: scopedLoading,
+    secciones: accesibles,
+  } = useScopedSecciones();
+
+  const isAdmin = activeRole === UserRole.ADMIN;
+  const isTeacher = type === "teacher";
+  const isStaff = type === "staff";
+  const teacherHasAccess = useMemo(() => {
+    if (!isTeacher) return true;
+    return accesibles.some((s) => s.id === seccionId);
+  }, [accesibles, isTeacher, seccionId]);
 
   const [loading, setLoading] = useState(true);
   const [seccion, setSeccion] = useState<Seccion | null>(null);
@@ -99,6 +115,46 @@ export default function MateriasSeccionPage() {
   } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  if (isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Materias.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!isStaff && !isTeacher) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — No tenés acceso a esta sección.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isTeacher && scopedLoading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <LoadingState label="Verificando acceso a la sección…" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isTeacher && !teacherHasAccess) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — Esta sección no pertenece a tus asignaciones.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const materiasById = useMemo(
     () => new Map(materias.map((m) => [m.id, m])),

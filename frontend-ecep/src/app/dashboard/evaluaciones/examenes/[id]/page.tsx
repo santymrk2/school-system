@@ -69,15 +69,16 @@ export default function ExamenDetailPage() {
   const router = useRouter();
   const { activeRole } = useViewerScope();
   const role = activeRole ?? null;
+  const isAdmin = role === UserRole.ADMIN;
 
   const isStaff =
-    role === UserRole.ADMIN ||
     role === UserRole.DIRECTOR ||
     role === UserRole.SECRETARY ||
     role === UserRole.COORDINATOR;
   const isTeacher =
     role === UserRole.TEACHER || role === UserRole.ALTERNATE;
-  const canEdit = isStaff || isTeacher;
+  const canEdit = !isAdmin && (isStaff || isTeacher);
+
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +101,12 @@ export default function ExamenDetailPage() {
   useEffect(() => {
     if (!Number.isFinite(examenId)) {
       setError("Identificador de examen inválido.");
+      setLoading(false);
+      return;
+    }
+
+    if (isAdmin) {
+      setError("El perfil de Administración no tiene acceso a este examen.");
       setLoading(false);
       return;
     }
@@ -161,7 +168,17 @@ export default function ExamenDetailPage() {
     return () => {
       alive = false;
     };
-  }, [examenId]);
+  }, [examenId, isAdmin]);
+
+  if (isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Exámenes.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const nombreAlumnosPorMatricula = useMemo(() => {
     const map = new Map<number, string>();

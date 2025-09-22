@@ -15,6 +15,9 @@ import type {
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 import { getTrimestreEstado } from "@/lib/trimestres";
+import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
+import { UserRole } from "@/types/api-generated";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +58,15 @@ export default function SeccionEvaluacionesPage() {
   const seccionId = Number(id);
   const router = useRouter();
   const { getTrimestreByDate } = useActivePeriod();
+  const { type, activeRole } = useViewerScope();
+  const { loading: scopedLoading, secciones: accesibles } = useScopedSecciones();
+  const isAdmin = activeRole === UserRole.ADMIN;
+  const isTeacher = type === "teacher";
+  const isStaff = type === "staff";
+  const teacherHasAccess = useMemo(() => {
+    if (!isTeacher) return true;
+    return accesibles.some((s) => s.id === seccionId);
+  }, [accesibles, isTeacher, seccionId]);
 
   // Data
   const [loading, setLoading] = useState(true);
@@ -86,6 +98,44 @@ export default function SeccionEvaluacionesPage() {
   // Notas
   const [openNotas, setOpenNotas] = useState(false);
   const [selEval, setSelEval] = useState<EvaluacionDTO | null>(null);
+
+  if (isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Exámenes.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!isTeacher && !isStaff) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isTeacher && scopedLoading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <LoadingState label="Verificando acceso a la sección…" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isTeacher && !teacherHasAccess) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — Esta sección no pertenece a tus asignaciones.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   useEffect(() => {
     let alive = true;

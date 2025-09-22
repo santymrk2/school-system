@@ -22,8 +22,6 @@ const getApiBase = () => {
   return "";
 };
 
-const API_BASE = getApiBase();
-
 const normalizeMessage = (msg: any): ChatMessageDTO => ({
   id: msg.id,
   emisorId: msg.emisorId ?? msg.emisor ?? 0,
@@ -42,7 +40,7 @@ export default function useChatSocket() {
     useState<ConnectionStatus>("connecting");
   const [onlineUsers, setOnlineUsers] = useState<Record<number, boolean>>({});
   const [typingUsers, setTypingUsers] = useState<Record<number, boolean>>({});
-  const { user } = useAuth();
+  const { user, selectedRole } = useAuth();
 
   const client = useRef<Client | null>(null);
   const subscriptions = useRef<StompSubscription[]>([]);
@@ -57,22 +55,47 @@ export default function useChatSocket() {
     setConnectionStatus("connecting");
     console.log("🔌 Intentando conectar WebSocket...");
 
+    const apiBaseRaw = getApiBase();
+    const apiBase =
+      apiBaseRaw ||
+      (typeof window !== "undefined"
+        ? `${window.location.protocol}//${window.location.host}`
+        : "");
+    const normalizedBase = apiBase.replace(/\/+$/, "");
+
+    if (!normalizedBase) {
+      console.warn(
+        "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
+      );
+      setConnected(false);
+      setConnectionStatus("disconnected");
+      return;
+    }
+
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const socketUrl =
       token && token.trim()
-        ? `${API_BASE}/ws?token=${encodeURIComponent(token)}`
-        : `${API_BASE}/ws`;
+        ? `${normalizedBase}/ws?token=${encodeURIComponent(token)}`
+        : `${normalizedBase}/ws`;
 
-    const socket = new SockJS(socketUrl, undefined, {
-      transports: ["websocket", "xhr-streaming", "xhr-polling"],
-      transportOptions: {
-        "xhr-streaming": { withCredentials: true },
-        "xhr-polling": { withCredentials: true },
-      },
-      withCredentials: true,
-    } as any);
+    let socket: any;
+    try {
+      socket = new SockJS(socketUrl, undefined, {
+        transports: ["websocket", "xhr-streaming", "xhr-polling"],
+        transportOptions: {
+          "xhr-streaming": { withCredentials: true },
+          "xhr-polling": { withCredentials: true },
+        },
+        withCredentials: true,
+      } as any);
+    } catch (error) {
+      console.error("[useChatSocket] Error creando la conexión SockJS:", error);
+      setConnected(false);
+      setConnectionStatus("disconnected");
+      return;
+    }
 
     const stompClient = new Client({
       webSocketFactory: () => socket,
@@ -404,9 +427,18 @@ export default function useChatSocket() {
   }, []);
   // 🔹 Conectar al montar
   useEffect(() => {
+    if (!user) {
+      disconnect();
+      setMessages([]);
+      setOnlineUsers({});
+      setTypingUsers({});
+      setConnectionStatus("disconnected");
+      return;
+    }
+
     connect();
     return () => disconnect();
-  }, [connect, disconnect]);
+  }, [connect, disconnect, user?.id, selectedRole]);
 
   return {
     messages,

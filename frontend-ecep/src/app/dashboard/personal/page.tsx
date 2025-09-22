@@ -29,18 +29,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
 import { api } from "@/services/api";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
+import { displayRole } from "@/lib/auth-roles";
 import {
   RolEmpleado,
   UserRole,
@@ -51,6 +54,7 @@ import {
   type LicenciaDTO,
   type MateriaDTO,
   type PersonaDTO,
+  type PersonaUpdateDTO,
   type SeccionDTO,
 } from "@/types/api-generated";
 import {
@@ -64,6 +68,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Pencil,
   Phone,
   Plus,
   Search,
@@ -87,6 +92,48 @@ const tipoLicenciaOptions = [
   { value: "OTRA", label: "Otra" },
 ];
 
+const DEFAULT_SITUACION = "Activo";
+
+const GENERO_PRESET_OPTIONS = [
+  { value: "Femenino", label: "Femenino" },
+  { value: "Masculino", label: "Masculino" },
+  { value: "No binario", label: "No binario" },
+  { value: "Otro", label: "Otro / Prefiere no decir" },
+];
+
+const ESTADO_CIVIL_PRESET_OPTIONS = [
+  { value: "Soltero/a", label: "Soltero/a" },
+  { value: "Casado/a", label: "Casado/a" },
+  { value: "Divorciado/a", label: "Divorciado/a" },
+  { value: "Viudo/a", label: "Viudo/a" },
+  { value: "En pareja", label: "En pareja" },
+];
+
+const CONDICION_LABORAL_PRESET_OPTIONS = [
+  { value: "Titular", label: "Titular" },
+  { value: "Suplente", label: "Suplente" },
+  { value: "Interino", label: "Interino" },
+  { value: "Contratado", label: "Contratado" },
+  { value: "Ad honorem", label: "Ad honorem" },
+];
+
+const CARGO_PRESET_OPTIONS = [
+  { value: "Docente", label: "Docente" },
+  { value: "Preceptor", label: "Preceptor" },
+  { value: "Maestro", label: "Maestro" },
+  { value: "Profesor", label: "Profesor" },
+  { value: "Directivo", label: "Directivo" },
+  { value: "Administrativo", label: "Administrativo" },
+  { value: "Auxiliar", label: "Auxiliar" },
+];
+
+const SITUACION_PRESET_OPTIONS = [
+  { value: "Activo", label: "Activo" },
+  { value: "En licencia", label: "En licencia" },
+  { value: "De baja", label: "De baja" },
+  { value: "Suspendido", label: "Suspendido" },
+];
+
 const initialPersonaForm = {
   nombre: "",
   apellido: "",
@@ -106,7 +153,7 @@ const initialEmpleadoForm = {
   cuil: "",
   condicionLaboral: "",
   cargo: "",
-  situacionActual: "ACTIVO",
+  situacionActual: DEFAULT_SITUACION,
   fechaIngreso: "",
   antecedentesLaborales: "",
   observacionesGenerales: "",
@@ -137,11 +184,26 @@ const initialLicenseForm = {
   observaciones: "",
 };
 
+const STAFF_ROLE_OPTIONS: UserRole[] = [
+  UserRole.DIRECTOR,
+  UserRole.ADMIN,
+  UserRole.SECRETARY,
+  UserRole.COORDINATOR,
+  UserRole.TEACHER,
+  UserRole.ALTERNATE,
+];
+
 type NewPersonaForm = typeof initialPersonaForm;
 type NewEmpleadoForm = typeof initialEmpleadoForm;
 type NewFormacionForm = typeof initialFormacionForm;
 type FormacionNotas = typeof initialFormacionNotas;
 type NewLicenseForm = typeof initialLicenseForm;
+type AccessFormState = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  roles: UserRole[];
+};
 
 type EmpleadoView = {
   empleado: EmpleadoDTO;
@@ -202,6 +264,28 @@ function formatTipoLicencia(value?: string | null) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+function inferDefaultRolesForEmpleado(
+  empleado?: EmpleadoDTO | null,
+  persona?: PersonaDTO | null,
+): UserRole[] {
+  if (persona?.roles && persona.roles.length > 0) {
+    return [...persona.roles];
+  }
+
+  switch (empleado?.rolEmpleado) {
+    case RolEmpleado.DIRECCION:
+      return [UserRole.DIRECTOR];
+    case RolEmpleado.ADMINISTRACION:
+      return [UserRole.ADMIN];
+    case RolEmpleado.SECRETARIA:
+      return [UserRole.SECRETARY];
+    case RolEmpleado.DOCENTE:
+      return [UserRole.TEACHER];
+    default:
+      return [];
+  }
+}
+
 async function safeRequest<T>(
   promise: Promise<{ data?: T }>,
   fallback: T,
@@ -246,6 +330,35 @@ function getSituacionBadge(situacion?: string | null) {
 function getLicenseStart(licencia: LicenciaDTO) {
   return licencia.fechaInicio ?? "";
 }
+
+function sanitizeDigits(value: string, maxLength?: number) {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (typeof maxLength === "number") {
+    return digits.slice(0, maxLength);
+  }
+  return digits;
+}
+
+function composeCuil(prefix: string, dni: string, suffix: string) {
+  const normalizedPrefix = sanitizeDigits(prefix, 2);
+  const normalizedDni = sanitizeDigits(dni);
+  const normalizedSuffix = sanitizeDigits(suffix, 1);
+  if (
+    normalizedPrefix.length !== 2 ||
+    normalizedDni.length < 7 ||
+    normalizedSuffix.length !== 1
+  ) {
+    return "";
+  }
+  return `${normalizedPrefix}-${normalizedDni}-${normalizedSuffix}`;
+}
+
+function splitCuilParts(cuil?: string | null) {
+  const digits = sanitizeDigits(cuil ?? "");
+  const prefix = digits.slice(0, 2);
+  const suffix = digits.length > 2 ? digits.slice(-1) : "";
+  return { prefix, suffix };
+}
 export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
   const router = useRouter();
@@ -288,6 +401,24 @@ export default function PersonalPage() {
   const [licenseDialogOpen, setLicenseDialogOpen] = useState(false);
   const [creatingPersonal, setCreatingPersonal] = useState(false);
   const [creatingLicense, setCreatingLicense] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [savingEditPersonal, setSavingEditPersonal] = useState(false);
+  const [editingIds, setEditingIds] =
+    useState<{ personaId: number; empleadoId: number } | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
+  const [activeAccess, setActiveAccess] = useState<{
+    persona: PersonaDTO | null;
+    empleado: EmpleadoDTO | null;
+  } | null>(null);
+  const [accessForm, setAccessForm] = useState<AccessFormState>({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    roles: [],
+  });
+  const [savingAccess, setSavingAccess] = useState(false);
 
   const [newPersona, setNewPersona] = useState<NewPersonaForm>({
     ...initialPersonaForm,
@@ -295,12 +426,22 @@ export default function PersonalPage() {
   const [newEmpleado, setNewEmpleado] = useState<NewEmpleadoForm>({
     ...initialEmpleadoForm,
   });
+  const [newEmpleadoCuilPrefix, setNewEmpleadoCuilPrefix] = useState("");
+  const [newEmpleadoCuilSuffix, setNewEmpleadoCuilSuffix] = useState("");
   const [newFormacion, setNewFormacion] = useState<NewFormacionForm>({
     ...initialFormacionForm,
   });
   const [formacionNotas, setFormacionNotas] = useState<FormacionNotas>({
     ...initialFormacionNotas,
   });
+  const [editPersona, setEditPersona] = useState<NewPersonaForm>({
+    ...initialPersonaForm,
+  });
+  const [editEmpleado, setEditEmpleado] = useState<NewEmpleadoForm>({
+    ...initialEmpleadoForm,
+  });
+  const [editEmpleadoCuilPrefix, setEditEmpleadoCuilPrefix] = useState("");
+  const [editEmpleadoCuilSuffix, setEditEmpleadoCuilSuffix] = useState("");
   const [newLicense, setNewLicense] = useState<NewLicenseForm>({
     ...initialLicenseForm,
   });
@@ -310,6 +451,18 @@ export default function PersonalPage() {
     setNewEmpleado({ ...initialEmpleadoForm });
     setNewFormacion({ ...initialFormacionForm });
     setFormacionNotas({ ...initialFormacionNotas });
+    setNewEmpleadoCuilPrefix("");
+    setNewEmpleadoCuilSuffix("");
+  }, []);
+
+  const resetEditForm = useCallback(() => {
+    setEditPersona({ ...initialPersonaForm });
+    setEditEmpleado({ ...initialEmpleadoForm });
+    setEditEmpleadoCuilPrefix("");
+    setEditEmpleadoCuilSuffix("");
+    setEditingIds(null);
+    setEditingName("");
+    setSavingEditPersonal(false);
   }, []);
 
   const resetNewLicenseForm = useCallback(() => {
@@ -329,6 +482,38 @@ export default function PersonalPage() {
       setCreatingLicense(false);
     }
   }, [licenseDialogOpen, resetNewLicenseForm]);
+
+  useEffect(() => {
+    if (!editDialogOpen) {
+      resetEditForm();
+    }
+  }, [editDialogOpen, resetEditForm]);
+
+  useEffect(() => {
+    if (!accessDialogOpen) {
+      setActiveAccess(null);
+      setAccessForm({
+        email: "",
+        password: "",
+        confirmPassword: "",
+        roles: [],
+      });
+      setSavingAccess(false);
+      return;
+    }
+
+    const suggestedRoles = inferDefaultRolesForEmpleado(
+      activeAccess?.empleado ?? null,
+      activeAccess?.persona ?? null,
+    );
+
+    setAccessForm({
+      email: activeAccess?.persona?.email ?? "",
+      password: "",
+      confirmPassword: "",
+      roles: Array.from(new Set(suggestedRoles)),
+    });
+  }, [accessDialogOpen, activeAccess]);
 
   const fetchData = useCallback(async () => {
     const empleadosRes = await api.empleados.list();
@@ -600,6 +785,80 @@ export default function PersonalPage() {
     return Array.from(set.values()).sort((a, b) => a.localeCompare(b));
   }, [personal]);
 
+  const generoSelectOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    GENERO_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
+    personal.forEach((p) => {
+      const value = p.persona?.genero?.trim();
+      if (value) {
+        map.set(value, value);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  }, [personal]);
+
+  const estadoCivilSelectOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    ESTADO_CIVIL_PRESET_OPTIONS.forEach((option) =>
+      map.set(option.value, option.label),
+    );
+    personal.forEach((p) => {
+      const value = p.persona?.estadoCivil?.trim();
+      if (value) {
+        map.set(value, value);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  }, [personal]);
+
+  const condicionLaboralSelectOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    CONDICION_LABORAL_PRESET_OPTIONS.forEach((option) =>
+      map.set(option.value, option.label),
+    );
+    personal.forEach((p) => {
+      const value = p.empleado.condicionLaboral?.trim();
+      if (value) {
+        map.set(value, value);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  }, [personal]);
+
+  const cargoSelectOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    CARGO_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
+    personal.forEach((p) => {
+      const value = p.empleado.cargo?.trim();
+      if (value) {
+        map.set(value, value);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  }, [personal]);
+
+  const situacionSelectOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    SITUACION_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
+    personal.forEach((p) => {
+      const value = p.empleado.situacionActual?.trim();
+      if (value) {
+        map.set(value, value);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  }, [personal]);
+
   const filteredPersonal = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const normalizedNivel = nivelFilter === "all" ? null : nivelFilter;
@@ -861,41 +1120,142 @@ export default function PersonalPage() {
       enLicencia,
     };
   }, [personal]);
+
+  const handleOpenEditDialog = useCallback(
+    (item: EmpleadoView) => {
+      const persona = item.persona;
+      const empleado = item.empleado;
+      if (!persona?.id || typeof empleado.id !== "number") {
+        toast.error("No encontramos la ficha completa de este personal.");
+        return;
+      }
+
+      setEditPersona({
+        nombre: persona.nombre ?? "",
+        apellido: persona.apellido ?? "",
+        dni: formatDni(persona.dni ?? ""),
+        fechaNacimiento: persona.fechaNacimiento ?? "",
+        genero: persona.genero ?? "",
+        estadoCivil: persona.estadoCivil ?? "",
+        nacionalidad: persona.nacionalidad ?? "",
+        domicilio: persona.domicilio ?? "",
+        telefono: persona.telefono ?? "",
+        celular: persona.celular ?? "",
+        email: persona.email ?? "",
+      });
+
+      setEditEmpleado({
+        rolEmpleado: empleado.rolEmpleado ?? RolEmpleado.DOCENTE,
+        cuil: empleado.cuil ?? persona.cuil ?? "",
+        condicionLaboral: empleado.condicionLaboral ?? "",
+        cargo: empleado.cargo ?? "",
+        situacionActual: empleado.situacionActual ?? DEFAULT_SITUACION,
+        fechaIngreso: empleado.fechaIngreso ?? "",
+        antecedentesLaborales: empleado.antecedentesLaborales ?? "",
+        observacionesGenerales: empleado.observacionesGenerales ?? "",
+      });
+
+      const { prefix, suffix } = splitCuilParts(
+        empleado.cuil ?? persona.cuil ?? "",
+      );
+      setEditEmpleadoCuilPrefix(prefix);
+      setEditEmpleadoCuilSuffix(suffix);
+      setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
+      setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
+      setEditDialogOpen(true);
+    },
+    [],
+  );
   const handleCreatePersonal = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (!newPersona.nombre || !newPersona.apellido || !newPersona.dni) {
+      const nombre = newPersona.nombre.trim();
+      const apellido = newPersona.apellido.trim();
+      const dniValue = formatDni(newPersona.dni);
+
+      if (!nombre || !apellido || !dniValue) {
         toast.error("Datos incompletos", {
           description: "Nombre, apellido y DNI son obligatorios.",
         });
         return;
       }
-      const dniValue = formatDni(newPersona.dni);
-      if (!dniValue || dniValue.length < 7 || dniValue.length > 10) {
+
+      if (dniValue.length < 7 || dniValue.length > 10) {
         toast.error("DNI inválido", {
           description: "El DNI debe tener entre 7 y 10 dígitos numéricos.",
         });
         return;
       }
-      if (!newEmpleado.rolEmpleado) {
-        toast.error("Rol requerido", {
-          description: "Seleccione el rol institucional del personal.",
+
+      const fechaNacimiento = newPersona.fechaNacimiento;
+      if (!fechaNacimiento) {
+        toast.error("Fecha requerida", {
+          description: "Ingresá la fecha de nacimiento.",
         });
         return;
       }
-      if (!newEmpleado.cargo) {
-        toast.error("Cargo requerido", {
-          description: "Ingrese el cargo actual del personal.",
-        });
-        return;
-      }
-      if (
-        newPersona.fechaNacimiento &&
-        !isBirthDateValid(newPersona.fechaNacimiento)
-      ) {
+
+      if (!isBirthDateValid(fechaNacimiento)) {
         toast.error("Fecha de nacimiento inválida", {
           description:
             "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
+        });
+        return;
+      }
+
+      const genero = newPersona.genero;
+      const estadoCivil = newPersona.estadoCivil;
+      const nacionalidad = newPersona.nacionalidad.trim();
+      const domicilio = newPersona.domicilio.trim();
+      const telefono = newPersona.telefono.trim();
+      const celular = newPersona.celular.trim();
+      const email = newPersona.email.trim();
+
+      if (
+        !genero ||
+        !estadoCivil ||
+        !nacionalidad ||
+        !domicilio ||
+        !telefono ||
+        !celular ||
+        !email
+      ) {
+        toast.error("Datos personales incompletos", {
+          description:
+            "Completá género, estado civil y los datos de contacto obligatorios.",
+        });
+        return;
+      }
+
+      if (!newEmpleado.rolEmpleado) {
+        toast.error("Rol requerido", {
+          description: "Seleccioná el rol institucional del personal.",
+        });
+        return;
+      }
+
+      const condicionLaboral = newEmpleado.condicionLaboral.trim();
+      const cargo = newEmpleado.cargo.trim();
+      const fechaIngreso = newEmpleado.fechaIngreso;
+
+      if (!condicionLaboral || !cargo || !fechaIngreso) {
+        toast.error("Datos laborales incompletos", {
+          description:
+            "Seleccioná la condición laboral, el cargo actual y la fecha de ingreso.",
+        });
+        return;
+      }
+
+      const cuil = composeCuil(
+        newEmpleadoCuilPrefix,
+        dniValue,
+        newEmpleadoCuilSuffix,
+      );
+
+      if (!cuil) {
+        toast.error("CUIL incompleto", {
+          description:
+            "Completá el prefijo y el dígito verificador vinculados al DNI.",
         });
         return;
       }
@@ -913,20 +1273,21 @@ export default function PersonalPage() {
         });
         return;
       }
+
       setCreatingPersonal(true);
       try {
         const personaPayload = {
-          nombre: newPersona.nombre,
-          apellido: newPersona.apellido,
+          nombre,
+          apellido,
           dni: dniValue,
-          fechaNacimiento: newPersona.fechaNacimiento || undefined,
-          genero: newPersona.genero || undefined,
-          estadoCivil: newPersona.estadoCivil || undefined,
-          nacionalidad: newPersona.nacionalidad || undefined,
-          domicilio: newPersona.domicilio || undefined,
-          telefono: newPersona.telefono || undefined,
-          celular: newPersona.celular || undefined,
-          email: newPersona.email || undefined,
+          fechaNacimiento,
+          genero,
+          estadoCivil,
+          nacionalidad,
+          domicilio,
+          telefono,
+          celular,
+          email,
         };
 
         const personaRes = await api.personasCore.create(personaPayload);
@@ -934,6 +1295,8 @@ export default function PersonalPage() {
         if (!personaId) {
           throw new Error("El backend no devolvió el ID de la persona");
         }
+
+        await api.personasCore.update(personaId, { cuil });
 
         const extraNotas: string[] = [];
         if (formacionNotas.otrosTitulos.trim().length > 0) {
@@ -948,23 +1311,22 @@ export default function PersonalPage() {
           extraNotas.push(`Cursos: ${formacionNotas.cursos.trim()}`);
         }
 
-        const observacionesGenerales = [
-          newEmpleado.observacionesGenerales?.trim() ?? "",
-          ...extraNotas,
-        ]
+        const observacionesBase =
+          newEmpleado.observacionesGenerales?.trim() ?? "";
+        const observacionesGenerales = [observacionesBase, ...extraNotas]
           .filter(Boolean)
           .join("\n");
 
         const empleadoPayload = {
           personaId,
           rolEmpleado: newEmpleado.rolEmpleado,
-          cuil: newEmpleado.cuil || undefined,
-          condicionLaboral: newEmpleado.condicionLaboral || undefined,
-          cargo: newEmpleado.cargo || undefined,
-          situacionActual: newEmpleado.situacionActual || undefined,
-          fechaIngreso: newEmpleado.fechaIngreso || undefined,
+          cuil,
+          condicionLaboral,
+          cargo,
+          situacionActual: DEFAULT_SITUACION,
+          fechaIngreso,
           antecedentesLaborales:
-            newEmpleado.antecedentesLaborales || undefined,
+            newEmpleado.antecedentesLaborales?.trim() || undefined,
           observacionesGenerales: observacionesGenerales || undefined,
         };
 
@@ -989,7 +1351,8 @@ export default function PersonalPage() {
         }
 
         toast.success("Personal registrado", {
-          description: "El nuevo miembro del personal fue creado correctamente.",
+          description:
+            "El nuevo miembro del personal fue creado correctamente.",
         });
         setCreateDialogOpen(false);
         await refreshData();
@@ -1004,7 +1367,172 @@ export default function PersonalPage() {
         setCreatingPersonal(false);
       }
     },
-    [formacionNotas, newEmpleado, newFormacion, newPersona, refreshData],
+    [
+      formacionNotas,
+      newEmpleado,
+      newEmpleadoCuilPrefix,
+      newEmpleadoCuilSuffix,
+      newFormacion,
+      newPersona,
+      refreshData,
+    ],
+  );
+
+  const handleUpdatePersonal = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!editingIds) {
+        toast.error("No encontramos la ficha seleccionada para editar.");
+        return;
+      }
+
+      const nombre = editPersona.nombre.trim();
+      const apellido = editPersona.apellido.trim();
+      const dniValue = formatDni(editPersona.dni);
+
+      if (!nombre || !apellido || !dniValue) {
+        toast.error("Datos incompletos", {
+          description: "Completá nombre, apellido y DNI.",
+        });
+        return;
+      }
+
+      if (dniValue.length < 7 || dniValue.length > 10) {
+        toast.error("DNI inválido", {
+          description: "El DNI debe tener entre 7 y 10 dígitos numéricos.",
+        });
+        return;
+      }
+
+      const fechaNacimiento = editPersona.fechaNacimiento;
+      if (!fechaNacimiento) {
+        toast.error("Fecha requerida", {
+          description: "Ingresá la fecha de nacimiento.",
+        });
+        return;
+      }
+
+      if (!isBirthDateValid(fechaNacimiento)) {
+        toast.error("Fecha de nacimiento inválida", {
+          description:
+            "La fecha de nacimiento debe ser al menos dos años anterior a hoy.",
+        });
+        return;
+      }
+
+      const genero = editPersona.genero;
+      const estadoCivil = editPersona.estadoCivil;
+      const nacionalidad = editPersona.nacionalidad.trim();
+      const domicilio = editPersona.domicilio.trim();
+      const telefono = editPersona.telefono.trim();
+      const celular = editPersona.celular.trim();
+      const email = editPersona.email.trim();
+
+      if (
+        !genero ||
+        !estadoCivil ||
+        !nacionalidad ||
+        !domicilio ||
+        !telefono ||
+        !celular ||
+        !email
+      ) {
+        toast.error("Datos personales incompletos", {
+          description:
+            "Completá género, estado civil y los datos de contacto obligatorios.",
+        });
+        return;
+      }
+
+      if (!editEmpleado.rolEmpleado) {
+        toast.error("Rol requerido", {
+          description: "Seleccioná el rol institucional del personal.",
+        });
+        return;
+      }
+
+      const condicionLaboral = editEmpleado.condicionLaboral.trim();
+      const cargo = editEmpleado.cargo.trim();
+      const fechaIngreso = editEmpleado.fechaIngreso;
+      const situacionActual =
+        editEmpleado.situacionActual?.trim() || DEFAULT_SITUACION;
+
+      if (!condicionLaboral || !cargo || !fechaIngreso) {
+        toast.error("Datos laborales incompletos", {
+          description:
+            "Seleccioná la condición laboral, el cargo actual y la fecha de ingreso.",
+        });
+        return;
+      }
+
+      const cuil = composeCuil(
+        editEmpleadoCuilPrefix,
+        dniValue,
+        editEmpleadoCuilSuffix,
+      );
+
+      if (!cuil) {
+        toast.error("CUIL incompleto", {
+          description:
+            "Completá el prefijo y el dígito verificador vinculados al DNI.",
+        });
+        return;
+      }
+
+      setSavingEditPersonal(true);
+      try {
+        const personaPayload: Partial<PersonaUpdateDTO> = {
+          nombre,
+          apellido,
+          dni: dniValue,
+          fechaNacimiento,
+          genero,
+          estadoCivil,
+          nacionalidad,
+          domicilio,
+          telefono,
+          celular,
+          email,
+          cuil,
+        };
+
+        await api.personasCore.update(editingIds.personaId, personaPayload);
+
+        await api.empleados.update(editingIds.empleadoId, {
+          rolEmpleado: editEmpleado.rolEmpleado,
+          cuil,
+          condicionLaboral,
+          cargo,
+          situacionActual,
+          fechaIngreso,
+          antecedentesLaborales:
+            editEmpleado.antecedentesLaborales?.trim() || undefined,
+          observacionesGenerales:
+            editEmpleado.observacionesGenerales?.trim() || undefined,
+        });
+
+        toast.success("Datos del personal actualizados");
+        setEditDialogOpen(false);
+        await refreshData();
+      } catch (error: any) {
+        console.error("Error al actualizar personal", error);
+        const description =
+          error?.response?.data?.message ??
+          error?.message ??
+          "No se pudo actualizar la información del personal.";
+        toast.error("Error al actualizar personal", { description });
+      } finally {
+        setSavingEditPersonal(false);
+      }
+    },
+    [
+      editEmpleado,
+      editEmpleadoCuilPrefix,
+      editEmpleadoCuilSuffix,
+      editPersona,
+      editingIds,
+      refreshData,
+    ],
   );
 
   const handleCreateLicense = useCallback(
@@ -1090,6 +1618,87 @@ export default function PersonalPage() {
     },
     [setLicenseDialogOpen, setNewLicense],
   );
+
+  const handleOpenAccessDialog = useCallback(
+    (persona: PersonaDTO | null, empleado: EmpleadoDTO | null) => {
+      if (!persona?.id) {
+        toast.error("No encontramos la persona vinculada a este perfil");
+        return;
+      }
+      setActiveAccess({ persona, empleado });
+      setAccessDialogOpen(true);
+    },
+    [],
+  );
+
+  const handleSaveAccess = useCallback(async () => {
+    const persona = activeAccess?.persona;
+    if (!persona?.id) {
+      toast.error("No encontramos la persona vinculada a este perfil");
+      return;
+    }
+
+    const email = accessForm.email.trim();
+    const password = accessForm.password.trim();
+    const confirmPassword = accessForm.confirmPassword.trim();
+
+    if (!email) {
+      toast.error("Ingresá un email válido para el acceso");
+      return;
+    }
+
+    if (!persona.credencialesActivas && !password) {
+      toast.error("Definí una contraseña inicial");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Las contraseñas no coinciden");
+      return;
+    }
+
+    const selectedRoles =
+      accessForm.roles.length > 0
+        ? accessForm.roles
+        : inferDefaultRolesForEmpleado(activeAccess?.empleado ?? null, persona);
+
+    if (!selectedRoles.length) {
+      toast.error("Seleccioná al menos un rol para el acceso");
+      return;
+    }
+
+    const payload: Partial<PersonaUpdateDTO> = {
+      email,
+      roles: Array.from(new Set(selectedRoles)),
+    };
+
+    if (password) {
+      payload.password = password;
+    }
+
+    setSavingAccess(true);
+    try {
+      await api.personasCore.update(persona.id, payload);
+      const { data: refreshed } = await api.personasCore.getById(persona.id);
+      if (refreshed) {
+        setActiveAccess((prev) =>
+          prev ? { ...prev, persona: refreshed ?? null } : prev,
+        );
+      }
+      toast.success("Acceso del personal actualizado");
+      setAccessDialogOpen(false);
+      await refreshData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        error?.response?.data?.message ??
+          error?.message ??
+          "No pudimos actualizar el acceso del personal",
+      );
+    } finally {
+      setSavingAccess(false);
+    }
+  }, [accessForm, activeAccess, refreshData]);
 
   const renderLoadingState = () => <LoadingState label="Cargando información…" />;
 
@@ -1264,10 +1873,12 @@ export default function PersonalPage() {
 
   const canCreatePersonal =
     hasRole(UserRole.DIRECTOR) || hasRole(UserRole.ADMIN);
+  const canEditPersonal = canCreatePersonal;
   const canRegisterLicenses =
     hasRole(UserRole.DIRECTOR) ||
     hasRole(UserRole.ADMIN) ||
     hasRole(UserRole.SECRETARY);
+  const canManageAccess = canCreatePersonal;
 
   const { total, activos, enLicencia } = resumenPersonal;
   const totalLicenciasRegistradas = allLicencias.length;
@@ -1396,6 +2007,21 @@ export default function PersonalPage() {
                   const telefono = persona?.telefono ?? "Sin teléfono";
                   const celular = persona?.celular ?? "Sin celular";
                   const domicilio = persona?.domicilio ?? "Sin domicilio registrado";
+                  const personaId = persona?.id ?? null;
+                  const roleOptions = Array.from(
+                    new Set<UserRole>([
+                      ...STAFF_ROLE_OPTIONS,
+                      ...(persona?.roles ?? []),
+                    ]),
+                  );
+                  const isAccessDialogOpen =
+                    accessDialogOpen &&
+                    personaId !== null &&
+                    activeAccess?.persona?.id === personaId;
+                  const canEditThis =
+                    canEditPersonal &&
+                    personaId !== null &&
+                    typeof item.empleado.id === "number";
                   return (
                     <Card key={`personal-${empleadoId}`}>
                       <CardHeader className="space-y-4">
@@ -1419,6 +2045,18 @@ export default function PersonalPage() {
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
+                            {canEditThis ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenEditDialog(item)}
+                                disabled={savingEditPersonal}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar ficha
+                              </Button>
+                            ) : null}
                             {getSituacionBadge(item.empleado.situacionActual)}
                             {canRegisterLicenses && typeof item.empleado.id === "number" ? (
                               <Button
@@ -1610,6 +2248,170 @@ export default function PersonalPage() {
                             </div>
                           )}
                         </div>
+                        <div className="rounded-lg border bg-muted/40 p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-1 text-sm">
+                              <div className="text-sm font-semibold text-foreground">
+                                Acceso al sistema
+                              </div>
+                              {persona?.credencialesActivas ? (
+                                <div className="space-y-1 text-muted-foreground">
+                                  <div className="font-medium text-foreground">
+                                    {persona.email ?? "Sin email"}
+                                  </div>
+                                  <div>
+                                    Roles:{" "}
+                                    {persona.roles && persona.roles.length > 0
+                                      ? persona.roles
+                                          .map((role) => displayRole(role))
+                                          .join(", ")
+                                      : "Sin roles"}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-muted-foreground">
+                                  El personal todavía no tiene credenciales asignadas.
+                                </div>
+                              )}
+                            </div>
+                            {canManageAccess && personaId ? (
+                              <Dialog
+                                open={isAccessDialogOpen}
+                                onOpenChange={(open) => {
+                                  if (open) {
+                                    handleOpenAccessDialog(persona, item.empleado);
+                                  } else {
+                                    setAccessDialogOpen(false);
+                                  }
+                                }}
+                              >
+                                <DialogTrigger asChild>
+                                  <Button type="button" size="sm" disabled={savingAccess && isAccessDialogOpen}>
+                                    Gestionar acceso
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>
+                                      {persona?.credencialesActivas
+                                        ? "Actualizar acceso"
+                                        : "Crear acceso"}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                      Administrá el correo, la contraseña y los roles del personal.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="space-y-2">
+                                      <Label>Email</Label>
+                                      <Input
+                                        type="email"
+                                        value={accessForm.email}
+                                        onChange={(event) =>
+                                          setAccessForm((prev) => ({
+                                            ...prev,
+                                            email: event.target.value,
+                                          }))
+                                        }
+                                        disabled={savingAccess}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Contraseña</Label>
+                                      <Input
+                                        type="password"
+                                        value={accessForm.password}
+                                        placeholder={
+                                          persona?.credencialesActivas
+                                            ? "Ingresá una nueva contraseña"
+                                            : "Contraseña inicial"
+                                        }
+                                        onChange={(event) =>
+                                          setAccessForm((prev) => ({
+                                            ...prev,
+                                            password: event.target.value,
+                                          }))
+                                        }
+                                        disabled={savingAccess}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Confirmar contraseña</Label>
+                                      <Input
+                                        type="password"
+                                        value={accessForm.confirmPassword}
+                                        onChange={(event) =>
+                                          setAccessForm((prev) => ({
+                                            ...prev,
+                                            confirmPassword: event.target.value,
+                                          }))
+                                        }
+                                        disabled={savingAccess}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Roles del sistema</Label>
+                                      <div className="grid gap-2">
+                                        {roleOptions.map((role) => {
+                                          const checked = accessForm.roles.includes(role);
+                                          return (
+                                            <label
+                                              key={`${personaId}-${role}`}
+                                              className="flex items-center gap-2 text-sm text-muted-foreground"
+                                            >
+                                              <Checkbox
+                                                checked={checked}
+                                                onCheckedChange={(value) =>
+                                                  setAccessForm((prev) => {
+                                                    const isChecked = value === true;
+                                                    const nextRoles = isChecked
+                                                      ? [...prev.roles, role]
+                                                      : prev.roles.filter((r) => r !== role);
+                                                    return {
+                                                      ...prev,
+                                                      roles: Array.from(new Set(nextRoles)),
+                                                    };
+                                                  })
+                                                }
+                                                disabled={savingAccess}
+                                              />
+                                              <span>{displayRole(role)}</span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">
+                                        Seleccioná los permisos que tendrá el personal en la plataforma.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <DialogFooter>
+                                    <DialogClose asChild>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={savingAccess}
+                                        onClick={() => setAccessDialogOpen(false)}
+                                      >
+                                        Cancelar
+                                      </Button>
+                                    </DialogClose>
+                                    <Button
+                                      type="button"
+                                      onClick={handleSaveAccess}
+                                      disabled={savingAccess}
+                                    >
+                                      {savingAccess && (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      )}
+                                      Guardar acceso
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            ) : null}
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -1751,6 +2553,394 @@ export default function PersonalPage() {
         </Tabs>
       </div>
 
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <form onSubmit={handleUpdatePersonal} className="space-y-6">
+            <DialogHeader>
+              <DialogTitle>Editar datos del personal</DialogTitle>
+              <DialogDescription>
+                Actualizá la información de {editingName || "la persona seleccionada"}.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Datos personales</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Revisá y actualizá la información básica del legajo.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-nombre">Nombres</Label>
+                    <Input
+                      id="editar-nombre"
+                      value={editPersona.nombre}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, nombre: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-apellido">Apellidos</Label>
+                    <Input
+                      id="editar-apellido"
+                      value={editPersona.apellido}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, apellido: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-dni">DNI</Label>
+                    <Input
+                      id="editar-dni"
+                      value={editPersona.dni}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          dni: formatDni(event.target.value),
+                        }))
+                      }
+                      inputMode="numeric"
+                      pattern="\d*"
+                      minLength={7}
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-fecha-nac">Fecha de nacimiento</Label>
+                    <Input
+                      id="editar-fecha-nac"
+                      type="date"
+                      max={maxBirthDate}
+                      value={editPersona.fechaNacimiento}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          fechaNacimiento: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-genero">Género</Label>
+                    <Select
+                      value={editPersona.genero}
+                      onValueChange={(value) =>
+                        setEditPersona((prev) => ({ ...prev, genero: value }))
+                      }
+                    >
+                      <SelectTrigger id="editar-genero" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el género" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {generoSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-estado-civil">Estado civil</Label>
+                    <Select
+                      value={editPersona.estadoCivil}
+                      onValueChange={(value) =>
+                        setEditPersona((prev) => ({ ...prev, estadoCivil: value }))
+                      }
+                    >
+                      <SelectTrigger id="editar-estado-civil" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el estado civil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {estadoCivilSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-nacionalidad">Nacionalidad</Label>
+                    <Input
+                      id="editar-nacionalidad"
+                      value={editPersona.nacionalidad}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, nacionalidad: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Información de contacto</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Datos para comunicaciones institucionales y seguimiento.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="editar-domicilio">Domicilio</Label>
+                    <Input
+                      id="editar-domicilio"
+                      value={editPersona.domicilio}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, domicilio: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-telefono">Teléfono</Label>
+                    <Input
+                      id="editar-telefono"
+                      type="tel"
+                      value={editPersona.telefono}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, telefono: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-celular">Celular</Label>
+                    <Input
+                      id="editar-celular"
+                      type="tel"
+                      value={editPersona.celular}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, celular: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="editar-email">Correo electrónico</Label>
+                    <Input
+                      id="editar-email"
+                      type="email"
+                      value={editPersona.email}
+                      onChange={(event) =>
+                        setEditPersona((prev) => ({ ...prev, email: event.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Datos laborales</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Actualizá la asignación institucional y la situación del personal.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-rol">Rol institucional</Label>
+                    <Select
+                      value={editEmpleado.rolEmpleado}
+                      onValueChange={(value) =>
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          rolEmpleado: value as RolEmpleado,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="editar-rol" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el rol" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rolOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="editar-cuil-prefijo">CUIL</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        id="editar-cuil-prefijo"
+                        value={editEmpleadoCuilPrefix}
+                        onChange={(event) =>
+                          setEditEmpleadoCuilPrefix(
+                            sanitizeDigits(event.target.value, 2),
+                          )
+                        }
+                        inputMode="numeric"
+                        pattern="\d{2}"
+                        maxLength={2}
+                        required
+                        className="w-20"
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <Input
+                        value={editPersona.dni}
+                        readOnly
+                        aria-readonly="true"
+                        className="min-w-[140px] flex-1 bg-muted/40"
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <Input
+                        id="editar-cuil-sufijo"
+                        value={editEmpleadoCuilSuffix}
+                        onChange={(event) =>
+                          setEditEmpleadoCuilSuffix(
+                            sanitizeDigits(event.target.value, 1),
+                          )
+                        }
+                        inputMode="numeric"
+                        pattern="\d"
+                        maxLength={1}
+                        required
+                        className="w-16"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-condicion">Condición laboral</Label>
+                    <Select
+                      value={editEmpleado.condicionLaboral}
+                      onValueChange={(value) =>
+                        setEditEmpleado((prev) => ({ ...prev, condicionLaboral: value }))
+                      }
+                    >
+                      <SelectTrigger id="editar-condicion" aria-required="true">
+                        <SelectValue placeholder="Seleccioná la condición laboral" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {condicionLaboralSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-cargo">Cargo actual</Label>
+                    <Select
+                      value={editEmpleado.cargo}
+                      onValueChange={(value) =>
+                        setEditEmpleado((prev) => ({ ...prev, cargo: value }))
+                      }
+                    >
+                      <SelectTrigger id="editar-cargo" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cargoSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-situacion">Situación actual</Label>
+                    <Select
+                      value={editEmpleado.situacionActual ?? DEFAULT_SITUACION}
+                      onValueChange={(value) =>
+                        setEditEmpleado((prev) => ({ ...prev, situacionActual: value }))
+                      }
+                    >
+                      <SelectTrigger id="editar-situacion" aria-required="true">
+                        <SelectValue placeholder="Seleccioná la situación" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {situacionSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editar-fecha-ingreso">Fecha de ingreso</Label>
+                    <Input
+                      id="editar-fecha-ingreso"
+                      type="date"
+                      value={editEmpleado.fechaIngreso}
+                      onChange={(event) =>
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          fechaIngreso: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="editar-antecedentes">Antecedentes laborales</Label>
+                    <Textarea
+                      id="editar-antecedentes"
+                      value={editEmpleado.antecedentesLaborales}
+                      onChange={(event) =>
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          antecedentesLaborales: event.target.value,
+                        }))
+                      }
+                      placeholder="Experiencia previa, instituciones en las que trabajó…"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="editar-observaciones">Observaciones generales</Label>
+                    <Textarea
+                      id="editar-observaciones"
+                      value={editEmpleado.observacionesGenerales}
+                      onChange={(event) =>
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          observacionesGenerales: event.target.value,
+                        }))
+                      }
+                      placeholder="Notas internas o consideraciones relevantes"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={savingEditPersonal}>
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={savingEditPersonal}>
+                {savingEditPersonal ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando…
+                  </>
+                ) : (
+                  "Guardar cambios"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <form onSubmit={handleCreatePersonal} className="space-y-6">
@@ -1824,29 +3014,48 @@ export default function PersonalPage() {
                       onChange={(event) =>
                         setNewPersona((prev) => ({ ...prev, fechaNacimiento: event.target.value }))
                       }
+                      required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-genero">Género</Label>
-                    <Input
-                      id="nuevo-genero"
+                    <Select
                       value={newPersona.genero}
-                      onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, genero: event.target.value }))
+                      onValueChange={(value) =>
+                        setNewPersona((prev) => ({ ...prev, genero: value }))
                       }
-                      placeholder="Femenino, Masculino, Otro…"
-                    />
+                    >
+                      <SelectTrigger id="nuevo-genero" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el género" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {generoSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-estado-civil">Estado civil</Label>
-                    <Input
-                      id="nuevo-estado-civil"
+                    <Select
                       value={newPersona.estadoCivil}
-                      onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, estadoCivil: event.target.value }))
+                      onValueChange={(value) =>
+                        setNewPersona((prev) => ({ ...prev, estadoCivil: value }))
                       }
-                      placeholder="Soltero/a, Casado/a…"
-                    />
+                    >
+                      <SelectTrigger id="nuevo-estado-civil" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el estado civil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {estadoCivilSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-nacionalidad">Nacionalidad</Label>
@@ -1857,18 +3066,51 @@ export default function PersonalPage() {
                         setNewPersona((prev) => ({ ...prev, nacionalidad: event.target.value }))
                       }
                       placeholder="Argentina, Uruguaya…"
+                      required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nuevo-cuil">CUIL</Label>
-                    <Input
-                      id="nuevo-cuil"
-                      value={newEmpleado.cuil}
-                      onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, cuil: event.target.value }))
-                      }
-                      placeholder="Ej. 20-12345678-3"
-                    />
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="nuevo-cuil-prefijo">CUIL</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        id="nuevo-cuil-prefijo"
+                        value={newEmpleadoCuilPrefix}
+                        onChange={(event) =>
+                          setNewEmpleadoCuilPrefix(
+                            sanitizeDigits(event.target.value, 2),
+                          )
+                        }
+                        placeholder="20"
+                        inputMode="numeric"
+                        pattern="\d{2}"
+                        maxLength={2}
+                        required
+                        className="w-20"
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <Input
+                        value={newPersona.dni}
+                        readOnly
+                        aria-readonly="true"
+                        className="min-w-[140px] flex-1 bg-muted/40"
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <Input
+                        id="nuevo-cuil-sufijo"
+                        value={newEmpleadoCuilSuffix}
+                        onChange={(event) =>
+                          setNewEmpleadoCuilSuffix(
+                            sanitizeDigits(event.target.value, 1),
+                          )
+                        }
+                        placeholder="3"
+                        inputMode="numeric"
+                        pattern="\d"
+                        maxLength={1}
+                        required
+                        className="w-16"
+                      />
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1890,28 +3132,33 @@ export default function PersonalPage() {
                         setNewPersona((prev) => ({ ...prev, domicilio: event.target.value }))
                       }
                       placeholder="Calle, número, localidad"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-telefono">Teléfono</Label>
                     <Input
                       id="nuevo-telefono"
+                      type="tel"
                       value={newPersona.telefono}
                       onChange={(event) =>
                         setNewPersona((prev) => ({ ...prev, telefono: event.target.value }))
                       }
                       placeholder="Teléfono fijo"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-celular">Celular</Label>
                     <Input
                       id="nuevo-celular"
+                      type="tel"
                       value={newPersona.celular}
                       onChange={(event) =>
                         setNewPersona((prev) => ({ ...prev, celular: event.target.value }))
                       }
                       placeholder="Número de contacto"
+                      required
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
@@ -1924,6 +3171,7 @@ export default function PersonalPage() {
                         setNewPersona((prev) => ({ ...prev, email: event.target.value }))
                       }
                       placeholder="nombre@institucion.edu.ar"
+                      required
                     />
                   </div>
                 </div>
@@ -1959,37 +3207,59 @@ export default function PersonalPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-condicion">Condición laboral</Label>
-                    <Input
-                      id="nuevo-condicion"
+                    <Select
                       value={newEmpleado.condicionLaboral}
-                      onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, condicionLaboral: event.target.value }))
+                      onValueChange={(value) =>
+                        setNewEmpleado((prev) => ({
+                          ...prev,
+                          condicionLaboral: value,
+                        }))
                       }
-                      placeholder="Principal, suplente, interino…"
-                    />
+                    >
+                      <SelectTrigger id="nuevo-condicion" aria-required="true">
+                        <SelectValue placeholder="Seleccioná la condición laboral" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {condicionLaboralSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-cargo">Cargo actual</Label>
-                    <Input
-                      id="nuevo-cargo"
+                    <Select
                       value={newEmpleado.cargo}
-                      onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, cargo: event.target.value }))
+                      onValueChange={(value) =>
+                        setNewEmpleado((prev) => ({ ...prev, cargo: value }))
                       }
-                      placeholder="Maestro, Profesor, Preceptor…"
-                      required
-                    />
+                    >
+                      <SelectTrigger id="nuevo-cargo" aria-required="true">
+                        <SelectValue placeholder="Seleccioná el cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cargoSelectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-situacion">Situación actual</Label>
                     <Input
                       id="nuevo-situacion"
-                      value={newEmpleado.situacionActual}
-                      onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, situacionActual: event.target.value }))
-                      }
-                      placeholder="Activo, En licencia, De baja…"
+                      value={DEFAULT_SITUACION}
+                      readOnly
+                      disabled
+                      className="bg-muted/40"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Al registrar un nuevo personal se inicia con estado "Activo".
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-fecha-ingreso">Fecha de ingreso</Label>
@@ -2000,6 +3270,7 @@ export default function PersonalPage() {
                       onChange={(event) =>
                         setNewEmpleado((prev) => ({ ...prev, fechaIngreso: event.target.value }))
                       }
+                      required
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">

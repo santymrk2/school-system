@@ -37,7 +37,9 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
+import { displayRole } from "@/lib/auth-roles";
 import { api } from "@/services/api";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type {
@@ -68,6 +70,13 @@ type HistorialVM = {
   seccionLabel?: string;
 };
 
+type CredentialsFormState = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  roles: UserRole[];
+};
+
 export default function AlumnoPerfilPage() {
   const { id } = useParams<{ id: string }>();
   const alumnoId = Number(id);
@@ -90,6 +99,8 @@ export default function AlumnoPerfilPage() {
   const [familiares, setFamiliares] = useState<FamiliarConVinculo[]>([]);
 
   const { periodoEscolarId: activePeriodId } = useActivePeriod();
+  const { hasRole } = useAuth();
+  const canEditRoles = hasRole(UserRole.ADMIN) || hasRole(UserRole.DIRECTOR);
 
   // helpers
   const toNombre = (p?: PersonaDTO | null) =>
@@ -127,6 +138,11 @@ export default function AlumnoPerfilPage() {
       }));
   }, [seccionesList, seccionesMap, activePeriodId]);
   const rolOptions = useMemo(() => Object.values(RolVinculo), []);
+  const studentRoleOptions = useMemo(() => {
+    const base = [UserRole.STUDENT, UserRole.FAMILY];
+    const current = persona?.roles ?? [];
+    return Array.from(new Set<UserRole>([...base, ...current]));
+  }, [persona?.roles]);
   const formatRol = (value?: RolVinculo | string | null) => {
     if (!value) return "Sin vínculo";
     const formatted = String(value).replace(/_/g, " ").toLowerCase();
@@ -154,10 +170,11 @@ export default function AlumnoPerfilPage() {
   });
   const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
-  const [credentialsForm, setCredentialsForm] = useState({
+  const [credentialsForm, setCredentialsForm] = useState<CredentialsFormState>({
     email: "",
     password: "",
     confirmPassword: "",
+    roles: [],
   });
   const [savingCredentials, setSavingCredentials] = useState(false);
   const [addFamilyOpen, setAddFamilyOpen] = useState(false);
@@ -187,13 +204,18 @@ export default function AlumnoPerfilPage() {
 
   useEffect(() => {
     if (credentialsDialogOpen) {
+      const fallbackRoles =
+        persona?.roles && persona.roles.length > 0
+          ? [...persona.roles]
+          : [UserRole.STUDENT];
       setCredentialsForm({
         email: persona?.email ?? "",
         password: "",
         confirmPassword: "",
+        roles: Array.from(new Set(fallbackRoles)),
       });
     }
-  }, [credentialsDialogOpen, persona?.email]);
+  }, [credentialsDialogOpen, persona?.email, persona?.roles]);
 
   // carga
   useEffect(() => {
@@ -742,12 +764,20 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
+    const selectedRoles = canEditRoles
+      ? credentialsForm.roles
+      : persona.roles && persona.roles.length > 0
+        ? persona.roles
+        : [UserRole.STUDENT];
+
+    if (!selectedRoles.length) {
+      toast.error("Seleccioná al menos un rol para el acceso");
+      return;
+    }
+
     const payload: Partial<PersonaUpdateDTO> = {
       email,
-      roles:
-        persona.roles && persona.roles.length > 0
-          ? persona.roles
-          : [UserRole.STUDENT],
+      roles: Array.from(new Set(selectedRoles)),
     };
 
     if (password) {
@@ -761,7 +791,18 @@ export default function AlumnoPerfilPage() {
       setPersona(refreshed ?? null);
       toast.success("Acceso del alumno actualizado");
       setCredentialsDialogOpen(false);
-      setCredentialsForm({ email: email, password: "", confirmPassword: "" });
+      setCredentialsForm({
+        email: email,
+        password: "",
+        confirmPassword: "",
+        roles: Array.from(
+          new Set(
+            refreshed?.roles && refreshed.roles.length > 0
+              ? refreshed.roles
+              : selectedRoles,
+          ),
+        ),
+      });
     } catch (error: any) {
       console.error(error);
       toast.error(
@@ -1547,7 +1588,10 @@ export default function AlumnoPerfilPage() {
                       <>
                         <div className="font-medium">{persona?.email}</div>
                         <div className="text-muted-foreground">
-                          Roles: {persona?.roles?.join(", ") ?? "Sin roles"}
+                          Roles:{" "}
+                          {persona?.roles && persona.roles.length > 0
+                            ? persona.roles.map((role) => displayRole(role)).join(", ")
+                            : "Sin roles"}
                         </div>
                       </>
                     ) : (
@@ -1620,6 +1664,42 @@ export default function AlumnoPerfilPage() {
                               }
                             />
                           </div>
+                          {canEditRoles ? (
+                            <div className="space-y-2">
+                              <Label>Roles del sistema</Label>
+                              <div className="grid gap-2">
+                                {studentRoleOptions.map((role) => {
+                                  const checked = credentialsForm.roles.includes(role);
+                                  return (
+                                    <label
+                                      key={role}
+                                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                                    >
+                                      <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={(value) =>
+                                          setCredentialsForm((prev) => {
+                                            const isChecked = value === true;
+                                            const nextRoles = isChecked
+                                              ? [...prev.roles, role]
+                                              : prev.roles.filter((r) => r !== role);
+                                            return {
+                                              ...prev,
+                                              roles: Array.from(new Set(nextRoles)),
+                                            };
+                                          })
+                                        }
+                                      />
+                                      <span>{displayRole(role)}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Seleccioná qué permisos tendrá el alumno en el sistema.
+                              </p>
+                            </div>
+                          ) : null}
                         </div>
                         <DialogFooter>
                           <Button

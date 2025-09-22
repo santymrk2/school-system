@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { formatDni } from "@/lib/form-utils";
+import { useAuth } from "@/hooks/useAuth";
+import { displayRole } from "@/lib/auth-roles";
 import { api } from "@/services/api";
 import type {
   AlumnoFamiliarDTO,
@@ -39,6 +42,13 @@ import type {
   PersonaUpdateDTO,
 } from "@/types/api-generated";
 import { RolVinculo, UserRole } from "@/types/api-generated";
+
+type CredentialsFormState = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  roles: UserRole[];
+};
 
 export default function FamiliarPerfilPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,11 +63,15 @@ export default function FamiliarPerfilPage() {
   const [alumnos, setAlumnos] = useState<AlumnoLiteDTO[]>([]);
   const [links, setLinks] = useState<AlumnoFamiliarDTO[]>([]);
 
+  const { hasRole } = useAuth();
+  const canEditRoles = hasRole(UserRole.ADMIN) || hasRole(UserRole.DIRECTOR);
+
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
-  const [credentialsForm, setCredentialsForm] = useState({
+  const [credentialsForm, setCredentialsForm] = useState<CredentialsFormState>({
     email: "",
     password: "",
     confirmPassword: "",
+    roles: [],
   });
   const [savingCredentials, setSavingCredentials] = useState(false);
 
@@ -81,6 +95,12 @@ export default function FamiliarPerfilPage() {
     links.forEach((link) => map.set(link.alumnoId ?? 0, link));
     return map;
   }, [links]);
+
+  const familyRoleOptions = useMemo(() => {
+    const base = [UserRole.FAMILY, UserRole.STUDENT];
+    const current = persona?.roles ?? [];
+    return Array.from(new Set<UserRole>([...base, ...current]));
+  }, [persona?.roles]);
 
   const formatRol = (value?: string | null) => {
     if (!value) return "Sin vínculo";
@@ -164,10 +184,15 @@ export default function FamiliarPerfilPage() {
 
   useEffect(() => {
     if (!credentialsDialogOpen) return;
+    const fallbackRoles =
+      persona?.roles && persona.roles.length > 0
+        ? [...persona.roles]
+        : [UserRole.FAMILY];
     setCredentialsForm({
       email: persona?.email ?? "",
       password: "",
       confirmPassword: "",
+      roles: Array.from(new Set(fallbackRoles)),
     });
   }, [credentialsDialogOpen, persona]);
 
@@ -260,14 +285,20 @@ export default function FamiliarPerfilPage() {
       return;
     }
 
-    const roles =
-      persona.roles && persona.roles.length > 0
+    const selectedRoles = canEditRoles
+      ? credentialsForm.roles
+      : persona.roles && persona.roles.length > 0
         ? persona.roles
         : [UserRole.FAMILY];
 
+    if (!selectedRoles.length) {
+      toast.error("Seleccioná al menos un rol para el acceso");
+      return;
+    }
+
     const payload: Partial<PersonaUpdateDTO> = {
       email,
-      roles,
+      roles: Array.from(new Set(selectedRoles)),
     };
 
     if (password) {
@@ -281,7 +312,18 @@ export default function FamiliarPerfilPage() {
       setPersona(refreshed ?? null);
       toast.success("Acceso del familiar actualizado");
       setCredentialsDialogOpen(false);
-      setCredentialsForm({ email, password: "", confirmPassword: "" });
+      setCredentialsForm({
+        email,
+        password: "",
+        confirmPassword: "",
+        roles: Array.from(
+          new Set(
+            refreshed?.roles && refreshed.roles.length > 0
+              ? refreshed.roles
+              : selectedRoles,
+          ),
+        ),
+      });
     } catch (error: any) {
       console.error(error);
       toast.error(
@@ -551,7 +593,10 @@ export default function FamiliarPerfilPage() {
                       <>
                         <div className="font-medium">{persona.email ?? "Sin email"}</div>
                         <div className="text-muted-foreground">
-                          Roles: {persona.roles?.join(", ") ?? "Sin roles"}
+                          Roles:{" "}
+                          {persona?.roles && persona.roles.length > 0
+                            ? persona.roles.map((role) => displayRole(role)).join(", ")
+                            : "Sin roles"}
                         </div>
                       </>
                     ) : (
@@ -628,6 +673,42 @@ export default function FamiliarPerfilPage() {
                               }
                             />
                           </div>
+                          {canEditRoles ? (
+                            <div className="space-y-2">
+                              <Label>Roles del sistema</Label>
+                              <div className="grid gap-2">
+                                {familyRoleOptions.map((role) => {
+                                  const checked = credentialsForm.roles.includes(role);
+                                  return (
+                                    <label
+                                      key={role}
+                                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                                    >
+                                      <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={(value) =>
+                                          setCredentialsForm((prev) => {
+                                            const isChecked = value === true;
+                                            const nextRoles = isChecked
+                                              ? [...prev.roles, role]
+                                              : prev.roles.filter((r) => r !== role);
+                                            return {
+                                              ...prev,
+                                              roles: Array.from(new Set(nextRoles)),
+                                            };
+                                          })
+                                        }
+                                      />
+                                      <span>{displayRole(role)}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Definí qué permisos tendrá la familia en el sistema.
+                              </p>
+                            </div>
+                          ) : null}
                         </div>
                         <DialogFooter>
                           <Button

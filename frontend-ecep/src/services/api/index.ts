@@ -50,6 +50,7 @@ export const api = {
 
   // académico
   evaluaciones: academico.evaluaciones,
+  resultados: academico.resultados,
   resultadosEvaluacion: academico.resultados,
   calificaciones: academico.calificaciones,
   informes: academico.informes,

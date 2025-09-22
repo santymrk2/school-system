@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import FamilyMateriasView from "@/app/dashboard/materias/_components/FamilyMateriasView";
+
 import type { SeccionDTO, NivelAcademico } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 
@@ -55,6 +56,7 @@ export default function MateriasPage() {
   const isAdmin = activeRole === UserRole.ADMIN;
 
   if (scope === "family" || scope === "student") {
+
     return (
       <DashboardLayout>
         <div className="p-4 md:p-8 space-y-6">

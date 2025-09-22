@@ -79,6 +79,7 @@ export default function ExamenDetailPage() {
     role === UserRole.TEACHER || role === UserRole.ALTERNATE;
   const canEdit = !isAdmin && (isStaff || isTeacher);
 
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

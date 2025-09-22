@@ -82,6 +82,7 @@ export default function AccidentesIndexPage() {
     error: scopeError,
   } = useScopedIndex();
 
+
   const role = activeRole ?? null;
   const isDirector = role === UserRole.DIRECTOR;
   const isAdmin = role === UserRole.ADMIN;
@@ -89,6 +90,7 @@ export default function AccidentesIndexPage() {
   const isTeacher =
     role === UserRole.TEACHER || role === UserRole.ALTERNATE;
   const isFamilyScope = scope === "family" || scope === "student";
+
   const noAccess = !isDirector && !isAdmin && !isSecret && !isTeacher;
 
   const canCreate = isDirector || isSecret || isAdmin || isTeacher;

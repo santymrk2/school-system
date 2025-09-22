@@ -47,7 +47,7 @@ export default function FamilyView({
                 variant="outline"
                 className="w-full"
                 onClick={() =>
-                  router.push(`/dashboard/alumno/${hijo.alumnoId}`)
+                  router.push(`/dashboard/alumnos/${hijo.alumnoId}`)
                 }
               >
                 Ver perfil

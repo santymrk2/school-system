@@ -87,7 +87,9 @@ public class AlumnoService {
                     .orElseThrow(() -> new NotFoundException("Persona no encontrada"));
 
             // Si esa persona ya es alumno y no es el mismo registro, rechazar
-            if (alumnoRepository.existsByPersonaId(persona.getId())) {
+            var alumnoConPersona = alumnoRepository.findByPersonaId(persona.getId());
+            if (alumnoConPersona.isPresent() &&
+                    !alumnoConPersona.get().getId().equals(existing.getId())) {
                 throw new IllegalArgumentException("La persona ya tiene rol Alumno");
             }
             existing.setPersona(persona);

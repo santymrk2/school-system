@@ -89,9 +89,22 @@ public class ChatController {
     }
 
     @GetMapping("/online-status")
-    public ResponseEntity<Map<Long, Boolean>> getOnlineStatus(@RequestParam List<Long> personaIds) {
+    public ResponseEntity<Map<Long, Boolean>> getOnlineStatus(
+            @RequestParam(value = "personaIds", required = false) List<Long> personaIds,
+            @RequestParam(value = "personaIds[]", required = false) List<Long> personaIdsWithBrackets
+    ) {
         try {
-            Map<Long, Boolean> onlineStatus = chatService.getOnlineStatus(personaIds);
+            List<Long> resolvedPersonaIds = personaIds;
+
+            if ((resolvedPersonaIds == null || resolvedPersonaIds.isEmpty()) && personaIdsWithBrackets != null) {
+                resolvedPersonaIds = personaIdsWithBrackets;
+            }
+
+            if (resolvedPersonaIds == null || resolvedPersonaIds.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Map<Long, Boolean> onlineStatus = chatService.getOnlineStatus(resolvedPersonaIds);
             return ResponseEntity.ok(onlineStatus);
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

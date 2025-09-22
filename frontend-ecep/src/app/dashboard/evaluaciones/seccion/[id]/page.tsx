@@ -177,6 +177,37 @@ export default function SeccionEvaluacionesPage() {
     };
   }, [accessStatus, seccionId, filterMateriaId, refreshKey]);
 
+  const materiaNombreById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const it of materias) m.set(it.id, it.nombre);
+    return m;
+  }, [materias]);
+
+  const materiasDeSeccion = useMemo(() => {
+    const ids = new Set(
+      (secMats ?? []).map((sm) => (sm as any).materiaId as number),
+    );
+    return materias.filter((m) => ids.has(m.id));
+  }, [secMats, materias]);
+
+  const seccionNombre = useMemo(() => {
+    if (!seccion) return `Sección #${seccionId}`;
+    const nombre = `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim();
+    return nombre || `Sección #${seccion.id}`;
+  }, [seccion, seccionId]);
+
+  const turnoNombre = useMemo(() => seccion?.turno ?? "—", [seccion]);
+
+  const filteredEvals = useMemo(() => {
+    if (filterMateriaId === "all") return evaluaciones;
+    const wanted = Number(filterMateriaId);
+    if (Number.isNaN(wanted)) return evaluaciones;
+    return evaluaciones.filter((e: any) => {
+      const sm = (secMats ?? []).find((x) => x.id === e.seccionMateriaId) as any;
+      return sm?.materiaId === wanted;
+    });
+  }, [evaluaciones, filterMateriaId, secMats]);
+
   if (accessStatus === "admin") {
     return (
       <DashboardLayout>
@@ -214,37 +245,6 @@ export default function SeccionEvaluacionesPage() {
       </DashboardLayout>
     );
   }
-
-  const materiaNombreById = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const it of materias) m.set(it.id, it.nombre);
-    return m;
-  }, [materias]);
-
-  const materiasDeSeccion = useMemo(() => {
-    const ids = new Set(
-      (secMats ?? []).map((sm) => (sm as any).materiaId as number),
-    );
-    return materias.filter((m) => ids.has(m.id));
-  }, [secMats, materias]);
-
-  const seccionNombre = useMemo(() => {
-    if (!seccion) return `Sección #${seccionId}`;
-    const nombre = `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim();
-    return nombre || `Sección #${seccion.id}`;
-  }, [seccion, seccionId]);
-
-  const turnoNombre = useMemo(() => seccion?.turno ?? "—", [seccion]);
-
-  const filteredEvals = useMemo(() => {
-    if (filterMateriaId === "all") return evaluaciones;
-    const wanted = Number(filterMateriaId);
-    if (Number.isNaN(wanted)) return evaluaciones;
-    return evaluaciones.filter((e: any) => {
-      const sm = (secMats ?? []).find((x) => x.id === e.seccionMateriaId) as any;
-      return sm?.materiaId === wanted;
-    });
-  }, [evaluaciones, filterMateriaId, secMats]);
 
   const createExamen = async () => {
     try {

@@ -67,6 +67,11 @@ export default function CalificacionesSeccionPage() {
     };
   }, [accessStatus, seccionId]);
 
+  const nivel = useMemo(
+    () => (seccion?.nivel ?? "").toUpperCase() as "PRIMARIO" | "INICIAL" | "",
+    [seccion],
+  );
+
   if (accessStatus === "admin") {
     return (
       <DashboardLayout>
@@ -104,11 +109,6 @@ export default function CalificacionesSeccionPage() {
       </DashboardLayout>
     );
   }
-
-  const nivel = useMemo(
-    () => (seccion?.nivel ?? "").toUpperCase() as "PRIMARIO" | "INICIAL" | "",
-    [seccion],
-  );
 
   const heading =
     nivel === "PRIMARIO" ? "Calificación Trimestral" : "Informes de Inicial";

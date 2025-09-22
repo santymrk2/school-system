@@ -1,28 +1,50 @@
+"use client";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Client, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import type { ChatMessageDTO } from "@/types/api-generated";
 import { useAuth } from "./useAuth";
 import { api } from "@/services/api";
+import { BASE as HTTP_BASE } from "@/services/api/http";
 
-const getApiBase = () => {
-  // Lee la env (inyectada en build) y quita trailing slashes
-  const fromEnv = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
-  if (fromEnv) return fromEnv;
+const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
-  // Fallback: mismo origen del frontend (por si usás reverse proxy)
+const removeApiSuffix = (value: string) => value.replace(/\/api$/i, "");
+
+const resolveSocketBase = () => {
+  const explicitWs = stripTrailingSlash(
+    (process.env.NEXT_PUBLIC_SOCKET_URL || "").trim(),
+  );
+  if (explicitWs) return removeApiSuffix(explicitWs);
+
+  const explicitApi = stripTrailingSlash(
+    (process.env.NEXT_PUBLIC_API_URL || "").trim(),
+  );
+  if (explicitApi) return removeApiSuffix(explicitApi);
+
+  const httpBase = stripTrailingSlash((HTTP_BASE || "").trim());
+  if (httpBase) return removeApiSuffix(httpBase);
+
   if (typeof window !== "undefined") {
     return `${window.location.protocol}//${window.location.host}`;
   }
 
-  // Si llega acá, no hay base. Mejor avisar en consola.
   console.warn(
-    "[useChatSocket] NEXT_PUBLIC_API_URL vacío. Usando fallback vacío.",
+    "[useChatSocket] No se pudo resolver la URL base del API; usando cadena vacía.",
   );
   return "";
 };
 
-const API_BASE = getApiBase();
+const getAuthToken = () => {
+  if (typeof window === "undefined") return null;
+
+  const fromStorage = localStorage.getItem("token");
+  if (fromStorage && fromStorage.trim()) return fromStorage;
+
+  const cookieMatch = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+  return cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
+};
 
 const normalizeMessage = (msg: any): ChatMessageDTO => ({
   id: msg.id,
@@ -42,37 +64,60 @@ export default function useChatSocket() {
     useState<ConnectionStatus>("connecting");
   const [onlineUsers, setOnlineUsers] = useState<Record<number, boolean>>({});
   const [typingUsers, setTypingUsers] = useState<Record<number, boolean>>({});
-  const { user } = useAuth();
+  const { user, selectedRole } = useAuth();
 
   const client = useRef<Client | null>(null);
   const subscriptions = useRef<StompSubscription[]>([]);
   const typingTimeouts = useRef<Map<number, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
+  const connectingRef = useRef(false);
 
   // 🔹 Conectar WebSocket
   const connect = useCallback(() => {
-    if (client.current?.connected) return;
+    if (client.current?.connected || client.current?.active || connectingRef.current)
+      return;
 
     setConnectionStatus("connecting");
     console.log("🔌 Intentando conectar WebSocket...");
 
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const socketBaseRaw = resolveSocketBase();
+    const normalizedBase = stripTrailingSlash(socketBaseRaw);
+
+    if (!normalizedBase) {
+      console.warn(
+        "[useChatSocket] No se pudo resolver la URL base del API para el socket.",
+      );
+      setConnected(false);
+      setConnectionStatus("disconnected");
+      return;
+    }
+
+    const token = getAuthToken();
 
     const socketUrl =
       token && token.trim()
-        ? `${API_BASE}/ws?token=${encodeURIComponent(token)}`
-        : `${API_BASE}/ws`;
+        ? `${normalizedBase}/ws?token=${encodeURIComponent(token)}`
+        : `${normalizedBase}/ws`;
 
-    const socket = new SockJS(socketUrl, undefined, {
-      transports: ["websocket", "xhr-streaming", "xhr-polling"],
-      transportOptions: {
-        "xhr-streaming": { withCredentials: true },
-        "xhr-polling": { withCredentials: true },
-      },
-      withCredentials: true,
-    } as any);
+    let socket: any;
+    try {
+      connectingRef.current = true;
+      socket = new SockJS(socketUrl, undefined, {
+        transports: ["websocket", "xhr-streaming", "xhr-polling"],
+        transportOptions: {
+          "xhr-streaming": { withCredentials: true },
+          "xhr-polling": { withCredentials: true },
+        },
+        withCredentials: true,
+      } as any);
+    } catch (error) {
+      console.error("[useChatSocket] Error creando la conexión SockJS:", error);
+      setConnected(false);
+      setConnectionStatus("disconnected");
+      connectingRef.current = false;
+      return;
+    }
 
     const stompClient = new Client({
       webSocketFactory: () => socket,
@@ -86,6 +131,7 @@ export default function useChatSocket() {
       console.log("🛎 Suscribiéndome a /user/queue/messages");
       setConnected(true);
       setConnectionStatus("connected");
+      connectingRef.current = false;
 
       // Suscripción a mensajes
       subscriptions.current.push(
@@ -264,29 +310,57 @@ export default function useChatSocket() {
 
     stompClient.onStompError = (frame) => {
       console.error("STOMP Error:", frame);
+      connectingRef.current = false;
+    };
+
+    stompClient.onWebSocketError = (event) => {
+      console.error("[useChatSocket] Error en el WebSocket:", event);
+      connectingRef.current = false;
     };
 
     stompClient.onWebSocketClose = () => {
       console.warn("❌ WebSocket desconectado");
       setConnected(false);
       setConnectionStatus("disconnected");
+      connectingRef.current = false;
     };
 
-    stompClient.activate();
+    stompClient.onDisconnect = () => {
+      connectingRef.current = false;
+    };
+
     client.current = stompClient;
+
+    try {
+      stompClient.activate();
+    } catch (error) {
+      console.error("[useChatSocket] No se pudo activar el cliente STOMP:", error);
+      connectingRef.current = false;
+      setConnected(false);
+      setConnectionStatus("disconnected");
+    }
   }, []);
 
   // 🔹 Reconectar manual
   const disconnect = useCallback(() => {
     subscriptions.current.forEach((sub) => sub.unsubscribe());
     subscriptions.current = [];
-    client.current?.deactivate();
+    const currentClient = client.current;
+    if (currentClient) {
+      const result = currentClient.deactivate();
+      if (result && typeof (result as Promise<void>).catch === "function") {
+        (result as Promise<void>).catch((error) =>
+          console.error("[useChatSocket] Error al desconectar STOMP:", error),
+        );
+      }
+    }
     client.current = null;
     setConnected(false);
     setConnectionStatus("disconnected");
     typingTimeouts.current.forEach((timeout) => clearTimeout(timeout));
     typingTimeouts.current.clear();
     setTypingUsers({});
+    connectingRef.current = false;
   }, []);
 
   const reconnect = useCallback(() => {
@@ -404,9 +478,18 @@ export default function useChatSocket() {
   }, []);
   // 🔹 Conectar al montar
   useEffect(() => {
+    if (!user || !selectedRole) {
+      disconnect();
+      setMessages([]);
+      setOnlineUsers({});
+      setTypingUsers({});
+      setConnectionStatus("disconnected");
+      return;
+    }
+
     connect();
     return () => disconnect();
-  }, [connect, disconnect]);
+  }, [connect, disconnect, user?.id, selectedRole]);
 
   return {
     messages,

@@ -299,12 +299,12 @@ export function FamilyAttendanceView() {
           <Card>
             <CardHeader>
               <CardTitle>{alumnoSeleccionado.nombreCompleto}</CardTitle>
-              <CardDescription className="space-y-1">
+              <div className="space-y-1 text-sm text-muted-foreground">
                 {alumnoSeleccionado.seccionNombre && (
                   <div>Sección: {alumnoSeleccionado.seccionNombre}</div>
                 )}
                 <div>{nivelLabel(alumnoSeleccionado.nivel)}</div>
-              </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingDetalles ? (

@@ -301,7 +301,7 @@ export default function FamilyCalificacionesView({
                     <CardTitle>
                       {alumno.seccionNombre ?? seccion?.nombre ?? "Sección"}
                     </CardTitle>
-                    <CardDescription className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       <Badge variant="outline">{nivelLabel(nivel)}</Badge>
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
                       {seccion?.periodoEscolarId && (
@@ -309,7 +309,7 @@ export default function FamilyCalificacionesView({
                           Período {seccion.periodoEscolarId}
                         </Badge>
                       )}
-                    </CardDescription>
+                    </div>
                   </CardHeader>
                 </Card>
 

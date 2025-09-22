@@ -85,7 +85,13 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { api } from "@/services/api";
-import { ActaAccidenteDTO, EstadoActaAccidente, UserRole } from "@/types/api-generated";
+import {
+  ActaAccidenteDTO,
+  EmpleadoDTO,
+  EstadoActaAccidente,
+  LicenciaDTO,
+  UserRole,
+} from "@/types/api-generated";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -194,21 +200,25 @@ type AttendanceSummarySection = {
   attended: number;
 };
 
-type TeacherAbsenceEvent = {
-  date: string;
-  endDate?: string;
-  hours: number;
-  status: "JUSTIFICADA" | "NO_JUSTIFICADA";
-  reason?: string;
-  covered?: boolean;
-  observation?: string;
-};
-
-type TeacherAbsence = {
+type LicenseReportRow = {
   id: string;
-  name: string;
-  subject: string;
-  events: TeacherAbsenceEvent[];
+  teacherId: number | null;
+  teacherName: string;
+  cargo?: string;
+  situacion?: string;
+  tipo: string;
+  tipoLabel: string;
+  start: string;
+  end: string | null;
+  startLabel: string;
+  endLabel: string | null;
+  rangeLabel: string;
+  durationDays: number | null;
+  horas: number | null;
+  justificada: boolean;
+  motivo: string;
+  isActive: boolean;
+  expiresSoon: boolean;
 };
 
 type ActaRegistro = {
@@ -257,6 +267,47 @@ const withinRange = (value: string, from?: string, to?: string) => {
     if (date > toDate) return false;
   }
   return true;
+};
+
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+
+const tipoLicenciaOptions = [
+  { value: "ENFERMEDAD", label: "Enfermedad" },
+  { value: "CUIDADO_FAMILIAR", label: "Cuidado familiar" },
+  { value: "FORMACION", label: "Formación" },
+  { value: "PERSONAL", label: "Motivo personal" },
+  { value: "MATERNIDAD", label: "Maternidad / Paternidad" },
+  { value: "OTRA", label: "Otra" },
+];
+
+const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
+
+const formatDate = (value?: string | null) => {
+  if (!value) return "";
+  const parsed = parseISO(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return dateFormatter.format(parsed);
+};
+
+const formatTipoLicencia = (value?: string | null) => {
+  if (!value) return "Sin tipo";
+  const option = tipoLicenciaOptions.find((opt) => opt.value === value);
+  if (option) return option.label;
+  const normalized = value.replace(/_/g, " ").toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const toDateOrNull = (value?: string | null) => {
+  if (!value) return null;
+  const parsed = parseISO(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
+const startOfDay = (date: Date) => {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
 };
 
 const exportSectionAsPdf = (node: HTMLElement | null, title: string) => {
@@ -354,10 +405,25 @@ export default function ReportesPage() {
   const [boletinError, setBoletinError] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [activeBoletin, setActiveBoletin] = useState<BoletinStudent | null>(null);
-  const [empleadoMap, setEmpleadoMap] = useState<Record<number, { name: string; cargo?: string }>>({});
-  const [teacherAbsences, setTeacherAbsences] = useState<TeacherAbsence[]>([]);
-  const [loadingTeacherAbsences, setLoadingTeacherAbsences] = useState(false);
-  const [teacherError, setTeacherError] = useState<string | null>(null);
+  const [empleadoMap, setEmpleadoMap] = useState<
+    Record<number, { name: string; cargo?: string; situacion?: string }>
+  >({});
+  const [personalSummary, setPersonalSummary] = useState({
+    total: 0,
+    activos: 0,
+    enLicencia: 0,
+  });
+  const [licenses, setLicenses] = useState<LicenciaDTO[]>([]);
+  const [licenseLoading, setLicenseLoading] = useState(false);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
+  const [licenseQuery, setLicenseQuery] = useState<string>("");
+  const [licenseTypeFilter, setLicenseTypeFilter] = useState<string>("all");
+  const [licenseJustificationFilter, setLicenseJustificationFilter] = useState<
+    "all" | "justified" | "unjustified"
+  >("all");
+  const [licenseTeacherFilter, setLicenseTeacherFilter] = useState<string>("all");
+  const [licenseFrom, setLicenseFrom] = useState<string>("");
+  const [licenseTo, setLicenseTo] = useState<string>("");
   const [actaRegistros, setActaRegistros] = useState<ActaRegistro[]>([]);
   const [loadingActasRegistro, setLoadingActasRegistro] = useState(false);
   const [actaErrorMsg, setActaErrorMsg] = useState<string | null>(null);
@@ -768,7 +834,7 @@ export default function ReportesPage() {
       try {
         const res = await api.empleados.list();
         if (!alive) return;
-        const empleados = res.data ?? [];
+        const empleados = (res.data ?? []) as EmpleadoDTO[];
         const personaIds = Array.from(
           new Set<number>(empleados.map((emp: any) => emp.personaId).filter(Boolean)),
         );
@@ -786,21 +852,41 @@ export default function ReportesPage() {
         if (!alive) return;
         const personaMap = new Map<number, any>(entries as any);
 
-        const map: Record<number, { name: string; cargo?: string }> = {};
-        empleados.forEach((emp: any) => {
+        const map: Record<number, { name: string; cargo?: string; situacion?: string }> = {};
+        let activos = 0;
+        let enLicencia = 0;
+
+        empleados.forEach((emp) => {
+          if (typeof emp.id !== "number") return;
           const persona = personaMap.get(emp.personaId ?? 0);
           const nombre = `${persona?.apellido ?? ""} ${persona?.nombre ?? ""}`
             .trim()
             .replace(/\s+/g, " ");
+          const situacion = emp.situacionActual ?? undefined;
+          const normalized = (situacion ?? "").toLowerCase();
+          if (normalized.includes("licencia")) {
+            enLicencia += 1;
+          } else if (normalized.includes("activo")) {
+            activos += 1;
+          }
+
           map[emp.id] = {
             name: nombre || `Empleado #${emp.id}`,
             cargo: emp.cargo ?? undefined,
+            situacion,
           };
         });
+
         setEmpleadoMap(map);
+        setPersonalSummary({
+          total: empleados.length,
+          activos,
+          enLicencia,
+        });
       } catch (error) {
         console.error("Error cargando empleados", error);
         setEmpleadoMap({});
+        setPersonalSummary({ total: 0, activos: 0, enLicencia: 0 });
       }
     })();
 
@@ -1000,126 +1086,178 @@ export default function ReportesPage() {
         .filter((summary): summary is AttendanceSummarySection => Boolean(summary)),
     [attendanceSummaries, selectedAttendanceSections],
   );
-
   useEffect(() => {
-    if (!Object.keys(empleadoMap).length) {
-      setTeacherAbsences([]);
-      return;
-    }
-
     let alive = true;
     (async () => {
       try {
-        setLoadingTeacherAbsences(true);
-        setTeacherError(null);
+        setLicenseLoading(true);
+        setLicenseError(null);
         const res = await api.licencias.list();
         if (!alive) return;
-        const licencias = res.data ?? [];
-
-        const grouped = new Map<number, TeacherAbsence>();
-        licencias.forEach((lic: any) => {
-          const empleadoId = lic.empleadoId;
-          if (!empleadoId) return;
-          const empleado = empleadoMap[empleadoId] ?? {
-            name: `Empleado #${empleadoId}`,
-            cargo: "Docente",
-          };
-
-          const start = lic.fechaInicio ?? lic.fechaFin;
-          if (!start) return;
-          const end = lic.fechaFin ?? start;
-          const startDate = new Date(`${start}T00:00:00`);
-          const endDate = new Date(`${end}T00:00:00`);
-          const diffDays = Math.max(
-            1,
-            Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1,
-          );
-          const hours = diffDays * 4;
-
-          const event: TeacherAbsenceEvent = {
-            date: start,
-            endDate: end,
-            hours,
-            status: "JUSTIFICADA",
-            reason: lic.motivo ?? "Licencia",
-            covered: Boolean(lic.observaciones?.toLowerCase().includes("cubre")),
-            observation: lic.observaciones ?? "",
-          };
-
-          if (!grouped.has(empleadoId)) {
-            grouped.set(empleadoId, {
-              id: String(empleadoId),
-              name: empleado.name,
-              subject: empleado.cargo ?? "Docente",
-              events: [],
-            });
-          }
-          grouped.get(empleadoId)!.events.push(event);
-        });
-
-        const list = Array.from(grouped.values()).map((teacher) => ({
-          ...teacher,
-          events: teacher.events.sort((a, b) => a.date.localeCompare(b.date)),
-        }));
-
-        if (!alive) return;
-        setTeacherAbsences(list);
+        setLicenses((res.data ?? []) as LicenciaDTO[]);
       } catch (error: any) {
         if (!alive) return;
-        console.error("Error cargando inasistencias docentes", error);
-        setTeacherError(
+        console.error("Error cargando licencias", error);
+        setLicenseError(
           error?.response?.data?.message ??
             error?.message ??
-            "No se pudieron cargar las inasistencias docentes.",
+            "No se pudieron cargar las licencias.",
         );
-        setTeacherAbsences([]);
+        setLicenses([]);
       } finally {
-        if (alive) setLoadingTeacherAbsences(false);
+        if (alive) setLicenseLoading(false);
       }
     })();
 
     return () => {
       alive = false;
     };
-  }, [empleadoMap]);
+  }, []);
 
-  // Inasistencias docentes ----------------------------------------------------
-  const [teacherSearchOpen, setTeacherSearchOpen] = useState(false);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
-  const [teacherFrom, setTeacherFrom] = useState<string>("");
-  const [teacherTo, setTeacherTo] = useState<string>("");
-  const [teacherStatus, setTeacherStatus] = useState<"TODAS" | "JUSTIFICADA" | "NO_JUSTIFICADA">(
-    "TODAS",
+  const licenseRows = useMemo(() => {
+    if (!licenses.length) return [] as LicenseReportRow[];
+    const todayMs = startOfDay(new Date()).getTime();
+    return licenses
+      .map((licencia) => {
+        const teacherId =
+          typeof licencia.empleadoId === "number" ? licencia.empleadoId : null;
+        const teacherInfo = teacherId != null ? empleadoMap[teacherId] : undefined;
+        const teacherName =
+          teacherInfo?.name ??
+          (teacherId != null ? `Empleado #${teacherId}` : "Sin docente asignado");
+        const start = licencia.fechaInicio ?? "";
+        const end = licencia.fechaFin ?? null;
+        const startDate = toDateOrNull(start);
+        const endDate = toDateOrNull(end ?? undefined);
+        const startMs = startDate ? startOfDay(startDate).getTime() : null;
+        const endMs = endDate ? startOfDay(endDate).getTime() : null;
+        const isActive =
+          startMs != null &&
+          startMs <= todayMs &&
+          (endMs == null || endMs >= todayMs);
+        const expiresSoon =
+          isActive && endMs != null && endMs >= todayMs && endMs - todayMs <= 7 * DAY_IN_MS;
+        const durationDays =
+          startMs != null && endMs != null
+            ? Math.max(1, Math.round((endMs - startMs) / DAY_IN_MS) + 1)
+            : null;
+        const startLabel = formatDate(start) || "Sin inicio";
+        const endLabel = end ? formatDate(end) : null;
+        const rangeLabel = endLabel ? `${startLabel} al ${endLabel}` : startLabel;
+
+        return {
+          id: String(licencia.id ?? `${start}-${teacherId ?? "s/d"}`),
+          teacherId,
+          teacherName,
+          cargo: teacherInfo?.cargo,
+          situacion: teacherInfo?.situacion,
+          tipo: licencia.tipoLicencia ?? "",
+          tipoLabel: formatTipoLicencia(licencia.tipoLicencia),
+          start,
+          end,
+          startLabel,
+          endLabel,
+          rangeLabel,
+          durationDays,
+          horas: typeof licencia.horasAusencia === "number" ? licencia.horasAusencia : null,
+          justificada: licencia.justificada === true,
+          motivo: licencia.motivo ?? "",
+          isActive,
+          expiresSoon,
+        } satisfies LicenseReportRow;
+      })
+      .sort((a, b) => (b.start || "").localeCompare(a.start || ""));
+  }, [licenses, empleadoMap]);
+
+  const licenseTeacherOptions = useMemo(() => {
+    const entries = new Map<string, string>();
+    licenseRows.forEach((row) => {
+      if (row.teacherId != null) {
+        entries.set(String(row.teacherId), row.teacherName);
+      }
+    });
+    return Array.from(entries.entries()).sort((a, b) =>
+      a[1].localeCompare(b[1], "es", { sensitivity: "base" }),
+    );
+  }, [licenseRows]);
+
+  const licenseTypeData = useMemo(() => {
+    const counts = new Map<string, number>();
+    licenseRows.forEach((row) => {
+      const key = row.tipoLabel || "Sin tipo";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
+  }, [licenseRows]);
+
+  const topLicenseTypes = useMemo(
+    () => [...licenseTypeData].sort((a, b) => b.value - a.value).slice(0, 4),
+    [licenseTypeData],
   );
 
-  const teacherSelected = useMemo(
-    () => teacherAbsences.find((t) => t.id === selectedTeacherId) ?? null,
-    [teacherAbsences, selectedTeacherId],
+  const activeLicenses = useMemo(
+    () => licenseRows.filter((row) => row.isActive).length,
+    [licenseRows],
   );
 
-  const filteredTeacherEvents = useMemo(() => {
-    if (!teacherSelected) return [] as TeacherAbsenceEvent[];
-    return teacherSelected.events.filter((event) => {
-      if (!withinRange(event.date, teacherFrom, teacherTo)) return false;
-      if (teacherStatus !== "TODAS" && event.status !== teacherStatus) return false;
+  const expiringLicenses = useMemo(
+    () => licenseRows.filter((row) => row.expiresSoon).length,
+    [licenseRows],
+  );
+
+  const filteredLicenses = useMemo(() => {
+    const normalizedQuery = licenseQuery.trim().toLowerCase();
+    return licenseRows.filter((row) => {
+      if (licenseTypeFilter !== "all" && row.tipo !== licenseTypeFilter) return false;
+      if (licenseTeacherFilter !== "all") {
+        if (row.teacherId == null || String(row.teacherId) !== licenseTeacherFilter) {
+          return false;
+        }
+      }
+      if (licenseJustificationFilter === "justified" && !row.justificada) return false;
+      if (licenseJustificationFilter === "unjustified" && row.justificada) return false;
+      if (licenseFrom || licenseTo) {
+        const startValue = row.start;
+        if (!startValue) return false;
+        if (!withinRange(startValue, licenseFrom || undefined, licenseTo || undefined)) {
+          return false;
+        }
+      }
+      if (normalizedQuery.length > 0) {
+        const haystack = `${row.teacherName} ${row.motivo}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) return false;
+      }
       return true;
     });
-  }, [teacherSelected, teacherFrom, teacherTo, teacherStatus]);
+  }, [
+    licenseRows,
+    licenseTypeFilter,
+    licenseTeacherFilter,
+    licenseJustificationFilter,
+    licenseFrom,
+    licenseTo,
+    licenseQuery,
+  ]);
 
-  useEffect(() => {
-    if (loadingTeacherAbsences) return;
-    if (!teacherAbsences.length) {
-      setSelectedTeacherId(null);
-      return;
-    }
-
-    setSelectedTeacherId((prev) => {
-      if (prev && teacherAbsences.some((teacher) => teacher.id === prev)) {
-        return prev;
-      }
-      return teacherAbsences[0].id;
-    });
-  }, [loadingTeacherAbsences, teacherAbsences]);
+  const licenseFiltersActive = useMemo(
+    () =>
+      Boolean(
+        licenseQuery.trim().length > 0 ||
+          licenseTypeFilter !== "all" ||
+          licenseJustificationFilter !== "all" ||
+          licenseTeacherFilter !== "all" ||
+          licenseFrom ||
+          licenseTo,
+      ),
+    [
+      licenseQuery,
+      licenseTypeFilter,
+      licenseJustificationFilter,
+      licenseTeacherFilter,
+      licenseFrom,
+      licenseTo,
+    ],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -1277,7 +1415,7 @@ export default function ReportesPage() {
     boletines: useRef<HTMLDivElement>(null),
     aprobacion: useRef<HTMLDivElement>(null),
     asistencias: useRef<HTMLDivElement>(null),
-    inasistencias: useRef<HTMLDivElement>(null),
+    licencias: useRef<HTMLDivElement>(null),
     actas: useRef<HTMLDivElement>(null),
   } as const;
 
@@ -1286,7 +1424,7 @@ export default function ReportesPage() {
       boletines: "Reporte de Boletines",
       aprobacion: "Reporte de Aprobación",
       asistencias: "Reporte de Asistencias",
-      inasistencias: "Reporte de Inasistencias Docentes",
+      licencias: "Reporte de Licencias",
       actas: "Reporte de Actas",
     };
     const key = tab as keyof typeof reportRefs;
@@ -1317,7 +1455,7 @@ export default function ReportesPage() {
             <TabsTrigger value="boletines">Boletines</TabsTrigger>
             <TabsTrigger value="aprobacion">Aprobación</TabsTrigger>
             <TabsTrigger value="asistencias">Asistencias</TabsTrigger>
-            <TabsTrigger value="inasistencias">Inasistencias docentes</TabsTrigger>
+            <TabsTrigger value="licencias">Licencias</TabsTrigger>
             <TabsTrigger value="actas">Actas</TabsTrigger>
           </TabsList>
 
@@ -1949,179 +2087,339 @@ export default function ReportesPage() {
             </Card>
           </TabsContent>
 
-          {/* -------------------- Reporte de Inasistencias Docentes ----------- */}
-          <TabsContent value="inasistencias" ref={reportRefs.inasistencias} className="space-y-4">
+          {/* -------------------- Reporte de Licencias ----------------------- */}
+          <TabsContent value="licencias" ref={reportRefs.licencias} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Personal registrado</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{personalSummary.total}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Total de docentes y personal administrativo con legajo activo.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Activos</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{personalSummary.activos}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Personal que actualmente presta servicio en la institución.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">En licencia</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{personalSummary.enLicencia}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Integrantes con licencias activas según la situación declarada.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Licencias registradas</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{licenseLoading ? "—" : licenseRows.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Historial de licencias cargadas en el sistema.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5" /> Reporte de Inasistencias Docentes
+                  <FileText className="h-5 w-5" /> Resumen de licencias
                 </CardTitle>
                 <CardDescription>
-                  Seleccione un docente y un rango temporal para consultar sus ausencias.
+                  Visualizá la distribución y el estado actual de las licencias del personal.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="md:col-span-2">
-                    <Label className="mb-1 block">Docente</Label>
-                    <Popover open={teacherSearchOpen} onOpenChange={setTeacherSearchOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                          {teacherSelected ? teacherSelected.name : "Buscar docente"}
-                          <Search className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[280px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Buscar por nombre" />
-                          <CommandList>
-                            <CommandEmpty>Sin resultados</CommandEmpty>
-                            <CommandGroup>
-                              {teacherAbsences.map((teacher) => (
-                                <CommandItem
-                                  key={teacher.id}
-                                  onSelect={() => {
-                                    setSelectedTeacherId(teacher.id);
-                                    setTeacherSearchOpen(false);
-                                  }}
-                                >
-                                  <div>
-                                    <p className="text-sm font-medium">{teacher.name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {teacher.subject}
-                                    </p>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                {licenseLoading ? (
+                  <div className="rounded-lg border border-dashed bg-muted/60 p-6">
+                    <LoadingState label="Cargando licencias…" />
                   </div>
+                ) : licenseError ? (
+                  <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
+                    {licenseError}
+                  </div>
+                ) : licenseRows.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                    No encontramos licencias registradas en el sistema.
+                  </div>
+                ) : (
+                  <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+                    <div className="h-64 rounded-lg border bg-muted/30 p-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={licenseTypeData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={2}
+                          >
+                            {licenseTypeData.map((entry, index) => (
+                              <Cell
+                                key={`${entry.name}-${index}`}
+                                fill={PIE_COLORS[index % PIE_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-lg border bg-muted/30 p-4">
+                          <p className="text-sm text-muted-foreground">Licencias activas</p>
+                          <p className="text-2xl font-semibold">{activeLicenses}</p>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-4">
+                          <p className="text-sm text-muted-foreground">Próximas a vencer (7 días)</p>
+                          <p className="text-2xl font-semibold">{expiringLicenses}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>Tipos más frecuentes</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {topLicenseTypes.length ? (
+                            topLicenseTypes.map((item) => (
+                              <div
+                                key={item.name}
+                                className="flex items-center justify-between rounded-lg border bg-background px-3 py-2"
+                              >
+                                <span>{item.name}</span>
+                                <span className="font-semibold">{item.value}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="rounded-lg border bg-background px-3 py-2">
+                              <p>No hay datos suficientes.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <div>
-                    <Label className="mb-1 block">Desde</Label>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5" /> Detalle de licencias por docente
+                </CardTitle>
+                <CardDescription>
+                  Filtrá por docente, tipo o justificación para analizar los movimientos del personal.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-5">
+                  <div className="md:col-span-2 space-y-1">
+                    <Label>Búsqueda</Label>
                     <Input
-                      type="date"
-                      value={teacherFrom}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setTeacherFrom(value);
-                        if (value && teacherTo && value > teacherTo) {
-                          setTeacherTo(value);
-                        }
-                      }}
+                      placeholder="Buscar por docente o motivo"
+                      value={licenseQuery}
+                      onChange={(event) => setLicenseQuery(event.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label className="mb-1 block">Hasta</Label>
-                    <Input
-                      type="date"
-                      value={teacherTo}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setTeacherTo(value);
-                        if (value && teacherFrom && value < teacherFrom) {
-                          setTeacherFrom(value);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="mb-1 block">Estado</Label>
-                    <Select value={teacherStatus} onValueChange={(value) => setTeacherStatus(value as typeof teacherStatus)}>
+                  <div className="space-y-1">
+                    <Label>Docente</Label>
+                    <Select
+                      value={licenseTeacherFilter}
+                      onValueChange={setLicenseTeacherFilter}
+                      disabled={licenseTeacherOptions.length === 0}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Filtrar por estado" />
+                        <SelectValue placeholder="Todos los docentes" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="TODAS">Todas</SelectItem>
-                        <SelectItem value="JUSTIFICADA">Justificadas</SelectItem>
-                        <SelectItem value="NO_JUSTIFICADA">No justificadas</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {licenseTeacherOptions.map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-1">
+                    <Label>Tipo</Label>
+                    <Select value={licenseTypeFilter} onValueChange={setLicenseTypeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos los tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {tipoLicenciaOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Justificación</Label>
+                    <Select
+                      value={licenseJustificationFilter}
+                      onValueChange={(value) =>
+                        setLicenseJustificationFilter(value as typeof licenseJustificationFilter)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="justified">Justificadas</SelectItem>
+                        <SelectItem value="unjustified">Sin justificar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Desde</Label>
+                    <Input
+                      type="date"
+                      value={licenseFrom}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setLicenseFrom(value);
+                        if (licenseTo && value && value > licenseTo) {
+                          setLicenseTo(value);
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Hasta</Label>
+                    <Input
+                      type="date"
+                      value={licenseTo}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setLicenseTo(value);
+                        if (licenseFrom && value && value < licenseFrom) {
+                          setLicenseFrom(value);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
-                {teacherError && (
+                {licenseError && !licenseLoading ? (
                   <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
-                    {teacherError}
+                    {licenseError}
                   </div>
-                )}
+                ) : null}
 
-                {loadingTeacherAbsences && !teacherError && (
+                {licenseLoading ? (
                   <div className="rounded-lg border border-dashed bg-muted/60 p-6">
-                    <LoadingState label="Cargando inasistencias docentes…" />
+                    <LoadingState label="Cargando licencias…" />
                   </div>
-                )}
-
-                {teacherSelected ? (
-                  <div className="space-y-4">
-                    <Card className="border">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          {teacherSelected.name} • {teacherSelected.subject}
-                        </CardTitle>
-                        <CardDescription>
-                          {filteredTeacherEvents.length} inasistencias registradas en el período seleccionado.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="overflow-x-auto">
-                        <table className="w-full min-w-[500px] text-sm">
-                          <thead className="bg-muted text-xs uppercase">
-                            <tr>
-                              <th className="px-3 py-2 text-left">Fecha</th>
-                              <th className="px-3 py-2 text-left">Horas</th>
-                              <th className="px-3 py-2 text-left">Estado</th>
-                              <th className="px-3 py-2 text-left">Motivo</th>
-                              <th className="px-3 py-2 text-left">Cubierta</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredTeacherEvents.map((event, index) => (
-                              <tr key={`${event.date}-${index}`} className="border-b last:border-0">
-                                <td className="px-3 py-2">{event.date}</td>
-                                <td className="px-3 py-2">{event.hours}</td>
-                                <td className="px-3 py-2">
-                                  <Badge
-                                    variant={
-                                      event.status === "JUSTIFICADA"
+                ) : filteredLicenses.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px] text-sm">
+                      <thead className="bg-muted text-xs uppercase">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Docente</th>
+                          <th className="px-3 py-2 text-left">Tipo</th>
+                          <th className="px-3 py-2 text-left">Período</th>
+                          <th className="px-3 py-2 text-left">Estado</th>
+                          <th className="px-3 py-2 text-left">Motivo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredLicenses.map((licencia) => (
+                          <tr key={licencia.id} className="border-b last:border-0">
+                            <td className="px-3 py-3 align-top">
+                              <div className="font-medium text-foreground">{licencia.teacherName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {licencia.cargo ? licencia.cargo : "Sin cargo asignado"}
+                                {licencia.situacion ? ` • ${licencia.situacion}` : ""}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              <Badge variant="outline">{licencia.tipoLabel}</Badge>
+                              {typeof licencia.horas === "number" ? (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {licencia.horas} hs de ausencia
+                                </div>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              <div>{licencia.rangeLabel}</div>
+                              {licencia.durationDays ? (
+                                <div className="text-xs text-muted-foreground">
+                                  {licencia.durationDays} días
+                                </div>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              <div className="flex flex-wrap gap-2">
+                                <Badge
+                                  variant={
+                                    licencia.expiresSoon
+                                      ? "destructive"
+                                      : licencia.isActive
                                         ? "default"
-                                        : "destructive"
-                                    }
-                                  >
-                                    {event.status === "JUSTIFICADA"
-                                      ? "Justificada"
-                                      : "No justificada"}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2">{event.reason ?? "—"}</td>
-                                <td className="px-3 py-2">{event.covered ? "Sí" : "No"}</td>
-                              </tr>
-                            ))}
-                            {filteredTeacherEvents.length === 0 && (
-                              <tr>
-                                <td className="px-3 py-6 text-center text-sm text-muted-foreground" colSpan={5}>
-                                  No se registran inasistencias con los filtros aplicados.
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </CardContent>
-                    </Card>
+                                        : "outline"
+                                  }
+                                >
+                                  {licencia.expiresSoon
+                                    ? "Próxima a vencer"
+                                    : licencia.isActive
+                                      ? "Activa"
+                                      : "Finalizada"}
+                                </Badge>
+                                <Badge variant={licencia.justificada ? "secondary" : "destructive"}>
+                                  {licencia.justificada ? "Justificada" : "Sin justificar"}
+                                </Badge>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              {licencia.motivo ? (
+                                <div className="whitespace-pre-wrap">{licencia.motivo}</div>
+                              ) : (
+                                <span className="text-muted-foreground">Sin detalle</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ) : !loadingTeacherAbsences && !teacherError ? (
+                ) : null}
+
+                {!licenseLoading && filteredLicenses.length === 0 && !licenseError ? (
                   <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                    {teacherAbsences.length === 0
-                      ? 'No encontramos docentes con inasistencias registradas.'
-                      : 'Elegí un docente para visualizar su historial.'}
+                    {licenseFiltersActive
+                      ? "No se encontraron licencias con los criterios seleccionados."
+                      : "Aún no se registraron licencias en el sistema."}
                   </div>
                 ) : null}
               </CardContent>
             </Card>
           </TabsContent>
-
           {/* -------------------------- Reporte de Actas ---------------------- */}
           <TabsContent value="actas" ref={reportRefs.actas} className="space-y-4">
             <Card>

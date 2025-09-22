@@ -343,7 +343,7 @@ export default function FamilyMateriasView({
                       detalle?.seccion?.nombre ??
                       "Sección sin nombre"
                     }</CardTitle>
-                    <CardDescription className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       <Badge variant="outline">{nivelLabel(nivel)}</Badge>
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
                       {detalle?.seccion?.periodoEscolarId && (
@@ -351,7 +351,7 @@ export default function FamilyMateriasView({
                           Período {detalle.seccion.periodoEscolarId}
                         </Badge>
                       )}
-                    </CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {detalle?.docentesSeccion?.length ? (

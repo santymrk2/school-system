@@ -36,6 +36,7 @@ import {
   TRIMESTRE_ESTADO_BADGE_VARIANT,
   TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
+  resolveTrimestrePeriodoId,
   type TrimestreEstado,
 } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
@@ -75,8 +76,10 @@ const toPercent = (value: number | null | undefined): number | null => {
 
 export default function CierrePrimarioView({
   seccionId,
+  periodoEscolarId,
 }: {
   seccionId: number;
+  periodoEscolarId?: number | null;
 }) {
   const hoy = new Date().toISOString().slice(0, 10);
 
@@ -115,7 +118,15 @@ export default function CierrePrimarioView({
           api.calificaciones.list(), // [{ id, trimestreId, seccionMateriaId, matriculaId, ... }]
         ]);
         if (!alive) return;
-        setTrimestres(triRes.data ?? []);
+        const allTrimestres = triRes.data ?? [];
+        const filteredTrimestres =
+          typeof periodoEscolarId === "number"
+            ? allTrimestres.filter(
+                (t: any) =>
+                  resolveTrimestrePeriodoId(t, undefined) === periodoEscolarId,
+              )
+            : allTrimestres;
+        setTrimestres(filteredTrimestres);
         setMaterias(matRes.data ?? []);
         setSeccionMaterias(
           (smRes.data ?? []).filter(
@@ -123,7 +134,21 @@ export default function CierrePrimarioView({
           ),
         );
         setAlumnos(aluRes.data ?? []);
-        setCalifs(cRes.data ?? []);
+        const allowedTrimestreIds = new Set(
+          filteredTrimestres
+            .map((t: any) => t.id)
+            .filter((id: any) => typeof id === "number"),
+        );
+        const califsFiltradas = (cRes.data ?? []).filter((c: any) => {
+          if (allowedTrimestreIds.size === 0) return true;
+          const triId =
+            c.trimestreId ??
+            c.trimestre?.id ??
+            (c as any).trimestreId ??
+            null;
+          return typeof triId === "number" && allowedTrimestreIds.has(triId);
+        });
+        setCalifs(califsFiltradas);
       } finally {
         if (alive) setLoading(false);
       }
@@ -131,7 +156,7 @@ export default function CierrePrimarioView({
     return () => {
       alive = false;
     };
-  }, [seccionId, hoy]);
+  }, [seccionId, hoy, periodoEscolarId]);
 
   const triOpts = useMemo<
     { id: number; label: string; estado: TrimestreEstado }[]

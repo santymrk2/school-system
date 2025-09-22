@@ -70,6 +70,7 @@ export default function CalificacionesIndexPage() {
             alumnos={hijos}
             initialLoading={loading}
             initialError={error ? String(error) : null}
+            periodoEscolarId={periodoEscolarId}
           />
         </div>
       </DashboardLayout>

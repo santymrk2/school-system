@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
-import { api } from "@/services/api";
+import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardHeader,
@@ -13,57 +12,107 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
+import FamilyCalificacionesView from "@/app/dashboard/calificaciones/_components/FamilyCalificacionesView";
+import type { NivelAcademico, SeccionDTO } from "@/types/api-generated";
+import { UserRole } from "@/types/api-generated";
+
+function isPrimario(seccion: SeccionDTO) {
+  const nivel = (seccion.nivel as NivelAcademico | undefined) ?? (seccion as any).nivel;
+  if (nivel) return String(nivel).toUpperCase() === "PRIMARIO";
+  const nombre = `${seccion.gradoSala ?? ""}`.toLowerCase();
+  return !nombre.includes("sala");
+}
+
+function isInicial(seccion: SeccionDTO) {
+  const nivel = (seccion.nivel as NivelAcademico | undefined) ?? (seccion as any).nivel;
+  if (nivel) return String(nivel).toUpperCase() === "INICIAL";
+  const nombre = `${seccion.gradoSala ?? ""}`.toLowerCase();
+  return nombre.includes("sala");
+}
+
+function formatTurnoLabel(turno?: string | null) {
+  if (!turno) return "—";
+  const map: Record<string, string> = { MANANA: "Mañana", TARDE: "Tarde" };
+  return map[String(turno).toUpperCase()] ?? turno;
+}
 
 export default function CalificacionesIndexPage() {
   const router = useRouter();
-  const [secciones, setSecciones] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"primario" | "inicial">("primario");
+  const { activeRole } = useViewerScope();
+  const {
+    scope,
+    loading,
+    error,
+    secciones,
+    hijos,
+    periodoEscolarId,
+  } = useScopedIndex({ includeTitularSec: true });
 
-  const formatTurnoLabel = (turno?: string | null) => {
-    if (!turno) return "—";
-    const map: Record<string, string> = { MANANA: "Mañana", TARDE: "Tarde" };
-    return map[String(turno).toUpperCase()] ?? turno;
-  };
+  const isAdmin = activeRole === UserRole.ADMIN;
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const { data } = await api.secciones.list();
-        if (!alive) return;
-        setSecciones(data ?? []);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  if (scope === "family" || scope === "student") {
+    return (
+      <DashboardLayout>
+        <div className="p-4 md:p-8 space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">
+              {scope === "student" ? "Mis calificaciones" : "Calificaciones"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {scope === "student"
+                ? "Consultá tus calificaciones finales y los informes de cada trimestre."
+                : "Seleccioná a cada hijo para revisar sus calificaciones e informes."}
+            </p>
+          </div>
+          <FamilyCalificacionesView
+            alumnos={hijos}
+            initialLoading={loading}
+            initialError={error ? String(error) : null}
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Calificaciones.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const isTeacher = scope === "teacher";
+  const isStaff = scope === "staff";
+
+  if (!isTeacher && !isStaff) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">403 — No tenés acceso a calificaciones.</div>
+      </DashboardLayout>
+    );
+  }
 
   const primario = useMemo(
-    () =>
-      (secciones ?? []).filter(
-        (s: any) => String(s.nivel ?? "").toUpperCase() === "PRIMARIO",
-      ),
+    () => (secciones ?? []).filter(isPrimario),
     [secciones],
   );
   const inicial = useMemo(
-    () =>
-      (secciones ?? []).filter(
-        (s: any) => String(s.nivel ?? "").toUpperCase() === "INICIAL",
-      ),
+    () => (secciones ?? []).filter(isInicial),
     [secciones],
   );
 
+  const [tab, setTab] = useState<"primario" | "inicial">("primario");
+
   useEffect(() => {
     if (loading) return;
-    if (primario.length === 0 && inicial.length > 0) {
+    if (!primario.length && inicial.length) {
       setTab("inicial");
-    }
-    if (inicial.length === 0 && primario.length > 0) {
+    } else if (!inicial.length && primario.length) {
       setTab("primario");
     }
   }, [loading, primario.length, inicial.length]);
@@ -71,28 +120,34 @@ export default function CalificacionesIndexPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
-        <h2 className="text-3xl font-bold tracking-tight">Calificaciones</h2>
-        {!loading && (
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Calificaciones</h2>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline">Primario: {primario.length}</Badge>
-            <Badge variant="outline">Inicial: {inicial.length}</Badge>
+            <Badge variant="outline">
+              Primario: {loading ? "—" : primario.length}
+            </Badge>
+            <Badge variant="outline">
+              Inicial: {loading ? "—" : inicial.length}
+            </Badge>
+            {periodoEscolarId && (
+              <Badge variant="outline">Período {periodoEscolarId}</Badge>
+            )}
           </div>
-        )}
-        {loading && <LoadingState label="Cargando secciones…" />}
+        </div>
 
-        {!loading && (
+        {loading ? (
+          <LoadingState label="Cargando secciones…" />
+        ) : error ? (
+          <div className="text-sm text-red-600">{String(error)}</div>
+        ) : (
           <Tabs
             value={tab}
-            onValueChange={(v) => setTab(v as "primario" | "inicial")}
-            className="flex flex-col gap-6"
+            onValueChange={(value) => setTab(value as "primario" | "inicial")}
+            className="space-y-4"
           >
-            <TabsList className="flex w-full flex-col gap-2 self-stretch sm:inline-flex sm:w-auto sm:flex-row">
-              <TabsTrigger className="w-full sm:w-auto" value="primario">
-                Primario
-              </TabsTrigger>
-              <TabsTrigger className="w-full sm:w-auto" value="inicial">
-                Inicial
-              </TabsTrigger>
+            <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+              <TabsTrigger value="primario">Primario</TabsTrigger>
+              <TabsTrigger value="inicial">Inicial</TabsTrigger>
             </TabsList>
 
             <TabsContent value="primario" className="space-y-4">
@@ -100,31 +155,31 @@ export default function CalificacionesIndexPage() {
                 Gestión de calificaciones trimestrales por materia.
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {primario.map((s: any) => (
+                {primario.map((seccion) => (
                   <Card
-                    key={s.id}
-                    className="hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition cursor-pointer"
+                    key={seccion.id}
+                    className="cursor-pointer transition-shadow hover:border-primary/60 hover:shadow-md"
                     onClick={() =>
-                      router.push(`/dashboard/calificaciones/seccion/${s.id}`)
+                      router.push(`/dashboard/calificaciones/seccion/${seccion.id}`)
                     }
                   >
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between text-lg">
                         <span>
-                          {s.gradoSala} {s.division}
+                          {seccion.gradoSala} {seccion.division}
                         </span>
                         <Badge variant="secondary">
-                          {formatTurnoLabel(s.turno)}
+                          {formatTurnoLabel(seccion.turno)}
                         </Badge>
                       </CardTitle>
-                      <CardDescription className="pb-3">
-                        Cierre trimestral por materia
+                      <CardDescription>
+                        Calificaciones finales y cierres trimestrales.
                       </CardDescription>
                     </CardHeader>
                   </Card>
                 ))}
               </div>
-              {primario.length === 0 && (
+              {!primario.length && (
                 <div className="text-sm text-muted-foreground">
                   No hay secciones de Primario disponibles.
                 </div>
@@ -136,31 +191,31 @@ export default function CalificacionesIndexPage() {
                 Seguimiento de informes cualitativos por trimestre.
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {inicial.map((s: any) => (
+                {inicial.map((seccion) => (
                   <Card
-                    key={s.id}
-                    className="hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition cursor-pointer"
+                    key={seccion.id}
+                    className="cursor-pointer transition-shadow hover:border-primary/60 hover:shadow-md"
                     onClick={() =>
-                      router.push(`/dashboard/calificaciones/seccion/${s.id}`)
+                      router.push(`/dashboard/calificaciones/seccion/${seccion.id}`)
                     }
                   >
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between text-lg">
                         <span>
-                          {s.gradoSala} {s.division}
+                          {seccion.gradoSala} {seccion.division}
                         </span>
                         <Badge variant="secondary">
-                          {formatTurnoLabel(s.turno)}
+                          {formatTurnoLabel(seccion.turno)}
                         </Badge>
                       </CardTitle>
-                      <CardDescription className="pb-3">
-                        Informes por trimestre
+                      <CardDescription>
+                        Informes descriptivos por trimestre.
                       </CardDescription>
                     </CardHeader>
                   </Card>
                 ))}
               </div>
-              {inicial.length === 0 && (
+              {!inicial.length && (
                 <div className="text-sm text-muted-foreground">
                   No hay secciones de Inicial disponibles.
                 </div>

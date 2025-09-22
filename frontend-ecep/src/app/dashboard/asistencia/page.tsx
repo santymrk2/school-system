@@ -4,8 +4,6 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
-import { useAuth } from "@/hooks/useAuth";
-import { normalizeRole } from "@/lib/auth-roles";
 import { UserRole, SeccionDTO, Turno } from "@/types/api-generated";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -22,30 +20,18 @@ import { Button } from "@/components/ui/button";
 import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJornadaDialog";
 import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 import FamilyAttendanceView from "@/app/dashboard/asistencia/_components/FamilyAttendanceView";
+import { useViewerScope } from "@/hooks/scope/useViewerScope";
 
 /* =========================
    PAGE
 ========================= */
 export default function AsistenciaPage() {
-  const { user, selectedRole } = useAuth();
-
-  const normalizedRole = useMemo(() => {
-    if (selectedRole) return selectedRole;
-    const first = user?.roles?.[0];
-    return first ? normalizeRole(first) : null;
-  }, [selectedRole, user]);
-
-  const isTeacher =
-    normalizedRole === UserRole.TEACHER ||
-    normalizedRole === UserRole.ALTERNATE;
-  const isDireccion = normalizedRole
-    ? [
-        UserRole.DIRECTOR,
-        UserRole.ADMIN,
-        UserRole.SECRETARY,
-        UserRole.COORDINATOR,
-      ].includes(normalizedRole)
-    : false;
+  const { type, activeRole } = useViewerScope();
+  const isAdmin = activeRole === UserRole.ADMIN;
+  const isTeacher = type === "teacher";
+  const isStaff = type === "staff" && !isAdmin;
+  const isFamily = type === "family";
+  const isStudent = type === "student";
 
   return (
     <DashboardLayout>
@@ -54,20 +40,26 @@ export default function AsistenciaPage() {
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Asistencia</h2>
             <p className="text-muted-foreground">
-              {isTeacher
-                ? "Tus secciones asignadas"
-                : isDireccion
-                  ? "Dirección — Seguimiento integral por secciones y alumnos"
-                  : "Consulta"}
+              {isAdmin
+                ? "Sin acceso"
+                : isTeacher
+                  ? "Tus secciones asignadas"
+                  : isStaff
+                    ? "Dirección — Seguimiento integral por secciones y alumnos"
+                    : "Consulta"}
             </p>
             <ActiveTrimestreBadge className="mt-2" />
           </div>
         </header>
 
-        {isTeacher ? (
+        {isAdmin ? (
+          <div className="p-6 text-sm">403 — El perfil de Administración no tiene acceso a Asistencia.</div>
+        ) : isTeacher ? (
           <TeacherView />
-        ) : isDireccion ? (
+        ) : isStaff ? (
           <DirectivoView />
+        ) : isFamily || isStudent ? (
+          <FamilyAttendanceView />
         ) : (
           <FamilyAttendanceView />
         )}

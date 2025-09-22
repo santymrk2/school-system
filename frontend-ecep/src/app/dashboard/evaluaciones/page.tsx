@@ -14,6 +14,8 @@ import type {
 } from "@/types/api-generated";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
+import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { UserRole } from "@/types/api-generated";
 
 import {
   Card,
@@ -45,6 +47,9 @@ export default function EvaluacionesIndexPage() {
   const router = useRouter();
   const { periodoEscolarId } = useActivePeriod();
 
+  const { activeRole } = useViewerScope();
+  const isAdmin = activeRole === UserRole.ADMIN;
+
   // Del scope: trae secciones visibles según rol (staff/teacher/family).
   // Evaluaciones solo aplica a staff/teacher -> family no aparece acá.
   const {
@@ -71,6 +76,10 @@ export default function EvaluacionesIndexPage() {
       try {
         setError(null);
         setLoading(true);
+        if (isAdmin || scope === "family" || scope === "student") {
+          if (alive) setLoading(false);
+          return;
+        }
         const [sms, evs, mats] = await Promise.all([
           api.seccionMaterias.list().then((r) => r.data ?? []),
           api.evaluaciones.list().then((r) => r.data ?? []),
@@ -89,7 +98,7 @@ export default function EvaluacionesIndexPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [isAdmin, scope]);
 
   // Filtramos secciones del scope por Primario y (si corresponde) por período activo
   const seccionesPrimario = useMemo(() => {
@@ -188,6 +197,16 @@ export default function EvaluacionesIndexPage() {
             initialLoading={loadingScope}
             initialError={errorScope ? String(errorScope) : null}
           />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm">
+          403 — El perfil de Administración no tiene acceso a Exámenes.
         </div>
       </DashboardLayout>
     );

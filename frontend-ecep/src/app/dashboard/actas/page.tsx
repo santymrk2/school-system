@@ -35,6 +35,8 @@ import { api } from "@/services/api";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { toast } from "sonner";
+import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
+import FamilyActasView from "@/app/dashboard/actas/_components/FamilyActasView";
 
 import NewActaDialog from "./_components/NewActaDialog";
 import ViewActaDialog from "./_components/ViewActaDialog";
@@ -48,6 +50,7 @@ import type {
   EstadoActaAccidente,
   EmpleadoDTO,
 } from "@/types/api-generated";
+import { UserRole } from "@/types/api-generated";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -70,13 +73,22 @@ type ActaVM = {
 };
 
 export default function AccidentesIndexPage() {
-  const { roles, type } = useViewerScope();
+  const { activeRole } = useViewerScope();
   const { periodoEscolarId, hoyISO } = useActivePeriod();
+  const {
+    scope,
+    hijos,
+    loading: scopeLoading,
+    error: scopeError,
+  } = useScopedIndex();
 
-  const isDirector = type === "staff" && roles.includes("DIRECTOR");
-  const isAdmin = type === "staff" && roles.includes("ADMIN");
-  const isSecret = type === "staff" && roles.includes("SECRETARY");
-  const isTeacher = roles.includes("TEACHER");
+  const role = activeRole ?? null;
+  const isDirector = role === UserRole.DIRECTOR;
+  const isAdmin = role === UserRole.ADMIN;
+  const isSecret = role === UserRole.SECRETARY;
+  const isTeacher =
+    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
+  const isFamilyScope = scope === "family" || scope === "student";
   const noAccess = !isDirector && !isAdmin && !isSecret && !isTeacher;
 
   const canCreate = isDirector || isSecret || isAdmin || isTeacher;
@@ -117,6 +129,28 @@ export default function AccidentesIndexPage() {
   const [editActa, setEditActa] = useState<ActaAccidenteDTO | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [markingId, setMarkingId] = useState<number | null>(null);
+
+  if (isFamilyScope) {
+    return (
+      <DashboardLayout>
+        <div className="p-4 md:p-8 space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Actas de Accidentes
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Visualizá los registros vinculados a tus hijos.
+            </p>
+          </div>
+          <FamilyActasView
+            alumnos={hijos}
+            initialLoading={scopeLoading}
+            initialError={scopeError ? String(scopeError) : null}
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   // carga inicial: actas + secciones (para mapear alumno→sección vigente hoy)
   useEffect(() => {

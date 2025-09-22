@@ -176,11 +176,7 @@ export default function PagosPage() {
   const isTeacher =
     normalizedRole === UserRole.TEACHER ||
     normalizedRole === UserRole.ALTERNATE;
-  const isAdmin =
-    normalizedRole === UserRole.ADMIN ||
-    normalizedRole === UserRole.SECRETARY ||
-    normalizedRole === UserRole.DIRECTOR ||
-    normalizedRole === UserRole.COORDINATOR;
+  const isAdmin = normalizedRole === UserRole.ADMIN;
 
   const shouldLoadCuotas = isFamily || isAdmin;
   const shouldLoadPagos = isAdmin;

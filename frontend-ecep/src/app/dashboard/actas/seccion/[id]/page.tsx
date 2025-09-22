@@ -39,6 +39,7 @@ import NewActaDialog from "../../_components/NewActaDialog";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { toast } from "sonner";
 import EditActaDialog from "../../_components/EditActaDialog";
+import { UserRole } from "@/types/api-generated";
 
 type ActaVM = {
   id: number;
@@ -76,12 +77,14 @@ export default function AccidentesSeccionPage() {
   const seccionId = Number(params.id);
   const router = useRouter();
   const { hoyISO } = useActivePeriod();
-  const { roles, type } = useViewerScope();
+  const { activeRole } = useViewerScope();
+  const role = activeRole ?? null;
 
-  const isDirector = type === "staff" && roles.includes("DIRECTOR");
-  const isSecret = type === "staff" && roles.includes("SECRETARY");
-  const isAdmin = type === "staff" && roles.includes("ADMIN");
-  const isTeacher = roles.includes("TEACHER");
+  const isDirector = role === UserRole.DIRECTOR;
+  const isSecret = role === UserRole.SECRETARY;
+  const isAdmin = role === UserRole.ADMIN;
+  const isTeacher =
+    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
 
   const canCreate = isDirector || isSecret || isAdmin || isTeacher;
   const canManageActas = isDirector || isSecret;

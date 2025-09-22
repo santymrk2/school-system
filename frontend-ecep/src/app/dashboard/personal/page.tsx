@@ -71,6 +71,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  Trash2,
   Search,
   User,
   Users,
@@ -93,6 +94,7 @@ const tipoLicenciaOptions = [
 ];
 
 const DEFAULT_SITUACION = "Activo";
+const LICENCIA_SITUACION = "En licencia";
 
 const GENERO_PRESET_OPTIONS = [
   { value: "Femenino", label: "Femenino" },
@@ -128,8 +130,8 @@ const CARGO_PRESET_OPTIONS = [
 ];
 
 const SITUACION_PRESET_OPTIONS = [
-  { value: "Activo", label: "Activo" },
-  { value: "En licencia", label: "En licencia" },
+  { value: DEFAULT_SITUACION, label: DEFAULT_SITUACION },
+  { value: LICENCIA_SITUACION, label: LICENCIA_SITUACION },
   { value: "De baja", label: "De baja" },
   { value: "Suspendido", label: "Suspendido" },
 ];
@@ -159,7 +161,7 @@ const initialEmpleadoForm = {
   observacionesGenerales: "",
 };
 
-const initialFormacionForm = {
+const initialFormacionEntry = {
   nivel: "",
   tituloObtenido: "",
   institucion: "",
@@ -195,7 +197,7 @@ const STAFF_ROLE_OPTIONS: UserRole[] = [
 
 type NewPersonaForm = typeof initialPersonaForm;
 type NewEmpleadoForm = typeof initialEmpleadoForm;
-type NewFormacionForm = typeof initialFormacionForm;
+type NewFormacionEntry = typeof initialFormacionEntry;
 type FormacionNotas = typeof initialFormacionNotas;
 type NewLicenseForm = typeof initialLicenseForm;
 type AccessFormState = {
@@ -212,6 +214,8 @@ type EmpleadoView = {
   materias: Array<{ id: number; nombre: string }>;
   formaciones: FormacionAcademicaDTO[];
   licencias: LicenciaDTO[];
+  situacionVisible: string;
+  activeLicense: LicenciaDTO | null;
 };
 
 const nivelLabel: Record<string, string> = {
@@ -359,6 +363,27 @@ function splitCuilParts(cuil?: string | null) {
   const suffix = digits.length > 2 ? digits.slice(-1) : "";
   return { prefix, suffix };
 }
+
+function normalizeIsoDate(value?: string | null) {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+function todayIso(reference: Date = new Date()) {
+  return reference.toISOString().slice(0, 10);
+}
+
+function isLicenseActiveOn(licencia: LicenciaDTO, referenceIso: string) {
+  const start = normalizeIsoDate(licencia.fechaInicio);
+  if (!start || start > referenceIso) {
+    return false;
+  }
+  const end = normalizeIsoDate(licencia.fechaFin);
+  if (end && end < referenceIso) {
+    return false;
+  }
+  return true;
+}
 export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
   const router = useRouter();
@@ -428,9 +453,29 @@ export default function PersonalPage() {
   });
   const [newEmpleadoCuilPrefix, setNewEmpleadoCuilPrefix] = useState("");
   const [newEmpleadoCuilSuffix, setNewEmpleadoCuilSuffix] = useState("");
-  const [newFormacion, setNewFormacion] = useState<NewFormacionForm>({
-    ...initialFormacionForm,
-  });
+  const [newFormaciones, setNewFormaciones] = useState<NewFormacionEntry[]>([
+    { ...initialFormacionEntry },
+  ]);
+  const addNewFormacionEntry = useCallback(() => {
+    setNewFormaciones((prev) => [...prev, { ...initialFormacionEntry }]);
+  }, []);
+  const updateNewFormacionEntry = useCallback(
+    (index: number, patch: Partial<NewFormacionEntry>) => {
+      setNewFormaciones((prev) =>
+        prev.map((entry, idx) => (idx === index ? { ...entry, ...patch } : entry)),
+      );
+    },
+    [],
+  );
+  const removeNewFormacionEntry = useCallback((index: number) => {
+    setNewFormaciones((prev) => {
+      if (prev.length <= 1) {
+        return [{ ...initialFormacionEntry }];
+      }
+      const next = prev.filter((_, idx) => idx !== index);
+      return next.length ? next : [{ ...initialFormacionEntry }];
+    });
+  }, []);
   const [formacionNotas, setFormacionNotas] = useState<FormacionNotas>({
     ...initialFormacionNotas,
   });
@@ -449,7 +494,7 @@ export default function PersonalPage() {
   const resetNewPersonalForm = useCallback(() => {
     setNewPersona({ ...initialPersonaForm });
     setNewEmpleado({ ...initialEmpleadoForm });
-    setNewFormacion({ ...initialFormacionForm });
+    setNewFormaciones([{ ...initialFormacionEntry }]);
     setFormacionNotas({ ...initialFormacionNotas });
     setNewEmpleadoCuilPrefix("");
     setNewEmpleadoCuilSuffix("");
@@ -639,6 +684,8 @@ export default function PersonalPage() {
       formacionesPorEmpleado.set(formacion.empleadoId, list);
     }
 
+    const referenciaIso = todayIso();
+
     const personalData: EmpleadoView[] = empleados.map((empleado) => {
       const persona =
         typeof empleado.personaId === "number"
@@ -668,13 +715,29 @@ export default function PersonalPage() {
       const formacionInfo = formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
       const licenciasInfo = licenciasPorEmpleado.get(empleado.id ?? 0) ?? [];
 
+      const situacionActualRaw = (empleado.situacionActual ?? "").trim();
+      const situacionBase =
+        situacionActualRaw.length > 0 ? situacionActualRaw : DEFAULT_SITUACION;
+      const activeLicense =
+        licenciasInfo.find((licencia) =>
+          isLicenseActiveOn(licencia, referenciaIso),
+        ) ?? null;
+      const situacionVisible = activeLicense ? LICENCIA_SITUACION : situacionBase;
+
+      const empleadoViewData: EmpleadoDTO = {
+        ...empleado,
+        situacionActual: situacionBase,
+      };
+
       return {
-        empleado,
+        empleado: empleadoViewData,
         persona,
         secciones: seccionesInfo,
         materias: materiasInfo,
         formaciones: formacionInfo,
         licencias: licenciasInfo,
+        situacionVisible,
+        activeLicense,
       };
     });
 
@@ -781,6 +844,9 @@ export default function PersonalPage() {
       if (p.empleado.situacionActual) {
         set.add(p.empleado.situacionActual);
       }
+      if (p.situacionVisible) {
+        set.add(p.situacionVisible);
+      }
     });
     return Array.from(set.values()).sort((a, b) => a.localeCompare(b));
   }, [personal]);
@@ -849,9 +915,13 @@ export default function PersonalPage() {
     const map = new Map<string, string>();
     SITUACION_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
     personal.forEach((p) => {
-      const value = p.empleado.situacionActual?.trim();
-      if (value) {
-        map.set(value, value);
+      const base = p.empleado.situacionActual?.trim();
+      if (base) {
+        map.set(base, base);
+      }
+      const visible = p.situacionVisible?.trim();
+      if (visible) {
+        map.set(visible, visible);
       }
     });
     return Array.from(map.entries())
@@ -883,6 +953,7 @@ export default function PersonalPage() {
           item.empleado.cargo ?? "",
           item.empleado.condicionLaboral ?? "",
           item.empleado.situacionActual ?? "",
+          item.situacionVisible ?? "",
           item.empleado.rolEmpleado ?? "",
           ...item.secciones.map((s) => s.label ?? ""),
           ...item.secciones.map((s) => String(s.nivel ?? "")),
@@ -934,6 +1005,7 @@ export default function PersonalPage() {
 
         if (
           normalizedSituacion &&
+          (item.situacionVisible ?? "").toLowerCase() !== normalizedSituacion &&
           (item.empleado.situacionActual ?? "").toLowerCase() !==
             normalizedSituacion
         ) {
@@ -970,7 +1042,9 @@ export default function PersonalPage() {
           buildFullName(personalInfo?.persona) ||
           `Empleado #${empleadoId}`,
         empleadoCargo: info?.cargo ?? personalInfo?.empleado.cargo ?? null,
-        empleadoSituacion: personalInfo?.empleado.situacionActual ?? null,
+        empleadoSituacionVisible:
+          personalInfo?.situacionVisible ?? personalInfo?.empleado.situacionActual ?? null,
+        empleadoSituacionOriginal: personalInfo?.empleado.situacionActual ?? null,
         secciones: personalInfo?.secciones ?? [],
         materias: personalInfo?.materias ?? [],
       };
@@ -992,7 +1066,8 @@ export default function PersonalPage() {
         licencia,
         empleadoNombre,
         empleadoCargo,
-        empleadoSituacion,
+        empleadoSituacionVisible,
+        empleadoSituacionOriginal,
         secciones,
         materias,
       }) => {
@@ -1000,6 +1075,7 @@ export default function PersonalPage() {
           !term ||
           empleadoNombre.toLowerCase().includes(term) ||
           (empleadoCargo ?? "").toLowerCase().includes(term) ||
+          (empleadoSituacionVisible ?? "").toLowerCase().includes(term) ||
           (licencia.tipoLicencia ?? "").toLowerCase().includes(term) ||
           (licencia.motivo ?? "").toLowerCase().includes(term) ||
           (licencia.observaciones ?? "").toLowerCase().includes(term);
@@ -1039,7 +1115,8 @@ export default function PersonalPage() {
 
         if (
           normalizedSituacion &&
-          (empleadoSituacion ?? "").toLowerCase() !== normalizedSituacion
+          (empleadoSituacionVisible ?? "").toLowerCase() !== normalizedSituacion &&
+          (empleadoSituacionOriginal ?? "").toLowerCase() !== normalizedSituacion
         ) {
           return false;
         }
@@ -1102,24 +1179,6 @@ export default function PersonalPage() {
     setCargoFilter,
     setSituacionFilter,
   ]);
-
-  const resumenPersonal = useMemo(() => {
-    let activos = 0;
-    let enLicencia = 0;
-    personal.forEach((item) => {
-      const situacion = (item.empleado.situacionActual ?? "").toLowerCase();
-      if (situacion.includes("licencia")) {
-        enLicencia += 1;
-      } else if (situacion.includes("activo")) {
-        activos += 1;
-      }
-    });
-    return {
-      total: personal.length,
-      activos,
-      enLicencia,
-    };
-  }, [personal]);
 
   const handleOpenEditDialog = useCallback(
     (item: EmpleadoView) => {
@@ -1260,18 +1319,70 @@ export default function PersonalPage() {
         return;
       }
 
-      const fechaInicioFormacion = newFormacion.fechaInicio.trim();
-      const fechaFinFormacion = newFormacion.fechaFin.trim();
-      if (
-        fechaInicioFormacion &&
-        fechaFinFormacion &&
-        fechaFinFormacion < fechaInicioFormacion
-      ) {
-        toast.error("Fechas de formación inválidas", {
-          description:
-            "La fecha de finalización no puede ser anterior a la de inicio.",
+      const normalizedFormaciones = newFormaciones.map((entry) => ({
+        nivel: entry.nivel.trim(),
+        tituloObtenido: entry.tituloObtenido.trim(),
+        institucion: entry.institucion.trim(),
+        fechaInicio: entry.fechaInicio.trim(),
+        fechaFin: entry.fechaFin.trim(),
+      }));
+
+      const formacionesARegistrar: Array<{
+        nivel: string;
+        tituloObtenido: string;
+        institucion: string;
+        fechaInicio: string;
+        fechaFin?: string;
+      }> = [];
+
+      for (let index = 0; index < normalizedFormaciones.length; index += 1) {
+        const formacion = normalizedFormaciones[index];
+        const tieneDatos =
+          formacion.nivel.length > 0 ||
+          formacion.tituloObtenido.length > 0 ||
+          formacion.institucion.length > 0 ||
+          formacion.fechaInicio.length > 0 ||
+          formacion.fechaFin.length > 0;
+
+        if (!tieneDatos) {
+          continue;
+        }
+
+        const numeroFormacion = index + 1;
+
+        if (
+          !formacion.nivel ||
+          !formacion.tituloObtenido ||
+          !formacion.institucion ||
+          !formacion.fechaInicio
+        ) {
+          toast.error("Formación incompleta", {
+            description:
+              "Completá nivel, título, institución y fecha de inicio en la formación #" +
+              numeroFormacion +
+              " o eliminála si no querés guardarla.",
+          });
+          return;
+        }
+
+        if (
+          formacion.fechaFin &&
+          formacion.fechaFin.length > 0 &&
+          formacion.fechaFin < formacion.fechaInicio
+        ) {
+          toast.error("Fechas de formación inválidas", {
+            description:
+              "La fecha de fin no puede ser anterior a la de inicio en la formación #" +
+              numeroFormacion +
+              ".",
+          });
+          return;
+        }
+
+        formacionesARegistrar.push({
+          ...formacion,
+          fechaFin: formacion.fechaFin || undefined,
         });
-        return;
       }
 
       setCreatingPersonal(true);
@@ -1333,21 +1444,17 @@ export default function PersonalPage() {
         const empleadoRes = await api.empleados.create(empleadoPayload);
         const empleadoId = empleadoRes.data?.id;
 
-        if (
-          empleadoId &&
-          newFormacion.tituloObtenido.trim() &&
-          newFormacion.institucion.trim() &&
-          newFormacion.nivel.trim() &&
-          newFormacion.fechaInicio.trim()
-        ) {
-          await api.formaciones.create({
-            empleadoId,
-            tituloObtenido: newFormacion.tituloObtenido.trim(),
-            institucion: newFormacion.institucion.trim(),
-            nivel: newFormacion.nivel.trim(),
-            fechaInicio: newFormacion.fechaInicio.trim(),
-            fechaFin: newFormacion.fechaFin.trim() || undefined,
-          });
+        if (empleadoId && formacionesARegistrar.length > 0) {
+          for (const formacion of formacionesARegistrar) {
+            await api.formaciones.create({
+              empleadoId,
+              tituloObtenido: formacion.tituloObtenido,
+              institucion: formacion.institucion,
+              nivel: formacion.nivel,
+              fechaInicio: formacion.fechaInicio,
+              fechaFin: formacion.fechaFin,
+            });
+          }
         }
 
         toast.success("Personal registrado", {
@@ -1372,7 +1479,7 @@ export default function PersonalPage() {
       newEmpleado,
       newEmpleadoCuilPrefix,
       newEmpleadoCuilSuffix,
-      newFormacion,
+      newFormaciones,
       newPersona,
       refreshData,
     ],
@@ -1880,9 +1987,6 @@ export default function PersonalPage() {
     hasRole(UserRole.SECRETARY);
   const canManageAccess = canCreatePersonal;
 
-  const { total, activos, enLicencia } = resumenPersonal;
-  const totalLicenciasRegistradas = allLicencias.length;
-
   return (
     <DashboardLayout>
       <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
@@ -1892,57 +1996,6 @@ export default function PersonalPage() {
             Administra la información del personal docente y no docente, registra nuevas altas y
             realiza el seguimiento de licencias.
           </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Personal registrado</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{total}</div>
-              <p className="text-xs text-muted-foreground">
-                Total de docentes y personal administrativo registrados.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Activos</CardTitle>
-              <CheckCircle className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activos}</div>
-              <p className="text-xs text-muted-foreground">
-                Personal que actualmente se encuentra prestando servicio.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En licencia</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{enLicencia}</div>
-              <p className="text-xs text-muted-foreground">
-                Integrantes con licencias activas o próximas a vencer.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Licencias registradas</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalLicenciasRegistradas}</div>
-              <p className="text-xs text-muted-foreground">
-                Historial de licencias cargadas en el sistema.
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
         {loadError ? renderErrorState() : null}
@@ -1996,7 +2049,10 @@ export default function PersonalPage() {
                   const ultimaLicencia = licenciasOrdenadas[0];
                   const fechaIngreso = formatDate(item.empleado.fechaIngreso);
                   const condicion = item.empleado.condicionLaboral ?? "No especificada";
-                  const situacion = item.empleado.situacionActual ?? "Sin estado";
+                  const situacion =
+                    item.situacionVisible ||
+                    item.empleado.situacionActual ||
+                    DEFAULT_SITUACION;
                   const dni = persona?.dni ?? "Sin registrar";
                   const cuil = item.empleado.cuil ?? persona?.cuil ?? "Sin registrar";
                   const fechaNacimiento = formatDate(persona?.fechaNacimiento);
@@ -2007,6 +2063,7 @@ export default function PersonalPage() {
                   const telefono = persona?.telefono ?? "Sin teléfono";
                   const celular = persona?.celular ?? "Sin celular";
                   const domicilio = persona?.domicilio ?? "Sin domicilio registrado";
+                  const licenciaActiva = item.activeLicense;
                   const personaId = persona?.id ?? null;
                   const roleOptions = Array.from(
                     new Set<UserRole>([
@@ -2057,7 +2114,7 @@ export default function PersonalPage() {
                                 Editar ficha
                               </Button>
                             ) : null}
-                            {getSituacionBadge(item.empleado.situacionActual)}
+                            {getSituacionBadge(item.situacionVisible)}
                             {canRegisterLicenses && typeof item.empleado.id === "number" ? (
                               <Button
                                 type="button"
@@ -2173,14 +2230,29 @@ export default function PersonalPage() {
                               <Clock className="h-4 w-4 text-muted-foreground" />
                               Licencias registradas
                             </div>
-                            <div className="mt-3 space-y-2 text-muted-foreground">
-                              <div>
-                                <span className="font-medium text-foreground">Total:</span> {item.licencias.length}
-                              </div>
-                              {ultimaLicencia ? (
+                              <div className="mt-3 space-y-2 text-muted-foreground">
                                 <div>
-                                  <span className="font-medium text-foreground">Última:</span> {formatTipoLicencia(ultimaLicencia.tipoLicencia)}
-                                  {" "}• {formatDate(ultimaLicencia.fechaInicio) || "Sin inicio"}
+                                  <span className="font-medium text-foreground">Total:</span> {item.licencias.length}
+                                </div>
+                                {licenciaActiva ? (
+                                  <div>
+                                    <span className="font-medium text-foreground">Estado actual:</span> {LICENCIA_SITUACION}
+                                    {" "}
+                                    {formatDate(licenciaActiva.fechaInicio) ? (
+                                      <span className="text-xs text-muted-foreground">
+                                        (desde {formatDate(licenciaActiva.fechaInicio)}
+                                        {licenciaActiva.fechaFin
+                                          ? ` hasta ${formatDate(licenciaActiva.fechaFin)}`
+                                          : ""}
+                                        )
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                {ultimaLicencia ? (
+                                  <div>
+                                    <span className="font-medium text-foreground">Última:</span> {formatTipoLicencia(ultimaLicencia.tipoLicencia)}
+                                    {" "}• {formatDate(ultimaLicencia.fechaInicio) || "Sin inicio"}
                                   {ultimaLicencia.fechaFin ? ` al ${formatDate(ultimaLicencia.fechaFin)}` : ""}
                                 </div>
                               ) : (
@@ -2439,7 +2511,8 @@ export default function PersonalPage() {
                       licencia,
                       empleadoNombre,
                       empleadoCargo,
-                      empleadoSituacion,
+                      empleadoSituacionVisible,
+                      empleadoSituacionOriginal,
                       secciones,
                       materias,
                       empleadoId,
@@ -2528,10 +2601,16 @@ export default function PersonalPage() {
                               ))}
                             </div>
                           ) : null}
-                          {empleadoSituacion ? (
+                          {empleadoSituacionVisible ? (
                             <div>
                               <span className="font-semibold text-foreground">Situación actual:</span>{" "}
-                              {empleadoSituacion}
+                              {empleadoSituacionVisible}
+                              {empleadoSituacionOriginal &&
+                              empleadoSituacionOriginal !== empleadoSituacionVisible ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {" "}(registrada como {empleadoSituacionOriginal})
+                                </span>
+                              ) : null}
                             </div>
                           ) : null}
                         </CardContent>
@@ -2773,7 +2852,7 @@ export default function PersonalPage() {
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="editar-cuil-prefijo">CUIL</Label>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <Input
                         id="editar-cuil-prefijo"
                         value={editEmpleadoCuilPrefix}
@@ -2786,15 +2865,16 @@ export default function PersonalPage() {
                         pattern="\d{2}"
                         maxLength={2}
                         required
-                        className="w-20"
+                        className="w-16"
                       />
                       <span className="text-muted-foreground">-</span>
-                      <Input
-                        value={editPersona.dni}
-                        readOnly
-                        aria-readonly="true"
-                        className="min-w-[140px] flex-1 bg-muted/40"
-                      />
+                      <span
+                        className="min-w-[120px] flex-1 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm font-medium tabular-nums text-foreground shadow-sm"
+                        aria-label="DNI del personal"
+                        title={editPersona.dni || "Sin DNI"}
+                      >
+                        {editPersona.dni || "Sin DNI"}
+                      </span>
                       <span className="text-muted-foreground">-</span>
                       <Input
                         id="editar-cuil-sufijo"
@@ -2808,7 +2888,7 @@ export default function PersonalPage() {
                         pattern="\d"
                         maxLength={1}
                         required
-                        className="w-16"
+                        className="w-14"
                       />
                     </div>
                   </div>
@@ -3071,7 +3151,7 @@ export default function PersonalPage() {
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="nuevo-cuil-prefijo">CUIL</Label>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <Input
                         id="nuevo-cuil-prefijo"
                         value={newEmpleadoCuilPrefix}
@@ -3085,15 +3165,16 @@ export default function PersonalPage() {
                         pattern="\d{2}"
                         maxLength={2}
                         required
-                        className="w-20"
+                        className="w-16"
                       />
                       <span className="text-muted-foreground">-</span>
-                      <Input
-                        value={newPersona.dni}
-                        readOnly
-                        aria-readonly="true"
-                        className="min-w-[140px] flex-1 bg-muted/40"
-                      />
+                      <span
+                        className="min-w-[120px] flex-1 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm font-medium tabular-nums text-foreground shadow-sm"
+                        aria-label="DNI del nuevo personal"
+                        title={newPersona.dni || "Sin DNI"}
+                      >
+                        {newPersona.dni || "Sin DNI"}
+                      </span>
                       <span className="text-muted-foreground">-</span>
                       <Input
                         id="nuevo-cuil-sufijo"
@@ -3108,7 +3189,7 @@ export default function PersonalPage() {
                         pattern="\d"
                         maxLength={1}
                         required
-                        className="w-16"
+                        className="w-14"
                       />
                     </div>
                   </div>
@@ -3307,80 +3388,129 @@ export default function PersonalPage() {
                     Registra la titulación principal y otras certificaciones relevantes.
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="nuevo-nivel">Nivel</Label>
-                    <Input
-                      id="nuevo-nivel"
-                      value={newFormacion.nivel}
-                      onChange={(event) =>
-                        setNewFormacion((prev) => ({ ...prev, nivel: event.target.value }))
-                      }
-                      placeholder="Terciario, Universitario, Posgrado…"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nuevo-titulo">Título principal</Label>
-                    <Input
-                      id="nuevo-titulo"
-                      value={newFormacion.tituloObtenido}
-                      onChange={(event) =>
-                        setNewFormacion((prev) => ({ ...prev, tituloObtenido: event.target.value }))
-                      }
-                      placeholder="Profesor/a en…"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nuevo-institucion">Institución</Label>
-                    <Input
-                      id="nuevo-institucion"
-                      value={newFormacion.institucion}
-                      onChange={(event) =>
-                        setNewFormacion((prev) => ({ ...prev, institucion: event.target.value }))
-                      }
-                      placeholder="Nombre de la institución"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nuevo-fecha-inicio-formacion">Fecha de inicio</Label>
-                    <Input
-                      id="nuevo-fecha-inicio-formacion"
-                      type="date"
-                      value={newFormacion.fechaInicio}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setNewFormacion((prev) => {
-                          if (!value) {
-                            return { ...prev, fechaInicio: value };
-                          }
-                          const next = { ...prev, fechaInicio: value };
-                          if (prev.fechaFin && prev.fechaFin < value) {
-                            next.fechaFin = value;
-                          }
-                          return next;
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nuevo-fecha-fin-formacion">Fecha de finalización</Label>
-                    <Input
-                      id="nuevo-fecha-fin-formacion"
-                      type="date"
-                      value={newFormacion.fechaFin}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setNewFormacion((prev) => {
-                          if (!value) {
-                            return { ...prev, fechaFin: value };
-                          }
-                          if (prev.fechaInicio && value < prev.fechaInicio) {
-                            return { ...prev, fechaFin: prev.fechaInicio };
-                          }
-                          return { ...prev, fechaFin: value };
-                        });
-                      }}
-                    />
+                <div className="space-y-4">
+                  {newFormaciones.map((formacion, index) => {
+                    const nivelId = `nuevo-formacion-${index}-nivel`;
+                    const tituloId = `nuevo-formacion-${index}-titulo`;
+                    const institucionId = `nuevo-formacion-${index}-institucion`;
+                    const inicioId = `nuevo-formacion-${index}-inicio`;
+                    const finId = `nuevo-formacion-${index}-fin`;
+                    return (
+                      <div
+                        key={`nueva-formacion-${index}`}
+                        className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <h4 className="text-sm font-semibold text-foreground">
+                            Formación {index + 1}
+                          </h4>
+                          {newFormaciones.length > 1 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeNewFormacionEntry(index)}
+                              className="h-8 px-2 text-sm"
+                            >
+                              <Trash2 className="mr-1.5 h-4 w-4" />
+                              Quitar
+                            </Button>
+                          ) : null}
+                        </div>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor={nivelId}>Nivel</Label>
+                            <Input
+                              id={nivelId}
+                              value={formacion.nivel}
+                              onChange={(event) =>
+                                updateNewFormacionEntry(index, {
+                                  nivel: event.target.value,
+                                })
+                              }
+                              placeholder="Terciario, Universitario, Posgrado…"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={tituloId}>Título principal</Label>
+                            <Input
+                              id={tituloId}
+                              value={formacion.tituloObtenido}
+                              onChange={(event) =>
+                                updateNewFormacionEntry(index, {
+                                  tituloObtenido: event.target.value,
+                                })
+                              }
+                              placeholder="Profesor/a en…"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={institucionId}>Institución</Label>
+                            <Input
+                              id={institucionId}
+                              value={formacion.institucion}
+                              onChange={(event) =>
+                                updateNewFormacionEntry(index, {
+                                  institucion: event.target.value,
+                                })
+                              }
+                              placeholder="Nombre de la institución"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={inicioId}>Fecha de inicio</Label>
+                            <Input
+                              id={inicioId}
+                              type="date"
+                              value={formacion.fechaInicio}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                updateNewFormacionEntry(index, {
+                                  fechaInicio: value,
+                                  fechaFin:
+                                    formacion.fechaFin &&
+                                    formacion.fechaFin < value
+                                      ? value
+                                      : formacion.fechaFin,
+                                });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={finId}>Fecha de finalización</Label>
+                            <Input
+                              id={finId}
+                              type="date"
+                              value={formacion.fechaFin}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                if (value && formacion.fechaInicio && value < formacion.fechaInicio) {
+                                  updateNewFormacionEntry(index, {
+                                    fechaFin: formacion.fechaInicio,
+                                  });
+                                  return;
+                                }
+                                updateNewFormacionEntry(index, { fechaFin: value });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addNewFormacionEntry}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Agregar otra formación
+                    </Button>
+                    <p className="text-xs text-muted-foreground sm:text-right">
+                      Podés registrar varias formaciones. Las que dejes vacías no se guardarán.
+                    </p>
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">

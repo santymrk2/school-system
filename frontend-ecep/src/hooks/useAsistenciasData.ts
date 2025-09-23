@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import { asistencias, calendario, gestionAcademica } from "@/services/api/modules";
 import type {
   TrimestreDTO,
@@ -12,6 +13,8 @@ import type {
 } from "@/types/api-generated";
 import { toast } from "sonner";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
+import { resolveTrimestrePeriodoId } from "@/lib/trimestres";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 export function useAsistenciasData() {
   const [loading, setLoading] = useState(true);
@@ -29,32 +32,71 @@ export function useAsistenciasData() {
   const [jornadas, setJornadas] = useState<JornadaAsistenciaDTO[]>([]);
   const [detalles, setDetalles] = useState<DetalleAsistenciaDTO[]>([]);
   const calendarVersion = useCalendarRefresh("trimestres");
+  const { periodoEscolarId, loading: periodoLoading } = useActivePeriod();
+  const periodoId = typeof periodoEscolarId === "number" ? periodoEscolarId : null;
 
   useEffect(() => {
+    setAlumnosBySeccion({});
+    setJornadas([]);
+    setDetalles([]);
+  }, [periodoId]);
+
+  useEffect(() => {
+    let alive = true;
     (async () => {
       try {
+        if (!periodoId) {
+          if (!alive) return;
+          setTrimestres([]);
+          setSecciones([]);
+          setAsignaciones([]);
+          setDiasNoHabiles([]);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
         const [tri, secs, asig, dias] = await Promise.all([
-          calendario.trimestres.list().then((r) => r.data),
-          gestionAcademica.secciones.list().then((r) => r.data),
+          calendario.trimestres.list().then((r) => r.data ?? []),
+          gestionAcademica.secciones.list().then((r) => r.data ?? []),
           gestionAcademica.asignacionDocenteSeccion.list().then((r) =>
             (r.data ?? []).map((a: any) => ({
               ...a,
               empleadoId: a.empleadoId ?? a.personalId ?? a.docenteId,
             })),
           ),
-          calendario.diasNoHabiles.list().then((r) => r.data),
+          calendario.diasNoHabiles.list().then((r) => r.data ?? []),
         ]);
-        setTrimestres(tri);
-        setSecciones(secs);
-        setAsignaciones(asig);
-        setDiasNoHabiles(dias);
+
+        if (!alive) return;
+
+        const trimestresFiltrados = tri.filter(
+          (t) => resolveTrimestrePeriodoId(t) === periodoId,
+        );
+        const seccionesFiltradas = (secs ?? []).filter((s: any) => {
+          const pid =
+            s?.periodoEscolarId ?? s?.periodoId ?? s?.periodoEscolar?.id;
+          return pid === periodoId;
+        });
+        const seccionIds = new Set(seccionesFiltradas.map((s) => s.id));
+        const asignacionesFiltradas = (asig ?? []).filter((a: any) =>
+          a?.seccionId ? seccionIds.has(a.seccionId) : false,
+        );
+
+        setTrimestres(trimestresFiltrados);
+        setSecciones(seccionesFiltradas);
+        setAsignaciones(asignacionesFiltradas);
+        setDiasNoHabiles(dias ?? []);
       } catch {
-        toast.error("Error cargando datos base");
+        if (alive) toast.error("Error cargando datos base");
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-  }, [calendarVersion]);
+    return () => {
+      alive = false;
+    };
+  }, [calendarVersion, periodoId]);
 
   const loadAlumnosSeccion = async (seccionId: number, fechaISO?: string) => {
     const key = `${seccionId}_${fechaISO ?? ""}`;
@@ -70,9 +112,17 @@ export function useAsistenciasData() {
     from?: string;
     to?: string;
   }) => {
+    if (!periodoId) {
+      setJornadas([]);
+      return [] as JornadaAsistenciaDTO[];
+    }
     const { data } = await asistencias.jornadas.search(params);
-    setJornadas(data);
-    return data;
+    const allowedSecciones = new Set(secciones.map((s) => s.id));
+    const filtered = (data ?? []).filter((j) =>
+      j.seccionId ? allowedSecciones.has(j.seccionId) : true,
+    );
+    setJornadas(filtered);
+    return filtered;
   };
 
   const loadDetallesByJornada = async (jornadaId: number) => {
@@ -85,8 +135,26 @@ export function useAsistenciasData() {
     return data;
   };
 
+  const refreshBase = useCallback(async () => {
+    if (!periodoId) {
+      setTrimestres([]);
+      setDiasNoHabiles([]);
+      return;
+    }
+    const [tri, dias] = await Promise.all([
+      calendario.trimestres.list().then((r) => r.data ?? []),
+      calendario.diasNoHabiles.list().then((r) => r.data ?? []),
+    ]);
+    const trimestresFiltrados = tri.filter(
+      (t) => resolveTrimestrePeriodoId(t) === periodoId,
+    );
+    setTrimestres(trimestresFiltrados);
+    setDiasNoHabiles(dias ?? []);
+  }, [periodoId]);
+
   return {
-    loading,
+    loading: loading || periodoLoading,
+    periodoEscolarId: periodoId,
     trimestres,
     secciones,
     asignaciones,
@@ -97,13 +165,6 @@ export function useAsistenciasData() {
     loadAlumnosSeccion,
     searchJornadas,
     loadDetallesByJornada,
-    refreshBase: async () => {
-      const [tri, dias] = await Promise.all([
-        calendario.trimestres.list().then((r) => r.data),
-        calendario.diasNoHabiles.list().then((r) => r.data),
-      ]);
-      setTrimestres(tri);
-      setDiasNoHabiles(dias);
-    },
+    refreshBase,
   };
 }

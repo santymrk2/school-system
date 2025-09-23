@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  calendario,
   gestionAcademica,
   identidad,
   vidaEscolar,
@@ -37,6 +36,7 @@ import {
   normalizeGenero,
 } from "@/lib/genero";
 import { Loader2 } from "lucide-react";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 const emptyPersona: PersonaForm = {
   nombre: "",
@@ -91,17 +91,27 @@ export default function AltaAlumnoPage() {
   const [alumnoForm, setAlumnoForm] = useState<AlumnoForm>(emptyAlumno);
   const [creatingAlumno, setCreatingAlumno] = useState(false);
   const [secciones, setSecciones] = useState<DTO.SeccionDTO[]>([]);
+  const { periodoEscolarId: activePeriodId } = useActivePeriod();
 
   useEffect(() => {
+    if (!activePeriodId) {
+      setSecciones([]);
+      return;
+    }
     (async () => {
       try {
         const res = await gestionAcademica.secciones.list();
-        setSecciones(res.data ?? []);
+        const data = (res.data ?? []).filter((s: any) => {
+          const pid =
+            s?.periodoEscolarId ?? s?.periodoId ?? s?.periodoEscolar?.id;
+          return pid === activePeriodId;
+        });
+        setSecciones(data);
       } catch (error) {
         console.error(error);
       }
     })();
-  }, []);
+  }, [activePeriodId]);
 
   const cargarPersona = async (id: number) => {
     try {
@@ -217,6 +227,10 @@ export default function AltaAlumnoPage() {
       );
       return;
     }
+    if (!activePeriodId) {
+      toast.error("No hay un período escolar activo disponible");
+      return;
+    }
     setCreatingAlumno(true);
     try {
       const personaPersistidaId = await persistPersona();
@@ -231,7 +245,7 @@ export default function AltaAlumnoPage() {
       const { data: alumnoId } = await identidad.alumnos.create(payload);
       const matriculaPayload: DTO.MatriculaCreateDTO = {
         alumnoId,
-        periodoEscolarId: await obtenerPeriodoEscolarActual(),
+        periodoEscolarId: activePeriodId,
       };
       const { data: matriculaId } = await vidaEscolar.matriculas.create(
         matriculaPayload,
@@ -243,19 +257,6 @@ export default function AltaAlumnoPage() {
       toast.error(error?.message ?? "No se pudo registrar el alumno");
     } finally {
       setCreatingAlumno(false);
-    }
-  };
-
-  const obtenerPeriodoEscolarActual = async (): Promise<number> => {
-    try {
-      const res = await calendario.periodos.list();
-      const activos = res.data?.filter((p) => p.activo) ?? [];
-      if (activos.length > 0) return activos[0].id!;
-      if (res.data?.length) return res.data[0].id!;
-      throw new Error("No hay período escolar registrado");
-    } catch (error: any) {
-      toast.error(error?.message ?? "No se pudo obtener el período escolar activo");
-      throw error;
     }
   };
 

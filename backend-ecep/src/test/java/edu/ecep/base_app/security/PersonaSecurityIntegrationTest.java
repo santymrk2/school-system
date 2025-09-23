@@ -1,12 +1,14 @@
 package edu.ecep.base_app.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.ecep.base_app.domain.Persona;
-import edu.ecep.base_app.domain.enums.UserRole;
-import edu.ecep.base_app.dtos.PersonaCreateDTO;
-import edu.ecep.base_app.dtos.PersonaUpdateDTO;
-import edu.ecep.base_app.repos.PersonaRepository;
-import edu.ecep.base_app.service.JwtService;
+
+import edu.ecep.base_app.identidad.domain.*;
+import edu.ecep.base_app.identidad.domain.enums.*;
+import edu.ecep.base_app.identidad.application.*;
+
+import edu.ecep.base_app.identidad.infrastructure.persistence.*;
+import edu.ecep.base_app.identidad.presentation.dto.*;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

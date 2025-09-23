@@ -1522,7 +1522,7 @@ export default function ReportesPage() {
                     {boletinStudents.map((student) => (
                       <Card
                         key={student.id}
-                        className="cursor-pointer transition hover:shadow-md"
+                        className="cursor-pointer transition-colors hover:border-primary"
                         onClick={() => setActiveBoletin(student)}
                       >
                         <CardHeader className="space-y-1">

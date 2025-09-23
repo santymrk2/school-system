@@ -41,7 +41,7 @@ export default function FamilyView({
           return (
             <Card
               key={`${hijo.matriculaId}-${hijo.alumnoId}`}
-              className="hover:shadow-md transition-shadow"
+              className="transition-colors hover:border-primary"
             >
               <CardHeader className="pb-3 space-y-2">
                 <CardTitle className="text-lg">{hijo.nombreCompleto}</CardTitle>

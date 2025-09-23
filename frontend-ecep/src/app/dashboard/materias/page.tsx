@@ -146,7 +146,7 @@ export default function MateriasPage() {
               return (
                 <Card
                   key={s.id}
-                  className="cursor-pointer transition-shadow hover:border-primary/60 hover:shadow-md"
+                  className="cursor-pointer transition-colors hover:border-primary"
                   onClick={() => router.push(`/dashboard/materias/seccion/${s.id}`)}
                 >
                   <CardHeader className="pb-3">

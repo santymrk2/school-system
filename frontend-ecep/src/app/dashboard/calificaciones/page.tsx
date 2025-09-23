@@ -159,7 +159,7 @@ export default function CalificacionesIndexPage() {
                 {primario.map((seccion) => (
                   <Card
                     key={seccion.id}
-                    className="cursor-pointer transition-shadow hover:border-primary/60 hover:shadow-md"
+                    className="cursor-pointer transition-colors hover:border-primary"
                     onClick={() =>
                       router.push(`/dashboard/calificaciones/seccion/${seccion.id}`)
                     }
@@ -195,7 +195,7 @@ export default function CalificacionesIndexPage() {
                 {inicial.map((seccion) => (
                   <Card
                     key={seccion.id}
-                    className="cursor-pointer transition-shadow hover:border-primary/60 hover:shadow-md"
+                    className="cursor-pointer transition-colors hover:border-primary"
                     onClick={() =>
                       router.push(`/dashboard/calificaciones/seccion/${seccion.id}`)
                     }

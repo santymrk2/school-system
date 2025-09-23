@@ -149,7 +149,7 @@ export default function VistaDocente() {
           const promedio = 100; // placeholder si no abriste historial
 
           return (
-            <Card key={sec.id} className="hover:shadow-md transition-shadow">
+            <Card key={sec.id} className="transition-colors hover:border-primary">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">

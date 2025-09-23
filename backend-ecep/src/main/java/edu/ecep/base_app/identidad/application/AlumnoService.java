@@ -1,15 +1,16 @@
 package edu.ecep.base_app.identidad.application;
 
+import edu.ecep.base_app.gestionacademica.domain.Seccion;
 import edu.ecep.base_app.identidad.domain.Alumno;
-import edu.ecep.base_app.identidad.domain.Persona;
-import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
 import edu.ecep.base_app.identidad.infrastructure.mapper.AlumnoMapper;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoRepository;
+import edu.ecep.base_app.identidad.infrastructure.persistence.PersonaRepository;
+import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
+import edu.ecep.base_app.shared.exception.NotFoundException;
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaRepository;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaSeccionHistorialRepository;
-import edu.ecep.base_app.identidad.infrastructure.persistence.PersonaRepository;
-import edu.ecep.base_app.shared.exception.NotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,7 +22,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 
-import edu.ecep.base_app.identidad.domain.Alumno;
 import lombok.RequiredArgsConstructor;
 
 

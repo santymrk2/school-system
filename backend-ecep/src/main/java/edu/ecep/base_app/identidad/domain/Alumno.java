@@ -1,5 +1,6 @@
 package edu.ecep.base_app.identidad.domain;
 
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;

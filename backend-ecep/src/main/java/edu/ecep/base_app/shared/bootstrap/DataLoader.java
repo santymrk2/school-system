@@ -4,6 +4,7 @@ package edu.ecep.base_app.shared.bootstrap;
 import edu.ecep.base_app.admisiones.domain.*;
 import edu.ecep.base_app.admisiones.infrastructure.persistence.*;
 import edu.ecep.base_app.asistencias.domain.*;
+import edu.ecep.base_app.asistencias.domain.enums.EstadoAsistencia;
 import edu.ecep.base_app.asistencias.infrastructure.persistence.*;
 import edu.ecep.base_app.calendario.domain.*;
 import edu.ecep.base_app.calendario.infrastructure.persistence.*;

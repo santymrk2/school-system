@@ -1,5 +1,7 @@
 package edu.ecep.base_app.vidaescolar.domain;
 
+import edu.ecep.base_app.gestionacademica.domain.Seccion;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

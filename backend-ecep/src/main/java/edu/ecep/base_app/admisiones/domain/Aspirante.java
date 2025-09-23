@@ -1,6 +1,7 @@
 package edu.ecep.base_app.admisiones.domain;
 
 import edu.ecep.base_app.admisiones.domain.enums.Curso;
+import edu.ecep.base_app.identidad.domain.Persona;
 import edu.ecep.base_app.shared.domain.enums.Turno;
 import jakarta.persistence.*;
 

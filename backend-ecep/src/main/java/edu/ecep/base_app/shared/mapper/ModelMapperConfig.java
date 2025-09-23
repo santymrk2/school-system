@@ -7,5 +7,5 @@ import org.mapstruct.ReportingPolicy;
 // Config + helper de referencias (IDs -> entidades con sólo id)
 // =============================================================
 @MapperConfig(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-interface ModelMapperConfig {
+public interface ModelMapperConfig {
 }

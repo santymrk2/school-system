@@ -1,5 +1,6 @@
 package edu.ecep.base_app.vidaescolar.domain;
 
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import edu.ecep.base_app.vidaescolar.domain.enums.EstadoSolicitudBaja;
 import jakarta.persistence.*;
 import lombok.Getter;

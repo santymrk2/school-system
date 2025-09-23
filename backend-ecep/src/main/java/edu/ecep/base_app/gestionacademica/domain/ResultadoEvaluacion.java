@@ -3,6 +3,8 @@ package edu.ecep.base_app.gestionacademica.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import edu.ecep.base_app.shared.domain.BaseEntity;
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
 
 @Entity @Table(name="resultados_evaluacion",
         uniqueConstraints=@UniqueConstraint(columnNames={"evaluacion_id","matricula_id"}))

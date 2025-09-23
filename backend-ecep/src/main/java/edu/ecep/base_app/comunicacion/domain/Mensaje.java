@@ -1,5 +1,7 @@
 package edu.ecep.base_app.comunicacion.domain;
 
+import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

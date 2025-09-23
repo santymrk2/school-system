@@ -1,5 +1,6 @@
 package edu.ecep.base_app.identidad.domain;
 
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import edu.ecep.base_app.shared.domain.enums.RolVinculo;
 import jakarta.persistence.*;
 

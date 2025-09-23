@@ -2,6 +2,8 @@ package edu.ecep.base_app.gestionacademica.domain;
 
 import edu.ecep.base_app.shared.domain.enums.NivelAcademico;
 import edu.ecep.base_app.shared.domain.enums.Turno;
+import edu.ecep.base_app.calendario.domain.PeriodoEscolar;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 
 import java.util.HashSet;

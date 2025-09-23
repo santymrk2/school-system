@@ -1,5 +1,6 @@
 package edu.ecep.base_app.finanzas.domain;
 
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import edu.ecep.base_app.finanzas.domain.enums.ConceptoCuota;
 import jakarta.persistence.*;
 import lombok.Getter;

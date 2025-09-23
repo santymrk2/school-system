@@ -62,6 +62,7 @@ import {
   vidaEscolar,
 } from "@/services/api/modules";
 import { normalizeRole } from "@/lib/auth-roles";
+import { pageContent } from "@/lib/page-response";
 import type {
   AlumnoDTO,
   AlumnoLiteDTO,
@@ -319,7 +320,7 @@ export default function PagosPage() {
     if (!shouldLoadEmpleados) return;
     identidad.empleados
       .list()
-      .then((res) => setEmpleados(res.data ?? []))
+      .then((res) => setEmpleados(pageContent<EmpleadoDTO>(res.data)))
       .catch(() => setEmpleados([]));
   }, [shouldLoadEmpleados]);
 

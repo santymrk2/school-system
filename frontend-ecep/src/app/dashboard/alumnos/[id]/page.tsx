@@ -41,6 +41,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
 import { displayRole } from "@/lib/auth-roles";
 import {
+  DEFAULT_GENERO_VALUE,
+  GENERO_OPTIONS,
+  normalizeGenero,
+} from "@/lib/genero";
+import {
   gestionAcademica,
   identidad,
   vidaEscolar,
@@ -160,7 +165,7 @@ export default function AlumnoPerfilPage() {
     apellido: "",
     dni: "",
     fechaNacimiento: "",
-    genero: "",
+    genero: DEFAULT_GENERO_VALUE,
     nacionalidad: "",
     domicilio: "",
     telefono: "",
@@ -419,7 +424,7 @@ export default function AlumnoPerfilPage() {
       apellido: persona?.apellido ?? "",
       dni: formatDni(persona?.dni ?? ""),
       fechaNacimiento: persona?.fechaNacimiento ?? "",
-      genero: persona?.genero ?? "",
+      genero: normalizeGenero(persona?.genero) || DEFAULT_GENERO_VALUE,
       nacionalidad: persona?.nacionalidad ?? "",
       domicilio: persona?.domicilio ?? "",
       telefono: persona?.telefono ?? "",
@@ -1015,15 +1020,26 @@ export default function AlumnoPerfilPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Género</Label>
-                        <Input
-                          value={personaDraft.genero}
-                          onChange={(e) =>
+                        <Select
+                          value={personaDraft.genero || undefined}
+                          onValueChange={(value) =>
                             setPersonaDraft((prev) => ({
                               ...prev,
-                              genero: e.target.value,
+                              genero: value,
                             }))
                           }
-                        />
+                        >
+                          <SelectTrigger aria-required="true">
+                            <SelectValue placeholder="Seleccioná el género" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GENERO_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Nacionalidad</Label>

@@ -24,6 +24,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DEFAULT_GENERO_VALUE,
+  GENERO_OPTIONS,
+  normalizeGenero,
+} from "@/lib/genero";
 import { Loader2 } from "lucide-react";
 
 const emptyPersona: PersonaForm = {
@@ -31,7 +43,7 @@ const emptyPersona: PersonaForm = {
   apellido: "",
   dni: "",
   fechaNacimiento: "",
-  genero: "",
+  genero: DEFAULT_GENERO_VALUE,
   estadoCivil: "",
   nacionalidad: "",
   domicilio: "",
@@ -101,7 +113,7 @@ export default function AltaAlumnoPage() {
         apellido: data.apellido ?? "",
         dni: formatDni(data.dni ?? ""),
         fechaNacimiento: data.fechaNacimiento ?? "",
-        genero: data.genero ?? "",
+        genero: normalizeGenero(data.genero) || DEFAULT_GENERO_VALUE,
         estadoCivil: data.estadoCivil ?? "",
         nacionalidad: data.nacionalidad ?? "",
         domicilio: data.domicilio ?? "",
@@ -431,10 +443,21 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
       </div>
       <div>
         <label className="text-sm font-medium text-muted-foreground">Género</label>
-        <Input
-          value={values.genero}
-          onChange={(e) => onChange("genero", e.target.value)}
-        />
+        <Select
+          value={values.genero || undefined}
+          onValueChange={(value) => onChange("genero", value)}
+        >
+          <SelectTrigger aria-required="true">
+            <SelectValue placeholder="Seleccioná el género" />
+          </SelectTrigger>
+          <SelectContent>
+            {GENERO_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <label className="text-sm font-medium text-muted-foreground">Estado civil</label>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { calendario, gestionAcademica } from "@/services/api/modules";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import type {
   EvaluacionDTO,
   ResultadoEvaluacionDTO,
@@ -51,6 +52,7 @@ export default function NotasExamenDialog({
   const [rows, setRows] = useState<Row[]>([]);
   const [trimestres, setTrimestres] = useState<TrimestreDTO[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   const fecha = (evaluacion as any)?.fecha as string | undefined;
 
@@ -159,7 +161,7 @@ export default function NotasExamenDialog({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, (evaluacion as any)?.id]);
+  }, [open, (evaluacion as any)?.id, calendarVersion]);
 
   const setNota = (matriculaId: number, value: string) => {
     const normalizedValue = value.replace(",", ".").trim();

@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { calendario } from "@/services/api/modules";
+import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
@@ -294,6 +295,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       });
       toast.success("Fechas del trimestre actualizadas");
       await loadData();
+      triggerCalendarRefresh("trimestres");
     } catch (error) {
       toast.error(
         resolveErrorMessage(error, "No se pudieron guardar los cambios"),
@@ -346,6 +348,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
         toast.success("Trimestre cerrado");
       }
       await loadData();
+      triggerCalendarRefresh("trimestres");
     } catch (error) {
       toast.error(
         resolveErrorMessage(
@@ -366,6 +369,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       await calendario.periodos.cerrar(periodoActual.id);
       toast.success("Período cerrado");
       await loadData();
+      triggerCalendarRefresh("periodos");
     } catch (error) {
       toast.error(
         resolveErrorMessage(error, "No se pudo cerrar el período actual"),
@@ -382,6 +386,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       await calendario.periodos.abrir(periodoActual.id);
       toast.success("Período reabierto");
       await loadData();
+      triggerCalendarRefresh("periodos");
     } catch (error) {
       toast.error(
         resolveErrorMessage(error, "No se pudo reabrir el período"),
@@ -407,6 +412,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
         anio: String(year + 1),
       }));
       await loadData();
+      triggerCalendarRefresh("periodos");
     } catch (error) {
       toast.error(
         resolveErrorMessage(error, "No se pudo crear el nuevo período"),

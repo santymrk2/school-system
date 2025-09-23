@@ -1,0 +1,18 @@
+package edu.ecep.base_app.identidad.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class FamiliarDTO {
+    Long id;
+    @NotNull
+    Long personaId;
+
+    String ocupacion;
+}

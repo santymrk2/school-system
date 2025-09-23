@@ -3,8 +3,16 @@ import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
 
 /** ================= Empleados ================= */
+type EmpleadoListParams = {
+  search?: string;
+  rolEmpleado?: DTO.RolEmpleado;
+};
+
 export const empleados = {
-  list: () => http.get<DTO.EmpleadoDTO[]>("/api/empleados"),
+  list: (params?: EmpleadoListParams) =>
+    http.get<DTO.EmpleadoDTO[]>("/api/empleados", {
+      params,
+    }),
   byId: (id: number) => http.get<DTO.EmpleadoDTO>("/api/empleados/" + id),
   create: (body: DTO.EmpleadoCreateDTO) =>
     http.post<DTO.EmpleadoDTO>("/api/empleados", body),

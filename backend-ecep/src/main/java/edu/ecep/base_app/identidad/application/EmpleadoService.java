@@ -2,6 +2,7 @@ package edu.ecep.base_app.identidad.application;
 
 import edu.ecep.base_app.identidad.domain.Empleado;
 import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.identidad.domain.enums.RolEmpleado;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoCreateDTO;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoDTO;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoUpdateDTO;
@@ -19,6 +20,7 @@ import edu.ecep.base_app.shared.exception.ReferencedWarning;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,7 +39,18 @@ public class EmpleadoService {
     private final EmpleadoMapper mapper;
 
     public List<EmpleadoDTO> findAll() {
-        return repo.findAll(Sort.by("id")).stream()
+        return findAll(null, null);
+    }
+
+    public List<EmpleadoDTO> findAll(String search, RolEmpleado rolEmpleado) {
+        Sort sort = Sort.by("id");
+        List<Empleado> empleados;
+        if (StringUtils.hasText(search) || rolEmpleado != null) {
+            empleados = repo.search(search, rolEmpleado, sort);
+        } else {
+            empleados = repo.findAll(sort);
+        }
+        return empleados.stream()
                 .map(mapper::toDto)
                 .toList();
     }

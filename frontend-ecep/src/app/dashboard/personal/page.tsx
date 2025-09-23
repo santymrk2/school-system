@@ -38,6 +38,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
@@ -66,8 +75,11 @@ import {
   AlertCircle,
   Briefcase,
   Calendar,
+  ChevronDown,
+  ChevronUp,
   CheckCircle,
   Clock,
+  Eye,
   FileText,
   GraduationCap,
   Loader2,
@@ -133,6 +145,8 @@ const SITUACION_PRESET_OPTIONS = [
   { value: "De baja", label: "De baja" },
   { value: "Suspendido", label: "Suspendido" },
 ];
+
+const DEFAULT_PAGE_SIZE = 8;
 
 const initialPersonaForm = {
   nombre: "",
@@ -386,6 +400,7 @@ export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
   const router = useRouter();
   const mountedRef = useRef(true);
+  const searchRef = useRef<string>("");
 
   useEffect(() => {
     return () => {
@@ -409,11 +424,16 @@ export default function PersonalPage() {
 
   const [selectedTab, setSelectedTab] = useState("listado");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
   const [nivelFilter, setNivelFilter] = useState("all");
   const [seccionFilter, setSeccionFilter] = useState("all");
   const [materiaFilter, setMateriaFilter] = useState("all");
   const [cargoFilter, setCargoFilter] = useState("all");
   const [situacionFilter, setSituacionFilter] = useState("all");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = DEFAULT_PAGE_SIZE;
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<number>>(new Set<number>());
 
   const [dataLoading, setDataLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -558,8 +578,44 @@ export default function PersonalPage() {
     });
   }, [accessDialogOpen, activeAccess]);
 
-  const fetchData = useCallback(async () => {
-    const empleadosRes = await identidad.empleados.list();
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    refreshData(debouncedSearchTerm);
+  }, [debouncedSearchTerm, refreshData]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearchTerm,
+    nivelFilter,
+    seccionFilter,
+    materiaFilter,
+    cargoFilter,
+    situacionFilter,
+  ]);
+
+  useEffect(() => {
+    setExpandedEmployees(new Set<number>());
+  }, [
+    debouncedSearchTerm,
+    nivelFilter,
+    seccionFilter,
+    materiaFilter,
+    cargoFilter,
+    situacionFilter,
+  ]);
+
+  const fetchData = useCallback(async (searchValue: string = "") => {
+    const normalizedSearch = searchValue.trim();
+    const empleadosRes = await identidad.empleados.list(
+      normalizedSearch.length > 0 ? { search: normalizedSearch } : undefined,
+    );
     const empleados = (empleadosRes.data ?? []) as EmpleadoDTO[];
 
     const [
@@ -745,14 +801,16 @@ export default function PersonalPage() {
 
     return { personalData, licenciasOrdenadas };
   }, []);
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (overrideSearch?: string) => {
     setDataLoading(true);
     setLoadError(null);
     try {
-      const { personalData, licenciasOrdenadas } = await fetchData();
+      const searchValue = (overrideSearch ?? searchRef.current ?? "").trim();
+      const { personalData, licenciasOrdenadas } = await fetchData(searchValue);
       if (!mountedRef.current) return;
       setPersonal(personalData);
       setAllLicencias(licenciasOrdenadas);
+      searchRef.current = searchValue;
     } catch (error) {
       console.error("Error cargando personal", error);
       if (!mountedRef.current) return;
@@ -765,10 +823,6 @@ export default function PersonalPage() {
       }
     }
   }, [fetchData]);
-
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
 
   const personalById = useMemo(() => {
     const map = new Map<number, EmpleadoView>();
@@ -1120,6 +1174,38 @@ export default function PersonalPage() {
     situacionFilter,
   ]);
 
+  useEffect(() => {
+    setCurrentPage((prev) => {
+      const maxPages = Math.max(1, Math.ceil(filteredPersonal.length / pageSize));
+      return Math.min(prev, maxPages);
+    });
+  }, [filteredPersonal.length, pageSize]);
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredPersonal.length / pageSize)),
+    [filteredPersonal.length, pageSize],
+  );
+
+  const visiblePages = useMemo(() => {
+    const maxVisible = 5;
+    const half = Math.floor(maxVisible / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    const pages: number[] = [];
+    for (let page = start; page <= end; page += 1) {
+      pages.push(page);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const paginatedPersonal = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredPersonal.slice(start, start + pageSize);
+  }, [filteredPersonal, currentPage, pageSize]);
+
   const empleadoOptions = useMemo(() => {
     return Array.from(empleadoNameMap.entries())
       .map(([id, info]) => ({
@@ -1165,6 +1251,21 @@ export default function PersonalPage() {
     setCargoFilter,
     setSituacionFilter,
   ]);
+
+  const toggleEmployeeDetails = useCallback((empleadoId?: number | null) => {
+    if (typeof empleadoId !== "number") {
+      return;
+    }
+    setExpandedEmployees((prev) => {
+      const next = new Set(prev);
+      if (next.has(empleadoId)) {
+        next.delete(empleadoId);
+      } else {
+        next.add(empleadoId);
+      }
+      return next;
+    });
+  }, []);
 
   const handleOpenEditDialog = useCallback(
     (item: EmpleadoView) => {
@@ -2022,8 +2123,9 @@ export default function PersonalPage() {
               renderLoadingState()
             ) : filteredPersonal.length > 0 ? (
               <div className="space-y-4">
-                {filteredPersonal.map((item, index) => {
-                  const empleadoId = item.empleado.id ?? index;
+                {paginatedPersonal.map((item, index) => {
+                  const rawEmpleadoId = item.empleado.id;
+                  const empleadoId = rawEmpleadoId ?? index;
                   const persona = item.persona;
                   const fullName =
                     buildFullName(persona) || `Empleado #${item.empleado.id ?? empleadoId}`;
@@ -2066,6 +2168,9 @@ export default function PersonalPage() {
                     canEditPersonal &&
                     personaId !== null &&
                     typeof item.empleado.id === "number";
+                  const isExpanded =
+                    typeof rawEmpleadoId === "number" &&
+                    expandedEmployees.has(rawEmpleadoId);
                   return (
                     <Card key={`personal-${empleadoId}`}>
                       <CardHeader className="space-y-4">
@@ -2089,6 +2194,24 @@ export default function PersonalPage() {
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={isExpanded ? "secondary" : "outline"}
+                              onClick={() => toggleEmployeeDetails(item.empleado.id)}
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp className="mr-2 h-4 w-4" />
+                                  Ocultar detalles
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver detalles
+                                </>
+                              )}
+                            </Button>
                             {canEditThis ? (
                               <Button
                                 type="button"
@@ -2140,7 +2263,8 @@ export default function PersonalPage() {
                           </div>
                         )}
                       </CardHeader>
-                      <CardContent className="space-y-4 text-sm">
+                      {isExpanded ? (
+                        <CardContent className="space-y-4 text-sm">
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                           <div className="rounded-lg border bg-muted/40 p-4">
                             <div className="flex items-center gap-2 text-sm font-semibold">
@@ -2471,10 +2595,104 @@ export default function PersonalPage() {
                             ) : null}
                           </div>
                         </div>
-                      </CardContent>
+                        </CardContent>
+                      ) : null}
                     </Card>
                   );
                 })}
+                {totalPages > 1 ? (
+                  <div className="flex justify-center pt-2">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              if (currentPage > 1) {
+                                setCurrentPage((prev) => prev - 1);
+                              }
+                            }}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                        {visiblePages.length > 0 && visiblePages[0] > 1 ? (
+                          <>
+                            <PaginationItem>
+                              <PaginationLink
+                                href="#"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  setCurrentPage(1);
+                                }}
+                                isActive={currentPage === 1}
+                              >
+                                1
+                              </PaginationLink>
+                            </PaginationItem>
+                            {visiblePages[0] > 2 ? (
+                              <PaginationItem>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            ) : null}
+                          </>
+                        ) : null}
+                        {visiblePages.map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              href="#"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setCurrentPage(page);
+                              }}
+                              isActive={page === currentPage}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        {visiblePages.length > 0 &&
+                        visiblePages[visiblePages.length - 1] < totalPages ? (
+                          <>
+                            {visiblePages[visiblePages.length - 1] < totalPages - 1 ? (
+                              <PaginationItem>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            ) : null}
+                            <PaginationItem>
+                              <PaginationLink
+                                href="#"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  setCurrentPage(totalPages);
+                                }}
+                                isActive={currentPage === totalPages}
+                              >
+                                {totalPages}
+                              </PaginationLink>
+                            </PaginationItem>
+                          </>
+                        ) : null}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              if (currentPage < totalPages) {
+                                setCurrentPage((prev) => prev + 1);
+                              }
+                            }}
+                            className={
+                              currentPage === totalPages
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <Card>

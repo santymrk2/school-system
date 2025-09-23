@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { api } from "@/services/api";
+import { identidad, vidaEscolar } from "@/services/api/modules";
 import type {
   ActaAccidenteDTO,
   EstadoActaAccidente,
@@ -62,7 +62,7 @@ export default function EditActaDialog({
     (async () => {
       try {
         setLoading(true);
-        const pers = (await api.empleados.list()).data ?? [];
+        const pers = (await identidad.empleados.list()).data ?? [];
         if (!alive) return;
 
         // Prefetch de personas para mostrar nombres correctos
@@ -72,7 +72,7 @@ export default function EditActaDialog({
         const entries = await Promise.all(
           pids.map(async (pid) => {
             try {
-              const r = await api.personasCore.getById(pid);
+              const r = await identidad.personasCore.getById(pid);
               return [pid, r.data ?? null] as const;
             } catch {
               return [pid, null] as const;
@@ -133,7 +133,7 @@ export default function EditActaDialog({
 
       const chosen = firmanteId ? Number(firmanteId) : undefined;
 
-      await api.actasAccidente.update(acta.id, {
+      await vidaEscolar.actasAccidente.update(acta.id, {
         fechaSuceso: fecha,
         horaSuceso: hora,
         lugar: lugar.trim(),

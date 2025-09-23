@@ -1,4 +1,4 @@
-import { http } from "../http";
+import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
 
 export const asignacionDocenteSeccion = {

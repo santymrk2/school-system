@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Plus, UserPlus } from "lucide-react";
-import { api } from "@/services/api";
+import { gestionAcademica, identidad } from "@/services/api/modules";
 import type {
   SeccionDTO,
   SeccionMateriaDTO,
@@ -168,11 +168,11 @@ export default function MateriasSeccionPage() {
         setLoading(true);
         setError(null);
         const [secRes, matRes, smRes, asgRes, empRes] = await Promise.all([
-          api.secciones.list(),
-          api.materias.list(),
-          api.seccionMaterias.list(),
-          api.asignacionDocenteMateria.list(),
-          api.empleados.list(),
+          gestionAcademica.secciones.list(),
+          gestionAcademica.materias.list(),
+          gestionAcademica.seccionMaterias.list(),
+          gestionAcademica.asignacionDocenteMateria.list(),
+          identidad.empleados.list(),
         ]);
 
         const allSec = (secRes.data ?? []) as Seccion[];
@@ -216,7 +216,7 @@ export default function MateriasSeccionPage() {
         const personaEntries = await Promise.all(
           personaIds.map(async (pid) => {
             try {
-              const res = await api.personasCore.getById(pid);
+              const res = await identidad.personasCore.getById(pid);
               return [pid, res.data] as const;
             } catch {
               return [pid, null] as const;

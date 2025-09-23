@@ -41,7 +41,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
-import { api } from "@/services/api";
+import { gestionAcademica, identidad } from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import { displayRole } from "@/lib/auth-roles";
 import {
@@ -561,7 +561,7 @@ export default function PersonalPage() {
   }, [accessDialogOpen, activeAccess]);
 
   const fetchData = useCallback(async () => {
-    const empleadosRes = await api.empleados.list();
+    const empleadosRes = await identidad.empleados.list();
     const empleados = (empleadosRes.data ?? []) as EmpleadoDTO[];
 
     const [
@@ -573,32 +573,32 @@ export default function PersonalPage() {
       asignacionesMateria,
     ] = await Promise.all([
       safeRequest<LicenciaDTO[]>(
-        api.licencias.list(),
+        identidad.licencias.list(),
         [] as LicenciaDTO[],
         "No se pudieron obtener las licencias",
       ),
       safeRequest<FormacionAcademicaDTO[]>(
-        api.formaciones.list(),
+        identidad.formaciones.list(),
         [] as FormacionAcademicaDTO[],
         "No se pudo obtener la formación académica",
       ),
       safeRequest<SeccionDTO[]>(
-        api.secciones.list(),
+        gestionAcademica.secciones.list(),
         [] as SeccionDTO[],
         "No se pudieron obtener las secciones",
       ),
       safeRequest<MateriaDTO[]>(
-        api.materias.list(),
+        gestionAcademica.materias.list(),
         [] as MateriaDTO[],
         "No se pudieron obtener las materias",
       ),
       safeRequest<AsignacionDocenteSeccionDTO[]>(
-        api.asignacionDocenteSeccion.list(),
+        gestionAcademica.asignacionDocenteSeccion.list(),
         [] as AsignacionDocenteSeccionDTO[],
         "No se pudieron obtener las asignaciones de sección",
       ),
       safeRequest<AsignacionDocenteMateriaDTO[]>(
-        api.asignacionDocenteMateria.list(),
+        gestionAcademica.asignacionDocenteMateria.list(),
         [] as AsignacionDocenteMateriaDTO[],
         "No se pudieron obtener las asignaciones de materia",
       ),
@@ -615,7 +615,7 @@ export default function PersonalPage() {
     const personaEntries = await Promise.all(
       personaIds.map(async (id) => {
         try {
-          const res = await api.personasCore.getById(id);
+          const res = await identidad.personasCore.getById(id);
           return [id, res.data ?? null] as const;
         } catch (error) {
           console.error("No se pudo obtener la persona", id, error);
@@ -1401,13 +1401,13 @@ export default function PersonalPage() {
           email,
         };
 
-        const personaRes = await api.personasCore.create(personaPayload);
+        const personaRes = await identidad.personasCore.create(personaPayload);
         const personaId = personaRes.data;
         if (!personaId) {
           throw new Error("El backend no devolvió el ID de la persona");
         }
 
-        await api.personasCore.update(personaId, { cuil });
+        await identidad.personasCore.update(personaId, { cuil });
 
         const extraNotas: string[] = [];
         if (formacionNotas.otrosTitulos.trim().length > 0) {
@@ -1441,12 +1441,12 @@ export default function PersonalPage() {
           observacionesGenerales: observacionesGenerales || undefined,
         };
 
-        const empleadoRes = await api.empleados.create(empleadoPayload);
+        const empleadoRes = await identidad.empleados.create(empleadoPayload);
         const empleadoId = empleadoRes.data?.id;
 
         if (empleadoId && formacionesARegistrar.length > 0) {
           for (const formacion of formacionesARegistrar) {
-            await api.formaciones.create({
+            await identidad.formaciones.create({
               empleadoId,
               tituloObtenido: formacion.tituloObtenido,
               institucion: formacion.institucion,
@@ -1603,9 +1603,9 @@ export default function PersonalPage() {
           cuil,
         };
 
-        await api.personasCore.update(editingIds.personaId, personaPayload);
+        await identidad.personasCore.update(editingIds.personaId, personaPayload);
 
-        await api.empleados.update(editingIds.empleadoId, {
+        await identidad.empleados.update(editingIds.empleadoId, {
           rolEmpleado: editEmpleado.rolEmpleado,
           cuil,
           condicionLaboral,
@@ -1695,7 +1695,7 @@ export default function PersonalPage() {
             : undefined,
           observaciones: newLicense.observaciones.trim() || undefined,
         };
-        await api.licencias.create(payload);
+        await identidad.licencias.create(payload);
         toast.success("Licencia registrada", {
           description: "La licencia se registró correctamente.",
         });
@@ -1785,8 +1785,8 @@ export default function PersonalPage() {
 
     setSavingAccess(true);
     try {
-      await api.personasCore.update(persona.id, payload);
-      const { data: refreshed } = await api.personasCore.getById(persona.id);
+      await identidad.personasCore.update(persona.id, payload);
+      const { data: refreshed } = await identidad.personasCore.getById(persona.id);
       if (refreshed) {
         setActiveAccess((prev) =>
           prev ? { ...prev, persona: refreshed ?? null } : prev,

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ActaAccidenteDTO, AlumnoLiteDTO } from "@/types/api-generated";
-import { api } from "@/services/api";
+import { vidaEscolar } from "@/services/api/modules";
 
 interface FamilyActasViewProps {
   alumnos: AlumnoLiteDTO[];
@@ -81,7 +81,7 @@ export default function FamilyActasView({
       try {
         setLoading(true);
         setError(null);
-        const res = await api.actasAccidente.list().catch(() => ({ data: [] }));
+        const res = await vidaEscolar.actasAccidente.list().catch(() => ({ data: [] }));
         if (!alive) return;
         setActas(res.data ?? []);
       } catch (err: any) {

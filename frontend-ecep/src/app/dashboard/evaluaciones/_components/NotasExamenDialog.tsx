@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/services/api";
+import { calendario, gestionAcademica } from "@/services/api/modules";
 import type {
   EvaluacionDTO,
   ResultadoEvaluacionDTO,
@@ -75,14 +75,14 @@ export default function NotasExamenDialog({
     if (!smId) throw new Error("La evaluación no tiene seccionMateriaId.");
     // byId si existe
     try {
-      const sm = (await (api.seccionMaterias as any).byId?.(smId))?.data as
+      const sm = (await (gestionAcademica.seccionMaterias as any).byId?.(smId))?.data as
         | SeccionMateriaDTO
         | undefined;
       if (sm && (sm as any).seccionId) return (sm as any).seccionId as number;
     } catch {}
     // fallback list
     const all: SeccionMateriaDTO[] =
-      (await api.seccionMaterias.list()).data ?? [];
+      (await gestionAcademica.seccionMaterias.list()).data ?? [];
     const found = all.find((x) => x.id === smId);
     const seccionId = (found as any)?.seccionId as number | undefined;
     if (!seccionId)
@@ -97,25 +97,25 @@ export default function NotasExamenDialog({
         setErrorMsg(null);
         setLoading(true);
 
-        const tri = (await api.trimestres.list()).data ?? [];
+        const tri = (await calendario.trimestres.list()).data ?? [];
         setTrimestres(tri);
 
         const seccionId = await fetchSeccionIdFromEval();
 
         // roster de la sección en la fecha del examen
         const alumnos: AlumnoLiteDTO[] =
-          (await api.seccionesAlumnos.bySeccionId(seccionId, fecha)).data ?? [];
+          (await gestionAcademica.seccionesAlumnos.bySeccionId(seccionId, fecha)).data ?? [];
 
         // resultados existentes
         let existentes: ResultadoEvaluacionDTO[] = [];
         try {
           existentes =
-            (await api.resultadosEvaluacion.byEvaluacion(
+            (await gestionAcademica.resultadosEvaluacion.byEvaluacion(
               (evaluacion as any).id,
             )).data ?? [];
         } catch {
           const todos: ResultadoEvaluacionDTO[] =
-            (await api.resultadosEvaluacion.list()).data ?? [];
+            (await gestionAcademica.resultadosEvaluacion.list()).data ?? [];
           existentes = todos.filter(
             (r: any) => r.evaluacionId === (evaluacion as any).id,
           );
@@ -209,7 +209,7 @@ export default function NotasExamenDialog({
 
         if (r.resultadoId) {
           pending.push(
-            api.resultadosEvaluacion.update(r.resultadoId, basePayload),
+            gestionAcademica.resultadosEvaluacion.update(r.resultadoId, basePayload),
           );
           continue;
         }
@@ -226,7 +226,7 @@ export default function NotasExamenDialog({
           matriculaId: r.matriculaId,
           ...basePayload,
         } as ResultadoEvaluacionCreateDTO;
-        pending.push(api.resultadosEvaluacion.create(body));
+        pending.push(gestionAcademica.resultadosEvaluacion.create(body));
       }
 
       await Promise.all(pending);

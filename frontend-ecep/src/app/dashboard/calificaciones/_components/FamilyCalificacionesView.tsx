@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api } from "@/services/api";
+import { calendario, gestionAcademica } from "@/services/api/modules";
 import type {
   AlumnoLiteDTO,
   CalificacionDTO,
@@ -151,14 +151,14 @@ export default function FamilyCalificacionesView({
           calificacionesRes,
           informesRes,
         ] = await Promise.all([
-          api.secciones.list().catch(() => ({ data: [] as SeccionDTO[] })),
-          api.seccionMaterias
+          gestionAcademica.secciones.list().catch(() => ({ data: [] as SeccionDTO[] })),
+          gestionAcademica.seccionMaterias
             .list()
             .catch(() => ({ data: [] as SeccionMateriaDTO[] })),
-          api.materias.list().catch(() => ({ data: [] as MateriaDTO[] })),
-          api.trimestres.list().catch(() => ({ data: [] as TrimestreDTO[] })),
-          api.calificaciones.list().catch(() => ({ data: [] as CalificacionDTO[] })),
-          api.informes.list().catch(() => ({ data: [] as InformeInicialDTO[] })),
+          gestionAcademica.materias.list().catch(() => ({ data: [] as MateriaDTO[] })),
+          calendario.trimestres.list().catch(() => ({ data: [] as TrimestreDTO[] })),
+          gestionAcademica.calificaciones.list().catch(() => ({ data: [] as CalificacionDTO[] })),
+          gestionAcademica.informes.list().catch(() => ({ data: [] as InformeInicialDTO[] })),
         ]);
 
         if (!alive) return;

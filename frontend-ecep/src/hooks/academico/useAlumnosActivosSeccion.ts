@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import type { AlumnoLiteDTO } from "@/types/api-generated";
 
 export function useAlumnosActivosSeccion(seccionId?: number) {
@@ -21,7 +21,7 @@ export function useAlumnosActivosSeccion(seccionId?: number) {
           return;
         }
         // ❌ sin fecha; el servicio maneja fallback
-        const res = await api.seccionesAlumnos.bySeccionId(seccionId);
+        const res = await gestionAcademica.seccionesAlumnos.bySeccionId(seccionId);
         if (!alive) return;
         setAlumnos(res.data ?? []);
       } catch (e) {

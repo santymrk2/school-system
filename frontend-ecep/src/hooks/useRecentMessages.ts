@@ -1,7 +1,7 @@
 // src/hooks/useRecentMessages.ts
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { comunicacion } from "@/services/api/modules";
 import type { PersonaResumenDTO } from "@/types/api-generated";
 
 type RecentItem = {
@@ -33,10 +33,11 @@ export function useRecentMessages(limit = 5) {
     (async () => {
       try {
         setLoading(true);
-        const active = ((await api.chat.getActiveChats()).data ?? []) as PersonaResumenDTO[];
+        const active = ((await comunicacion.chat.getActiveChats()).data ?? []) as PersonaResumenDTO[];
         const enriched = await Promise.all(
           active.slice(0, limit).map(async (persona) => {
-            const hist = (await api.chat.history(persona.id, { limit: 1 })).data ?? [];
+            const hist =
+              (await comunicacion.chat.history(persona.id, { limit: 1 })).data ?? [];
             const last = hist[hist.length - 1];
             return {
               userId: persona.id,

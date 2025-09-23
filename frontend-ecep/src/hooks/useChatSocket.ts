@@ -5,7 +5,7 @@ import { Client, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import type { ChatMessageDTO } from "@/types/api-generated";
 import { useAuth } from "./useAuth";
-import { api } from "@/services/api";
+import { comunicacion } from "@/services/api/modules";
 import { BASE as HTTP_BASE } from "@/services/api/http";
 
 const sanitizeBaseUrl = (value?: string | null) => {
@@ -598,7 +598,7 @@ export default function useChatSocket() {
     if (uniqueIds.length === 0) return;
 
     try {
-      const { data } = await api.chat.getOnlineStatus(uniqueIds);
+      const { data } = await comunicacion.chat.getOnlineStatus(uniqueIds);
       const entries = Object.entries(data ?? {});
       if (!entries.length) return;
 
@@ -622,7 +622,7 @@ export default function useChatSocket() {
   const markRead = useCallback(async (otherUserId: number) => {
     try {
       console.log("📡 Marcando mensajes como leídos de usuario:", otherUserId);
-      await api.chat.markRead(otherUserId);
+      await comunicacion.chat.markRead(otherUserId);
 
       setMessages((prev) =>
         prev.map((msg) =>
@@ -638,7 +638,7 @@ export default function useChatSocket() {
   const loadHistory = useCallback(async (otherUserId: number) => {
     try {
       console.log("📡 Cargando historial de usuario:", otherUserId);
-      const { data } = await api.chat.history(otherUserId);
+      const { data } = await comunicacion.chat.history(otherUserId);
       setMessages(data.map(normalizeMessage));
     } catch (err) {
       console.error("Error al cargar historial:", err);

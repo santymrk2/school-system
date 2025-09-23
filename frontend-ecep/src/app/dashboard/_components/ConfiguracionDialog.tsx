@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { api } from "@/services/api";
+import { calendario } from "@/services/api/modules";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import {
@@ -136,8 +136,8 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     try {
       setLoading(true);
       const [perRes, triRes] = await Promise.all([
-        api.periodos.list(),
-        api.trimestres.list(),
+        calendario.periodos.list(),
+        calendario.trimestres.list(),
       ]);
       const per = (perRes.data ?? []) as PeriodoEscolarDTO[];
       const tri = (triRes.data ?? []) as TrimestreDTO[];
@@ -288,7 +288,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
 
     try {
       setSavingTrimestreId(tri.id);
-      await api.trimestres.update(tri.id, {
+      await calendario.trimestres.update(tri.id, {
         periodoEscolarId: resolveTrimestrePeriodoId(tri, periodoActual?.id),
         orden: tri.orden,
         inicio: draft.inicio,
@@ -341,10 +341,10 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       setTogglingTrimestreId(tri.id);
       setTogglingEstado(estado);
       if (estado === "activo") {
-        await api.trimestres.reabrir(tri.id);
+        await calendario.trimestres.reabrir(tri.id);
         toast.success("Trimestre activado");
       } else {
-        await api.trimestres.cerrar(tri.id);
+        await calendario.trimestres.cerrar(tri.id);
         toast.success("Trimestre cerrado");
       }
       await loadData();
@@ -365,7 +365,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     if (!periodoActual?.id) return;
     try {
       setClosingPeriodo(true);
-      await api.periodos.cerrar(periodoActual.id);
+      await calendario.periodos.cerrar(periodoActual.id);
       toast.success("Período cerrado");
       await loadData();
     } catch (error) {
@@ -381,7 +381,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     if (!periodoActual?.id) return;
     try {
       setOpeningPeriodo(true);
-      await api.periodos.abrir(periodoActual.id);
+      await calendario.periodos.abrir(periodoActual.id);
       toast.success("Período reabierto");
       await loadData();
     } catch (error) {
@@ -402,7 +402,7 @@ function DireccionConfig({ open }: DireccionConfigProps) {
 
     try {
       setCreatingPeriodo(true);
-      await api.periodos.create({ anio: year });
+      await calendario.periodos.create({ anio: year });
       toast.success("Nuevo período creado");
       setNuevoPeriodo((prev) => ({
         ...prev,

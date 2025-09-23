@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/services/api";
+import { calendario, gestionAcademica } from "@/services/api/modules";
 import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -42,9 +42,9 @@ export default function InformeInicialView({
       try {
         setLoading(true);
         const [triRes, aluRes, infRes] = await Promise.all([
-          api.trimestres.list(),
-          api.seccionesAlumnos.bySeccionId(seccionId, hoy),
-          api.informes.list(),
+          calendario.trimestres.list(),
+          gestionAcademica.seccionesAlumnos.bySeccionId(seccionId, hoy),
+          gestionAcademica.informes.list(),
         ]);
         if (!alive) return;
         const allTrimestres = triRes.data ?? [];
@@ -153,7 +153,7 @@ function TrimestreInformeTile({
   }, [existing?.descripcion]);
 
   const create = async () => {
-    const { data: id } = await api.informes.create({
+    const { data: id } = await gestionAcademica.informes.create({
       trimestreId: trimestre.id,
       matriculaId: alumno.matriculaId,
       descripcion: (desc ?? "").trim(),
@@ -170,7 +170,7 @@ function TrimestreInformeTile({
   const update = async () => {
     // Si tu backend NO tiene PUT, esto fallará (405/404). Mostramos aviso.
     try {
-      await api.informes.update(existing.id, {
+      await gestionAcademica.informes.update(existing.id, {
         descripcion: (desc ?? "").trim(),
       });
       onUpsert({ ...existing, descripcion: (desc ?? "").trim() });

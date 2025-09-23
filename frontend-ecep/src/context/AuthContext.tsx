@@ -10,7 +10,7 @@ import React, {
   useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { api } from "@/services/api";
+import { identidad } from "@/services/api/modules";
 import type { PersonaResumenDTO, AuthResponse } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import { normalizeRole } from "@/lib/auth-roles"; // asegúrate de tener este helper
@@ -164,7 +164,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
   // ----- carga de sesión al iniciar -----
   const checkAuth = useCallback(async () => {
     try {
-      const { data } = await api.me();
+      const { data } = await identidad.me();
       const patched = patchUserRoles(data);
       if (process.env.NODE_ENV === "development") {
         console.log("[ME] payload crudo:", data);
@@ -197,7 +197,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
   // ----- login con bifurcación por cantidad de roles -----
   const login = async (email: string, password: string) => {
     try {
-      const { data } = await api.login(email, password); // AuthResponse
+      const { data } = await identidad.login(email, password); // AuthResponse
       // Guarda token para axios (tu interceptor lo usa)
       const auth = data as AuthResponse;
       if (typeof window !== "undefined" && auth?.token) {
@@ -208,7 +208,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
       }
 
       // Ahora traemos el usuario y roles reales
-      const me = await api.me();
+      const me = await identidad.me();
       const patched = patchUserRoles(me.data);
       if (process.env.NODE_ENV === "development") {
         console.log("[LOGIN→ME] roles (patched):", patched.roles);
@@ -243,7 +243,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
   };
 
   const logout = () => {
-    api
+    identidad
       .logout()
       .catch(() => {})
       .finally(() => {

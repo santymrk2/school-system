@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
-import { api } from "@/services/api";
+import { asistencias, gestionAcademica } from "@/services/api/modules";
 import {
   JornadaAsistenciaDTO,
   DetalleAsistenciaDTO,
@@ -94,13 +94,13 @@ export default function JornadaPage() {
       setLoading(true);
       setErr(null);
 
-      const j = (await api.jornadasAsistencia.byId(jornadaId)).data;
+      const j = (await asistencias.jornadas.byId(jornadaId)).data;
       setJornada(j);
 
       const [seccionResp, alumnosResp, detsResp] = await Promise.all([
-        api.secciones.byId(j.seccionId),
-        api.seccionesAlumnos.bySeccionId(j.seccionId, j.fecha),
-        api.detallesAsistencia.byJornada(j.id),
+        gestionAcademica.secciones.byId(j.seccionId),
+        gestionAcademica.seccionesAlumnos.bySeccionId(j.seccionId, j.fecha),
+        asistencias.detalles.byJornada(j.id),
       ]);
 
       const seccionData = (seccionResp.data ?? null) as SeccionDTO | null;
@@ -180,7 +180,7 @@ export default function JornadaPage() {
     try {
       if (targetDetalleId != null) {
         try {
-          await api.detallesAsistencia.update(targetDetalleId, {
+          await asistencias.detalles.update(targetDetalleId, {
             estado,
             observacion,
           } as any);
@@ -248,7 +248,7 @@ export default function JornadaPage() {
           observacion,
         } as any;
 
-        const resp = await api.detallesAsistencia.create(body);
+        const resp = await asistencias.detalles.create(body);
         const createdId = resp?.data;
 
         if (typeof createdId !== "number") {

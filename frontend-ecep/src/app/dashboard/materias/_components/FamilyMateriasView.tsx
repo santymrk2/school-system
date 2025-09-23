@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api } from "@/services/api";
+import { gestionAcademica, identidad } from "@/services/api/modules";
 import type {
   AlumnoLiteDTO,
   EmpleadoDTO,
@@ -142,18 +142,18 @@ export default function FamilyMateriasView({
           asigSeccionRes,
           empleadosRes,
         ] = await Promise.all([
-          api.secciones.list().catch(() => ({ data: [] as SeccionDTO[] })),
-          api.seccionMaterias
+          gestionAcademica.secciones.list().catch(() => ({ data: [] as SeccionDTO[] })),
+          gestionAcademica.seccionMaterias
             .list()
             .catch(() => ({ data: [] as SeccionMateriaDTO[] })),
-          api.materias.list().catch(() => ({ data: [] as MateriaDTO[] })),
-          api.asignacionDocenteMateria
+          gestionAcademica.materias.list().catch(() => ({ data: [] as MateriaDTO[] })),
+          gestionAcademica.asignacionDocenteMateria
             .list()
             .catch(() => ({ data: [] as any[] })),
-          api.asignacionDocenteSeccion
+          gestionAcademica.asignacionDocenteSeccion
             .list()
             .catch(() => ({ data: [] as any[] })),
-          api.empleados.list().catch(() => ({ data: [] as EmpleadoDTO[] })),
+          identidad.empleados.list().catch(() => ({ data: [] as EmpleadoDTO[] })),
         ]);
 
         if (!alive) return;
@@ -186,7 +186,7 @@ export default function FamilyMateriasView({
         const personaEntries = await Promise.all(
           Array.from(personaIds).map(async (pid) => {
             try {
-              const res = await api.personasCore.getById(pid);
+              const res = await identidad.personasCore.getById(pid);
               return [pid, res.data ?? null] as const;
             } catch {
               return [pid, null] as const;

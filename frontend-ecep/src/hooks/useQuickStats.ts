@@ -1,7 +1,7 @@
 // src/hooks/useQuickStats.ts
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { admisiones, gestionAcademica, identidad, vidaEscolar } from "@/services/api/modules";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 export type QuickStats = {
@@ -48,7 +48,7 @@ export function useQuickStats() {
         setLoading(true);
 
         // ========= Alumnos activos (por secciones del período, deduplicando) =========
-        const seccionesRes = await api.secciones
+        const seccionesRes = await gestionAcademica.secciones
           .list()
           .catch(() => ({ data: [] as any[] }));
         const seccionesAll = seccionesRes.data ?? [];
@@ -59,7 +59,7 @@ export function useQuickStats() {
         // OJO: acá estaba el fallo: ¡hay que usar seccionesAlumnos.bySeccionId!
         const alumnosLists = await Promise.all(
           seccionesPeriodo.map((s: any) =>
-            api.seccionesAlumnos
+            gestionAcademica.seccionesAlumnos
               .bySeccionId(s.id, hoyISO) // <--- endpoint correcto de tu servicio
               .then((r) => r.data ?? [])
               .catch(() => []),
@@ -76,7 +76,7 @@ export function useQuickStats() {
         }
 
         // ========= Docentes activos hoy (asignaciones vigentes) =========
-        const asigResp = await api.asignacionDocenteSeccion
+        const asigResp = await gestionAcademica.asignacionDocenteSeccion
           .list()
           .catch(() => ({ data: [] as any[] }));
         const asigs = asigResp.data ?? [];
@@ -92,9 +92,9 @@ export function useQuickStats() {
 
         // ========= Postulaciones pendientes (si el módulo existe) =========
         let postulPend = 0;
-        if (api.solicitudesAdmision?.list) {
+        if (admisiones.solicitudesAdmision?.list) {
           const sol =
-            (await api.solicitudesAdmision.list().catch(() => ({ data: [] })))
+            (await admisiones.solicitudesAdmision.list().catch(() => ({ data: [] })))
               .data ?? [];
           postulPend = sol.filter((s: any) =>
             String(s.estado ?? "")
@@ -104,7 +104,7 @@ export function useQuickStats() {
         }
 
         // ========= Licencias activas hoy =========
-        const licRes = await api.licencias
+        const licRes = await identidad.licencias
           .list()
           .catch(() => ({ data: [] as any[] }));
         const lic = licRes.data ?? [];
@@ -115,7 +115,7 @@ export function useQuickStats() {
         }).length;
 
         // ========= Actas de accidente sin firmar (BORRADOR) =========
-        const actasRes = await api.actasAccidente
+        const actasRes = await vidaEscolar.actasAccidente
           .list()
           .catch(() => ({ data: [] as any[] }));
         const actas = actasRes.data ?? [];

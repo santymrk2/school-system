@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/services/api";
+import { comunicacion } from "@/services/api/modules";
 import {
   Dialog,
   DialogContent,
@@ -132,7 +132,7 @@ export default function NewComunicadoDialog({
   const send = async () => {
     setSubmitting(true);
     try {
-      await api.comunicados.create({
+      await comunicacion.comunicados.create({
         alcance,
         nivel: alcance === "POR_NIVEL" ? (nivel as any) : undefined,
         seccionId: alcance === "POR_SECCION" ? Number(seccionId) : undefined,

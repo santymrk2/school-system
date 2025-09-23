@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { api } from "@/services/api";
+import { asistencias, gestionAcademica } from "@/services/api/modules";
 import type {
   DetalleAsistenciaDTO,
   DetalleAsistenciaCreateDTO,
@@ -73,8 +73,8 @@ export default function DetalleDiaDialog({
       try {
         setLoading(true);
         const [alRes, detRes] = await Promise.all([
-          api.seccionesAlumnos.bySeccionId(seccionId, fecha),
-          api.detallesAsistencia.byJornada(jornadaId),
+          gestionAcademica.seccionesAlumnos.bySeccionId(seccionId, fecha),
+          asistencias.detalles.byJornada(jornadaId),
         ]);
         setAlumnos(alRes.data ?? []);
         setDetalles(detRes.data ?? []);
@@ -97,20 +97,20 @@ export default function DetalleDiaDialog({
       if (current) {
         // Si no hay PUT, podés hacer delete + create. Aquí intento update:
         try {
-          await api.detallesAsistencia.update(current.id, { estado } as any);
+          await asistencias.detalles.update(current.id, { estado } as any);
           setDetalles((prev) =>
             prev.map((d) => (d.id === current.id ? { ...d, estado } : d)),
           );
         } catch {
-          await api.detallesAsistencia.delete(current.id);
+          await asistencias.detalles.delete(current.id);
           const body: DetalleAsistenciaCreateDTO = {
             jornadaId,
             matriculaId,
             estado,
             observacion: null,
           } as any;
-          await api.detallesAsistencia.create(body);
-          const reload = await api.detallesAsistencia.byJornada(jornadaId);
+          await asistencias.detalles.create(body);
+          const reload = await asistencias.detalles.byJornada(jornadaId);
           setDetalles(reload.data ?? []);
         }
       } else {
@@ -120,8 +120,8 @@ export default function DetalleDiaDialog({
           estado,
           observacion: null,
         } as any;
-        await api.detallesAsistencia.create(body);
-        const reload = await api.detallesAsistencia.byJornada(jornadaId);
+        await asistencias.detalles.create(body);
+        const reload = await asistencias.detalles.byJornada(jornadaId);
         setDetalles(reload.data ?? []);
       }
     } catch (e: any) {

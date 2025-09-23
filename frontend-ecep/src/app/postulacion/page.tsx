@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatDni } from "@/lib/form-utils";
-import { api } from "@/services/api"; // ← import del cliente API
+import { admisiones, identidad } from "@/services/api/modules"; // ← módulos API
 import * as DTO from "@/types/api-generated";
 import { isBirthDateValid } from "@/lib/form-utils";
 
@@ -149,9 +149,11 @@ export default function PostulacionPage() {
     let cancelled = false;
     const handle = setTimeout(async () => {
       try {
-        const { data: personaId } = await api.personasCore.findIdByDni(dni);
+        const { data: personaId } = await identidad.personasCore.findIdByDni(dni);
         if (cancelled) return;
-        const { data: persona } = await api.personasCore.getById(Number(personaId));
+        const { data: persona } = await identidad.personasCore.getById(
+          Number(personaId),
+        );
         if (cancelled) return;
         setAspirantePersonaPreview(persona);
         setFormData((prev) => ({
@@ -207,17 +209,17 @@ export default function PostulacionPage() {
       throw new Error("El DNI debe tener entre 7 y 10 dígitos.");
     }
     if (input.personaId) {
-      await api.personasCore.update(input.personaId, payload);
+      await identidad.personasCore.update(input.personaId, payload);
       return input.personaId;
     }
     try {
-      const { data } = await api.personasCore.create(payload);
+    const { data } = await identidad.personasCore.create(payload);
       return Number(data);
     } catch (error: any) {
       if (error?.response?.status === 400 || error?.response?.status === 409) {
-        const { data } = await api.personasCore.findIdByDni(input.dni);
+        const { data } = await identidad.personasCore.findIdByDni(input.dni);
         const id = Number(data);
-        await api.personasCore.update(id, payload);
+        await identidad.personasCore.update(id, payload);
         return id;
       }
       throw error;
@@ -243,12 +245,12 @@ export default function PostulacionPage() {
     };
 
     try {
-      const { data } = await api.aspirantes.byId(personaId);
-      await api.aspirantes.update(personaId, payload);
+      const { data } = await admisiones.aspirantes.byId(personaId);
+      await admisiones.aspirantes.update(personaId, payload);
       return data?.id ?? personaId;
     } catch (error: any) {
       if (error?.response?.status === 404) {
-        const { data } = await api.aspirantes.create(payload);
+        const { data } = await admisiones.aspirantes.create(payload);
         return data?.id ?? personaId;
       }
       throw error;
@@ -266,12 +268,12 @@ export default function PostulacionPage() {
     };
 
     try {
-      const { data } = await api.familiares.byId(personaId);
-      await api.familiares.update(personaId, payload);
+      const { data } = await identidad.familiares.byId(personaId);
+      await identidad.familiares.update(personaId, payload);
       return data?.id ?? personaId;
     } catch (error: any) {
       if (error?.response?.status === 404) {
-        const { data } = await api.familiares.create({ personaId, ocupacion });
+        const { data } = await identidad.familiares.create({ personaId, ocupacion });
         return Number(data);
       }
       throw error;
@@ -285,7 +287,7 @@ export default function PostulacionPage() {
     convive: boolean,
   ) => {
     try {
-      await api.aspiranteFamiliares.create({
+      await admisiones.aspiranteFamiliares.create({
         aspiranteId,
         familiarId,
         parentesco,
@@ -568,7 +570,7 @@ export default function PostulacionPage() {
         emailConfirmacionEnviado: communicationsAuthorized,
         entrevistaRealizada: false,
       };
-      await api.solicitudesAdmision.create(solicitudPayload);
+      await admisiones.solicitudesAdmision.create(solicitudPayload);
 
       toast.success("Postulación enviada con éxito.");
 

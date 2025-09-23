@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Megaphone, Trash2, Eye } from "lucide-react";
-import { api } from "@/services/api";
+import { comunicacion, gestionAcademica } from "@/services/api/modules";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
@@ -158,8 +158,8 @@ export default function ComunicadosPage() {
       try {
         setLoading(true);
         const [res, secs] = await Promise.all([
-          api.comunicados.list(),
-          api.secciones.list(),
+          comunicacion.comunicados.list(),
+          gestionAcademica.secciones.list(),
         ]);
         if (!alive) return;
         setComunicados(res.data ?? []);
@@ -240,7 +240,7 @@ export default function ComunicadosPage() {
   }, [visibles, q]);
 
   const refresh = async () => {
-    const res = await api.comunicados.list();
+    const res = await comunicacion.comunicados.list();
     setComunicados(res.data ?? []);
   };
 
@@ -259,7 +259,7 @@ export default function ComunicadosPage() {
 
   async function handleDelete(id: number) {
     try {
-      await api.comunicados.delete(id);
+      await comunicacion.comunicados.delete(id);
       await refresh();
     } catch (e: any) {
       toast.error(

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/services/api";
+import { calendario } from "@/services/api/modules";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { getTrimestreEstado } from "@/lib/trimestres";
 
@@ -62,8 +62,8 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
         setLoading(true);
         setError(null);
         const [per, tri] = await Promise.all([
-          api.periodos.list().then((r) => r.data ?? []),
-          api.trimestres.list().then((r) => r.data ?? []),
+          calendario.periodos.list().then((r) => r.data ?? []),
+          calendario.trimestres.list().then((r) => r.data ?? []),
         ]);
         if (!alive) return;
         setPeriodos(per);

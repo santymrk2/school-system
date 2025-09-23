@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeRole } from "@/lib/auth-roles";
-import { api } from "@/services/api";
+import { gestionAcademica, identidad, vidaEscolar } from "@/services/api/modules";
 import type {
   AlumnoDTO,
   AlumnoLiteDTO,
@@ -33,13 +33,13 @@ function inferNivel(
 
 async function fetchStudentAlumnosLite(personaId: number) {
   const [alumnosRes, matriculasRes, seccionesRes] = await Promise.all([
-    api.alumnos
+    identidad.alumnos
       .list()
       .catch(() => ({ data: [] as AlumnoDTO[] })),
-    api.matriculas
+    vidaEscolar.matriculas
       .list()
       .catch(() => ({ data: [] as MatriculaDTO[] })),
-    api.secciones
+    gestionAcademica.secciones
       .list()
       .catch(() => ({ data: [] as SeccionDTO[] })),
   ]);
@@ -131,7 +131,7 @@ export function useViewerAlumnosLite(): {
 
       try {
         if (normalizedRole === UserRoleEnum.FAMILY) {
-          const res = await api.familiaresAlumnos.byFamiliarId(personaId);
+          const res = await identidad.familiaresAlumnos.byFamiliarId(personaId);
           if (!alive) return;
           setState({ alumnos: res.data ?? [], loading: false, error: null });
           return;

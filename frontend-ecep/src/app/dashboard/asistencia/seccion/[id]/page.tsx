@@ -22,7 +22,7 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 import { Calendar, Plus } from "lucide-react";
-import { api } from "@/services/api";
+import { asistencias, gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
   AsistenciaDiaDTO,
@@ -168,7 +168,7 @@ export default function SeccionHistorialPage() {
     (async () => {
       try {
         setLoadingSec(true);
-        const res = await api.secciones.list();
+        const res = await gestionAcademica.secciones.list();
         const s =
           (res.data ?? []).find((x: SeccionDTO) => x.id === seccionId) ?? null;
         setSeccion(s);
@@ -190,8 +190,8 @@ export default function SeccionHistorialPage() {
         setLoading(true);
         setErr(null);
         const [hRes, rRes] = await Promise.all([
-          api.asistencias.historialSeccion(seccionId, rangeFrom, rangeTo),
-          api.asistencias.resumenPorAlumno(seccionId, rangeFrom, rangeTo),
+          asistencias.secciones.historialSeccion(seccionId, rangeFrom, rangeTo),
+          asistencias.secciones.resumenPorAlumno(seccionId, rangeFrom, rangeTo),
         ]);
         setHistorial(hRes.data ?? []);
         setResumen(rRes.data ?? []);
@@ -439,7 +439,7 @@ export default function SeccionHistorialPage() {
                                     if (!canEdit) return;
                                     try {
                                       const res =
-                                        await api.jornadasAsistencia.bySeccionFechaOne(
+                                        await asistencias.jornadas.bySeccionFechaOne(
                                           seccionId,
                                           d.fecha,
                                         );

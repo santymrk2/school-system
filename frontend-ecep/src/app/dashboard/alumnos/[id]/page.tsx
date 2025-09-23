@@ -40,7 +40,11 @@ import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
 import { displayRole } from "@/lib/auth-roles";
-import { api } from "@/services/api";
+import {
+  gestionAcademica,
+  identidad,
+  vidaEscolar,
+} from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type {
   AlumnoDTO,
@@ -228,7 +232,7 @@ export default function AlumnoPerfilPage() {
         setError(null);
 
         // 1) Alumno + Persona
-        const alumnoResponse = await api.alumnos.byId(alumnoId);
+        const alumnoResponse = await identidad.alumnos.byId(alumnoId);
         const a = alumnoResponse.data ?? null;
         if (!alive) return;
         if (!a) {
@@ -242,7 +246,7 @@ export default function AlumnoPerfilPage() {
         let p: PersonaDTO | null = null;
         if (a.personaId) {
           try {
-            p = (await api.personasCore.getById(a.personaId)).data ?? null;
+            p = (await identidad.personasCore.getById(a.personaId)).data ?? null;
           } catch (personaError) {
             console.error("No se pudo obtener la persona del alumno", personaError);
           }
@@ -263,7 +267,7 @@ export default function AlumnoPerfilPage() {
         let secciones: SeccionDTO[] = [];
         let seccionMapLocal: Map<number, SeccionDTO> | null = null;
         try {
-          secciones = (await api.secciones.list()).data ?? [];
+          secciones = (await gestionAcademica.secciones.list()).data ?? [];
           const map = new Map<number, SeccionDTO>();
           secciones.forEach((s: any) => map.set(s.id, s));
           seccionMapLocal = map;
@@ -281,7 +285,7 @@ export default function AlumnoPerfilPage() {
         // 3) Matrículas del alumno
         let mats: MatriculaDTO[] = [];
         try {
-          const { data } = await api.matriculas.list();
+          const { data } = await vidaEscolar.matriculas.list();
           mats = ((data ?? []) as MatriculaDTO[]).filter(
             (m: any) => m.alumnoId === alumnoId,
           );
@@ -295,7 +299,7 @@ export default function AlumnoPerfilPage() {
         // 4) Historial de sección (todas las filas) y enriquecer con label
         let hist: HistorialVM[] = [];
         try {
-          const { data } = await api.matriculaSeccionHistorial.list();
+          const { data } = await vidaEscolar.matriculaSeccionHistorial.list();
           const allHist = (data ?? []) as any[];
           const labelMap = seccionMapLocal ?? seccionesMap;
           const labelFor = (sid?: number | null) => seccionLabel(sid, labelMap);
@@ -327,7 +331,7 @@ export default function AlumnoPerfilPage() {
         // 5) Familiares + sus personas + vínculo
         let fams: FamiliarConVinculo[] = [];
         try {
-          const { data } = await api.alumnoFamiliares.list();
+          const { data } = await identidad.alumnoFamiliares.list();
           const links = ((data ?? []) as any[]).filter(
             (af: any) => af.alumnoId === alumnoId,
           );
@@ -335,12 +339,12 @@ export default function AlumnoPerfilPage() {
             links.map(async (link: any) => {
               if (!link?.familiarId) return null;
               try {
-                const familiarRes = await api.familiares.byId(link.familiarId);
+                const familiarRes = await identidad.familiares.byId(link.familiarId);
                 const f = familiarRes.data as FamiliarDTO | null;
                 if (!f) return null;
                 let fp: PersonaDTO | null = null;
                 if (f.personaId) {
-                  fp = await api.personasCore
+                  fp = await identidad.personasCore
                     .getById(f.personaId)
                     .then((r) => r.data ?? null)
                     .catch(() => null);
@@ -452,7 +456,7 @@ export default function AlumnoPerfilPage() {
     setSavingFamily(false);
     (async () => {
       try {
-        const { data } = await api.familiares.list();
+        const { data } = await identidad.familiares.list();
         if (!alive) return;
         setFamiliaresCatalog(data ?? []);
       } catch (error) {
@@ -481,10 +485,10 @@ export default function AlumnoPerfilPage() {
     let alive = true;
     const handler = setTimeout(async () => {
       try {
-        const { data: personaId } = await api.personasCore.findIdByDni(dni);
+        const { data: personaId } = await identidad.personasCore.findIdByDni(dni);
         if (!alive) return;
         if (personaId) {
-          const personaData = await api.personasCore
+          const personaData = await identidad.personasCore
             .getById(personaId)
             .then((r) => r.data ?? null)
             .catch(() => null);
@@ -582,7 +586,7 @@ export default function AlumnoPerfilPage() {
 
         if (currentId) {
           try {
-            await api.personasCore.update(currentId, personaUpdatePayload);
+            await identidad.personasCore.update(currentId, personaUpdatePayload);
             return currentId;
           } catch (error: any) {
             if (error?.response?.status !== 404) {
@@ -595,7 +599,7 @@ export default function AlumnoPerfilPage() {
         if (!currentId) {
           let existingId: number | null = null;
           try {
-            const { data: personaFoundId } = await api.personasCore.findIdByDni(
+            const { data: personaFoundId } = await identidad.personasCore.findIdByDni(
               dniValue,
             );
             if (personaFoundId) {
@@ -611,11 +615,11 @@ export default function AlumnoPerfilPage() {
           }
 
           if (existingId) {
-            await api.personasCore.update(existingId, personaUpdatePayload);
+            await identidad.personasCore.update(existingId, personaUpdatePayload);
             return existingId;
           }
 
-          const { data: personaCreated } = await api.personasCore.create(
+          const { data: personaCreated } = await identidad.personasCore.create(
             personaCreatePayload,
           );
           return Number(personaCreated);
@@ -631,7 +635,7 @@ export default function AlumnoPerfilPage() {
       }
 
       if (alumno.id) {
-        await api.alumnos.update(alumno.id, {
+        await identidad.alumnos.update(alumno.id, {
           id: alumno.id,
           personaId,
           fechaInscripcion: alumnoDraft.fechaInscripcion || undefined,
@@ -653,7 +657,7 @@ export default function AlumnoPerfilPage() {
       }
 
       if (!matricula && targetSeccionId && activePeriodId) {
-        const { data: newMatriculaId } = await api.matriculas.create({
+        const { data: newMatriculaId } = await vidaEscolar.matriculas.create({
           alumnoId,
           periodoEscolarId: activePeriodId,
         });
@@ -683,7 +687,7 @@ export default function AlumnoPerfilPage() {
             currentEntry.seccionId !== targetSeccionId)
         ) {
           const desdeValue = currentEntry.desde ?? todayIso;
-          await api.matriculaSeccionHistorial.update(currentEntry.id, {
+          await vidaEscolar.matriculaSeccionHistorial.update(currentEntry.id, {
             id: currentEntry.id,
             matriculaId: currentEntry.matriculaId,
             seccionId: currentEntry.seccionId,
@@ -696,7 +700,7 @@ export default function AlumnoPerfilPage() {
           targetSeccionId &&
           (!currentEntry || currentEntry.seccionId !== targetSeccionId)
         ) {
-          await api.matriculaSeccionHistorial.create({
+          await vidaEscolar.matriculaSeccionHistorial.create({
             matriculaId: matricula.id,
             seccionId: targetSeccionId,
             desde: todayIso,
@@ -786,8 +790,8 @@ export default function AlumnoPerfilPage() {
 
     setSavingCredentials(true);
     try {
-      await api.personasCore.update(persona.id, payload);
-      const { data: refreshed } = await api.personasCore.getById(persona.id);
+      await identidad.personasCore.update(persona.id, payload);
+      const { data: refreshed } = await identidad.personasCore.getById(persona.id);
       setPersona(refreshed ?? null);
       toast.success("Acceso del alumno actualizado");
       setCredentialsDialogOpen(false);
@@ -860,9 +864,11 @@ export default function AlumnoPerfilPage() {
       };
 
       if (personaId) {
-        await api.personasCore.update(personaId, personaPayload);
+        await identidad.personasCore.update(personaId, personaPayload);
       } else {
-        const { data: personaCreated } = await api.personasCore.create(personaPayload);
+        const { data: personaCreated } = await identidad.personasCore.create(
+          personaPayload,
+        );
         personaId = Number(personaCreated);
       }
 
@@ -872,9 +878,14 @@ export default function AlumnoPerfilPage() {
 
       let familiarId = addFamiliarId;
       if (familiarId) {
-        await api.familiares.update(familiarId, { id: familiarId, personaId } as any);
+        await identidad.familiares.update(
+          familiarId,
+          { id: familiarId, personaId } as any,
+        );
       } else {
-        const { data: familiarCreated } = await api.familiares.create({ personaId } as any);
+        const { data: familiarCreated } = await identidad.familiares.create({
+          personaId,
+        } as any);
         familiarId = Number(familiarCreated);
       }
 
@@ -882,7 +893,7 @@ export default function AlumnoPerfilPage() {
         throw new Error("No pudimos generar el vínculo del familiar");
       }
 
-      await api.alumnoFamiliares.create({
+      await identidad.alumnoFamiliares.create({
         alumnoId,
         familiarId,
         rolVinculo: addRol,

@@ -55,7 +55,12 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFamilyAlumnos } from "@/hooks/useFamilyAlumnos";
-import { api } from "@/services/api";
+import {
+  finanzas,
+  gestionAcademica,
+  identidad,
+  vidaEscolar,
+} from "@/services/api/modules";
 import { normalizeRole } from "@/lib/auth-roles";
 import type {
   AlumnoDTO,
@@ -217,7 +222,7 @@ export default function PagosPage() {
       return personaCache.current.get(personaId) ?? null;
     }
     try {
-      const res = await api.personasCore.getById(personaId);
+      const res = await identidad.personasCore.getById(personaId);
       personaCache.current.set(personaId, res.data ?? null);
       forcePersonaRefresh((value) => value + 1);
       return res.data ?? null;
@@ -231,7 +236,7 @@ export default function PagosPage() {
   const loadCuotas = useCallback(async () => {
     setCuotasLoading(true);
     try {
-      const res = await api.cuotas.list();
+      const res = await finanzas.cuotas.list();
       setCuotas(res.data ?? []);
       setCuotasError(null);
     } catch (error: any) {
@@ -244,7 +249,7 @@ export default function PagosPage() {
   const loadPagos = useCallback(async () => {
     setPagosLoading(true);
     try {
-      const res = await api.pagosCuota.list();
+      const res = await finanzas.pagosCuota.list();
       setPagos(res.data ?? []);
       setPagosError(null);
     } catch (error: any) {
@@ -259,7 +264,7 @@ export default function PagosPage() {
   const loadRecibos = useCallback(async () => {
     setRecibosLoading(true);
     try {
-      const res = await api.recibos.list();
+      const res = await finanzas.recibos.list();
       setRecibos(res.data ?? []);
       setRecibosError(null);
     } catch (error: any) {
@@ -287,7 +292,7 @@ export default function PagosPage() {
   useEffect(() => {
     if (!shouldLoadSecciones) return;
     setSeccionesLoading(true);
-    api.secciones
+    gestionAcademica.secciones
       .list()
       .then((res) => setSecciones(res.data ?? []))
       .catch(() => setSecciones([]))
@@ -296,7 +301,7 @@ export default function PagosPage() {
 
   useEffect(() => {
     if (!shouldLoadMatriculas) return;
-    api.matriculas
+    vidaEscolar.matriculas
       .list()
       .then((res) => setMatriculas(res.data ?? []))
       .catch(() => setMatriculas([]));
@@ -304,7 +309,7 @@ export default function PagosPage() {
 
   useEffect(() => {
     if (!shouldLoadAlumnos) return;
-    api.alumnos
+    identidad.alumnos
       .list()
       .then((res) => setAlumnos(res.data ?? []))
       .catch(() => setAlumnos([]));
@@ -312,7 +317,7 @@ export default function PagosPage() {
 
   useEffect(() => {
     if (!shouldLoadEmpleados) return;
-    api.empleados
+    identidad.empleados
       .list()
       .then((res) => setEmpleados(res.data ?? []))
       .catch(() => setEmpleados([]));
@@ -657,7 +662,7 @@ export default function PagosPage() {
 
     setCreatingCuota(true);
     try {
-      const res = await api.cuotas.bulkCreate(payload);
+      const res = await finanzas.cuotas.bulkCreate(payload);
       const creadas = res.data?.length ?? 0;
       if (creadas > 0) {
         toast.success(`Se generaron ${creadas} cuotas`);
@@ -706,7 +711,7 @@ export default function PagosPage() {
           recibiConforme: false,
           comprobanteArchivoId: pagoForm.comprobanteId || undefined,
         };
-        await api.recibos.create(payload);
+        await finanzas.recibos.create(payload);
         toast.success("Recibo de sueldo registrado");
         await loadRecibos();
       } else {
@@ -727,7 +732,7 @@ export default function PagosPage() {
           referenciaExterna: pagoForm.referencia || undefined,
           comprobanteArchivoId: pagoForm.comprobanteId || undefined,
         };
-        await api.pagosCuota.create(payload);
+        await finanzas.pagosCuota.create(payload);
         toast.success("Pago registrado correctamente");
         await Promise.all([loadPagos(), loadCuotas()]);
       }
@@ -747,7 +752,7 @@ export default function PagosPage() {
   const actualizarEstadoPago = useCallback(
     async (pagoId: number, estado: EstadoPago) => {
       try {
-        await api.pagosCuota.updateEstado(pagoId, {
+        await finanzas.pagosCuota.updateEstado(pagoId, {
           estadoPago: estado,
           fechaAcreditacion:
             estado === EstadoPago.ACREDITADO
@@ -783,7 +788,7 @@ export default function PagosPage() {
         return;
       }
       try {
-        await api.recibos.update(recibo.id, {
+        await finanzas.recibos.update(recibo.id, {
           ...recibo,
           recibiConforme: value,
           fechaConfirmacion: value ? new Date().toISOString() : (null as any),

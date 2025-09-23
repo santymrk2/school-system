@@ -1,16 +1,19 @@
 // services/api/modules/empleados.ts
 import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
+import type { PageResponse } from "@/types/pagination";
 
 /** ================= Empleados ================= */
 type EmpleadoListParams = {
   search?: string;
   rolEmpleado?: DTO.RolEmpleado;
+  page?: number;
+  size?: number;
 };
 
 export const empleados = {
   list: (params?: EmpleadoListParams) =>
-    http.get<DTO.EmpleadoDTO[]>("/api/empleados", {
+    http.get<PageResponse<DTO.EmpleadoDTO>>("/api/empleados", {
       params,
     }),
   byId: (id: number) => http.get<DTO.EmpleadoDTO>("/api/empleados/" + id),

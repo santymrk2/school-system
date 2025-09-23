@@ -401,6 +401,7 @@ export default function PersonalPage() {
   const router = useRouter();
   const mountedRef = useRef(true);
   const searchRef = useRef<string>("");
+  const currentPageRef = useRef(1);
 
   useEffect(() => {
     return () => {
@@ -433,6 +434,8 @@ export default function PersonalPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = DEFAULT_PAGE_SIZE;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<number>>(new Set<number>());
 
   const [dataLoading, setDataLoading] = useState(true);
@@ -586,19 +589,13 @@ export default function PersonalPage() {
   }, [searchTerm]);
 
   useEffect(() => {
-    refreshData(debouncedSearchTerm);
+    refreshData({ search: debouncedSearchTerm, page: 1 });
   }, [debouncedSearchTerm, refreshData]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [
-    debouncedSearchTerm,
-    nivelFilter,
-    seccionFilter,
-    materiaFilter,
-    cargoFilter,
-    situacionFilter,
-  ]);
+    currentPageRef.current = 1;
+  }, [nivelFilter, seccionFilter, materiaFilter, cargoFilter, situacionFilter]);
 
   useEffect(() => {
     setExpandedEmployees(new Set<number>());
@@ -611,14 +608,26 @@ export default function PersonalPage() {
     situacionFilter,
   ]);
 
-  const fetchData = useCallback(async (searchValue: string = "") => {
-    const normalizedSearch = searchValue.trim();
-    const empleadosRes = await identidad.empleados.list(
-      normalizedSearch.length > 0 ? { search: normalizedSearch } : undefined,
-    );
-    const empleados = (empleadosRes.data ?? []) as EmpleadoDTO[];
+  const fetchData = useCallback(
+    async (options: { search?: string; page?: number } = {}) => {
+      const normalizedSearch = (options.search ?? "").trim();
+      const requestedPage = Math.max(1, options.page ?? 1);
+      const empleadosRes = await identidad.empleados.list({
+        ...(normalizedSearch.length > 0 ? { search: normalizedSearch } : {}),
+        page: requestedPage - 1,
+        size: pageSize,
+      });
+      const empleadoPage = empleadosRes.data;
+      const empleados = (empleadoPage?.content ?? []) as EmpleadoDTO[];
 
-    const [
+      const pageInfo = {
+        page: (empleadoPage?.number ?? requestedPage - 1) + 1,
+        totalPages: empleadoPage?.totalPages ?? 1,
+        totalElements: empleadoPage?.totalElements ?? empleados.length,
+        size: empleadoPage?.size ?? pageSize,
+      };
+
+      const [
       licencias,
       formaciones,
       secciones,
@@ -740,10 +749,10 @@ export default function PersonalPage() {
 
     const referenciaIso = todayIso();
 
-    const personalData: EmpleadoView[] = empleados.map((empleado) => {
-      const persona =
-        typeof empleado.personaId === "number"
-          ? personaMap.get(empleado.personaId) ?? null
+      const personalData: EmpleadoView[] = empleados.map((empleado) => {
+        const persona =
+          typeof empleado.personaId === "number"
+            ? personaMap.get(empleado.personaId) ?? null
           : null;
 
       const seccionesIds = Array.from(
@@ -795,34 +804,50 @@ export default function PersonalPage() {
       };
     });
 
-    const licenciasOrdenadas = [...licencias].sort((a, b) =>
-      getLicenseStart(b).localeCompare(getLicenseStart(a)),
-    );
+      const licenciasOrdenadas = [...licencias].sort((a, b) =>
+        getLicenseStart(b).localeCompare(getLicenseStart(a)),
+      );
 
-    return { personalData, licenciasOrdenadas };
-  }, []);
-  const refreshData = useCallback(async (overrideSearch?: string) => {
-    setDataLoading(true);
-    setLoadError(null);
-    try {
-      const searchValue = (overrideSearch ?? searchRef.current ?? "").trim();
-      const { personalData, licenciasOrdenadas } = await fetchData(searchValue);
-      if (!mountedRef.current) return;
-      setPersonal(personalData);
-      setAllLicencias(licenciasOrdenadas);
-      searchRef.current = searchValue;
-    } catch (error) {
-      console.error("Error cargando personal", error);
-      if (!mountedRef.current) return;
-      setLoadError("No se pudo obtener la información del personal.");
-      setPersonal([]);
-      setAllLicencias([]);
-    } finally {
-      if (mountedRef.current) {
-        setDataLoading(false);
+      return { personalData, licenciasOrdenadas, pageInfo };
+    }, [pageSize]);
+  const refreshData = useCallback(
+    async (options: { search?: string; page?: number } = {}) => {
+      setDataLoading(true);
+      setLoadError(null);
+      try {
+        const searchValue = (options.search ?? searchRef.current ?? "").trim();
+        const requestedPage = Math.max(1, options.page ?? currentPageRef.current ?? 1);
+        const { personalData, licenciasOrdenadas, pageInfo } = await fetchData({
+          search: searchValue,
+          page: requestedPage,
+        });
+        if (!mountedRef.current) return;
+        setPersonal(personalData);
+        setAllLicencias(licenciasOrdenadas);
+        const resolvedPage = Math.max(1, pageInfo.page);
+        setCurrentPage(resolvedPage);
+        currentPageRef.current = resolvedPage;
+        setTotalPages(Math.max(1, pageInfo.totalPages));
+        setTotalItems(Math.max(0, pageInfo.totalElements));
+        searchRef.current = searchValue;
+      } catch (error) {
+        console.error("Error cargando personal", error);
+        if (!mountedRef.current) return;
+        setLoadError("No se pudo obtener la información del personal.");
+        setPersonal([]);
+        setAllLicencias([]);
+        setCurrentPage(1);
+        currentPageRef.current = 1;
+        setTotalPages(1);
+        setTotalItems(0);
+      } finally {
+        if (mountedRef.current) {
+          setDataLoading(false);
+        }
       }
-    }
-  }, [fetchData]);
+    },
+    [fetchData],
+  );
 
   const personalById = useMemo(() => {
     const map = new Map<number, EmpleadoView>();
@@ -1174,18 +1199,6 @@ export default function PersonalPage() {
     situacionFilter,
   ]);
 
-  useEffect(() => {
-    setCurrentPage((prev) => {
-      const maxPages = Math.max(1, Math.ceil(filteredPersonal.length / pageSize));
-      return Math.min(prev, maxPages);
-    });
-  }, [filteredPersonal.length, pageSize]);
-
-  const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(filteredPersonal.length / pageSize)),
-    [filteredPersonal.length, pageSize],
-  );
-
   const visiblePages = useMemo(() => {
     const maxVisible = 5;
     const half = Math.floor(maxVisible / 2);
@@ -1201,10 +1214,16 @@ export default function PersonalPage() {
     return pages;
   }, [currentPage, totalPages]);
 
-  const paginatedPersonal = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredPersonal.slice(start, start + pageSize);
-  }, [filteredPersonal, currentPage, pageSize]);
+  const paginatedPersonal = useMemo(() => filteredPersonal, [filteredPersonal]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      const target = Math.max(1, Math.min(page, totalPages));
+      if (target === currentPage) return;
+      refreshData({ page: target });
+    },
+    [currentPage, totalPages, refreshData],
+  );
 
   const empleadoOptions = useMemo(() => {
     return Array.from(empleadoNameMap.entries())
@@ -2123,6 +2142,14 @@ export default function PersonalPage() {
               renderLoadingState()
             ) : filteredPersonal.length > 0 ? (
               <div className="space-y-4">
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    Mostrando {paginatedPersonal.length} de {totalItems} integrantes
+                  </span>
+                  <span>
+                    Página {currentPage} de {totalPages}
+                  </span>
+                </div>
                 {paginatedPersonal.map((item, index) => {
                   const rawEmpleadoId = item.empleado.id;
                   const empleadoId = rawEmpleadoId ?? index;
@@ -2610,7 +2637,7 @@ export default function PersonalPage() {
                             onClick={(event) => {
                               event.preventDefault();
                               if (currentPage > 1) {
-                                setCurrentPage((prev) => prev - 1);
+                                handlePageChange(currentPage - 1);
                               }
                             }}
                             className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
@@ -2623,7 +2650,7 @@ export default function PersonalPage() {
                                 href="#"
                                 onClick={(event) => {
                                   event.preventDefault();
-                                  setCurrentPage(1);
+                                  handlePageChange(1);
                                 }}
                                 isActive={currentPage === 1}
                               >
@@ -2643,7 +2670,7 @@ export default function PersonalPage() {
                               href="#"
                               onClick={(event) => {
                                 event.preventDefault();
-                                setCurrentPage(page);
+                                handlePageChange(page);
                               }}
                               isActive={page === currentPage}
                             >
@@ -2664,7 +2691,7 @@ export default function PersonalPage() {
                                 href="#"
                                 onClick={(event) => {
                                   event.preventDefault();
-                                  setCurrentPage(totalPages);
+                                  handlePageChange(totalPages);
                                 }}
                                 isActive={currentPage === totalPages}
                               >
@@ -2679,7 +2706,7 @@ export default function PersonalPage() {
                             onClick={(event) => {
                               event.preventDefault();
                               if (currentPage < totalPages) {
-                                setCurrentPage((prev) => prev + 1);
+                                handlePageChange(currentPage + 1);
                               }
                             }}
                             className={

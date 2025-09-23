@@ -1,8 +1,18 @@
 import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
+import type { SpringPage } from "@/types/pagination";
 
 export const alumnos = {
   list: () => http.get<DTO.AlumnoDTO[]>("/api/alumnos"),
+  listPaged: (params?: {
+    page?: number;
+    size?: number;
+    search?: string;
+    seccionId?: number;
+  }) =>
+    http.get<SpringPage<DTO.AlumnoDTO>>("/api/alumnos/paginated", {
+      params,
+    }),
   byId: (id: number) => http.get<DTO.AlumnoDTO>("/api/alumnos/" + id),
   create: (body: DTO.AlumnoDTO) =>
     http.post<number>("/api/alumnos", body),

@@ -18,13 +18,13 @@ import java.util.List;
 import edu.ecep.base_app.shared.exception.ReferencedException;
 import edu.ecep.base_app.shared.exception.ReferencedWarning;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 
 import lombok.RequiredArgsConstructor;
-
-
 @Service @RequiredArgsConstructor
 public class AlumnoService {
 
@@ -44,6 +44,19 @@ public class AlumnoService {
                     return dto;
                 })
                 .toList();
+    }
+
+    public Page<AlumnoDTO> findPaged(Pageable pageable, String search, Long seccionId) {
+        String normalized = (search != null && !search.isBlank()) ? search.trim().toLowerCase() : null;
+        String likeTerm = normalized != null ? "%" + normalized + "%" : null;
+        LocalDate hoy = LocalDate.now();
+
+        return alumnoRepository.searchPaged(likeTerm, seccionId, hoy, pageable)
+                .map(a -> {
+                    AlumnoDTO dto = alumnoMapper.toDto(a);
+                    applySeccionActual(dto, a.getId());
+                    return dto;
+                });
     }
 
     public AlumnoDTO get(Long id) {

@@ -45,10 +45,16 @@ export default function AlumnosIndexPage() {
     "alumnos" | "aspirantes" | "historial"
   >("alumnos");
 
+  const PAGE_SIZE = 25;
   const [alumnos, setAlumnos] = useState<DTO.AlumnoDTO[]>([]);
   const [loadingAlumnos, setLoadingAlumnos] = useState(false);
   const [errorAlumnos, setErrorAlumnos] = useState<string | null>(null);
   const [seccionFiltro, setSeccionFiltro] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
 
   const {
     scope,
@@ -63,24 +69,131 @@ export default function AlumnosIndexPage() {
   const { hoyISO } = useActivePeriod();
 
   useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (scope !== "teacher") return;
+    if (!secciones.length) {
+      setSeccionFiltro("");
+      return;
+    }
+    if (seccionFiltro && secciones.some((s) => String(s.id) === seccionFiltro)) {
+      return;
+    }
+    const first = secciones[0];
+    if (first?.id) {
+      setSeccionFiltro(String(first.id));
+    }
+  }, [scope, secciones, seccionFiltro]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, seccionFiltro, scope]);
+
+  useEffect(() => {
     if (scope === "family" || scope === "student") return;
-    let cancelled = false;
-    (async () => {
-      setLoadingAlumnos(true);
+    if (selectedTab !== "alumnos") return;
+
+    if (scope === "teacher" && secciones.length === 0) {
+      setLoadingAlumnos(false);
+      setAlumnos([]);
+      setTotalItems(0);
+      setTotalPages(0);
       setErrorAlumnos(null);
-      try {
-        const res = await identidad.alumnos.list();
-        if (!cancelled) setAlumnos(res.data ?? []);
-      } catch (err: any) {
-        if (!cancelled) setErrorAlumnos(err?.message ?? "No se pudieron cargar los alumnos");
-      } finally {
+      return;
+    }
+
+    const parsedSeccionId =
+      seccionFiltro && seccionFiltro !== ""
+        ? Number.parseInt(seccionFiltro, 10)
+        : Number.NaN;
+    const validSeccionId = Number.isFinite(parsedSeccionId)
+      ? parsedSeccionId
+      : undefined;
+
+    if (scope === "teacher" && validSeccionId == null) {
+      setLoadingAlumnos(false);
+      setAlumnos([]);
+      setTotalItems(0);
+      setTotalPages(0);
+      setErrorAlumnos(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingAlumnos(true);
+    setErrorAlumnos(null);
+
+    const params: {
+      page: number;
+      size: number;
+      search?: string;
+      seccionId?: number;
+    } = {
+      page,
+      size: PAGE_SIZE,
+    };
+
+    const searchValue = debouncedSearch.trim();
+    if (searchValue) {
+      params.search = searchValue;
+    }
+
+    if (validSeccionId != null) {
+      params.seccionId = validSeccionId;
+    }
+
+    identidad.alumnos
+      .listPaged(params)
+      .then((res) => {
+        if (cancelled) return;
+        const data = res.data;
+        setAlumnos(data?.content ?? []);
+        setTotalItems(data?.totalElements ?? 0);
+        setTotalPages(data?.totalPages ?? 0);
+        const nextPage = typeof data?.number === "number" ? data.number : page;
+        if (nextPage !== page) {
+          setPage(nextPage);
+        }
+        const reportedSize = typeof data?.size === "number" ? data.size : PAGE_SIZE;
+        setPageSize(reportedSize);
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setErrorAlumnos(err?.message ?? "No se pudieron cargar los alumnos");
+        setAlumnos([]);
+        setTotalItems(0);
+        setTotalPages(0);
+      })
+      .finally(() => {
         if (!cancelled) setLoadingAlumnos(false);
-      }
-    })();
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [scope]);
+  }, [
+    scope,
+    selectedTab,
+    secciones,
+    seccionFiltro,
+    debouncedSearch,
+    page,
+  ]);
+
+  const teacherWithoutSecciones = scope === "teacher" && secciones.length === 0;
+  const teacherNeedsSelection =
+    scope === "teacher" && !teacherWithoutSecciones && !seccionFiltro;
+  const seccionPlaceholder =
+    scope === "teacher" ? "Seleccioná una sección" : "Todas las secciones";
+  const showingFrom =
+    totalItems === 0 || alumnos.length === 0 ? 0 : page * pageSize + 1;
+  const showingTo =
+    totalItems === 0 || alumnos.length === 0
+      ? 0
+      : Math.min(showingFrom + alumnos.length - 1, totalItems);
 
   const seccionOptions = useMemo(() => {
     if (secciones.length) {
@@ -99,20 +212,6 @@ export default function AlumnosIndexPage() {
     return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
   }, [secciones, alumnos]);
 
-  const alumnosFiltrados = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    return alumnos.filter((alumno) => {
-      if (seccionFiltro && String(alumno.seccionActualId) !== seccionFiltro) {
-        return false;
-      }
-      if (!q) return true;
-      const nombre = `${alumno.nombre ?? ""} ${alumno.apellido ?? ""}`.toLowerCase();
-      const dni = (alumno.dni ?? "").toLowerCase();
-      const seccion = (alumno.seccionActualNombre ?? "").toLowerCase();
-      return nombre.includes(q) || dni.includes(q) || seccion.includes(q);
-    });
-  }, [alumnos, searchTerm, seccionFiltro]);
-
   return (
     <DashboardLayout>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -130,7 +229,7 @@ export default function AlumnosIndexPage() {
                     : "Vista de hijos y perfiles"}
             </div>
           </div>
-          {(scope === "staff" || scope === "teacher") && (
+          {scope === "staff" && (
             <div className="flex items-center space-x-2">
               <Button onClick={() => router.push("/dashboard/alumnos/alta")}>
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -184,14 +283,19 @@ export default function AlumnosIndexPage() {
             <TabsContent value="alumnos" className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Select
-                  value={seccionFiltro}
-                  onValueChange={(value) => setSeccionFiltro(value === "__all" ? "" : value)}
+                  value={seccionFiltro || undefined}
+                  onValueChange={(value) =>
+                    setSeccionFiltro(value === "__all" ? "" : value)
+                  }
+                  disabled={teacherWithoutSecciones}
                 >
                   <SelectTrigger className="w-[220px]">
-                    <SelectValue placeholder="Todas las secciones" />
+                    <SelectValue placeholder={seccionPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all">Todas las secciones</SelectItem>
+                    {scope === "staff" && (
+                      <SelectItem value="__all">Todas las secciones</SelectItem>
+                    )}
                     {seccionOptions.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.label}
@@ -199,7 +303,7 @@ export default function AlumnosIndexPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {seccionFiltro && (
+                {scope === "staff" && seccionFiltro && (
                   <Badge variant="outline">Filtrando por sección</Badge>
                 )}
               </div>
@@ -212,41 +316,89 @@ export default function AlumnosIndexPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {loadingAlumnos ? (
+                  {teacherWithoutSecciones ? (
+                    <div className="text-sm text-muted-foreground py-6">
+                      No tenés secciones asignadas para ver alumnos.
+                    </div>
+                  ) : teacherNeedsSelection ? (
+                    <div className="text-sm text-muted-foreground py-6">
+                      Seleccioná una sección para ver los alumnos asignados.
+                    </div>
+                  ) : loadingAlumnos ? (
                     <LoadingState label="Cargando alumnos…" />
                   ) : errorAlumnos ? (
                     <div className="text-sm text-red-600 py-6">{errorAlumnos}</div>
-                  ) : !alumnosFiltrados.length ? (
+                  ) : alumnos.length === 0 ? (
                     <div className="text-sm text-muted-foreground py-6">
                       No se encontraron alumnos con los filtros aplicados.
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Apellido</TableHead>
-                          <TableHead>DNI</TableHead>
-                          <TableHead>Sección actual</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {alumnosFiltrados.map((alumno) => (
-                          <TableRow
-                            key={alumno.id}
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => alumno.id && router.push(`/dashboard/alumnos/${alumno.id}`)}
-                          >
-                            <TableCell className="font-medium">
-                              {alumno.nombre ?? "—"}
-                            </TableCell>
-                            <TableCell>{alumno.apellido ?? "—"}</TableCell>
-                            <TableCell>{alumno.dni ?? "—"}</TableCell>
-                            <TableCell>{alumno.seccionActualNombre ?? "Sin asignar"}</TableCell>
+                    <>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead>Apellido</TableHead>
+                            <TableHead>DNI</TableHead>
+                            <TableHead>Sección actual</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {alumnos.map((alumno) => (
+                            <TableRow
+                              key={alumno.id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() =>
+                                alumno.id && router.push(`/dashboard/alumnos/${alumno.id}`)
+                              }
+                            >
+                              <TableCell className="font-medium">
+                                {alumno.nombre ?? "—"}
+                              </TableCell>
+                              <TableCell>{alumno.apellido ?? "—"}</TableCell>
+                              <TableCell>{alumno.dni ?? "—"}</TableCell>
+                              <TableCell>
+                                {alumno.seccionActualNombre ?? "Sin asignar"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <div className="mt-4 flex flex-col gap-2 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                        <div>
+                          Mostrando {showingFrom}-{showingTo} de {totalItems} alumno
+                          {totalItems === 1 ? "" : "s"}.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+                            disabled={page === 0 || loadingAlumnos}
+                          >
+                            Anterior
+                          </Button>
+                          <div>
+                            Página {totalPages === 0 ? 0 : page + 1} de {totalPages}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setPage((prev) => {
+                                if (totalPages === 0) return prev;
+                                return Math.min(totalPages - 1, Math.max(0, prev + 1));
+                              })
+                            }
+                            disabled={
+                              totalPages === 0 || page >= totalPages - 1 || loadingAlumnos
+                            }
+                          >
+                            Siguiente
+                          </Button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

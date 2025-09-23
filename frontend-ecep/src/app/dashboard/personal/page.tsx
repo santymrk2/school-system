@@ -558,11 +558,23 @@ export default function PersonalPage() {
   useEffect(() => {
     if (!accessDialogOpen) {
       setActiveAccess(null);
-      setAccessForm({
-        email: "",
-        password: "",
-        confirmPassword: "",
-        roles: [],
+      setAccessForm((prev) => {
+        const isAlreadyPristine =
+          prev.email === "" &&
+          prev.password === "" &&
+          prev.confirmPassword === "" &&
+          prev.roles.length === 0;
+
+        if (isAlreadyPristine) {
+          return prev;
+        }
+
+        return {
+          email: "",
+          password: "",
+          confirmPassword: "",
+          roles: [],
+        };
       });
       setSavingAccess(false);
       return;
@@ -572,12 +584,26 @@ export default function PersonalPage() {
       activeAccess?.empleado ?? null,
       activeAccess?.persona ?? null,
     );
+    const normalizedRoles = normalizeRoles(suggestedRoles);
+    const email = activeAccess?.persona?.email ?? "";
 
-    setAccessForm({
-      email: activeAccess?.persona?.email ?? "",
-      password: "",
-      confirmPassword: "",
-      roles: normalizeRoles(suggestedRoles),
+    setAccessForm((prev) => {
+      const hasSameEmail = prev.email === email;
+      const hasEmptyPasswords = prev.password === "" && prev.confirmPassword === "";
+      const hasSameRoles =
+        prev.roles.length === normalizedRoles.length &&
+        prev.roles.every((role, index) => role === normalizedRoles[index]);
+
+      if (hasSameEmail && hasEmptyPasswords && hasSameRoles) {
+        return prev;
+      }
+
+      return {
+        email,
+        password: "",
+        confirmPassword: "",
+        roles: normalizedRoles,
+      };
     });
   }, [accessDialogOpen, activeAccess]);
 

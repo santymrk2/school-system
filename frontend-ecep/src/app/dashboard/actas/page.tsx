@@ -40,6 +40,7 @@ import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { toast } from "sonner";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
+import { pageContent } from "@/lib/page-response";
 import FamilyActasView from "@/app/dashboard/actas/_components/FamilyActasView";
 
 import NewActaDialog from "./_components/NewActaDialog";
@@ -177,7 +178,7 @@ export default function AccidentesIndexPage() {
         );
         setActas(actasRes.data ?? []);
         setSecciones(secs);
-        setPersonal(personalRes.data ?? []);
+        setPersonal(pageContent<EmpleadoDTO>(personalRes.data));
       } finally {
         if (alive) setLoading(false);
       }

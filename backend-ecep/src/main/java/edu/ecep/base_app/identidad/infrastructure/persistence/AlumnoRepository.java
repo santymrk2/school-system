@@ -43,9 +43,6 @@ public interface AlumnoRepository extends JpaRepository<Alumno, Long> {
                     or lower(p.apellido) like :search
                     or lower(p.dni) like :search
               )
-            order by lower(coalesce(p.apellido, '')),
-                     lower(coalesce(p.nombre, '')),
-                     a.id
             """)
     Page<Alumno> searchPaged(
             @Param("search") String search,

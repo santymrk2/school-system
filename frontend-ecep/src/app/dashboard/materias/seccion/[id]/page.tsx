@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Plus, UserPlus } from "lucide-react";
 import { gestionAcademica, identidad } from "@/services/api/modules";
+import { pageContent } from "@/lib/page-response";
 import type {
   SeccionDTO,
   SeccionMateriaDTO,
@@ -209,7 +210,7 @@ export default function MateriasSeccionPage() {
           })
           .filter((a): a is Asignacion => !!a && smIds.has(a.seccionMateriaId));
 
-        const empleados = (empRes.data ?? []) as any[];
+        const empleados = pageContent<any>(empRes.data);
         const personaIds = Array.from(
           new Set(empleados.map((e) => e.personaId).filter(Boolean)),
         ) as number[];

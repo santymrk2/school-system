@@ -247,32 +247,6 @@ export default function ChatComponent() {
   }, [activeChats, refreshOnlineStatus]);
 
   useEffect(() => {
-    const personaIdParam = searchParams?.get("personaId");
-    if (!personaIdParam) return;
-    const parsed = Number.parseInt(personaIdParam, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
-    if (selectedUserId === parsed) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const { data } = await identidad.personasCore.getResumen(parsed);
-        if (!data || cancelled) return;
-        await openChat(data);
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("No se pudo abrir el chat solicitado", error);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams, selectedUserId, openChat]);
-
-  useEffect(() => {
     const previousTarget = typingStateRef.current.targetId;
     if (
       previousTarget &&
@@ -314,6 +288,32 @@ export default function ChatComponent() {
     },
     [loadHistory, markRead, refreshOnlineStatus],
   );
+
+  useEffect(() => {
+    const personaIdParam = searchParams?.get("personaId");
+    if (!personaIdParam) return;
+    const parsed = Number.parseInt(personaIdParam, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    if (selectedUserId === parsed) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await identidad.personasCore.getResumen(parsed);
+        if (!data || cancelled) return;
+        await openChat(data);
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("No se pudo abrir el chat solicitado", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, selectedUserId, openChat]);
 
   const finalizeTyping = () => {
     if (typingTimeoutRef.current) {

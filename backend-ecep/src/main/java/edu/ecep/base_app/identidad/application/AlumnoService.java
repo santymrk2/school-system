@@ -19,6 +19,7 @@ import edu.ecep.base_app.shared.exception.ReferencedException;
 import edu.ecep.base_app.shared.exception.ReferencedWarning;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -51,7 +52,16 @@ public class AlumnoService {
         String likeTerm = normalized != null ? "%" + normalized + "%" : null;
         LocalDate hoy = LocalDate.now();
 
-        return alumnoRepository.searchPaged(likeTerm, seccionId, hoy, pageable)
+        Pageable effectivePageable = pageable;
+        if (pageable.getSort().isUnsorted()) {
+            Sort defaultSort = Sort.by(
+                    Sort.Order.by("persona.apellido").ignoreCase(),
+                    Sort.Order.by("persona.nombre").ignoreCase(),
+                    Sort.Order.by("id"));
+            effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), defaultSort);
+        }
+
+        return alumnoRepository.searchPaged(likeTerm, seccionId, hoy, effectivePageable)
                 .map(a -> {
                     AlumnoDTO dto = alumnoMapper.toDto(a);
                     applySeccionActual(dto, a.getId());

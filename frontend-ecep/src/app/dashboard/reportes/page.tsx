@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
+import { pageContent } from "@/lib/page-response";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { LicenseSummaryCards } from "./_components/LicenseSummaryCards";
@@ -836,7 +837,7 @@ export default function ReportesPage() {
       try {
         const res = await identidad.empleados.list();
         if (!alive) return;
-        const empleados = (res.data ?? []) as EmpleadoDTO[];
+        const empleados = pageContent<EmpleadoDTO>(res.data);
         const personaIds = Array.from(
           new Set<number>(empleados.map((emp: any) => emp.personaId).filter(Boolean)),
         );

@@ -1,12 +1,17 @@
-import { Dot, Lock, Minus } from "lucide-react";
-
+import { Circle, Lock, Minus } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TRIMESTRE_ESTADO_LABEL, type TrimestreEstado } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
 
 const CIRCLE_STYLES: Record<TrimestreEstado, string> = {
-  activo: "bg-emerald-500 text-emerald-50",
-  inactivo: "bg-white text-foreground border border-border",
-  cerrado: "bg-red-500 text-red-50",
+  activo: "bg-emerald-100 text-emerald-400",
+  inactivo: "bg-gray-100 text-gray-400",
+  cerrado: "bg-red-100 text-red-400",
 };
 
 export interface TrimestreEstadoBadgeProps {
@@ -28,17 +33,17 @@ export function TrimestreEstadoBadge({
 }: TrimestreEstadoBadgeProps) {
   const finalLabel = label ?? TRIMESTRE_ESTADO_LABEL[estado] ?? "";
   const circleClasses = cn(
-    "flex h-6 w-6 items-center justify-center rounded-full text-current",
+    "flex h-4 w-4 items-center justify-center rounded-full text-current",
     CIRCLE_STYLES[estado],
     circleClassName,
   );
-  const iconClasses = cn("h-4 w-4", iconClassName);
+  const iconClasses = cn("h-2 w-2", iconClassName);
 
   let icon = null;
   switch (estado) {
     case "activo":
       icon = (
-        <Dot
+        <Circle
           className={iconClasses}
           stroke="none"
           strokeWidth={0}
@@ -47,24 +52,51 @@ export function TrimestreEstadoBadge({
       );
       break;
     case "inactivo":
-      icon = <Minus className={iconClasses} strokeWidth={3} />;
+      icon = (
+        <Circle
+          className={iconClasses}
+          strokeWidth={0}
+          stroke="none"
+          fill="currentColor"
+        />
+      );
       break;
     case "cerrado":
     default:
-      icon = <Lock className={iconClasses} strokeWidth={2.5} />;
+      icon = (
+        <Circle
+          className={iconClasses}
+          stroke="none"
+          strokeWidth={0}
+          fill="currentColor"
+        />
+      );
       break;
   }
 
   return (
-    <span className={cn("inline-flex items-center gap-2 text-xs font-medium", className)}>
-      <span className={circleClasses} aria-hidden="true">
-        {icon}
-      </span>
-      {showLabel ? (
-        <span>{finalLabel}</span>
-      ) : finalLabel ? (
-        <span className="sr-only">{finalLabel}</span>
-      ) : null}
-    </span>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 text-xs font-medium",
+              className,
+            )}
+          >
+            <span className={circleClasses} aria-hidden="true">
+              {icon}
+            </span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {showLabel ? (
+            <span>{finalLabel}</span>
+          ) : finalLabel ? (
+            <span className="sr-only">{finalLabel}</span>
+          ) : null}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

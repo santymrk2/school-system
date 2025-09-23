@@ -27,22 +27,28 @@ public interface AlumnoRepository extends JpaRepository<Alumno, Long> {
 
     @EntityGraph(attributePaths = "persona")
     @Query("""
-            select distinct a
+            select a
             from Alumno a
             join a.persona p
-            left join a.matriculas m with m.activo = true
-            left join MatriculaSeccionHistorial msh
-                on msh.matricula = m
-                and msh.activo = true
-                and msh.desde <= :fecha
-                and (msh.hasta is null or msh.hasta >= :fecha)
-            where (:seccionId is null or msh.seccion.id = :seccionId)
-              and (
+            where (
                     :search is null
                     or lower(p.nombre) like :search
                     or lower(p.apellido) like :search
                     or lower(p.dni) like :search
-              )
+            )
+              and (
+                    :seccionId is null
+                    or exists (
+                        select 1
+                        from MatriculaSeccionHistorial msh
+                        where msh.matricula.alumno = a
+                          and msh.matricula.activo = true
+                          and msh.activo = true
+                          and msh.desde <= :fecha
+                          and (msh.hasta is null or msh.hasta >= :fecha)
+                          and msh.seccion.id = :seccionId
+                    )
+            )
             """)
     Page<Alumno> searchPaged(
             @Param("search") String search,

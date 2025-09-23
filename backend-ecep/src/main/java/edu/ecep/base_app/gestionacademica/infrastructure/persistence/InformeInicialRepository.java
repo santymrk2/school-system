@@ -1,7 +1,6 @@
-package edu.ecep.base_app.vidaescolar.infrastructure.persistence;
+package edu.ecep.base_app.gestionacademica.infrastructure.persistence;
 
-import edu.ecep.base_app.identidad.domain.Alumno;
-import edu.ecep.base_app.vidaescolar.domain.InformeInicial;
+import edu.ecep.base_app.gestionacademica.domain.InformeInicial;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 

@@ -1,12 +1,11 @@
-package edu.ecep.base_app.vidaescolar.application;
+package edu.ecep.base_app.gestionacademica.application;
 
-import edu.ecep.base_app.vidaescolar.domain.InformeInicial;
-import edu.ecep.base_app.gestionacademica.domain.Trimestre;
-import edu.ecep.base_app.vidaescolar.presentation.dto.InformeInicialCreateDTO;
-import edu.ecep.base_app.vidaescolar.presentation.dto.InformeInicialDTO;
+import edu.ecep.base_app.gestionacademica.domain.InformeInicial;
+import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialCreateDTO;
+import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialDTO;
+import edu.ecep.base_app.gestionacademica.infrastructure.mapper.InformeInicialMapper;
+import edu.ecep.base_app.gestionacademica.infrastructure.persistence.InformeInicialRepository;
 import edu.ecep.base_app.gestionacademica.infrastructure.persistence.TrimestreRepository;
-import edu.ecep.base_app.vidaescolar.infrastructure.mapper.InformeInicialMapper;
-import edu.ecep.base_app.vidaescolar.infrastructure.persistence.InformeInicialRepository;
 import edu.ecep.base_app.shared.exception.NotFoundException;
 import java.util.List;
 

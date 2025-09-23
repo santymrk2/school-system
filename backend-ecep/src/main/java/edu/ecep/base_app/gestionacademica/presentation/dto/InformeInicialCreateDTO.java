@@ -1,4 +1,4 @@
-package edu.ecep.base_app.vidaescolar.presentation.dto;
+package edu.ecep.base_app.gestionacademica.presentation.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,13 +9,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class InformeInicialDTO {
-    Long id;
+public class InformeInicialCreateDTO {
     @NotNull
     Long trimestreId;
     @NotNull
     Long matriculaId;
     @NotBlank
     String descripcion;
-    boolean publicado;
 }

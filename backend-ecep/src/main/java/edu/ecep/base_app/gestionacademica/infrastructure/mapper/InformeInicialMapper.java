@@ -1,8 +1,8 @@
-package edu.ecep.base_app.vidaescolar.infrastructure.mapper;
+package edu.ecep.base_app.gestionacademica.infrastructure.mapper;
 
-import edu.ecep.base_app.vidaescolar.domain.InformeInicial;
-import edu.ecep.base_app.vidaescolar.presentation.dto.InformeInicialCreateDTO;
-import edu.ecep.base_app.vidaescolar.presentation.dto.InformeInicialDTO;
+import edu.ecep.base_app.gestionacademica.domain.InformeInicial;
+import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialCreateDTO;
+import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;

@@ -45,6 +45,11 @@ import { gestionAcademica, identidad } from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import { displayRole } from "@/lib/auth-roles";
 import {
+  DEFAULT_GENERO_VALUE,
+  GENERO_OPTIONS,
+  normalizeGenero,
+} from "@/lib/genero";
+import {
   RolEmpleado,
   UserRole,
   type AsignacionDocenteMateriaDTO,
@@ -96,13 +101,6 @@ const tipoLicenciaOptions = [
 const DEFAULT_SITUACION = "Activo";
 const LICENCIA_SITUACION = "En licencia";
 
-const GENERO_PRESET_OPTIONS = [
-  { value: "Femenino", label: "Femenino" },
-  { value: "Masculino", label: "Masculino" },
-  { value: "No binario", label: "No binario" },
-  { value: "Otro", label: "Otro / Prefiere no decir" },
-];
-
 const ESTADO_CIVIL_PRESET_OPTIONS = [
   { value: "Soltero/a", label: "Soltero/a" },
   { value: "Casado/a", label: "Casado/a" },
@@ -141,7 +139,7 @@ const initialPersonaForm = {
   apellido: "",
   dni: "",
   fechaNacimiento: "",
-  genero: "",
+  genero: DEFAULT_GENERO_VALUE,
   estadoCivil: "",
   nacionalidad: "",
   domicilio: "",
@@ -851,19 +849,7 @@ export default function PersonalPage() {
     return Array.from(set.values()).sort((a, b) => a.localeCompare(b));
   }, [personal]);
 
-  const generoSelectOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    GENERO_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
-    personal.forEach((p) => {
-      const value = p.persona?.genero?.trim();
-      if (value) {
-        map.set(value, value);
-      }
-    });
-    return Array.from(map.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
-  }, [personal]);
+  const generoSelectOptions = useMemo(() => GENERO_OPTIONS, []);
 
   const estadoCivilSelectOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -1194,7 +1180,7 @@ export default function PersonalPage() {
         apellido: persona.apellido ?? "",
         dni: formatDni(persona.dni ?? ""),
         fechaNacimiento: persona.fechaNacimiento ?? "",
-        genero: persona.genero ?? "",
+        genero: normalizeGenero(persona.genero) || DEFAULT_GENERO_VALUE,
         estadoCivil: persona.estadoCivil ?? "",
         nacionalidad: persona.nacionalidad ?? "",
         domicilio: persona.domicilio ?? "",

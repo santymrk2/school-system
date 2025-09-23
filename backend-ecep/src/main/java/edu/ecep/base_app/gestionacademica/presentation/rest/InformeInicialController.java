@@ -1,6 +1,6 @@
-package edu.ecep.base_app.vidaescolar.presentation.rest;
+package edu.ecep.base_app.gestionacademica.presentation.rest;
 
-import edu.ecep.base_app.vidaescolar.application.InformeInicialService;
+import edu.ecep.base_app.gestionacademica.application.InformeInicialService;
 
 import java.util.List;
 
@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 
-import edu.ecep.base_app.vidaescolar.presentation.dto.*;
+import edu.ecep.base_app.gestionacademica.presentation.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 

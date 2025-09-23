@@ -61,7 +61,7 @@ export default function SeccionAlumnosPage() {
             {alumnos.map((a) => (
               <Card
                 key={a.matriculaId ?? `${a.alumnoId}-mat`}
-                className="hover:shadow-md transition-shadow"
+                className="transition-colors hover:border-primary"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">

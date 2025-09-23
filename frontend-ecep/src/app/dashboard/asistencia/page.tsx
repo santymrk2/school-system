@@ -178,7 +178,7 @@ function TeacherView() {
         const turnoLabel = formatTurnoLabel(seccion.turno);
 
         return (
-          <Card key={seccion.id} className="hover:shadow-md transition-shadow">
+          <Card key={seccion.id} className="transition-colors hover:border-primary">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">

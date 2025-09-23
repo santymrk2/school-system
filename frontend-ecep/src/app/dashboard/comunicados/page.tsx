@@ -431,7 +431,7 @@ function FeedList({
       {items.map((c) => {
         const fecha = fechaVisible(c);
         return (
-          <Card key={c.id} className="hover:shadow-sm transition">
+          <Card key={c.id} className="transition-colors hover:border-primary">
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">

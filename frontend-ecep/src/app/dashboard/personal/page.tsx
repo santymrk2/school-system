@@ -614,26 +614,6 @@ export default function PersonalPage() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  useEffect(() => {
-    refreshData({ search: debouncedSearchTerm, page: 1 });
-  }, [debouncedSearchTerm, refreshData]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-    currentPageRef.current = 1;
-  }, [nivelFilter, seccionFilter, materiaFilter, cargoFilter, situacionFilter]);
-
-  useEffect(() => {
-    setExpandedEmployees(new Set<number>());
-  }, [
-    debouncedSearchTerm,
-    nivelFilter,
-    seccionFilter,
-    materiaFilter,
-    cargoFilter,
-    situacionFilter,
-  ]);
-
   const fetchData = useCallback(
     async (options: { search?: string; page?: number } = {}) => {
       const normalizedSearch = (options.search ?? "").trim();
@@ -654,195 +634,203 @@ export default function PersonalPage() {
       };
 
       const [
-      licencias,
-      formaciones,
-      secciones,
-      materias,
-      asignacionesSeccion,
-      asignacionesMateria,
-    ] = await Promise.all([
-      safeRequest<LicenciaDTO[]>(
-        identidad.licencias.list(),
-        [] as LicenciaDTO[],
-        "No se pudieron obtener las licencias",
-      ),
-      safeRequest<FormacionAcademicaDTO[]>(
-        identidad.formaciones.list(),
-        [] as FormacionAcademicaDTO[],
-        "No se pudo obtener la formación académica",
-      ),
-      safeRequest<SeccionDTO[]>(
-        gestionAcademica.secciones.list(),
-        [] as SeccionDTO[],
-        "No se pudieron obtener las secciones",
-      ),
-      safeRequest<MateriaDTO[]>(
-        gestionAcademica.materias.list(),
-        [] as MateriaDTO[],
-        "No se pudieron obtener las materias",
-      ),
-      safeRequest<AsignacionDocenteSeccionDTO[]>(
-        gestionAcademica.asignacionDocenteSeccion.list(),
-        [] as AsignacionDocenteSeccionDTO[],
-        "No se pudieron obtener las asignaciones de sección",
-      ),
-      safeRequest<AsignacionDocenteMateriaDTO[]>(
-        gestionAcademica.asignacionDocenteMateria.list(),
-        [] as AsignacionDocenteMateriaDTO[],
-        "No se pudieron obtener las asignaciones de materia",
-      ),
-    ]);
+        licencias,
+        formaciones,
+        secciones,
+        materias,
+        asignacionesSeccion,
+        asignacionesMateria,
+      ] = await Promise.all([
+        safeRequest<LicenciaDTO[]>(
+          identidad.licencias.list(),
+          [] as LicenciaDTO[],
+          "No se pudieron obtener las licencias",
+        ),
+        safeRequest<FormacionAcademicaDTO[]>(
+          identidad.formaciones.list(),
+          [] as FormacionAcademicaDTO[],
+          "No se pudo obtener la formación académica",
+        ),
+        safeRequest<SeccionDTO[]>(
+          gestionAcademica.secciones.list(),
+          [] as SeccionDTO[],
+          "No se pudieron obtener las secciones",
+        ),
+        safeRequest<MateriaDTO[]>(
+          gestionAcademica.materias.list(),
+          [] as MateriaDTO[],
+          "No se pudieron obtener las materias",
+        ),
+        safeRequest<AsignacionDocenteSeccionDTO[]>(
+          gestionAcademica.asignacionDocenteSeccion.list(),
+          [] as AsignacionDocenteSeccionDTO[],
+          "No se pudieron obtener las asignaciones de sección",
+        ),
+        safeRequest<AsignacionDocenteMateriaDTO[]>(
+          gestionAcademica.asignacionDocenteMateria.list(),
+          [] as AsignacionDocenteMateriaDTO[],
+          "No se pudieron obtener las asignaciones de materia",
+        ),
+      ]);
 
-    const personaIds = Array.from(
-      new Set(
-        empleados
-          .map((emp) => emp.personaId)
-          .filter((id): id is number => typeof id === "number"),
-      ),
-    );
+      const personaIds = Array.from(
+        new Set(
+          empleados
+            .map((emp) => emp.personaId)
+            .filter((id): id is number => typeof id === "number"),
+        ),
+      );
 
-    const personaEntries = await Promise.all(
-      personaIds.map(async (id) => {
-        try {
-          const res = await identidad.personasCore.getById(id);
-          return [id, res.data ?? null] as const;
-        } catch (error) {
-          console.error("No se pudo obtener la persona", id, error);
-          return [id, null] as const;
+      const personaEntries = await Promise.all(
+        personaIds.map(async (id) => {
+          try {
+            const res = await identidad.personasCore.getById(id);
+            return [id, res.data ?? null] as const;
+          } catch (error) {
+            console.error("No se pudo obtener la persona", id, error);
+            return [id, null] as const;
+          }
+        }),
+      );
+
+      const personaMap = new Map<number, PersonaDTO | null>(
+        personaEntries as Array<readonly [number, PersonaDTO | null]>,
+      );
+
+      const seccionMap = new Map<number, SeccionDTO>();
+      for (const seccion of secciones) {
+        if (typeof seccion.id === "number") {
+          seccionMap.set(seccion.id, seccion);
         }
-      }),
-    );
-
-    const personaMap = new Map<number, PersonaDTO | null>(personaEntries as Array<readonly [number, PersonaDTO | null]>);
-
-    const seccionMap = new Map<number, SeccionDTO>();
-    for (const seccion of secciones) {
-      if (typeof seccion.id === "number") {
-        seccionMap.set(seccion.id, seccion);
       }
-    }
 
-    const materiaMap = new Map<number, MateriaDTO>();
-    for (const materia of materias) {
-      if (typeof materia.id === "number") {
-        materiaMap.set(materia.id, materia);
+      const materiaMap = new Map<number, MateriaDTO>();
+      for (const materia of materias) {
+        if (typeof materia.id === "number") {
+          materiaMap.set(materia.id, materia);
+        }
       }
-    }
 
-    const seccionesPorEmpleado = new Map<number, Set<number>>();
-    for (const asign of asignacionesSeccion as Array<any>) {
-      const empleadoId =
-        asign.empleadoId ?? asign.personalId ?? asign.docenteId;
-      const seccionId = asign.seccionId ?? asign.seccion?.id;
-      if (typeof empleadoId !== "number" || typeof seccionId !== "number") {
-        continue;
+      const seccionesPorEmpleado = new Map<number, Set<number>>();
+      for (const asign of asignacionesSeccion as Array<any>) {
+        const empleadoId =
+          asign.empleadoId ?? asign.personalId ?? asign.docenteId;
+        const seccionId = asign.seccionId ?? asign.seccion?.id;
+        if (typeof empleadoId !== "number" || typeof seccionId !== "number") {
+          continue;
+        }
+        if (!seccionesPorEmpleado.has(empleadoId)) {
+          seccionesPorEmpleado.set(empleadoId, new Set());
+        }
+        seccionesPorEmpleado.get(empleadoId)!.add(seccionId);
       }
-      if (!seccionesPorEmpleado.has(empleadoId)) {
-        seccionesPorEmpleado.set(empleadoId, new Set());
+
+      const materiasPorEmpleado = new Map<number, Set<number>>();
+      for (const asign of asignacionesMateria as Array<any>) {
+        const empleadoId =
+          asign.empleadoId ?? asign.personalId ?? asign.docenteId;
+        const materiaId = asign.materiaId ?? asign.materia?.id;
+        if (typeof empleadoId !== "number" || typeof materiaId !== "number") {
+          continue;
+        }
+        if (!materiasPorEmpleado.has(empleadoId)) {
+          materiasPorEmpleado.set(empleadoId, new Set());
+        }
+        materiasPorEmpleado.get(empleadoId)!.add(materiaId);
       }
-      seccionesPorEmpleado.get(empleadoId)!.add(seccionId);
-    }
 
-    const materiasPorEmpleado = new Map<number, Set<number>>();
-    for (const asign of asignacionesMateria as Array<any>) {
-      const empleadoId =
-        asign.empleadoId ?? asign.personalId ?? asign.docenteId;
-      const materiaId = asign.materiaId ?? asign.materia?.id;
-      if (typeof empleadoId !== "number" || typeof materiaId !== "number") {
-        continue;
+      const licenciasPorEmpleado = new Map<number, LicenciaDTO[]>();
+      for (const licencia of licencias) {
+        if (typeof licencia.empleadoId !== "number") continue;
+        const list = licenciasPorEmpleado.get(licencia.empleadoId) ?? [];
+        list.push(licencia);
+        licenciasPorEmpleado.set(licencia.empleadoId, list);
       }
-      if (!materiasPorEmpleado.has(empleadoId)) {
-        materiasPorEmpleado.set(empleadoId, new Set());
+
+      const formacionesPorEmpleado = new Map<number, FormacionAcademicaDTO[]>();
+      for (const formacion of formaciones) {
+        if (typeof formacion.empleadoId !== "number") continue;
+        const list = formacionesPorEmpleado.get(formacion.empleadoId) ?? [];
+        list.push(formacion);
+        formacionesPorEmpleado.set(formacion.empleadoId, list);
       }
-      materiasPorEmpleado.get(empleadoId)!.add(materiaId);
-    }
 
-    const licenciasPorEmpleado = new Map<number, LicenciaDTO[]>();
-    for (const licencia of licencias) {
-      if (typeof licencia.empleadoId !== "number") continue;
-      const list = licenciasPorEmpleado.get(licencia.empleadoId) ?? [];
-      list.push(licencia);
-      licenciasPorEmpleado.set(licencia.empleadoId, list);
-    }
-
-    const formacionesPorEmpleado = new Map<number, FormacionAcademicaDTO[]>();
-    for (const formacion of formaciones) {
-      if (typeof formacion.empleadoId !== "number") continue;
-      const list = formacionesPorEmpleado.get(formacion.empleadoId) ?? [];
-      list.push(formacion);
-      formacionesPorEmpleado.set(formacion.empleadoId, list);
-    }
-
-    const referenciaIso = todayIso();
+      const referenciaIso = todayIso();
 
       const personalData: EmpleadoView[] = empleados.map((empleado) => {
         const persona =
           typeof empleado.personaId === "number"
             ? personaMap.get(empleado.personaId) ?? null
-          : null;
+            : null;
 
-      const seccionesIds = Array.from(
-        seccionesPorEmpleado.get(empleado.id ?? 0) ?? [],
-      );
-      const seccionesInfo = seccionesIds
-        .map((id) => seccionMap.get(id))
-        .filter((s): s is SeccionDTO => Boolean(s))
-        .map((s) => ({
-          id: s.id!,
-          label: formatSeccionLabel(s),
-          nivel: s.nivel ?? null,
-        }));
+        const seccionesIds = Array.from(
+          seccionesPorEmpleado.get(empleado.id ?? 0) ?? [],
+        );
+        const seccionesInfo = seccionesIds
+          .map((id) => seccionMap.get(id))
+          .filter((s): s is SeccionDTO => Boolean(s))
+          .map((s) => ({
+            id: s.id!,
+            label: formatSeccionLabel(s),
+            nivel: s.nivel ?? null,
+          }));
 
-      const materiasIds = Array.from(
-        materiasPorEmpleado.get(empleado.id ?? 0) ?? [],
-      );
-      const materiasInfo = materiasIds
-        .map((id) => materiaMap.get(id))
-        .filter((m): m is MateriaDTO => Boolean(m))
-        .map((m) => ({ id: m.id!, nombre: m.nombre ?? `Materia #${m.id}` }));
+        const materiasIds = Array.from(
+          materiasPorEmpleado.get(empleado.id ?? 0) ?? [],
+        );
+        const materiasInfo = materiasIds
+          .map((id) => materiaMap.get(id))
+          .filter((m): m is MateriaDTO => Boolean(m))
+          .map((m) => ({ id: m.id!, nombre: m.nombre ?? `Materia #${m.id}` }));
 
-      const formacionInfo = formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
-      const licenciasInfo = licenciasPorEmpleado.get(empleado.id ?? 0) ?? [];
+        const formacionInfo = formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
+        const licenciasInfo = licenciasPorEmpleado.get(empleado.id ?? 0) ?? [];
 
-      const situacionActualRaw = (empleado.situacionActual ?? "").trim();
-      const situacionBase =
-        situacionActualRaw.length > 0 ? situacionActualRaw : DEFAULT_SITUACION;
-      const activeLicense =
-        licenciasInfo.find((licencia) =>
-          isLicenseActiveOn(licencia, referenciaIso),
-        ) ?? null;
-      const situacionVisible = activeLicense ? LICENCIA_SITUACION : situacionBase;
+        const situacionActualRaw = (empleado.situacionActual ?? "").trim();
+        const situacionBase =
+          situacionActualRaw.length > 0 ? situacionActualRaw : DEFAULT_SITUACION;
+        const activeLicense =
+          licenciasInfo.find((licencia) =>
+            isLicenseActiveOn(licencia, referenciaIso),
+          ) ?? null;
+        const situacionVisible = activeLicense ? LICENCIA_SITUACION : situacionBase;
 
-      const empleadoViewData: EmpleadoDTO = {
-        ...empleado,
-        situacionActual: situacionBase,
-      };
+        const empleadoViewData: EmpleadoDTO = {
+          ...empleado,
+          situacionActual: situacionBase,
+        };
 
-      return {
-        empleado: empleadoViewData,
-        persona,
-        secciones: seccionesInfo,
-        materias: materiasInfo,
-        formaciones: formacionInfo,
-        licencias: licenciasInfo,
-        situacionVisible,
-        activeLicense,
-      };
-    });
+        return {
+          empleado: empleadoViewData,
+          persona,
+          secciones: seccionesInfo,
+          materias: materiasInfo,
+          formaciones: formacionInfo,
+          licencias: licenciasInfo,
+          situacionVisible,
+          activeLicense,
+        };
+      });
 
       const licenciasOrdenadas = [...licencias].sort((a, b) =>
         getLicenseStart(b).localeCompare(getLicenseStart(a)),
       );
 
       return { personalData, licenciasOrdenadas, pageInfo };
-    }, [pageSize]);
+    },
+    [pageSize],
+  );
+
   const refreshData = useCallback(
     async (options: { search?: string; page?: number } = {}) => {
       setDataLoading(true);
       setLoadError(null);
       try {
         const searchValue = (options.search ?? searchRef.current ?? "").trim();
-        const requestedPage = Math.max(1, options.page ?? currentPageRef.current ?? 1);
+        const requestedPage = Math.max(
+          1,
+          options.page ?? currentPageRef.current ?? 1,
+        );
         const { personalData, licenciasOrdenadas, pageInfo } = await fetchData({
           search: searchValue,
           page: requestedPage,
@@ -874,6 +862,26 @@ export default function PersonalPage() {
     },
     [fetchData],
   );
+
+  useEffect(() => {
+    refreshData({ search: debouncedSearchTerm, page: 1 });
+  }, [debouncedSearchTerm, refreshData]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    currentPageRef.current = 1;
+  }, [nivelFilter, seccionFilter, materiaFilter, cargoFilter, situacionFilter]);
+
+  useEffect(() => {
+    setExpandedEmployees(new Set<number>());
+  }, [
+    debouncedSearchTerm,
+    nivelFilter,
+    seccionFilter,
+    materiaFilter,
+    cargoFilter,
+    situacionFilter,
+  ]);
 
   const personalById = useMemo(() => {
     const map = new Map<number, EmpleadoView>();

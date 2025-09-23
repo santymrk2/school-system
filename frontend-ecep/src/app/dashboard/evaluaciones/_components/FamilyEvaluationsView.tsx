@@ -30,6 +30,7 @@ import type {
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
 import { calendario, gestionAcademica } from "@/services/api/modules";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
 
 interface FamilyEvaluationsViewProps {
@@ -123,6 +124,7 @@ export function FamilyEvaluationsView({
     totalEvaluaciones: number;
     evaluacionesCalificadas: number;
   }>({ promedio: null, totalEvaluaciones: 0, evaluacionesCalificadas: 0 });
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   useEffect(() => {
     if (!alumnos.length) {
@@ -371,7 +373,7 @@ export function FamilyEvaluationsView({
     return () => {
       alive = false;
     };
-  }, [alumnoSeleccionado]);
+  }, [alumnoSeleccionado, calendarVersion]);
 
   if (initialLoading) {
     return <LoadingState label="Cargando evaluaciones…" />;

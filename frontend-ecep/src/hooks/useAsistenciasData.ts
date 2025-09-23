@@ -11,6 +11,7 @@ import type {
   AlumnoLiteDTO,
 } from "@/types/api-generated";
 import { toast } from "sonner";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 export function useAsistenciasData() {
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export function useAsistenciasData() {
   >({});
   const [jornadas, setJornadas] = useState<JornadaAsistenciaDTO[]>([]);
   const [detalles, setDetalles] = useState<DetalleAsistenciaDTO[]>([]);
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   useEffect(() => {
     (async () => {
@@ -52,7 +54,7 @@ export function useAsistenciasData() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [calendarVersion]);
 
   const loadAlumnosSeccion = async (seccionId: number, fechaISO?: string) => {
     const key = `${seccionId}_${fechaISO ?? ""}`;

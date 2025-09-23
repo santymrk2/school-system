@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { LicenseSummaryCards } from "./_components/LicenseSummaryCards";
@@ -385,6 +386,7 @@ export default function ReportesPage() {
   const { hasRole, loading, user } = useAuth();
   const { periodoEscolarId } = useActivePeriod();
   const router = useRouter();
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   useEffect(() => {
     if (loading) return;
@@ -664,7 +666,7 @@ export default function ReportesPage() {
     return () => {
       alive = false;
     };
-  }, [periodoEscolarId]);
+  }, [periodoEscolarId, calendarVersion]);
 
   // Boletines state -----------------------------------------------------------
   useEffect(() => {

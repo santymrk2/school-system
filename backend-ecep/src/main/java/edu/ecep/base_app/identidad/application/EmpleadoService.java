@@ -2,6 +2,7 @@ package edu.ecep.base_app.identidad.application;
 
 import edu.ecep.base_app.identidad.domain.Empleado;
 import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.identidad.domain.enums.RolEmpleado;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoCreateDTO;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoDTO;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoUpdateDTO;
@@ -18,10 +19,12 @@ import edu.ecep.base_app.shared.exception.ReferencedException;
 import edu.ecep.base_app.shared.exception.ReferencedWarning;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -36,10 +39,32 @@ public class EmpleadoService {
     private final AsistenciaEmpleadoRepository asistenciaRepo;
     private final EmpleadoMapper mapper;
 
-    public List<EmpleadoDTO> findAll() {
-        return repo.findAll(Sort.by("id")).stream()
-                .map(mapper::toDto)
-                .toList();
+    public Page<EmpleadoDTO> findAll(String search,
+                                     RolEmpleado rolEmpleado,
+                                     Pageable pageable) {
+        Pageable effectivePageable = ensureSort(pageable);
+        Page<Empleado> empleados;
+        if (StringUtils.hasText(search) || rolEmpleado != null) {
+            empleados = repo.search(search, rolEmpleado, effectivePageable);
+        } else {
+            empleados = repo.findAll(effectivePageable);
+        }
+        return empleados.map(mapper::toDto);
+    }
+
+    private Pageable ensureSort(Pageable pageable) {
+        Sort defaultSort = Sort.by("id");
+        if (pageable == null) {
+            return PageRequest.of(0, 20, defaultSort);
+        }
+        if (pageable.getSort().isUnsorted()) {
+            int size = pageable.getPageSize();
+            if (size <= 0) {
+                size = 20;
+            }
+            return PageRequest.of(pageable.getPageNumber(), size, defaultSort);
+        }
+        return pageable;
     }
 
     public EmpleadoDTO get(Long id) {

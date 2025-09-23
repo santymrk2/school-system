@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { api } from "@/services/api";
+import {
+  gestionAcademica,
+  identidad,
+  vidaEscolar,
+} from "@/services/api/modules";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import type {
   ActaAccidenteCreateDTO,
@@ -91,9 +95,9 @@ export default function NewActaDialog({
       try {
         setLoading(true);
 
-        const meRes = await api.me().catch(() => ({ data: null }));
+        const meRes = await identidad.me().catch(() => ({ data: null }));
         const emps =
-          (await api.empleados.list().catch(() => ({ data: [] }))).data ?? [];
+          (await identidad.empleados.list().catch(() => ({ data: [] }))).data ?? [];
 
         // Dataset alumnos según modo
         let alumnos: Array<AlumnoDTO | AlumnoLiteDTO> = [];
@@ -101,14 +105,16 @@ export default function NewActaDialog({
         if (mode === "global") {
           // Todas las secciones del período activo → alumnos activos hoy por sección
           const secc =
-            (await api.secciones.list().catch(() => ({ data: [] }))).data ?? [];
+            (await gestionAcademica.secciones
+              .list()
+              .catch(() => ({ data: [] }))).data ?? [];
           const seccPeriodo = secc.filter(
             (s: any) =>
               (s.periodoEscolarId ?? s.periodoEscolar?.id) === periodoEscolarId,
           );
           const chunks = await Promise.all(
             seccPeriodo.map((s) =>
-              api.seccionesAlumnos
+              gestionAcademica.seccionesAlumnos
                 .bySeccionId(s.id, hoyISO) // AlumnoLiteDTO[]
                 .then((r) => r.data ?? [])
                 .catch(() => []),
@@ -134,7 +140,7 @@ export default function NewActaDialog({
           try {
             // Si tenés un endpoint específico, podés reemplazar por él
             const list: AsignacionDocenteSeccionDTO[] =
-              (await api.asignacionDocenteSeccion.list()).data ?? [];
+              (await gestionAcademica.asignacionDocenteSeccion.list()).data ?? [];
             const today = hoyISO || todayISO();
             const mine = list.filter((a: any) => {
               const empId = a.empleadoId ?? a.personalId ?? a.docenteId;
@@ -158,7 +164,7 @@ export default function NewActaDialog({
           if (seccionIds.length) {
             const chunks = await Promise.all(
               seccionIds.map((sid) =>
-                api.seccionesAlumnos
+                gestionAcademica.seccionesAlumnos
                   .bySeccionId(sid)
                   .then((r) => r.data ?? [])
                   .catch(() => []),
@@ -171,7 +177,7 @@ export default function NewActaDialog({
           } else {
             // Fallback extremo: todos (no ideal, pero evita dejar vacío)
             alumnos =
-              (await api.alumnos.list().catch(() => ({ data: [] }))).data ?? [];
+              (await identidad.alumnos.list().catch(() => ({ data: [] }))).data ?? [];
           }
         }
 
@@ -208,7 +214,7 @@ export default function NewActaDialog({
             let display = `Empleado #${e.id}`;
             if (e.personaId) {
               try {
-                const p = await api.personasCore
+                const p = await identidad.personasCore
                   .getById(e.personaId)
                   .then((r) => r.data);
                 const nom = `${p?.apellido ?? ""} ${p?.nombre ?? ""}`.trim();
@@ -279,10 +285,10 @@ export default function NewActaDialog({
     // Inferir informanteId (Empleado)
     let informanteId: number | undefined;
     try {
-      const meData: any = me ?? (await api.me().then((r) => r.data));
+      const meData: any = me ?? (await identidad.me().then((r) => r.data));
       const emps = empleados.length
         ? empleados
-        : await api.empleados.list().then((r) => r.data ?? []);
+        : await identidad.empleados.list().then((r) => r.data ?? []);
       const match = emps.find((e: any) => e.personaId === meData?.personaId);
       informanteId = match?.id ?? undefined;
     } catch {
@@ -308,7 +314,7 @@ export default function NewActaDialog({
 
     try {
       setSubmitting(true);
-      await api.actasAccidente.create(body as any);
+      await vidaEscolar.actasAccidente.create(body as any);
       onOpenChange(false);
       onCreated?.();
     } catch (e: any) {

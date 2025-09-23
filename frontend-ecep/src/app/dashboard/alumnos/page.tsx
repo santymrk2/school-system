@@ -36,7 +36,7 @@ import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
-import { api } from "@/services/api";
+import { identidad } from "@/services/api/modules";
 
 export default function AlumnosIndexPage() {
   const router = useRouter();
@@ -69,7 +69,7 @@ export default function AlumnosIndexPage() {
       setLoadingAlumnos(true);
       setErrorAlumnos(null);
       try {
-        const res = await api.alumnos.list();
+        const res = await identidad.alumnos.list();
         if (!cancelled) setAlumnos(res.data ?? []);
       } catch (err: any) {
         if (!cancelled) setErrorAlumnos(err?.message ?? "No se pudieron cargar los alumnos");

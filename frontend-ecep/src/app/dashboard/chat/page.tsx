@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Send, ArrowLeft, Wifi, WifiOff, RefreshCw } from "lucide-react";
-import { api } from "@/services/api";
+import { comunicacion, identidad } from "@/services/api/modules";
 import { useAuth } from "@/hooks/useAuth";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -108,8 +108,8 @@ export default function ChatComponent() {
     const loadData = async () => {
       try {
         const [chatsRes, unreadRes] = await Promise.all([
-          api.chat.getActiveChats(),
-          api.chat.getUnreadCounts(),
+          comunicacion.chat.getActiveChats(),
+          comunicacion.chat.getUnreadCounts(),
         ]);
 
         if (!alive) return;
@@ -135,7 +135,7 @@ export default function ChatComponent() {
     const query = searchTerm.trim();
 
     const debounceTimer = setTimeout(() => {
-      api.personasCore
+      identidad.personasCore
         .searchCredenciales(query || undefined)
         .then(({ data }) => {
           const results = (data ?? []).filter((p) => p.id !== user.id);
@@ -165,7 +165,7 @@ export default function ChatComponent() {
 
     (async () => {
       try {
-        const { data } = await api.personasCore.getResumen(
+        const { data } = await identidad.personasCore.getResumen(
           lastMessage.emisorId,
         );
         if (data) {

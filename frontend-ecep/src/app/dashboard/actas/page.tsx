@@ -31,7 +31,11 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { api } from "@/services/api";
+import {
+  gestionAcademica,
+  identidad,
+  vidaEscolar,
+} from "@/services/api/modules";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { toast } from "sonner";
@@ -161,9 +165,9 @@ export default function AccidentesIndexPage() {
       try {
         setLoading(true);
         const [actasRes, seccRes, personalRes] = await Promise.all([
-          api.actasAccidente.list().catch(() => ({ data: [] })),
-          api.secciones.list().catch(() => ({ data: [] })),
-          api.empleados.list().catch(() => ({ data: [] })),
+          vidaEscolar.actasAccidente.list().catch(() => ({ data: [] })),
+          gestionAcademica.secciones.list().catch(() => ({ data: [] })),
+          identidad.empleados.list().catch(() => ({ data: [] })),
         ]);
         if (!alive) return;
         const secs = (seccRes.data ?? []).filter(
@@ -195,14 +199,14 @@ export default function AccidentesIndexPage() {
       await Promise.all(
         ids.map(async (aid) => {
           try {
-            const a = await api.alumnos
+            const a = await identidad.alumnos
               .getById(aid)
               .then((r) => r.data as AlumnoDTO);
             if (!a?.personaId) {
               map.set(aid, `Alumno #${aid}`);
               return;
             }
-            const p = await api.personasCore
+            const p = await identidad.personasCore
               .getById(a.personaId)
               .then((r) => r.data as PersonaDTO);
             const nombre = `${p.apellido ?? ""}, ${p.nombre ?? ""}`
@@ -233,7 +237,7 @@ export default function AccidentesIndexPage() {
         }
         const chunks = await Promise.all(
           secciones.map((s) =>
-            api.seccionesAlumnos
+            gestionAcademica.seccionesAlumnos
               .bySeccionId(s.id, hoyISO)
               .then((r) => r.data ?? [])
               .catch(() => []),
@@ -347,8 +351,8 @@ export default function AccidentesIndexPage() {
 
   const refresh = async () => {
     const [actasRes, personalRes] = await Promise.all([
-      api.actasAccidente.list().catch(() => ({ data: [] })),
-      api.empleados.list().catch(() => ({ data: [] })),
+      vidaEscolar.actasAccidente.list().catch(() => ({ data: [] })),
+      identidad.empleados.list().catch(() => ({ data: [] })),
     ]);
     setActas(actasRes.data ?? []);
     if (personalRes.data) setPersonal(personalRes.data);
@@ -371,7 +375,7 @@ export default function AccidentesIndexPage() {
     if (!confirm("¿Eliminar el acta seleccionada?")) return;
     try {
       setDeletingId(id);
-      await api.actasAccidente.delete(id);
+      await vidaEscolar.actasAccidente.delete(id);
       toast.success("Acta eliminada");
       if (viewActa?.id === id) setViewActa(null);
       setActas((prev) => prev.filter((a) => a.id !== id));
@@ -394,7 +398,7 @@ export default function AccidentesIndexPage() {
     }
     try {
       setMarkingId(id);
-      await api.actasAccidente.update(id, {
+      await vidaEscolar.actasAccidente.update(id, {
         fechaSuceso: target.fechaSuceso ?? todayISO(),
         horaSuceso: target.horaSuceso ?? "00:00",
         lugar: target.lugar ?? "",

@@ -1,7 +1,7 @@
-import { http } from "../http";
+import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
 
-export const aspirantes = {
+const aspirantes = {
   list: () => http.get<DTO.AspiranteDTO[]>("/api/aspirantes"),
   byId: (id: number) => http.get<DTO.AspiranteDTO>("/api/aspirantes/" + id),
   create: (body: Omit<DTO.AspiranteDTO, "id">) =>
@@ -11,7 +11,7 @@ export const aspirantes = {
   delete: (id: number) => http.delete<void>("/api/aspirantes/" + id),
 };
 
-export const aspiranteFamiliares = {
+const aspiranteFamiliares = {
   list: () => http.get<DTO.AspiranteFamiliarDTO[]>("/api/aspirante-familiar"),
   create: (body: DTO.AspiranteFamiliarDTO) =>
     http.post<number>("/api/aspirante-familiar", body),
@@ -20,7 +20,7 @@ export const aspiranteFamiliares = {
   delete: (id: number) => http.delete<void>(`/api/aspirante-familiar/${id}`),
 };
 
-export const solicitudesAdmision = {
+const solicitudesAdmision = {
   list: () => http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision"),
   byId: (id: number) =>
     http.get<DTO.SolicitudAdmisionDTO>("/api/solicitudes-admision/" + id),
@@ -44,3 +44,11 @@ export const solicitudesAdmision = {
   decidir: (id: number, body: DTO.SolicitudAdmisionDecisionDTO) =>
     http.post<void>(`/api/solicitudes-admision/${id}/decision`, body),
 };
+
+export const admisiones = {
+  aspirantes,
+  aspiranteFamiliares,
+  solicitudesAdmision,
+};
+
+export { aspirantes, aspiranteFamiliares, solicitudesAdmision };

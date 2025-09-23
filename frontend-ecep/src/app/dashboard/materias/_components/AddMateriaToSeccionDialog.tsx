@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import type { MateriaDTO, SeccionDTO } from "@/types/api-generated";
 import { toast } from "sonner";
 
@@ -62,13 +62,13 @@ export default function AddMateriaToSeccionDialog({
       setSaving(true);
       const trimmed = nombre.trim();
       if (selectedMateriaId != null) {
-        await api.seccionMaterias.create({
+        await gestionAcademica.seccionMaterias.create({
           seccionId: seccion.id,
           materiaId: selectedMateriaId,
         });
       } else {
-        const id = (await api.materias.create({ nombre: trimmed })).data as number;
-        await api.seccionMaterias.create({
+        const id = (await gestionAcademica.materias.create({ nombre: trimmed })).data as number;
+        await gestionAcademica.seccionMaterias.create({
           seccionId: seccion.id,
           materiaId: id,
         });

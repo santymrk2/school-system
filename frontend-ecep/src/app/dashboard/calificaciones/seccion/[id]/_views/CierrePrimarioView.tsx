@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/services/api";
+import { asistencias, calendario, gestionAcademica } from "@/services/api/modules";
 import LoadingState from "@/components/common/LoadingState";
 import {
   Card,
@@ -110,11 +110,11 @@ export default function CierrePrimarioView({
       try {
         setLoading(true);
         const [triRes, smRes, matRes, aluRes, cRes] = await Promise.all([
-          api.trimestres.list(), // { id, orden, cerrado, fechaInicio, fechaFin, periodoEscolarId }
-          api.seccionMaterias.list(), // { id, seccionId, materiaId, materia{nombre}? }
-          api.materias.list(),
-          api.seccionesAlumnos.bySeccionId(seccionId, hoy), // [{ matriculaId, nombre/nombreCompleto }]
-          api.calificaciones.list(), // [{ id, trimestreId, seccionMateriaId, matriculaId, ... }]
+          calendario.trimestres.list(), // { id, orden, cerrado, fechaInicio, fechaFin, periodoEscolarId }
+          gestionAcademica.seccionMaterias.list(), // { id, seccionId, materiaId, materia{nombre}? }
+          gestionAcademica.materias.list(),
+          gestionAcademica.seccionesAlumnos.bySeccionId(seccionId, hoy), // [{ matriculaId, nombre/nombreCompleto }]
+          gestionAcademica.calificaciones.list(), // [{ id, trimestreId, seccionMateriaId, matriculaId, ... }]
         ]);
         if (!alive) return;
         const allTrimestres = triRes.data ?? [];
@@ -296,7 +296,7 @@ export default function CierrePrimarioView({
     (async () => {
       try {
         setLoadingPromedios(true);
-        const evalRes = await api.evaluaciones.search({
+        const evalRes = await gestionAcademica.evaluaciones.search({
           seccionId,
           trimestreId,
         });
@@ -315,7 +315,7 @@ export default function CierrePrimarioView({
 
         const resultadosPorEvaluacion = await Promise.all(
           filtered.map((ev) =>
-            api.resultadosEvaluacion
+            gestionAcademica.resultadosEvaluacion
               .byEvaluacion(ev.id)
               .then((r) => (r.data ?? []) as ResultadoEvaluacionDTO[])
               .catch(() => []),
@@ -382,7 +382,7 @@ export default function CierrePrimarioView({
     (async () => {
       try {
         setLoadingAttendance(true);
-        const { data } = await api.asistencias.resumenPorAlumno(
+        const { data } = await asistencias.secciones.resumenPorAlumno(
           seccionId,
           start,
           end,
@@ -495,7 +495,7 @@ export default function CierrePrimarioView({
 
         if (!existing) {
           // create
-          await api.calificaciones.create(payload);
+          await gestionAcademica.calificaciones.create(payload);
         } else {
           // Si hay cambios, PUT
           const changed =
@@ -503,7 +503,7 @@ export default function CierrePrimarioView({
             (existing.observaciones ?? "") !== (r.observaciones ?? "");
 
           if (changed) {
-            await api.calificaciones.update(existing.id, {
+            await gestionAcademica.calificaciones.update(existing.id, {
               ...payload,
               id: existing.id,
             });
@@ -512,7 +512,7 @@ export default function CierrePrimarioView({
       }
 
       // 2) refresco base para ver IDs y estado real
-      const { data: all } = await api.calificaciones.list();
+      const { data: all } = await gestionAcademica.calificaciones.list();
       setCalifs(all ?? []);
       toast.success("Calificaciones guardadas.");
     } catch (e: any) {

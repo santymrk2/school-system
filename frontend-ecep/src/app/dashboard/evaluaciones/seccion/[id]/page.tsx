@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
   TrimestreDTO,
@@ -127,16 +127,16 @@ export default function SeccionEvaluacionesPage() {
 
         let sec: SeccionDTO | null = null;
         try {
-          sec = (await api.secciones.byId?.(seccionId))?.data ?? null;
+          sec = (await gestionAcademica.secciones.byId?.(seccionId))?.data ?? null;
         } catch {
-          const list = (await api.secciones.list()).data ?? [];
+          const list = (await gestionAcademica.secciones.list()).data ?? [];
           sec = list.find((s) => s.id === seccionId) ?? null;
         }
         if (!sec) throw new Error("No se encontró la sección solicitada.");
 
         const [mats, smsAll] = await Promise.all([
-          api.materias.list().then((r) => r.data ?? []),
-          api.seccionMaterias.list().then((r) => r.data ?? []),
+          gestionAcademica.materias.list().then((r) => r.data ?? []),
+          gestionAcademica.seccionMaterias.list().then((r) => r.data ?? []),
         ]);
 
         const smsSeccion = (smsAll as SeccionMateriaDTO[]).filter(
@@ -144,7 +144,7 @@ export default function SeccionEvaluacionesPage() {
         );
         const smIds = smsSeccion.map((x) => x.id);
 
-        const evs = (await api.evaluaciones.search({ seccionId })).data ?? [];
+        const evs = (await gestionAcademica.evaluaciones.search({ seccionId })).data ?? [];
 
         if (!alive) return;
         setSeccion(sec);
@@ -300,7 +300,7 @@ export default function SeccionEvaluacionesPage() {
         tema: temaCompleto,
       } as any;
 
-      await api.evaluaciones.create(body);
+      await gestionAcademica.evaluaciones.create(body);
       setOpenNew(false);
       setTema("");
       setDetalle("");

@@ -24,7 +24,6 @@ import Link from "next/link";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeRole } from "@/lib/auth-roles";
-import { api } from "@/services/api";
 import { MENU, type MenuItem } from "@/lib/menu";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod"; // ← período activo + hoy
 import { useVisibleMenu } from "@/hooks/useVisibleMenu";

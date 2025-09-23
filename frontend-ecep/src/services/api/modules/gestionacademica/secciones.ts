@@ -1,5 +1,5 @@
 // services/api/modules/secciones.ts
-import { http } from "../http";
+import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
 
 const isLazyOr500 = (e: any) =>

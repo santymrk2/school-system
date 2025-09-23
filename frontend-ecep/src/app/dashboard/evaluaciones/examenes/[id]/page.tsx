@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import type {
   EvaluacionDTO,
   ResultadoEvaluacionDTO,
@@ -117,14 +117,14 @@ export default function ExamenDetailPage() {
         setLoading(true);
         setError(null);
 
-        const evalRes = await api.evaluaciones.byId(examenId);
+        const evalRes = await gestionAcademica.evaluaciones.byId(examenId);
         const evalData = evalRes.data;
         if (!evalData) throw new Error("El examen no existe o fue eliminado.");
 
         const seccionMateriaId = (evalData as any).seccionMateriaId as number | undefined;
         if (!seccionMateriaId) throw new Error("El examen no tiene materia asociada.");
 
-        const seccionMaterias = (await api.seccionMaterias.list()).data ?? [];
+        const seccionMaterias = (await gestionAcademica.seccionMaterias.list()).data ?? [];
         const sm = seccionMaterias.find((x) => x.id === seccionMateriaId) ?? null;
         if (!sm) throw new Error("No se encontró la asignación de materia para este examen.");
 
@@ -132,11 +132,17 @@ export default function ExamenDetailPage() {
         const materiaId = (sm as any).materiaId as number | undefined;
 
         const [seccionResp, materiaResp, resultadosResp, alumnosResp] = await Promise.all([
-          seccionId ? api.secciones.byId(seccionId).then((r) => r.data) : Promise.resolve(null),
-          materiaId ? api.materias.byId(materiaId).then((r) => r.data) : Promise.resolve(null),
-          api.resultadosEvaluacion.byEvaluacion(examenId).then((r) => r.data ?? []),
           seccionId
-            ? api.seccionesAlumnos
+            ? gestionAcademica.secciones.byId(seccionId).then((r) => r.data)
+            : Promise.resolve(null),
+          materiaId
+            ? gestionAcademica.materias.byId(materiaId).then((r) => r.data)
+            : Promise.resolve(null),
+          gestionAcademica.resultadosEvaluacion
+            .byEvaluacion(examenId)
+            .then((r) => r.data ?? []),
+          seccionId
+            ? gestionAcademica.seccionesAlumnos
                 .bySeccionId(seccionId, (evalData as any).fecha)
                 .then((r) => r.data ?? [])
             : Promise.resolve([]),
@@ -284,7 +290,12 @@ export default function ExamenDetailPage() {
         };
 
         if (row.resultadoId) {
-          pending.push(api.resultadosEvaluacion.update(row.resultadoId, basePayload));
+          pending.push(
+            gestionAcademica.resultadosEvaluacion.update(
+              row.resultadoId,
+              basePayload,
+            ),
+          );
           continue;
         }
 
@@ -294,7 +305,7 @@ export default function ExamenDetailPage() {
         if (!shouldPersist) continue;
 
         pending.push(
-          api.resultadosEvaluacion.create({
+          gestionAcademica.resultadosEvaluacion.create({
             evaluacionId: examenId,
             matriculaId: row.matriculaId,
             ...basePayload,
@@ -303,7 +314,9 @@ export default function ExamenDetailPage() {
       }
 
       await Promise.all(pending);
-      const refreshed = await api.resultadosEvaluacion.byEvaluacion(examenId);
+      const refreshed = await gestionAcademica.resultadosEvaluacion.byEvaluacion(
+        examenId,
+      );
       setResultados(refreshed.data ?? []);
       toast.success("Notas guardadas.");
     } catch (e: any) {
@@ -338,10 +351,10 @@ export default function ExamenDetailPage() {
         fecha: editFecha || (evaluacion as any).fecha,
         tema: temaFinal,
       } as EvaluacionDTO;
-      await api.evaluaciones.update(examenId, payload as any);
+      await gestionAcademica.evaluaciones.update(examenId, payload as any);
       setEvaluacion(payload);
       if (seccion && (payload as any).fecha) {
-        api.seccionesAlumnos
+        gestionAcademica.seccionesAlumnos
           .bySeccionId(seccion.id, (payload as any).fecha)
           .then((r) => setAlumnos(r.data ?? []))
           .catch(() => undefined);

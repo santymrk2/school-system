@@ -49,7 +49,7 @@ import {
   X,
 } from "lucide-react";
 import type * as DTO from "@/types/api-generated";
-import { api } from "@/services/api";
+import { admisiones } from "@/services/api/modules";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -134,7 +134,7 @@ function useSolicitudesAdmision(query: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.solicitudesAdmision.list();
+      const res = await admisiones.solicitudesAdmision.list();
       setData(res.data ?? []);
     } catch (e) {
       setError(e);
@@ -335,7 +335,7 @@ function SolicitudDetailDialog({
     }
     try {
       setLoading(true);
-      await api.solicitudesAdmision.rechazar(solicitud.id, { motivo });
+      await admisiones.solicitudesAdmision.rechazar(solicitud.id, { motivo });
       toast.success("Solicitud rechazada");
       onUpdated();
       onOpenChange(false);
@@ -355,7 +355,7 @@ function SolicitudDetailDialog({
     }
     try {
       setLoading(true);
-      await api.solicitudesAdmision.programar(solicitud.id, {
+      await admisiones.solicitudesAdmision.programar(solicitud.id, {
         fechasPropuestas: fechas,
         documentosRequeridos: form.documentos || undefined,
         adjuntosInformativos: form.adjuntos.length ? form.adjuntos : undefined,
@@ -378,7 +378,7 @@ function SolicitudDetailDialog({
   const handleConfirmarFecha = async (fecha: string) => {
     try {
       setLoading(true);
-      await api.solicitudesAdmision.confirmarFecha(solicitud.id, {
+      await admisiones.solicitudesAdmision.confirmarFecha(solicitud.id, {
         fechaSeleccionada: fecha,
       });
       toast.success("Fecha de entrevista confirmada");
@@ -396,7 +396,7 @@ function SolicitudDetailDialog({
   const handleResultadoEntrevista = async (realizada: boolean) => {
     try {
       setLoading(true);
-      await api.solicitudesAdmision.registrarEntrevista(solicitud.id, {
+      await admisiones.solicitudesAdmision.registrarEntrevista(solicitud.id, {
         realizada,
       });
       toast.success(
@@ -421,7 +421,7 @@ function SolicitudDetailDialog({
   const handleDecision = async (aceptar: boolean, mensaje: string) => {
     try {
       setLoading(true);
-      await api.solicitudesAdmision.decidir(solicitud.id, {
+      await admisiones.solicitudesAdmision.decidir(solicitud.id, {
         aceptar,
         mensaje: mensaje || undefined,
       });

@@ -1,5 +1,5 @@
 // services/api/modules/personas-core.ts (o dejalo en el mismo archivo)
-import { http } from "../http";
+import { http } from "@/services/api/http";
 import type * as DTO from "@/types/api-generated";
 
 export const personasCore = {

@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useViewerAlumnosLite } from "@/hooks/useViewerAlumnosLite";
-import { api } from "@/services/api";
+import { asistencias } from "@/services/api/modules";
 import type {
   AlumnoLiteDTO,
   DetalleAsistenciaDTO,
@@ -152,7 +152,7 @@ export function FamilyAttendanceView() {
         setLoadingDetalles(true);
         setErrorDetalles(null);
 
-        const { data } = await api.detallesAsistencia.search({
+        const { data } = await asistencias.detalles.search({
           matriculaId: alumnoSeleccionado.matriculaId,
         });
         if (!alive) return;
@@ -175,7 +175,7 @@ export function FamilyAttendanceView() {
         const entries = await Promise.all(
           jornadaIds.map(async (jid) => {
             try {
-              const res = await api.jornadasAsistencia.byId(jid);
+              const res = await asistencias.jornadas.byId(jid);
               return [jid, res.data ?? null] as const;
             } catch {
               return [jid, null] as const;

@@ -24,7 +24,11 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { api } from "@/services/api";
+import {
+  gestionAcademica,
+  identidad,
+  vidaEscolar,
+} from "@/services/api/modules";
 import type {
   ActaAccidenteDTO,
   AlumnoLiteDTO,
@@ -122,9 +126,9 @@ export default function AccidentesSeccionPage() {
         // Sección
         let sec: SeccionDTO | null = null;
         try {
-          sec = (await api.secciones.byId(seccionId)).data ?? null;
+          sec = (await gestionAcademica.secciones.byId(seccionId)).data ?? null;
         } catch {
-          const list = (await api.secciones.list()).data ?? [];
+          const list = (await gestionAcademica.secciones.list()).data ?? [];
           sec = list.find((s) => s.id === seccionId) ?? null;
         }
         if (!alive) return;
@@ -132,19 +136,21 @@ export default function AccidentesSeccionPage() {
 
         // Alumnos activos en fecha (para alta)
         const als =
-          (await api.seccionesAlumnos.bySeccionId(seccionId)).data ?? [];
+          (await gestionAcademica.seccionesAlumnos.bySeccionId(seccionId)).data ?? [];
         if (!alive) return;
         setAlumnos(als);
 
         // Actas (de toda la escuela, luego filtramos por sección según alumno actual)
-        const allActas = (await api.actasAccidente.list()).data ?? [];
+        const allActas = (await vidaEscolar.actasAccidente.list()).data ?? [];
         if (!alive) return;
         setActas(allActas);
 
         // Asignaciones + personal para titular
         const [asigs, pers] = await Promise.all([
-          api.asignacionDocenteSeccion.list().then((r) => r.data ?? []),
-          api.empleados.list().then((r) => r.data ?? []),
+          gestionAcademica.asignacionDocenteSeccion
+            .list()
+            .then((r) => r.data ?? []),
+          identidad.empleados.list().then((r) => r.data ?? []),
         ]);
         if (!alive) return;
         setAsignaciones(asigs);
@@ -244,7 +250,7 @@ export default function AccidentesSeccionPage() {
   }, [actas, alumnoNameById, q]);
 
   const refreshActas = async () => {
-    const all = (await api.actasAccidente.list()).data ?? [];
+    const all = (await vidaEscolar.actasAccidente.list()).data ?? [];
     setActas(all);
   };
 
@@ -265,7 +271,7 @@ export default function AccidentesSeccionPage() {
     if (!confirm("¿Eliminar el acta seleccionada?")) return;
     try {
       setDeletingId(id);
-      await api.actasAccidente.delete(id);
+      await vidaEscolar.actasAccidente.delete(id);
       toast.success("Acta eliminada");
       if (viewActa?.id === id) setViewActa(null);
       setActas((prev) => prev.filter((a) => a.id !== id));
@@ -288,7 +294,7 @@ export default function AccidentesSeccionPage() {
     }
     try {
       setMarkingId(id);
-      await api.actasAccidente.update(id, {
+      await vidaEscolar.actasAccidente.update(id, {
         fechaSuceso: target.fechaSuceso ?? new Date().toISOString().slice(0, 10),
         horaSuceso: target.horaSuceso ?? "00:00",
         lugar: target.lugar ?? "",

@@ -84,7 +84,7 @@ import {
 } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
-import { api } from "@/services/api";
+import { asistencias, calendario, gestionAcademica, identidad, vidaEscolar } from "@/services/api/modules";
 import {
   ActaAccidenteDTO,
   EmpleadoDTO,
@@ -448,12 +448,12 @@ export default function ReportesPage() {
           informesRes,
           trimestresRes,
         ] = await Promise.all([
-          api.secciones.list(),
-          api.materias.list(),
-          api.seccionMaterias.list(),
-          api.calificaciones.list(),
-          api.informes.list(),
-          api.trimestres.list(),
+          gestionAcademica.secciones.list(),
+          gestionAcademica.materias.list(),
+          gestionAcademica.seccionMaterias.list(),
+          gestionAcademica.calificaciones.list(),
+          gestionAcademica.informes.list(),
+          calendario.trimestres.list(),
         ]);
         if (!alive) return;
 
@@ -500,7 +500,7 @@ export default function ReportesPage() {
         await Promise.all(
           seccionesFiltradas.map(async (sec: any) => {
             try {
-              const { data } = await api.secciones.alumnos(sec.id);
+              const { data } = await gestionAcademica.secciones.alumnos(sec.id);
               if (!alive) return;
               alumnosBySeccion.set(sec.id, data ?? []);
             } catch (error) {
@@ -832,7 +832,7 @@ export default function ReportesPage() {
     let alive = true;
     (async () => {
       try {
-        const res = await api.empleados.list();
+        const res = await identidad.empleados.list();
         if (!alive) return;
         const empleados = (res.data ?? []) as EmpleadoDTO[];
         const personaIds = Array.from(
@@ -842,7 +842,7 @@ export default function ReportesPage() {
         const entries = await Promise.all(
           personaIds.map(async (pid) => {
             try {
-              const { data } = await api.personasCore.getById(pid);
+              const { data } = await identidad.personasCore.getById(pid);
               return [pid, data] as const;
             } catch {
               return [pid, null] as const;
@@ -994,7 +994,7 @@ export default function ReportesPage() {
           const sectionMeta = attendanceSectionOptions.find((option) => option.id === sectionId);
           if (!sectionMeta) continue;
 
-          const { data } = await api.asistencias.resumenPorAlumno(
+          const { data } = await asistencias.secciones.resumenPorAlumno(
             Number(sectionId),
             attendanceFrom,
             attendanceTo,
@@ -1092,7 +1092,7 @@ export default function ReportesPage() {
       try {
         setLicenseLoading(true);
         setLicenseError(null);
-        const res = await api.licencias.list();
+        const res = await identidad.licencias.list();
         if (!alive) return;
         setLicenses((res.data ?? []) as LicenciaDTO[]);
       } catch (error: any) {
@@ -1274,7 +1274,7 @@ export default function ReportesPage() {
         }
 
         if (!actasCacheRef.current) {
-          const { data } = await api.actasAccidente.list();
+          const { data } = await vidaEscolar.actasAccidente.list();
           if (!alive) return;
           actasCacheRef.current = data ?? [];
         }
@@ -1297,7 +1297,7 @@ export default function ReportesPage() {
           const fetched = await Promise.all(
             uniqueIds.map(async (alumnoId) => {
               try {
-                const { data } = await api.personas.alumnos.byId(alumnoId);
+                const { data } = await identidad.alumnos.byId(alumnoId);
                 return [alumnoId, data] as const;
               } catch {
                 return [alumnoId, null] as const;

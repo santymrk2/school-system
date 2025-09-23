@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import { Badge } from "@/components/ui/badge";
 import CierrePrimarioView from "./_views/CierrePrimarioView";
 import InformeInicialView from "./_views/InformeInicialView";
@@ -53,7 +53,7 @@ export default function CalificacionesSeccionPage() {
       try {
         setLoading(true);
         setError(null);
-        const { data } = await api.secciones.list();
+        const { data } = await gestionAcademica.secciones.list();
         if (!alive) return;
         setSeccion((data ?? []).find((x: any) => x.id === seccionId) ?? null);
       } catch (e: any) {

@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { formatDni } from "@/lib/form-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { displayRole } from "@/lib/auth-roles";
-import { api } from "@/services/api";
+import { identidad } from "@/services/api/modules";
 import type {
   AlumnoFamiliarDTO,
   AlumnoLiteDTO,
@@ -117,7 +117,7 @@ export default function FamiliarPerfilPage() {
         setLoading(true);
         setError(null);
 
-        const familiarRes = await api.familiares.byId(familiarId);
+        const familiarRes = await identidad.familiares.byId(familiarId);
         const familiarData = familiarRes.data ?? null;
         if (!alive) return;
         setFamiliar(familiarData);
@@ -126,7 +126,7 @@ export default function FamiliarPerfilPage() {
         if (familiarData?.personaId) {
           try {
             personaData = (
-              await api.personasCore.getById(familiarData.personaId)
+              await identidad.personasCore.getById(familiarData.personaId)
             ).data ?? null;
           } catch (error) {
             console.error("No se pudo obtener la persona del familiar", error);
@@ -142,7 +142,7 @@ export default function FamiliarPerfilPage() {
 
         let linksData: AlumnoFamiliarDTO[] = [];
         try {
-          const { data } = await api.alumnoFamiliares.list();
+          const { data } = await identidad.alumnoFamiliares.list();
           linksData = ((data ?? []) as any[]).filter(
             (link: any) => link.familiarId === familiarId,
           ) as AlumnoFamiliarDTO[];
@@ -157,7 +157,7 @@ export default function FamiliarPerfilPage() {
 
         let alumnosData: AlumnoLiteDTO[] = [];
         try {
-          const { data } = await api.familiaresAlumnos.byFamiliarId(familiarId);
+          const { data } = await identidad.familiaresAlumnos.byFamiliarId(familiarId);
           alumnosData = (data ?? []) as AlumnoLiteDTO[];
         } catch (alumnosError) {
           console.error(
@@ -229,7 +229,7 @@ export default function FamiliarPerfilPage() {
 
     setSavingProfile(true);
     try {
-      await api.personasCore.update(persona.id, {
+      await identidad.personasCore.update(persona.id, {
         nombre: personaDraft.nombre.trim(),
         apellido: personaDraft.apellido.trim(),
         dni: dniValue,
@@ -239,7 +239,7 @@ export default function FamiliarPerfilPage() {
         observacionesGenerales: personaDraft.observaciones?.trim() || undefined,
       });
 
-      await api.familiares.update(familiar.id, {
+      await identidad.familiares.update(familiar.id, {
         id: familiar.id,
         personaId: persona.id,
         ocupacion: ocupacion.trim() || undefined,
@@ -307,8 +307,8 @@ export default function FamiliarPerfilPage() {
 
     setSavingCredentials(true);
     try {
-      await api.personasCore.update(persona.id, payload);
-      const { data: refreshed } = await api.personasCore.getById(persona.id);
+      await identidad.personasCore.update(persona.id, payload);
+      const { data: refreshed } = await identidad.personasCore.getById(persona.id);
       setPersona(refreshed ?? null);
       toast.success("Acceso del familiar actualizado");
       setCredentialsDialogOpen(false);

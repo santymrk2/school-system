@@ -17,7 +17,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import type { SeccionMateriaDTO, MateriaDTO } from "@/types/api-generated";
 import { toast } from "sonner";
 
@@ -118,7 +118,7 @@ export default function AsignarDocenteMateriaDialog({
         payload.vigenciaDesde = desde;
         payload.vigenciaHasta = hasta as any;
       }
-      await api.asignacionDocenteMateria.create(payload);
+      await gestionAcademica.asignacionDocenteMateria.create(payload);
       onCreated();
       onClose();
     } catch (e: any) {

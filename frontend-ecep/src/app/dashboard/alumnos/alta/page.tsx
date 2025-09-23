@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { api } from "@/services/api";
+import {
+  calendario,
+  gestionAcademica,
+  identidad,
+  vidaEscolar,
+} from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type * as DTO from "@/types/api-generated";
 import { formatDni } from "@/lib/form-utils";
@@ -78,7 +83,7 @@ export default function AltaAlumnoPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.secciones.list();
+        const res = await gestionAcademica.secciones.list();
         setSecciones(res.data ?? []);
       } catch (error) {
         console.error(error);
@@ -88,7 +93,7 @@ export default function AltaAlumnoPage() {
 
   const cargarPersona = async (id: number) => {
     try {
-      const { data } = await api.personasCore.getById(id);
+      const { data } = await identidad.personasCore.getById(id);
       setPersonaPreview(data);
       setPersonaId(data.id);
       setPersonaForm({
@@ -126,7 +131,7 @@ export default function AltaAlumnoPage() {
     let cancelled = false;
     const handle = setTimeout(async () => {
       try {
-        const { data: id } = await api.personasCore.findIdByDni(dni);
+        const { data: id } = await identidad.personasCore.findIdByDni(dni);
         if (!cancelled) {
           await cargarPersona(Number(id));
           setLastLookupDni(dni);
@@ -174,12 +179,12 @@ export default function AltaAlumnoPage() {
     };
     if (personaId) {
       const updatePayload: DTO.PersonaUpdateDTO = { ...createPayload };
-      await api.personasCore.update(personaId, updatePayload);
+      await identidad.personasCore.update(personaId, updatePayload);
       await cargarPersona(personaId);
       setLastLookupDni(createPayload.dni);
       return personaId;
     }
-    const { data } = await api.personasCore.create(createPayload);
+    const { data } = await identidad.personasCore.create(createPayload);
     const newId = Number(data);
     await cargarPersona(newId);
     setLastLookupDni(createPayload.dni);
@@ -211,12 +216,14 @@ export default function AltaAlumnoPage() {
         observacionesGenerales: alumnoForm.observacionesGenerales || undefined,
         motivoRechazoBaja: alumnoForm.motivoRechazoBaja || undefined,
       };
-      const { data: alumnoId } = await api.alumnos.create(payload);
+      const { data: alumnoId } = await identidad.alumnos.create(payload);
       const matriculaPayload: DTO.MatriculaCreateDTO = {
         alumnoId,
         periodoEscolarId: await obtenerPeriodoEscolarActual(),
       };
-      const { data: matriculaId } = await api.matriculas.create(matriculaPayload);
+      const { data: matriculaId } = await vidaEscolar.matriculas.create(
+        matriculaPayload,
+      );
       await handleAsignarSeccion(matriculaId);
       toast.success("Alumno matriculado correctamente");
       router.push(`/dashboard/alumnos/${alumnoId}`);
@@ -229,7 +236,7 @@ export default function AltaAlumnoPage() {
 
   const obtenerPeriodoEscolarActual = async (): Promise<number> => {
     try {
-      const res = await api.periodos.list();
+      const res = await calendario.periodos.list();
       const activos = res.data?.filter((p) => p.activo) ?? [];
       if (activos.length > 0) return activos[0].id!;
       if (res.data?.length) return res.data[0].id!;
@@ -480,7 +487,7 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
   const handleAsignarSeccion = async (matriculaId: number) => {
     if (!alumnoForm.seccionId) return;
     try {
-      await api.matriculaSeccionHistorial.create({
+      await vidaEscolar.matriculaSeccionHistorial.create({
         matriculaId,
         seccionId: Number(alumnoForm.seccionId),
         desde: alumnoForm.fechaInscripcion || new Date().toISOString().slice(0, 10),

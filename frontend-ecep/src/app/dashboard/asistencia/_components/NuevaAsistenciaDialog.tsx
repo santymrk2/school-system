@@ -20,7 +20,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { api } from "@/services/api";
+import { asistencias } from "@/services/api/modules";
 import type {
   EstadoAsistencia,
   JornadaAsistenciaCreateDTO,
@@ -104,7 +104,7 @@ export default function NuevaAsistenciaDialog({
     let alive = true;
     (async () => {
       try {
-        const res = await api.jornadasAsistencia.search({
+        const res = await asistencias.jornadas.search({
           seccionId: seccion.id,
         });
         if (!alive) return;
@@ -150,7 +150,7 @@ export default function NuevaAsistenciaDialog({
         return;
       }
 
-      const dupRes = await api.jornadasAsistencia.search({
+      const dupRes = await asistencias.jornadas.search({
         seccionId: seccion.id,
         fecha,
       });
@@ -175,7 +175,7 @@ export default function NuevaAsistenciaDialog({
         fecha,
         trimestreId: trimestre.id,
       } as any;
-      const jornadaId = (await api.jornadasAsistencia.create(bodyJ))
+      const jornadaId = (await asistencias.jornadas.create(bodyJ))
         .data as unknown as number;
 
       const payload: DetalleAsistenciaCreateDTO[] = alumnos.map((a) => ({
@@ -185,7 +185,7 @@ export default function NuevaAsistenciaDialog({
         observacion: null,
       })) as any;
 
-      await api.detallesAsistencia.bulk(payload);
+      await asistencias.detalles.bulk(payload);
       toast.success("Asistencia guardada");
       onOpenChange(false);
       onCreated();

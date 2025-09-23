@@ -7,7 +7,7 @@ import LoadingState from "@/components/common/LoadingState";
 import { UserRole, SeccionDTO, Turno } from "@/types/api-generated";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import {
   Card,
   CardHeader,
@@ -96,7 +96,7 @@ function useSectionStudentCounts(secciones: SeccionDTO[]) {
         const entries = await Promise.all(
           secciones.map(async (s) => {
             try {
-              const resp = await api.seccionesAlumnos.bySeccionId(s.id, today);
+              const resp = await gestionAcademica.seccionesAlumnos.bySeccionId(s.id, today);
               const alumnos = resp.data ?? [];
               return [s.id, alumnos.length] as const;
             } catch (e) {
@@ -230,7 +230,7 @@ function DirectivoView() {
         setLoading(true);
         setErr(null);
 
-        const secAll = (await api.secciones.list()).data ?? [];
+        const secAll = (await gestionAcademica.secciones.list()).data ?? [];
         const secs = periodoEscolarId
           ? (secAll as SeccionDTO[]).filter(
               (s: any) => s.periodoEscolarId === periodoEscolarId,

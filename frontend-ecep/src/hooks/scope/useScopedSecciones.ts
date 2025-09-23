@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { gestionAcademica, identidad } from "@/services/api/modules";
 import { useViewerScope } from "./useViewerScope";
 import type {
   SeccionDTO,
@@ -47,12 +47,12 @@ export function useScopedSecciones(opts?: {
         // STAFF → todas las secciones (opcional: filtrar por período)
         if (type === "staff") {
           const [secs, asig, empleados] = await Promise.all([
-            api.secciones.list().then((r) => r.data ?? []),
+            gestionAcademica.secciones.list().then((r) => r.data ?? []),
             includeTitular
-              ? api.asignacionDocenteSeccion.list().then((r) => r.data ?? [])
+              ? gestionAcademica.asignacionDocenteSeccion.list().then((r) => r.data ?? [])
               : Promise.resolve([]),
             includeTitular
-              ? api.empleados.list().then((r) => r.data ?? [])
+              ? identidad.empleados.list().then((r) => r.data ?? [])
               : Promise.resolve([]),
           ]);
 
@@ -62,7 +62,7 @@ export function useScopedSecciones(opts?: {
             const nombreEmpleado = async (emp: EmpleadoDTO) => {
               if (!emp.personaId) return "";
               if (!personaCache.has(emp.personaId)) {
-                const p = await api.personasCore
+                const p = await identidad.personasCore
                   .getById(emp.personaId)
                   .then((r) => r.data as PersonaDTO);
                 personaCache.set(emp.personaId, p);
@@ -120,7 +120,7 @@ export function useScopedSecciones(opts?: {
           }
 
           // 1) resolver empleadoId desde personaId
-          const empleadosRes = await api.empleados
+          const empleadosRes = await identidad.empleados
             .list()
             .catch(() => ({ data: [] as EmpleadoDTO[] }));
           const empleado = (empleadosRes.data ?? []).find(
@@ -134,13 +134,13 @@ export function useScopedSecciones(opts?: {
 
           // 2) traer asignaciones (endpoint by-empleado si existe)
           let asigs: AsignacionDocenteSeccionDTO[] = [];
-          if ((api.asignacionDocenteSeccion as any).byEmpleadoVigentes) {
+          if ((gestionAcademica.asignacionDocenteSeccion as any).byEmpleadoVigentes) {
             const r = await (
-              api.asignacionDocenteSeccion as any
+              gestionAcademica.asignacionDocenteSeccion as any
             ).byEmpleadoVigentes(empleadoId, fecha);
             asigs = r.data ?? [];
           } else {
-            const r = await api.asignacionDocenteSeccion.list();
+            const r = await gestionAcademica.asignacionDocenteSeccion.list();
             const todos = r.data ?? [];
             asigs = todos.filter(
               (a: any) =>
@@ -166,7 +166,7 @@ export function useScopedSecciones(opts?: {
             return;
           }
 
-          let secs = (await api.secciones.list()).data ?? [];
+          let secs = (await gestionAcademica.secciones.list()).data ?? [];
           secs = secs.filter((s) => ids.includes(s.id));
 
           if (periodoEscolarId != null) {

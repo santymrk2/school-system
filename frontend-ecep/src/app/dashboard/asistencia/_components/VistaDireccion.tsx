@@ -22,7 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAsistenciasData } from "@/hooks/useAsistenciasData";
-import { api } from "@/services/api";
+import { calendario } from "@/services/api/modules";
 import { toast } from "sonner";
 import { getTrimestreEstado, TRIMESTRE_ESTADO_LABEL } from "@/lib/trimestres";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
@@ -89,7 +89,7 @@ export default function VistaDireccion() {
         toast.error("La fecha de inicio no puede ser posterior a la de fin");
         return;
       }
-      await api.trimestres.create({
+      await calendario.trimestres.create({
         periodoEscolarId: 1,
         orden: (trimestres.length % 3) + 1,
         fechaInicio: nuevoTrimestre.inicio,
@@ -109,10 +109,10 @@ export default function VistaDireccion() {
     try {
       setTogglingTrimestreId(tri.id);
       if (estado === "activo") {
-        await api.trimestres.cerrar(tri.id);
+        await calendario.trimestres.cerrar(tri.id);
         toast.success("Trimestre cerrado");
       } else {
-        await api.trimestres.reabrir(tri.id);
+        await calendario.trimestres.reabrir(tri.id);
         toast.success("Trimestre activado");
       }
       await refreshBase();
@@ -125,7 +125,7 @@ export default function VistaDireccion() {
 
   const crearNoHabil = async () => {
     try {
-      await api.diasNoHabiles.create({
+      await calendario.diasNoHabiles.create({
         fecha: noHabilFecha,
         motivo: "No hábil",
       });

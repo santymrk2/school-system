@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/services/api";
+import { asistencias, calendario, gestionAcademica } from "@/services/api/modules";
 import type {
   TrimestreDTO,
   JornadaAsistenciaDTO,
@@ -32,15 +32,15 @@ export function useAsistenciasData() {
     (async () => {
       try {
         const [tri, secs, asig, dias] = await Promise.all([
-          api.trimestres.list().then((r) => r.data),
-          api.secciones.list().then((r) => r.data),
-          api.asignacionDocenteSeccion.list().then((r) =>
+          calendario.trimestres.list().then((r) => r.data),
+          gestionAcademica.secciones.list().then((r) => r.data),
+          gestionAcademica.asignacionDocenteSeccion.list().then((r) =>
             (r.data ?? []).map((a: any) => ({
               ...a,
               empleadoId: a.empleadoId ?? a.personalId ?? a.docenteId,
             })),
           ),
-          api.diasNoHabiles.list().then((r) => r.data),
+          calendario.diasNoHabiles.list().then((r) => r.data),
         ]);
         setTrimestres(tri);
         setSecciones(secs);
@@ -57,7 +57,7 @@ export function useAsistenciasData() {
   const loadAlumnosSeccion = async (seccionId: number, fechaISO?: string) => {
     const key = `${seccionId}_${fechaISO ?? ""}`;
     if (alumnosBySeccion[key]) return alumnosBySeccion[key];
-    const { data } = await api.secciones.alumnos(seccionId, fechaISO);
+    const { data } = await gestionAcademica.secciones.alumnos(seccionId, fechaISO);
     setAlumnosBySeccion((m) => ({ ...m, [key]: data }));
     return data;
   };
@@ -68,13 +68,13 @@ export function useAsistenciasData() {
     from?: string;
     to?: string;
   }) => {
-    const { data } = await api.jornadasAsistencia.search(params);
+    const { data } = await asistencias.jornadas.search(params);
     setJornadas(data);
     return data;
   };
 
   const loadDetallesByJornada = async (jornadaId: number) => {
-    const { data } = await api.detallesAsistencia.search({ jornadaId });
+    const { data } = await asistencias.detalles.search({ jornadaId });
     setDetalles((prev) => {
       // merge simple
       const others = prev.filter((p) => p.jornadaId !== jornadaId);
@@ -97,8 +97,8 @@ export function useAsistenciasData() {
     loadDetallesByJornada,
     refreshBase: async () => {
       const [tri, dias] = await Promise.all([
-        api.trimestres.list().then((r) => r.data),
-        api.diasNoHabiles.list().then((r) => r.data),
+        calendario.trimestres.list().then((r) => r.data),
+        calendario.diasNoHabiles.list().then((r) => r.data),
       ]);
       setTrimestres(tri);
       setDiasNoHabiles(dias);

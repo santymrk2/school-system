@@ -29,7 +29,7 @@ import type {
   TrimestreDTO,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
-import { api } from "@/services/api";
+import { calendario, gestionAcademica } from "@/services/api/modules";
 import { CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
 
 interface FamilyEvaluationsViewProps {
@@ -166,7 +166,7 @@ export function FamilyEvaluationsView({
         setLoadingDetalle(true);
         setErrorDetalle(null);
 
-        const trimestresRes = await api.trimestres
+        const trimestresRes = await calendario.trimestres
           .list()
           .catch(() => ({ data: [] as TrimestreDTO[] }));
         if (!alive) return;
@@ -177,7 +177,7 @@ export function FamilyEvaluationsView({
         setTrimestres(mapaTrimestres);
 
         if (nivel === NivelAcademicoEnum.INICIAL) {
-          const informesRes = await api.informes
+          const informesRes = await gestionAcademica.informes
             .list()
             .catch(() => ({ data: [] as InformeInicialDTO[] }));
           if (!alive) return;
@@ -210,19 +210,19 @@ export function FamilyEvaluationsView({
         const [evaluacionesRes, resultadosRes, seccionMateriasRes, materiasRes] =
           await Promise.all([
             seccionId
-              ? api.evaluaciones
+              ? gestionAcademica.evaluaciones
                   .search({ seccionId })
                   .catch(() => ({ data: [] as EvaluacionDTO[] }))
-              : api.evaluaciones
+              : gestionAcademica.evaluaciones
                   .list()
                   .catch(() => ({ data: [] as EvaluacionDTO[] })),
-            api.resultados
+            gestionAcademica.resultados
               .list({ matriculaId: alumnoSeleccionado.matriculaId })
               .catch(() => ({ data: [] as ResultadoEvaluacionDTO[] })),
-            api.seccionMaterias
+            gestionAcademica.seccionMaterias
               .list()
               .catch(() => ({ data: [] as SeccionMateriaDTO[] })),
-            api.materias
+            gestionAcademica.materias
               .list()
               .catch(() => ({ data: [] as MateriaDTO[] })),
           ]);

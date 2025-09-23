@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { identidad } from "@/services/api/modules";
 import { useAuth } from "@/hooks/useAuth";
 import type { AlumnoLiteDTO } from "@/types/api-generated";
 
@@ -28,7 +28,7 @@ export function useFamilyAlumnos() {
           return;
         }
         setLoading(true);
-        const res = await api.familiaresAlumnos.byFamiliarId(familiarId);
+        const res = await identidad.familiaresAlumnos.byFamiliarId(familiarId);
         if (mounted) {
           setAlumnos(res.data ?? []);
           setError(null);

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
-import { api } from "@/services/api";
+import { gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
   SeccionMateriaDTO,
@@ -81,9 +81,9 @@ export default function EvaluacionesIndexPage() {
           return;
         }
         const [sms, evs, mats] = await Promise.all([
-          api.seccionMaterias.list().then((r) => r.data ?? []),
-          api.evaluaciones.list().then((r) => r.data ?? []),
-          api.materias.list().then((r) => r.data ?? []),
+          gestionAcademica.seccionMaterias.list().then((r) => r.data ?? []),
+          gestionAcademica.evaluaciones.list().then((r) => r.data ?? []),
+          gestionAcademica.materias.list().then((r) => r.data ?? []),
         ]);
         if (!alive) return;
         setSecMats(sms);

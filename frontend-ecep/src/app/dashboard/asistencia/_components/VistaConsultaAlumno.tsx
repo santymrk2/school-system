@@ -55,7 +55,7 @@ export default function VistaConsultaAlumno() {
   const { user, selectedRole } = useAuth();
   const { loading, jornadas, detalles } = useAsistenciasData();
 
-  // Aquí deberías usar api.familiares.alumnos(user.personaId) si FAMILY,
+  // Aquí deberías usar identidad.familiaresAlumnos.byFamiliarId(user.personaId) si FAMILY,
   // o la matrícula del propio alumno si STUDENT (con tu endpoint).
   // Para demo: asumimos que ya tenés una matrículaId:
   const [matriculaId] = useState<number | null>(null);

@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { api } from "@/services/api";
+import { asistencias } from "@/services/api/modules";
 import { toast } from "sonner";
 import type { SeccionDTO, TrimestreDTO } from "@/types/api-generated";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -140,7 +140,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
     let alive = true;
     (async () => {
       try {
-        const res = await api.jornadasAsistencia.search({
+        const res = await asistencias.jornadas.search({
           seccionId: seccion.id,
         });
         if (!alive) return;
@@ -200,7 +200,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         return;
       }
 
-      const dupRes = await api.jornadasAsistencia.search({
+      const dupRes = await asistencias.jornadas.search({
         seccionId: seccion.id,
         fecha,
       });
@@ -218,8 +218,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
 
       let tri = resolveTrimestreForDate(fecha) ?? undefined;
       if (!tri) {
-      const msg =
-        "La fecha seleccionada no pertenece al trimestre activo.";
+        const msg = "La fecha seleccionada no pertenece al trimestre activo.";
         setDateError(msg);
         toast.warning(msg);
         return;
@@ -234,7 +233,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       }
 
       const body = { seccionId: seccion.id, fecha, trimestreId: tri.id };
-      const resp = await api.jornadasAsistencia.create(body as any);
+      const resp = await asistencias.jornadas.create(body as any);
       const jornadaId = resp.data as number;
 
       toast.success(

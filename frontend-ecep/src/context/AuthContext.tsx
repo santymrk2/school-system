@@ -13,7 +13,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { identidad } from "@/services/api/modules";
 import type { PersonaResumenDTO, AuthResponse } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
-import { normalizeRole } from "@/lib/auth-roles"; // asegúrate de tener este helper
+import { normalizeRole, normalizeRoles } from "@/lib/auth-roles"; // asegúrate de tener este helper
 
 const SELECTED_ROLE_KEY = "selectedRole";
 
@@ -143,23 +143,23 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
   const setSelectedRole = (role: UserRole | null) => {
     const norm = role ? normalizeRole(role) : null;
-    setSelectedRoleState(norm);
+    let changed = false;
+    setSelectedRoleState((prev) => {
+      if (prev === norm) {
+        return prev;
+      }
+      changed = true;
+      return norm;
+    });
     persistSelectedRole(norm);
-    router.refresh(); // refresca la UI para que cambien permisos/menús
+    if (changed) {
+      router.refresh(); // refresca la UI para que cambien permisos/menús
+    }
   };
 
   // ----- roles normalizados desde el usuario -----
-  const roles = useMemo<UserRole[]>(
-    () =>
-      Array.from(
-        new Set(
-          (user?.roles ?? [])
-            .map(normalizeRole)
-            .filter((r): r is UserRole => r !== null),
-        ),
-      ),
-    [user],
-  );
+  const userRoles = user?.roles;
+  const roles = useMemo<UserRole[]>(() => normalizeRoles(userRoles), [userRoles]);
 
   // ----- carga de sesión al iniciar -----
   const checkAuth = useCallback(async () => {
@@ -172,9 +172,27 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
       }
       setUser(patched);
 
-      // rehidratar rol elegido si aplica
+      const normalizedRoles = normalizeRoles(patched.roles);
       const stored = loadSelectedRole();
-      if (stored) setSelectedRoleState(stored);
+
+      let nextRole: UserRole | null = null;
+
+      if (stored && normalizedRoles.includes(stored)) {
+        nextRole = stored;
+      } else if (normalizedRoles.length === 1) {
+        nextRole = normalizedRoles[0];
+      } else {
+        nextRole = null;
+      }
+
+      setSelectedRoleState(nextRole);
+
+      if (stored !== nextRole) {
+        persistSelectedRole(nextRole);
+        if (stored || nextRole) {
+          router.refresh();
+        }
+      }
     } catch {
       setUser(null);
 
@@ -215,13 +233,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
       }
       setUser(patched);
 
-      const normalized = Array.from(
-        new Set(
-          (me.data.roles ?? [])
-            .map(normalizeRole)
-            .filter((r): r is UserRole => r !== null),
-        ),
-      );
+      const normalized = normalizeRoles(me.data.roles);
 
       if (normalized.length === 0) {
         // Sin roles: quedate en login; podés mostrar un toast desde la página
@@ -255,6 +267,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
           writeTokenCookie(null);
         }
         router.replace("/");
+        router.refresh();
       });
   };
 

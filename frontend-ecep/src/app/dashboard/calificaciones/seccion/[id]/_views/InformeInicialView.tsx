@@ -21,6 +21,7 @@ import {
   resolveTrimestrePeriodoId,
 } from "@/lib/trimestres";
 import { toast } from "sonner";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 export default function InformeInicialView({
   seccionId,
@@ -34,6 +35,7 @@ export default function InformeInicialView({
   const [alumnos, setAlumnos] = useState<any[]>([]);
   const [informes, setInformes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   useEffect(() => {
     let alive = true;
@@ -74,7 +76,7 @@ export default function InformeInicialView({
     return () => {
       alive = false;
     };
-  }, [seccionId, hoy, periodoEscolarId]);
+  }, [seccionId, hoy, periodoEscolarId, calendarVersion]);
 
   const byKey = useMemo(() => {
     const m = new Map<string, any>();

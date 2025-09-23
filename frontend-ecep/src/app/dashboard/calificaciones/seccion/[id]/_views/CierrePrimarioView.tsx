@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 const CONCEPTOS = Object.values(CalificacionConceptual).filter(
   (value): value is CalificacionConceptual => typeof value === "string",
@@ -102,6 +103,7 @@ export default function CierrePrimarioView({
   const [loadingRows, setLoadingRows] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   // carga base
   useEffect(() => {
@@ -155,7 +157,7 @@ export default function CierrePrimarioView({
     return () => {
       alive = false;
     };
-  }, [seccionId, hoy, periodoEscolarId]);
+  }, [seccionId, hoy, periodoEscolarId, calendarVersion]);
 
   const triOpts = useMemo<
     { id: number; label: string; estado: TrimestreEstado }[]

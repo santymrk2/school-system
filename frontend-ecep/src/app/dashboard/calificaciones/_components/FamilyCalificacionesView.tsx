@@ -23,6 +23,7 @@ import type {
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
 import { resolveTrimestrePeriodoId } from "@/lib/trimestres";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 interface FamilyCalificacionesViewProps {
   alumnos: AlumnoLiteDTO[];
@@ -95,6 +96,7 @@ export default function FamilyCalificacionesView({
   const [trimestres, setTrimestres] = useState<TrimestreDTO[]>([]);
   const [calificaciones, setCalificaciones] = useState<CalificacionDTO[]>([]);
   const [informes, setInformes] = useState<InformeInicialDTO[]>([]);
+  const calendarVersion = useCalendarRefresh("trimestres");
 
   const activePeriodId =
     typeof periodoEscolarId === "number" ? periodoEscolarId : null;
@@ -269,7 +271,7 @@ export default function FamilyCalificacionesView({
     return () => {
       alive = false;
     };
-  }, [matriculaIds, seccionIds, periodoEscolarId]);
+  }, [matriculaIds, seccionIds, periodoEscolarId, calendarVersion]);
 
   const trimestresOrdenados = useMemo(
     () => [...trimestres].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),

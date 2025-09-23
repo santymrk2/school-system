@@ -37,9 +37,10 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
-import { displayRole } from "@/lib/auth-roles";
+import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {
   DEFAULT_GENERO_VALUE,
   GENERO_OPTIONS,
@@ -109,7 +110,10 @@ export default function AlumnoPerfilPage() {
 
   const { periodoEscolarId: activePeriodId } = useActivePeriod();
   const { hasRole } = useAuth();
-  const canEditRoles = hasRole(UserRole.ADMIN) || hasRole(UserRole.DIRECTOR);
+  const { type: viewerScope } = useViewerScope();
+  const canManageProfile = viewerScope === "staff";
+  const canEditRoles =
+    canManageProfile && (hasRole(UserRole.ADMIN) || hasRole(UserRole.DIRECTOR));
 
   // helpers
   const toNombre = (p?: PersonaDTO | null) =>
@@ -150,12 +154,17 @@ export default function AlumnoPerfilPage() {
   const studentRoleOptions = useMemo(() => {
     const base = [UserRole.STUDENT, UserRole.FAMILY];
     const current = persona?.roles ?? [];
-    return Array.from(new Set<UserRole>([...base, ...current]));
+    return normalizeRoles([...base, ...current]);
   }, [persona?.roles]);
   const formatRol = (value?: RolVinculo | string | null) => {
     if (!value) return "Sin vínculo";
     const formatted = String(value).replace(/_/g, " ").toLowerCase();
     return formatted.replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const handleOpenFamilyChat = (personaId?: number | null) => {
+    if (!personaId) return;
+    router.push(`/dashboard/chat?personaId=${personaId}`);
   };
 
   const [editOpen, setEditOpen] = useState(false);
@@ -215,13 +224,13 @@ export default function AlumnoPerfilPage() {
     if (credentialsDialogOpen) {
       const fallbackRoles =
         persona?.roles && persona.roles.length > 0
-          ? [...persona.roles]
+          ? normalizeRoles(persona.roles)
           : [UserRole.STUDENT];
       setCredentialsForm({
         email: persona?.email ?? "",
         password: "",
         confirmPassword: "",
-        roles: Array.from(new Set(fallbackRoles)),
+        roles: normalizeRoles(fallbackRoles),
       });
     }
   }, [credentialsDialogOpen, persona?.email, persona?.roles]);
@@ -773,20 +782,22 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
-    const selectedRoles = canEditRoles
+    const baseRoles = canEditRoles
       ? credentialsForm.roles
       : persona.roles && persona.roles.length > 0
         ? persona.roles
         : [UserRole.STUDENT];
 
-    if (!selectedRoles.length) {
+    const normalizedSelected = normalizeRoles(baseRoles);
+
+    if (!normalizedSelected.length) {
       toast.error("Seleccioná al menos un rol para el acceso");
       return;
     }
 
     const payload: Partial<PersonaUpdateDTO> = {
       email,
-      roles: Array.from(new Set(selectedRoles)),
+      roles: normalizedSelected,
     };
 
     if (password) {
@@ -804,12 +815,10 @@ export default function AlumnoPerfilPage() {
         email: email,
         password: "",
         confirmPassword: "",
-        roles: Array.from(
-          new Set(
-            refreshed?.roles && refreshed.roles.length > 0
-              ? refreshed.roles
-              : selectedRoles,
-          ),
+        roles: normalizeRoles(
+          refreshed?.roles && refreshed.roles.length > 0
+            ? refreshed.roles
+            : normalizedSelected,
         ),
       });
     } catch (error: any) {
@@ -946,23 +955,24 @@ export default function AlumnoPerfilPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default">Editar datos</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle>Editar perfil del alumno</DialogTitle>
-                  <DialogDescription>
-                    Actualizá la información personal, académica y la asignación de sección del periodo vigente.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-6">
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Datos personales
-                    </h3>
+          {canManageProfile && (
+            <div className="flex items-center gap-2">
+              <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="default">Editar datos</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Editar perfil del alumno</DialogTitle>
+                    <DialogDescription>
+                      Actualizá la información personal, académica y la asignación de sección del periodo vigente.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-6">
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Datos personales
+                      </h3>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Nombre</Label>
@@ -1189,9 +1199,10 @@ export default function AlumnoPerfilPage() {
                     Guardar cambios
                   </Button>
                 </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
 
         {loading && <LoadingState label="Cargando información del alumno…" />}
@@ -1332,16 +1343,17 @@ export default function AlumnoPerfilPage() {
                     <CardTitle>Familia</CardTitle>
                     <CardDescription>Vínculos y tutores</CardDescription>
                   </div>
-                  <Dialog open={addFamilyOpen} onOpenChange={setAddFamilyOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">Agregar familiar</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Agregar familiar al alumno</DialogTitle>
-                        <DialogDescription>
-                          Buscá por DNI para reutilizar fichas existentes o completá los datos para crear un nuevo familiar.
-                        </DialogDescription>
+                  {canManageProfile && (
+                    <Dialog open={addFamilyOpen} onOpenChange={setAddFamilyOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">Agregar familiar</Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Agregar familiar al alumno</DialogTitle>
+                          <DialogDescription>
+                            Buscá por DNI para reutilizar fichas existentes o completá los datos para crear un nuevo familiar.
+                          </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div className="space-y-2">
@@ -1551,48 +1563,66 @@ export default function AlumnoPerfilPage() {
                           Guardar familiar
                         </Button>
                       </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {familiares.length ? (
-                  familiares.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => router.push(`/dashboard/familiares/${f.id}`)}
-                      className="w-full rounded-md border text-left transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <div className="text-sm">
-                          <div className="font-medium">{toNombre(f._persona)}</div>
-                          <div className="text-muted-foreground">
-                            DNI:{" "}
-                            {f._persona?.dni ??
-                              (f._persona as any)?.documento ??
-                              "—"}
+                  familiares.map((f) => {
+                    const personaId = f.personaId ?? f.id ?? f._persona?.id ?? null;
+                    return (
+                      <div
+                        key={f.id}
+                        className="w-full rounded-md border bg-background text-left transition hover:border-primary/60 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary"
+                      >
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <div className="text-sm">
+                            <div className="font-medium">{toNombre(f._persona)}</div>
+                            <div className="text-muted-foreground">
+                              DNI:{" "}
+                              {f._persona?.dni ??
+                                (f._persona as any)?.documento ??
+                                "—"}
+                            </div>
+                            <div className="text-muted-foreground">
+                              Contacto:{" "}
+                              {(f._persona as any)?.telefono ??
+                                (f._persona as any)?.celular ??
+                                f._persona?.email ??
+                                "—"}
+                            </div>
                           </div>
-                          <div className="text-muted-foreground">
-                            Contacto:{" "}
-                            {(f._persona as any)?.telefono ??
-                              (f._persona as any)?.celular ??
-                              f._persona?.email ??
-                              "—"}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {f.rolVinculo && (
+                              <Badge variant="outline">{formatRol(f.rolVinculo)}</Badge>
+                            )}
+                            {f.esTutorLegal && (
+                              <Badge variant="default">Tutor legal</Badge>
+                            )}
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {f.rolVinculo && (
-                            <Badge variant="outline">{formatRol(f.rolVinculo)}</Badge>
-                          )}
-                          {f.esTutorLegal && (
-                            <Badge variant="default">Tutor legal</Badge>
-                          )}
+                        <Separator />
+                        <div className="flex flex-wrap items-center justify-end gap-2 px-3 py-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/familiares/${f.id}`)}
+                          >
+                            Ver ficha
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenFamilyChat(personaId)}
+                            disabled={!personaId}
+                          >
+                            Enviar mensaje
+                          </Button>
                         </div>
                       </div>
-                      <Separator />
-                    </button>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-sm text-muted-foreground">
                     Sin familiares vinculados
@@ -1617,7 +1647,9 @@ export default function AlumnoPerfilPage() {
                         <div className="text-muted-foreground">
                           Roles:{" "}
                           {persona?.roles && persona.roles.length > 0
-                            ? persona.roles.map((role) => displayRole(role)).join(", ")
+                            ? normalizeRoles(persona.roles)
+                                .map((role) => displayRole(role))
+                                .join(", ")
                             : "Sin roles"}
                         </div>
                       </>
@@ -1627,25 +1659,26 @@ export default function AlumnoPerfilPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Dialog
-                      open={credentialsDialogOpen}
-                      onOpenChange={setCredentialsDialogOpen}
-                    >
-                      <DialogTrigger asChild>
-                        <Button>Gestionar acceso</Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>
-                            {persona?.credencialesActivas
-                              ? "Actualizar acceso"
-                              : "Crear acceso"}
-                          </DialogTitle>
-                          <DialogDescription>
-                            El email será el usuario de inicio de sesión. Para cambiar la contraseña ingresá y confirmá el nuevo valor.
-                          </DialogDescription>
-                        </DialogHeader>
+                  {canManageProfile && (
+                    <div className="flex items-center gap-2">
+                      <Dialog
+                        open={credentialsDialogOpen}
+                        onOpenChange={setCredentialsDialogOpen}
+                      >
+                        <DialogTrigger asChild>
+                          <Button>Gestionar acceso</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>
+                              {persona?.credencialesActivas
+                                ? "Actualizar acceso"
+                                : "Crear acceso"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              El email será el usuario de inicio de sesión. Para cambiar la contraseña ingresá y confirmá el nuevo valor.
+                            </DialogDescription>
+                          </DialogHeader>
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Email</Label>
@@ -1712,7 +1745,7 @@ export default function AlumnoPerfilPage() {
                                               : prev.roles.filter((r) => r !== role);
                                             return {
                                               ...prev,
-                                              roles: Array.from(new Set(nextRoles)),
+                                              roles: normalizeRoles(nextRoles),
                                             };
                                           })
                                         }
@@ -1746,9 +1779,10 @@ export default function AlumnoPerfilPage() {
                             Guardar acceso
                           </Button>
                         </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -4,9 +4,9 @@ import { TRIMESTRE_ESTADO_LABEL, type TrimestreEstado } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
 
 const CIRCLE_STYLES: Record<TrimestreEstado, string> = {
-  activo: "bg-emerald-500 text-emerald-50 border-transparent",
-  inactivo: "bg-white text-foreground border-border",
-  cerrado: "bg-red-500 text-red-50 border-transparent",
+  activo: "bg-emerald-500 text-emerald-50",
+  inactivo: "bg-white text-foreground border border-border",
+  cerrado: "bg-red-500 text-red-50",
 };
 
 export interface TrimestreEstadoBadgeProps {
@@ -28,16 +28,23 @@ export function TrimestreEstadoBadge({
 }: TrimestreEstadoBadgeProps) {
   const finalLabel = label ?? TRIMESTRE_ESTADO_LABEL[estado] ?? "";
   const circleClasses = cn(
-    "flex h-6 w-6 items-center justify-center rounded-full border text-current",
+    "flex h-6 w-6 items-center justify-center rounded-full text-current",
     CIRCLE_STYLES[estado],
     circleClassName,
   );
-  const iconClasses = cn("h-3.5 w-3.5", iconClassName);
+  const iconClasses = cn("h-4 w-4", iconClassName);
 
   let icon = null;
   switch (estado) {
     case "activo":
-      icon = <Dot className={iconClasses} strokeWidth={6} fill="currentColor" />;
+      icon = (
+        <Dot
+          className={iconClasses}
+          stroke="none"
+          strokeWidth={0}
+          fill="currentColor"
+        />
+      );
       break;
     case "inactivo":
       icon = <Minus className={iconClasses} strokeWidth={3} />;

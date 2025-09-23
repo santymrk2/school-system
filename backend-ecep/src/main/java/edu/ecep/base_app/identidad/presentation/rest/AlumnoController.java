@@ -6,6 +6,9 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,9 +28,39 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class AlumnoController {
     private final AlumnoService service;
-    @GetMapping public List<AlumnoDTO> list(){ return service.findAll(); }
-    @GetMapping("/{id}") public AlumnoDTO get(@PathVariable Long id){ return service.get(id); }
-    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid AlumnoDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
-    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid AlumnoDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
-    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+
+    @GetMapping
+    public List<AlumnoDTO> list() {
+        return service.findAll();
+    }
+
+    @GetMapping("/paginated")
+    public Page<AlumnoDTO> listPaged(
+            @PageableDefault(size = 25) Pageable pageable,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long seccionId) {
+        return service.findPaged(pageable, search, seccionId);
+    }
+
+    @GetMapping("/{id}")
+    public AlumnoDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+
+    @PostMapping
+    public ResponseEntity<Long> create(@RequestBody @Valid AlumnoDTO dto) {
+        return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid AlumnoDTO dto) {
+        service.update(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

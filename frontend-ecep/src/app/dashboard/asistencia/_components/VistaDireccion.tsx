@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAsistenciasData } from "@/hooks/useAsistenciasData";
 import { calendario } from "@/services/api/modules";
+import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { toast } from "sonner";
 import { getTrimestreEstado, TRIMESTRE_ESTADO_LABEL } from "@/lib/trimestres";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
@@ -98,6 +99,7 @@ export default function VistaDireccion() {
       toast.success("Trimestre creado");
       setModalTri(false);
       await refreshBase();
+      triggerCalendarRefresh("trimestres");
     } catch {
       toast.error("Error");
     }
@@ -116,6 +118,7 @@ export default function VistaDireccion() {
         toast.success("Trimestre activado");
       }
       await refreshBase();
+      triggerCalendarRefresh("trimestres");
     } catch {
       toast.error("No se pudo actualizar el estado del trimestre");
     } finally {

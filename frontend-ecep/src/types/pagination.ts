@@ -1,11 +1,16 @@
-export interface PageResponse<T> {
+
+export interface SpringPage<T> {
   content: T[];
   totalElements: number;
   totalPages: number;
   size: number;
   number: number;
-  numberOfElements: number;
+
   first: boolean;
   last: boolean;
-  empty: boolean;
+  numberOfElements?: number;
+  empty?: boolean;
+  sort?: unknown;
+  pageable?: unknown;
 }
+

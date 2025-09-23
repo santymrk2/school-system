@@ -29,7 +29,7 @@ import {
 
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/useAuth";
-import { normalizeRole } from "@/lib/auth-roles";
+import { normalizeRoles } from "@/lib/auth-roles";
 import { UserRole } from "@/types/api-generated";
 
 export default function LoginPage() {
@@ -46,13 +46,8 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState("");
 
   // ---- roles normalizados del usuario (si ya está logueado) ----
-  const roles = useMemo<UserRole[]>(
-    () =>
-      Array.from(
-        new Set((user?.roles ?? []).map(normalizeRole).filter(Boolean)),
-      ) as UserRole[],
-    [user],
-  );
+  const userRoles = user?.roles;
+  const roles = useMemo<UserRole[]>(() => normalizeRoles(userRoles), [userRoles]);
 
   // ---- redirecciones según estado de sesión/roles ----
   useEffect(() => {

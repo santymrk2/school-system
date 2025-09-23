@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { calendario } from "@/services/api/modules";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { getTrimestreEstado } from "@/lib/trimestres";
+import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 type UseActivePeriodOpts = {
   today?: string; // YYYY-MM-DD
@@ -39,6 +40,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
   const [today, setToday] = useState<string>(opts?.today ?? toLocalISODate());
   const preferOpen = opts?.preferOpen ?? true;
   const tickMidnight = opts?.tickMidnight ?? true;
+  const calendarVersion = useCalendarRefresh(["periodos", "trimestres"]);
 
   // Opcional: actualizar a medianoche si no viene por props
   useEffect(() => {
@@ -78,7 +80,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [calendarVersion]);
 
   const computed = useMemo(() => {
     if (!periodos.length || !trimestres.length) {

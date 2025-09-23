@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { identidad, vidaEscolar } from "@/services/api/modules";
+import { pageContent } from "@/lib/page-response";
 import type {
   ActaAccidenteDTO,
   EstadoActaAccidente,
@@ -62,7 +63,8 @@ export default function EditActaDialog({
     (async () => {
       try {
         setLoading(true);
-        const pers = (await identidad.empleados.list()).data ?? [];
+        const persRes = await identidad.empleados.list();
+        const pers = pageContent<EmpleadoDTO>(persRes.data);
         if (!alive) return;
 
         // Prefetch de personas para mostrar nombres correctos

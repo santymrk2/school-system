@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { gestionAcademica, identidad } from "@/services/api/modules";
+import { pageContent } from "@/lib/page-response";
 import { useViewerScope } from "./useViewerScope";
 import type {
   SeccionDTO,
@@ -52,7 +53,9 @@ export function useScopedSecciones(opts?: {
               ? gestionAcademica.asignacionDocenteSeccion.list().then((r) => r.data ?? [])
               : Promise.resolve([]),
             includeTitular
-              ? identidad.empleados.list().then((r) => r.data ?? [])
+              ? identidad.empleados
+                  .list()
+                  .then((r) => pageContent<EmpleadoDTO>(r.data))
               : Promise.resolve([]),
           ]);
 
@@ -120,13 +123,14 @@ export function useScopedSecciones(opts?: {
           }
 
           // 1) resolver empleadoId desde personaId
-          const empleadosRes = await identidad.empleados
-            .list()
-            .catch(() => ({ data: [] as EmpleadoDTO[] }));
-          const empleado = (empleadosRes.data ?? []).find(
-            (e) => e.personaId === personaId,
-          );
-          const empleadoId = empleado?.id;
+          let empleadoId: number | undefined;
+          try {
+            const empleadosRes = await identidad.empleados.list();
+            const empleados = pageContent<EmpleadoDTO>(empleadosRes.data);
+            empleadoId = empleados.find((e) => e.personaId === personaId)?.id;
+          } catch (error) {
+            empleadoId = undefined;
+          }
           if (!empleadoId) {
             if (alive) setSecciones([]);
             return;

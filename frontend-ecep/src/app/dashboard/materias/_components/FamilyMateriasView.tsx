@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { gestionAcademica, identidad } from "@/services/api/modules";
+import { pageContent } from "@/lib/page-response";
 import type {
   AlumnoLiteDTO,
   EmpleadoDTO,
@@ -175,7 +176,7 @@ export default function FamilyMateriasView({
           if (mat.id != null) materiaNombreById.set(mat.id, mat.nombre ?? "");
         }
 
-        const empleados = empleadosRes.data ?? [];
+        const empleados = pageContent<EmpleadoDTO>(empleadosRes.data);
         const empleadoById = new Map<number, EmpleadoDTO>();
         const personaIds = new Set<number>();
         for (const emp of empleados) {

@@ -29,6 +29,7 @@ import {
   identidad,
   vidaEscolar,
 } from "@/services/api/modules";
+import { pageContent } from "@/lib/page-response";
 import type {
   ActaAccidenteDTO,
   AlumnoLiteDTO,
@@ -150,7 +151,9 @@ export default function AccidentesSeccionPage() {
           gestionAcademica.asignacionDocenteSeccion
             .list()
             .then((r) => r.data ?? []),
-          identidad.empleados.list().then((r) => r.data ?? []),
+          identidad.empleados
+            .list()
+            .then((r) => pageContent<PersonalDTO>(r.data)),
         ]);
         if (!alive) return;
         setAsignaciones(asigs);

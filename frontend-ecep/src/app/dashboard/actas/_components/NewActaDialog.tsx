@@ -8,6 +8,7 @@ import {
   vidaEscolar,
 } from "@/services/api/modules";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { pageContent } from "@/lib/page-response";
 import type {
   ActaAccidenteCreateDTO,
   AlumnoDTO,
@@ -96,8 +97,13 @@ export default function NewActaDialog({
         setLoading(true);
 
         const meRes = await identidad.me().catch(() => ({ data: null }));
-        const emps =
-          (await identidad.empleados.list().catch(() => ({ data: [] }))).data ?? [];
+        let emps: EmpleadoDTO[] = [];
+        try {
+          const empleadosRes = await identidad.empleados.list();
+          emps = pageContent<EmpleadoDTO>(empleadosRes.data);
+        } catch {
+          emps = [];
+        }
 
         // Dataset alumnos según modo
         let alumnos: Array<AlumnoDTO | AlumnoLiteDTO> = [];
@@ -288,7 +294,10 @@ export default function NewActaDialog({
       const meData: any = me ?? (await identidad.me().then((r) => r.data));
       const emps = empleados.length
         ? empleados
-        : await identidad.empleados.list().then((r) => r.data ?? []);
+        : await identidad.empleados
+            .list()
+            .then((r) => pageContent<EmpleadoDTO>(r.data))
+            .catch(() => []);
       const match = emps.find((e: any) => e.personaId === meData?.personaId);
       informanteId = match?.id ?? undefined;
     } catch {

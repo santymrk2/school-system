@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import {
-  TRIMESTRE_ESTADO_BADGE_VARIANT,
   TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
   resolveTrimestrePeriodoId,
@@ -144,8 +143,6 @@ function TrimestreInformeTile({
   const estado = getTrimestreEstado(trimestre);
   const esCerrado = estado === "cerrado";
   const esSoloLectura = estado !== "activo";
-  const estadoBadgeVariant =
-    TRIMESTRE_ESTADO_BADGE_VARIANT[estado] ?? "secondary";
   const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado];
 
   useEffect(() => {
@@ -188,7 +185,11 @@ function TrimestreInformeTile({
     <Card className="border-dashed">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Trimestre {trimestre.orden}</CardTitle>
-        <Badge variant={estadoBadgeVariant}>{estadoLabel}</Badge>
+        <TrimestreEstadoBadge
+          estado={estado}
+          label={estadoLabel}
+          className="text-xs text-muted-foreground"
+        />
       </CardHeader>
       <CardContent>
         {existing ? (

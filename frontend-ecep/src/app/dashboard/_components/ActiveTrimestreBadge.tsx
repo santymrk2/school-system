@@ -1,14 +1,13 @@
 "use client";
 
-import type { ComponentProps } from "react";
-
-import { Badge } from "@/components/ui/badge";
+import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { cn } from "@/lib/utils";
 import {
   formatTrimestreRange,
   getTrimestreEstado,
   TRIMESTRE_ESTADO_LABEL,
+  type TrimestreEstado,
 } from "@/lib/trimestres";
 
 interface ActiveTrimestreBadgeProps {
@@ -18,12 +17,12 @@ interface ActiveTrimestreBadgeProps {
 export function ActiveTrimestreBadge({ className }: ActiveTrimestreBadgeProps) {
   const { trimestreActivo, loading } = useActivePeriod();
 
+  let estado: TrimestreEstado = "inactivo";
   let label = "Sin trimestre activo";
   let description = "";
-  let variant: ComponentProps<typeof Badge>["variant"] = "secondary";
 
   if (trimestreActivo) {
-    const estado = getTrimestreEstado(trimestreActivo);
+    estado = getTrimestreEstado(trimestreActivo);
     const range = formatTrimestreRange(trimestreActivo);
     const numero = trimestreActivo.orden;
     const numeroLabel = numero ? ` ${numero}` : "";
@@ -31,26 +30,10 @@ export function ActiveTrimestreBadge({ className }: ActiveTrimestreBadgeProps) {
     description = range ?? "";
 
     const estadoBaseLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
-
-    switch (estado) {
-      case "activo":
-        label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
-        variant = "outline";
-        break;
-      case "cerrado":
-        label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
-        variant = "secondary";
-        break;
-      case "inactivo":
-      default:
-        label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
-        variant = "secondary";
-        break;
-    }
+    label = `Trimestre${numeroLabel} ${estadoBaseLabel.toLowerCase()}`;
   }
 
   if (loading || (!label && !description)) return null;
-
 
   return (
     <div
@@ -59,9 +42,11 @@ export function ActiveTrimestreBadge({ className }: ActiveTrimestreBadgeProps) {
         className,
       )}
     >
-      <Badge variant={variant} className="whitespace-nowrap">
-        {label}
-      </Badge>
+      <TrimestreEstadoBadge
+        estado={estado}
+        label={label}
+        className="whitespace-nowrap"
+      />
       {description ? <span>{description}</span> : null}
     </div>
   );

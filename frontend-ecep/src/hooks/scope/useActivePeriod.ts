@@ -83,7 +83,7 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
   }, [calendarVersion]);
 
   const computed = useMemo(() => {
-    if (!periodos.length || !trimestres.length) {
+    if (!periodos.length) {
       return {
         periodo: undefined as PeriodoEscolarDTO | undefined,
         trimestresDelPeriodo: [] as TrimestreDTO[],
@@ -101,28 +101,32 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
       trisByPeriodo.set(pid, arr);
     }
 
-    let elegido: PeriodoEscolarDTO | undefined;
-    if (preferOpen) {
-      elegido = periodos.find((p) => {
+    const periodosOrdenados = [...periodos].sort(
+      (a: any, b: any) => (b.anio ?? 0) - (a.anio ?? 0),
+    );
+
+    let elegido: PeriodoEscolarDTO | undefined = periodosOrdenados.find(
+      (p) => p.activo !== false,
+    );
+
+    if (!elegido && preferOpen && trimestres.length) {
+      elegido = periodosOrdenados.find((p) => {
         const ts = trisByPeriodo.get(p.id) ?? [];
         return ts.some(
           (t) => norm.estado(t) === "activo" && inRange(today, norm.start(t), norm.end(t)),
         );
       });
     }
+
     if (!elegido) {
-      elegido = [...periodos].sort(
-        (a: any, b: any) => (b.anio ?? 0) - (a.anio ?? 0),
-      )[0];
+      elegido = periodosOrdenados[0];
     }
 
     const trimestresDelPeriodo = elegido
-      ? (trisByPeriodo.get(elegido.id) ?? [])
+      ? [...(trisByPeriodo.get(elegido.id) ?? [])].sort((a, b) =>
+          norm.start(a) < norm.start(b) ? -1 : 1,
+        )
       : [];
-    // ordena por fecha de inicio por prolijidad
-    trimestresDelPeriodo.sort((a, b) =>
-      norm.start(a) < norm.start(b) ? -1 : 1,
-    );
 
     const allTriIds = trimestresDelPeriodo.map((t) => t.id);
     const activeTriIdsToday = trimestresDelPeriodo

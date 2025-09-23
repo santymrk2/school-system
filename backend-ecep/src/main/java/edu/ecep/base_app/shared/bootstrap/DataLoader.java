@@ -495,6 +495,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         Aspirante aspirante2 = crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega", "47000002", "Eliana", "Vega", "33000002", RolVinculo.MADRE, false));
         crearSolicitudesDemostracion(aspirante1, aspirante2);
 
+        ensureSingleActivePeriod(periodo2025);
+
         log.info("⚡ Carga de datos completada.");
     }
 
@@ -635,7 +637,29 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     private PeriodoEscolar nuevoPeriodo(int anio) {
         PeriodoEscolar p = new PeriodoEscolar();
         p.setAnio(anio);
+        p.setActivo(false);
         return periodoEscolarRepository.save(p);
+    }
+
+    private void ensureSingleActivePeriod(PeriodoEscolar preferido) {
+        List<PeriodoEscolar> periodos = periodoEscolarRepository.findAll();
+        PeriodoEscolar activo = periodos.stream()
+                .filter(PeriodoEscolar::isActivo)
+                .findFirst()
+                .orElse(null);
+        if (activo == null && preferido != null) {
+            preferido.setActivo(true);
+            activo = preferido;
+        }
+        if (activo == null) {
+            return;
+        }
+        Long activoId = activo.getId();
+        for (PeriodoEscolar periodo : periodos) {
+            if (!Objects.equals(periodo.getId(), activoId) && periodo.isActivo()) {
+                periodo.setActivo(false);
+            }
+        }
     }
 
     private Trimestre ensureTrimestre(PeriodoEscolar p, int orden, LocalDate inicio, LocalDate fin) {

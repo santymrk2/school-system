@@ -43,6 +43,7 @@ export default function VistaDireccion() {
     diasNoHabiles,
     secciones,
     refreshBase,
+    periodoEscolarId,
   } = useAsistenciasData();
 
   const [mes, setMes] = useState<string>(
@@ -90,8 +91,12 @@ export default function VistaDireccion() {
         toast.error("La fecha de inicio no puede ser posterior a la de fin");
         return;
       }
+      if (!periodoEscolarId) {
+        toast.error("No hay un período escolar activo disponible");
+        return;
+      }
       await calendario.trimestres.create({
-        periodoEscolarId: 1,
+        periodoEscolarId,
         orden: (trimestres.length % 3) + 1,
         fechaInicio: nuevoTrimestre.inicio,
         fechaFin: nuevoTrimestre.fin,
@@ -150,9 +155,23 @@ export default function VistaDireccion() {
           <CardDescription>Trimestres escolares</CardDescription>
         </CardHeader>
         <CardContent>
+          {!periodoEscolarId ? (
+            <p className="mb-3 text-sm text-muted-foreground">
+              Abrí un período escolar desde la configuración institucional para
+              gestionar los trimestres del ciclo en curso.
+            </p>
+          ) : null}
           <div className="flex justify-between mb-3">
             <div className="text-sm">Total: {trimestres.length}</div>
-            <Button onClick={() => setModalTri(true)}>
+            <Button
+              onClick={() => setModalTri(true)}
+              disabled={!periodoEscolarId}
+              title={
+                periodoEscolarId
+                  ? undefined
+                  : "Abrí un período escolar para crear trimestres"
+              }
+            >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Trimestre
             </Button>

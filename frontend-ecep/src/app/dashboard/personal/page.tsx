@@ -43,7 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
 import { gestionAcademica, identidad } from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
-import { displayRole } from "@/lib/auth-roles";
+import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {
   DEFAULT_GENERO_VALUE,
   GENERO_OPTIONS,
@@ -184,14 +184,14 @@ const initialLicenseForm = {
   observaciones: "",
 };
 
-const STAFF_ROLE_OPTIONS: UserRole[] = [
+const STAFF_ROLE_OPTIONS: UserRole[] = normalizeRoles([
   UserRole.DIRECTOR,
   UserRole.ADMIN,
   UserRole.SECRETARY,
   UserRole.COORDINATOR,
   UserRole.TEACHER,
   UserRole.ALTERNATE,
-];
+]);
 
 type NewPersonaForm = typeof initialPersonaForm;
 type NewEmpleadoForm = typeof initialEmpleadoForm;
@@ -271,7 +271,7 @@ function inferDefaultRolesForEmpleado(
   persona?: PersonaDTO | null,
 ): UserRole[] {
   if (persona?.roles && persona.roles.length > 0) {
-    return [...persona.roles];
+    return normalizeRoles(persona.roles);
   }
 
   switch (empleado?.rolEmpleado) {
@@ -554,7 +554,7 @@ export default function PersonalPage() {
       email: activeAccess?.persona?.email ?? "",
       password: "",
       confirmPassword: "",
-      roles: Array.from(new Set(suggestedRoles)),
+      roles: normalizeRoles(suggestedRoles),
     });
   }, [accessDialogOpen, activeAccess]);
 
@@ -1762,7 +1762,7 @@ export default function PersonalPage() {
 
     const payload: Partial<PersonaUpdateDTO> = {
       email,
-      roles: Array.from(new Set(selectedRoles)),
+      roles: normalizeRoles(selectedRoles),
     };
 
     if (password) {
@@ -2052,12 +2052,10 @@ export default function PersonalPage() {
                   const domicilio = persona?.domicilio ?? "Sin domicilio registrado";
                   const licenciaActiva = item.activeLicense;
                   const personaId = persona?.id ?? null;
-                  const roleOptions = Array.from(
-                    new Set<UserRole>([
-                      ...STAFF_ROLE_OPTIONS,
-                      ...(persona?.roles ?? []),
-                    ]),
-                  );
+                  const roleOptions = normalizeRoles([
+                    ...STAFF_ROLE_OPTIONS,
+                    ...(persona?.roles ?? []),
+                  ]);
                   const isAccessDialogOpen =
                     accessDialogOpen &&
                     personaId !== null &&
@@ -2321,7 +2319,7 @@ export default function PersonalPage() {
                                   <div>
                                     Roles:{" "}
                                     {persona.roles && persona.roles.length > 0
-                                      ? persona.roles
+                                      ? normalizeRoles(persona.roles)
                                           .map((role) => displayRole(role))
                                           .join(", ")
                                       : "Sin roles"}
@@ -2428,7 +2426,7 @@ export default function PersonalPage() {
                                                       : prev.roles.filter((r) => r !== role);
                                                     return {
                                                       ...prev,
-                                                      roles: Array.from(new Set(nextRoles)),
+                                                      roles: normalizeRoles(nextRoles),
                                                     };
                                                   })
                                                 }

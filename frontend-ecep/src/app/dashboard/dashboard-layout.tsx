@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { normalizeRole, displayRole } from "@/lib/auth-roles";
+import { normalizeRole, normalizeRoles, displayRole } from "@/lib/auth-roles";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
@@ -42,16 +42,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const userRoles = user?.roles;
   const rolesNormalized = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          (user?.roles ?? [])
-            .map(normalizeRole)
-            .filter((role): role is UserRole => role !== null),
-        ),
-      ),
-    [user],
+    () => normalizeRoles(userRoles),
+    [userRoles],
   );
 
   const currentRole = selectedRole
@@ -88,7 +82,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleChangeRole = (r: UserRole) => {
     setSelectedRole(r);
-    router.refresh();
   };
 
   const handleLogout = async (e?: React.FormEvent) => {

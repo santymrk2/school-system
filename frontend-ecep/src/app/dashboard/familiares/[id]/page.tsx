@@ -32,7 +32,7 @@ import { toast } from "sonner";
 
 import { formatDni } from "@/lib/form-utils";
 import { useAuth } from "@/hooks/useAuth";
-import { displayRole } from "@/lib/auth-roles";
+import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import { identidad } from "@/services/api/modules";
 import type {
   AlumnoFamiliarDTO,
@@ -99,7 +99,7 @@ export default function FamiliarPerfilPage() {
   const familyRoleOptions = useMemo(() => {
     const base = [UserRole.FAMILY, UserRole.STUDENT];
     const current = persona?.roles ?? [];
-    return Array.from(new Set<UserRole>([...base, ...current]));
+    return normalizeRoles([...base, ...current]);
   }, [persona?.roles]);
 
   const formatRol = (value?: string | null) => {
@@ -186,13 +186,13 @@ export default function FamiliarPerfilPage() {
     if (!credentialsDialogOpen) return;
     const fallbackRoles =
       persona?.roles && persona.roles.length > 0
-        ? [...persona.roles]
+        ? normalizeRoles(persona.roles)
         : [UserRole.FAMILY];
     setCredentialsForm({
       email: persona?.email ?? "",
       password: "",
       confirmPassword: "",
-      roles: Array.from(new Set(fallbackRoles)),
+      roles: normalizeRoles(fallbackRoles),
     });
   }, [credentialsDialogOpen, persona]);
 
@@ -285,20 +285,22 @@ export default function FamiliarPerfilPage() {
       return;
     }
 
-    const selectedRoles = canEditRoles
+    const baseRoles = canEditRoles
       ? credentialsForm.roles
       : persona.roles && persona.roles.length > 0
         ? persona.roles
         : [UserRole.FAMILY];
 
-    if (!selectedRoles.length) {
+    const normalizedSelected = normalizeRoles(baseRoles);
+
+    if (!normalizedSelected.length) {
       toast.error("Seleccioná al menos un rol para el acceso");
       return;
     }
 
     const payload: Partial<PersonaUpdateDTO> = {
       email,
-      roles: Array.from(new Set(selectedRoles)),
+      roles: normalizedSelected,
     };
 
     if (password) {
@@ -316,12 +318,10 @@ export default function FamiliarPerfilPage() {
         email,
         password: "",
         confirmPassword: "",
-        roles: Array.from(
-          new Set(
-            refreshed?.roles && refreshed.roles.length > 0
-              ? refreshed.roles
-              : selectedRoles,
-          ),
+        roles: normalizeRoles(
+          refreshed?.roles && refreshed.roles.length > 0
+            ? refreshed.roles
+            : normalizedSelected,
         ),
       });
     } catch (error: any) {
@@ -595,7 +595,9 @@ export default function FamiliarPerfilPage() {
                         <div className="text-muted-foreground">
                           Roles:{" "}
                           {persona?.roles && persona.roles.length > 0
-                            ? persona.roles.map((role) => displayRole(role)).join(", ")
+                            ? normalizeRoles(persona.roles)
+                                .map((role) => displayRole(role))
+                                .join(", ")
                             : "Sin roles"}
                         </div>
                       </>
@@ -694,7 +696,7 @@ export default function FamiliarPerfilPage() {
                                               : prev.roles.filter((r) => r !== role);
                                             return {
                                               ...prev,
-                                              roles: Array.from(new Set(nextRoles)),
+                                              roles: normalizeRoles(nextRoles),
                                             };
                                           })
                                         }

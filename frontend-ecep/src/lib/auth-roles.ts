@@ -1,5 +1,23 @@
 import { UserRole } from "@/types/api-generated";
 
+const ROLE_DISPLAY_ORDER: UserRole[] = [
+  UserRole.DIRECTOR,
+  UserRole.ADMIN,
+  UserRole.SECRETARY,
+  UserRole.COORDINATOR,
+  UserRole.TEACHER,
+  UserRole.ALTERNATE,
+  UserRole.FAMILY,
+  UserRole.STUDENT,
+  UserRole.USER,
+];
+
+const ROLE_PRIORITY = new Map<UserRole, number>(
+  ROLE_DISPLAY_ORDER.map((role, index) => [role, index]),
+);
+
+const DEFAULT_PRIORITY = ROLE_DISPLAY_ORDER.length;
+
 /** Acepta valores del backend (enum string) y algunos sinónimos comunes. */
 export function normalizeRole(r: string | UserRole): UserRole | null {
   if (!r) return null;
@@ -49,7 +67,17 @@ export function normalizeRoles(list?: Array<string | UserRole>): UserRole[] {
     const n = normalizeRole(r);
     if (n) out.add(n);
   }
-  return Array.from(out);
+  return sortRoles(Array.from(out));
+}
+
+export function sortRoles(list: UserRole[]): UserRole[] {
+  return [...list].sort((a, b) => {
+    const priorityDiff =
+      (ROLE_PRIORITY.get(a) ?? DEFAULT_PRIORITY) -
+      (ROLE_PRIORITY.get(b) ?? DEFAULT_PRIORITY);
+    if (priorityDiff !== 0) return priorityDiff;
+    return a.localeCompare(b);
+  });
 }
 
 export function displayRole(role: UserRole): string {

@@ -39,7 +39,7 @@ import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
-import { displayRole } from "@/lib/auth-roles";
+import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {
   DEFAULT_GENERO_VALUE,
   GENERO_OPTIONS,
@@ -150,7 +150,7 @@ export default function AlumnoPerfilPage() {
   const studentRoleOptions = useMemo(() => {
     const base = [UserRole.STUDENT, UserRole.FAMILY];
     const current = persona?.roles ?? [];
-    return Array.from(new Set<UserRole>([...base, ...current]));
+    return normalizeRoles([...base, ...current]);
   }, [persona?.roles]);
   const formatRol = (value?: RolVinculo | string | null) => {
     if (!value) return "Sin vínculo";
@@ -215,13 +215,13 @@ export default function AlumnoPerfilPage() {
     if (credentialsDialogOpen) {
       const fallbackRoles =
         persona?.roles && persona.roles.length > 0
-          ? [...persona.roles]
+          ? normalizeRoles(persona.roles)
           : [UserRole.STUDENT];
       setCredentialsForm({
         email: persona?.email ?? "",
         password: "",
         confirmPassword: "",
-        roles: Array.from(new Set(fallbackRoles)),
+        roles: normalizeRoles(fallbackRoles),
       });
     }
   }, [credentialsDialogOpen, persona?.email, persona?.roles]);
@@ -773,20 +773,22 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
-    const selectedRoles = canEditRoles
+    const baseRoles = canEditRoles
       ? credentialsForm.roles
       : persona.roles && persona.roles.length > 0
         ? persona.roles
         : [UserRole.STUDENT];
 
-    if (!selectedRoles.length) {
+    const normalizedSelected = normalizeRoles(baseRoles);
+
+    if (!normalizedSelected.length) {
       toast.error("Seleccioná al menos un rol para el acceso");
       return;
     }
 
     const payload: Partial<PersonaUpdateDTO> = {
       email,
-      roles: Array.from(new Set(selectedRoles)),
+      roles: normalizedSelected,
     };
 
     if (password) {
@@ -804,12 +806,10 @@ export default function AlumnoPerfilPage() {
         email: email,
         password: "",
         confirmPassword: "",
-        roles: Array.from(
-          new Set(
-            refreshed?.roles && refreshed.roles.length > 0
-              ? refreshed.roles
-              : selectedRoles,
-          ),
+        roles: normalizeRoles(
+          refreshed?.roles && refreshed.roles.length > 0
+            ? refreshed.roles
+            : normalizedSelected,
         ),
       });
     } catch (error: any) {
@@ -1617,7 +1617,9 @@ export default function AlumnoPerfilPage() {
                         <div className="text-muted-foreground">
                           Roles:{" "}
                           {persona?.roles && persona.roles.length > 0
-                            ? persona.roles.map((role) => displayRole(role)).join(", ")
+                            ? normalizeRoles(persona.roles)
+                                .map((role) => displayRole(role))
+                                .join(", ")
                             : "Sin roles"}
                         </div>
                       </>
@@ -1712,7 +1714,7 @@ export default function AlumnoPerfilPage() {
                                               : prev.roles.filter((r) => r !== role);
                                             return {
                                               ...prev,
-                                              roles: Array.from(new Set(nextRoles)),
+                                              roles: normalizeRoles(nextRoles),
                                             };
                                           })
                                         }

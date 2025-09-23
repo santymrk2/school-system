@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/api-generated";
-import { normalizeRole, displayRole } from "@/lib/auth-roles";
+import { normalizeRoles, displayRole } from "@/lib/auth-roles";
 import {
   Card,
   CardHeader,
@@ -26,13 +26,8 @@ export default function SelectRolPage() {
   const router = useRouter();
 
   // Roles normalizados y únicos
-  const roles = useMemo(
-    () =>
-      Array.from(
-        new Set((user?.roles ?? []).map(normalizeRole).filter(Boolean)),
-      ) as UserRole[],
-    [user],
-  );
+  const userRoles = user?.roles;
+  const roles = useMemo(() => normalizeRoles(userRoles), [userRoles]);
 
   // Estado del dropdown (pre-selecciona el rol ya elegido o el primero)
   const [localRole, setLocalRole] = useState<UserRole | null>(null);

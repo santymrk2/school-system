@@ -1,6 +1,8 @@
 package edu.ecep.base_app.gestionacademica.domain;
 
 import edu.ecep.base_app.gestionacademica.domain.enums.CalificacionConceptual;
+import edu.ecep.base_app.shared.domain.BaseEntity;
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

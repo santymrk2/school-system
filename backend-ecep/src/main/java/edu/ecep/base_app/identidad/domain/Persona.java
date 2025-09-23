@@ -1,5 +1,6 @@
 package edu.ecep.base_app.identidad.domain;
 
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import edu.ecep.base_app.identidad.domain.enums.UserRole;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -66,5 +67,4 @@ public class Persona extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Set<UserRole> roles = new HashSet<>();
 }
-
 

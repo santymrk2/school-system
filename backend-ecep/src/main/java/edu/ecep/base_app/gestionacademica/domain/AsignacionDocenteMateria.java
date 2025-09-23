@@ -1,6 +1,8 @@
 package edu.ecep.base_app.gestionacademica.domain;
 
 import edu.ecep.base_app.gestionacademica.domain.enums.RolMateria;
+import edu.ecep.base_app.identidad.domain.Empleado;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

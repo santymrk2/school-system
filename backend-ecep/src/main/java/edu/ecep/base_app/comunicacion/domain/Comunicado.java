@@ -1,6 +1,8 @@
 package edu.ecep.base_app.comunicacion.domain;
 
 import edu.ecep.base_app.comunicacion.domain.enums.AlcanceComunicado;
+import edu.ecep.base_app.gestionacademica.domain.Seccion;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import edu.ecep.base_app.shared.domain.enums.NivelAcademico;
 import jakarta.persistence.*;
 
@@ -32,4 +34,3 @@ public class Comunicado extends BaseEntity {
     private OffsetDateTime fechaProgPublicacion;
     @Column(nullable=false) private boolean publicado = false;
 }
-

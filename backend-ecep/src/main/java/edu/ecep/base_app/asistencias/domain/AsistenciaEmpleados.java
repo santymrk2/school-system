@@ -1,5 +1,7 @@
 package edu.ecep.base_app.asistencias.domain;
 
+import edu.ecep.base_app.identidad.domain.Empleado;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

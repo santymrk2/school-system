@@ -1,5 +1,7 @@
 package edu.ecep.base_app.finanzas.domain;
 
+import edu.ecep.base_app.identidad.domain.Empleado;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

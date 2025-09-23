@@ -1,6 +1,8 @@
 package edu.ecep.base_app.asistencias.domain;
 
 import edu.ecep.base_app.asistencias.domain.enums.EstadoAsistencia;
+import edu.ecep.base_app.shared.domain.BaseEntity;
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

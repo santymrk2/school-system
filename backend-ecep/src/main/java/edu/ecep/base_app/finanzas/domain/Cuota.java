@@ -2,6 +2,8 @@ package edu.ecep.base_app.finanzas.domain;
 
 import edu.ecep.base_app.finanzas.domain.enums.ConceptoCuota;
 import edu.ecep.base_app.finanzas.domain.enums.EstadoCuota;
+import edu.ecep.base_app.shared.domain.BaseEntity;
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;

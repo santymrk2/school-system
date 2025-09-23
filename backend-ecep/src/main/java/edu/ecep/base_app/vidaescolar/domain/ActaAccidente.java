@@ -1,6 +1,9 @@
 package edu.ecep.base_app.vidaescolar.domain;
 
 import edu.ecep.base_app.vidaescolar.domain.enums.EstadoActaAccidente;
+import edu.ecep.base_app.identidad.domain.Alumno;
+import edu.ecep.base_app.identidad.domain.Empleado;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;

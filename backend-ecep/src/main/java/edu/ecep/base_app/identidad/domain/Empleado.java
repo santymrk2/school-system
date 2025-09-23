@@ -1,5 +1,6 @@
 package edu.ecep.base_app.identidad.domain;
 
+import edu.ecep.base_app.finanzas.domain.ReciboSueldo;
 import edu.ecep.base_app.identidad.domain.enums.RolEmpleado;
 import jakarta.persistence.*;
 

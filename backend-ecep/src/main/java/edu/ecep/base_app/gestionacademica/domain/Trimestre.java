@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
+import edu.ecep.base_app.calendario.domain.PeriodoEscolar;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 
 import java.time.LocalDate;
 

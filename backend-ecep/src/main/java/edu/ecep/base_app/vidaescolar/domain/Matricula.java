@@ -1,6 +1,9 @@
 package edu.ecep.base_app.vidaescolar.domain;
 
 import edu.ecep.base_app.vidaescolar.domain.enums.EstadoMatricula;
+import edu.ecep.base_app.calendario.domain.PeriodoEscolar;
+import edu.ecep.base_app.identidad.domain.Alumno;
+import edu.ecep.base_app.shared.domain.BaseEntity;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Filter;

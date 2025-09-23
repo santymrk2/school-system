@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { FileText, Plus } from "lucide-react";
 import {
@@ -25,11 +24,8 @@ import {
 import { useAsistenciasData } from "@/hooks/useAsistenciasData";
 import { api } from "@/services/api";
 import { toast } from "sonner";
-import {
-  getTrimestreEstado,
-  TRIMESTRE_ESTADO_BADGE_VARIANT,
-  TRIMESTRE_ESTADO_LABEL,
-} from "@/lib/trimestres";
+import { getTrimestreEstado, TRIMESTRE_ESTADO_LABEL } from "@/lib/trimestres";
+import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 
 function fmt(iso?: string) {
   if (!iso) return "";
@@ -178,9 +174,13 @@ export default function VistaDireccion() {
                     {(() => {
                       const estado = getTrimestreEstado(t);
                       const label = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
-                      const variant =
-                        TRIMESTRE_ESTADO_BADGE_VARIANT[estado] ?? "outline";
-                      return <Badge variant={variant}>{label}</Badge>;
+                      return (
+                        <TrimestreEstadoBadge
+                          estado={estado}
+                          label={label}
+                          className="text-xs text-muted-foreground"
+                        />
+                      );
                     })()}
                     <Button
                       variant="outline"

@@ -36,13 +36,13 @@ import {
   getTrimestreEstado,
   getTrimestreFin,
   getTrimestreInicio,
-  TRIMESTRE_ESTADO_BADGE_VARIANT,
   TRIMESTRE_ESTADO_LABEL,
 } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
+import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 
 function fmt(iso?: string) {
   if (!iso) return "—";
@@ -342,8 +342,6 @@ export default function SeccionHistorialPage() {
               const rangeLabel = formatTrimestreRange(tri);
               const estado = getTrimestreEstado(tri);
               const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
-              const estadoBadgeVariant =
-                TRIMESTRE_ESTADO_BADGE_VARIANT[estado] ?? "outline";
               const canEdit = estado === "activo";
               const estadoMessage =
                 estado === "cerrado"
@@ -372,9 +370,10 @@ export default function SeccionHistorialPage() {
                                     <Calendar className="h-5 w-5 mr-2" />
                                     Jornadas del trimestre
                                   </span>
-                                  <Badge variant={estadoBadgeVariant}>
-                                    {estadoLabel}
-                                  </Badge>
+                                  <TrimestreEstadoBadge
+                                    estado={estado}
+                                    className="text-xs text-muted-foreground"
+                                  />
                                 </CardTitle>
                                 <CardDescription>
                                   Seleccioná una fecha para ver o editar la

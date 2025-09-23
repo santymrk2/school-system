@@ -76,15 +76,6 @@ export const TRIMESTRE_ESTADO_LABEL: Record<TrimestreEstado, string> = {
   cerrado: "Cerrado",
 };
 
-export const TRIMESTRE_ESTADO_BADGE_VARIANT: Record<
-  TrimestreEstado,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  activo: "default",
-  inactivo: "secondary",
-  cerrado: "destructive",
-};
-
 const formatSimpleDate = (iso?: string) => {
   if (!iso) return null;
   const [year, month, day] = iso.split("-");

@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +32,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  TRIMESTRE_ESTADO_BADGE_VARIANT,
   TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
   resolveTrimestrePeriodoId,
@@ -41,6 +39,7 @@ import {
 } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 
 const CONCEPTOS = Object.values(CalificacionConceptual).filter(
   (value): value is CalificacionConceptual => typeof value === "string",
@@ -577,8 +576,6 @@ export default function CierrePrimarioView({
                   {triOpts.map((o) => {
                     const active = String(o.id) === triId;
                     const estadoLabel = TRIMESTRE_ESTADO_LABEL[o.estado] ?? "";
-                    const badgeVariant =
-                      TRIMESTRE_ESTADO_BADGE_VARIANT[o.estado] ?? "secondary";
                     return (
                       <Button
                         key={o.id}
@@ -592,9 +589,13 @@ export default function CierrePrimarioView({
                       >
                         <span>{o.label}</span>
                         {estadoLabel ? (
-                          <Badge variant={badgeVariant} className="ml-2">
-                            {estadoLabel}
-                          </Badge>
+                          <TrimestreEstadoBadge
+                            estado={o.estado}
+                            label={estadoLabel}
+                            className="ml-2 shrink-0 text-[11px] text-muted-foreground"
+                            circleClassName="h-5 w-5"
+                            iconClassName="h-2.5 w-2.5"
+                          />
                         ) : null}
                       </Button>
                     );
@@ -657,9 +658,15 @@ export default function CierrePrimarioView({
           <CardContent className="space-y-4">
             {triSoloLectura && (
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant={triCerrado ? "destructive" : "secondary"}>
-                  {triCerrado ? "Trimestre cerrado" : "Trimestre inactivo"}
-                </Badge>
+                <TrimestreEstadoBadge
+                  estado={triCerrado ? "cerrado" : "inactivo"}
+                  label={
+                    triCerrado ? "Trimestre cerrado" : "Trimestre inactivo"
+                  }
+                  className="text-xs text-muted-foreground"
+                  circleClassName="h-5 w-5"
+                  iconClassName="h-2.5 w-2.5"
+                />
                 <span className="text-muted-foreground">
                   {triCerrado
                     ? "Los datos se muestran solo para consulta."

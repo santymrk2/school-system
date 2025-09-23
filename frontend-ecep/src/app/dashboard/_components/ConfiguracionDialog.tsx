@@ -19,15 +19,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { api } from "@/services/api";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import {
-  TRIMESTRE_ESTADO_BADGE_VARIANT,
-  TRIMESTRE_ESTADO_LABEL,
   getTrimestreEstado,
   getTrimestreFin,
   getTrimestreInicio,
@@ -419,12 +417,6 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   };
 
   const periodoAbierto = periodoActual?.activo !== false;
-  const estadoBadgeVariant: Record<
-    TrimestreEstado,
-    "default" | "secondary" | "destructive" | "outline"
-  > = TRIMESTRE_ESTADO_BADGE_VARIANT;
-  const estadoBadgeLabel: Record<TrimestreEstado, string> = TRIMESTRE_ESTADO_LABEL;
-
   return (
     <div className="space-y-6">
       <Card>
@@ -495,11 +487,10 @@ function DireccionConfig({ open }: DireccionConfigProps) {
                         <span>
                           Período {resolveTrimestrePeriodoId(tri, periodoActual?.id) ?? "—"}
                         </span>
-                        <Badge
-                          variant={estadoBadgeVariant[estado] ?? "outline"}
-                        >
-                          {estadoBadgeLabel[estado]}
-                        </Badge>
+                        <TrimestreEstadoBadge
+                          estado={estado}
+                          className="text-xs text-muted-foreground"
+                        />
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">

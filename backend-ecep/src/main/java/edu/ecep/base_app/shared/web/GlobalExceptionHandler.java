@@ -1,5 +1,7 @@
 package edu.ecep.base_app.shared.web;
 
+import edu.ecep.base_app.shared.exception.NotFoundException;
+import edu.ecep.base_app.shared.exception.ReferencedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

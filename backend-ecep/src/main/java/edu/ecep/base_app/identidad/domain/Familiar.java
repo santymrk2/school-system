@@ -1,5 +1,6 @@
 package edu.ecep.base_app.identidad.domain;
 
+import edu.ecep.base_app.admisiones.domain.AspiranteFamiliar;
 import jakarta.persistence.*;
 
 import java.util.HashSet;

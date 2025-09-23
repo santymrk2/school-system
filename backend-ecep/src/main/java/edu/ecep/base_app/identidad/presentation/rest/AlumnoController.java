@@ -1,12 +1,12 @@
 package edu.ecep.base_app.identidad.presentation.rest;
 
-import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
 import edu.ecep.base_app.identidad.application.AlumnoService;
+import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
+import edu.ecep.base_app.shared.web.PageResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -35,11 +35,11 @@ public class AlumnoController {
     }
 
     @GetMapping("/paginated")
-    public Page<AlumnoDTO> listPaged(
+    public PageResponse<AlumnoDTO> listPaged(
             @PageableDefault(size = 25) Pageable pageable,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long seccionId) {
-        return service.findPaged(pageable, search, seccionId);
+        return PageResponse.from(service.findPaged(pageable, search, seccionId));
     }
 
     @GetMapping("/{id}")

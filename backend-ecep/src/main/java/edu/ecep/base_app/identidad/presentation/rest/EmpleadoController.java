@@ -5,9 +5,9 @@ import edu.ecep.base_app.identidad.domain.enums.RolEmpleado;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoCreateDTO;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoDTO;
 import edu.ecep.base_app.identidad.presentation.dto.EmpleadoUpdateDTO;
+import edu.ecep.base_app.shared.web.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -21,12 +21,12 @@ public class EmpleadoController {
     private final EmpleadoService service;
 
     @GetMapping
-    public Page<EmpleadoDTO> list(
+    public PageResponse<EmpleadoDTO> list(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "rolEmpleado", required = false) RolEmpleado rolEmpleado,
             @PageableDefault(size = 20, sort = "id") Pageable pageable
     ) {
-        return service.findAll(search, rolEmpleado, pageable);
+        return PageResponse.from(service.findAll(search, rolEmpleado, pageable));
     }
     @GetMapping("/{id}") public EmpleadoDTO get(@PathVariable Long id){ return service.get(id); }
     @PostMapping public ResponseEntity<EmpleadoDTO> create(@RequestBody @Valid EmpleadoCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }

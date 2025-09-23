@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type React from "react";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import type { ChatMessageDTO, PersonaResumenDTO } from "@/types/api-generated";
 import useChatSocket from "@/hooks/useChatSocket";
+import { useSearchParams } from "next/navigation";
 
 dayjs.extend(relativeTime);
 
@@ -81,6 +82,7 @@ export default function ChatComponent() {
     },
   );
   const { user } = useAuth();
+  const searchParams = useSearchParams();
 
   const {
     messages,
@@ -245,6 +247,32 @@ export default function ChatComponent() {
   }, [activeChats, refreshOnlineStatus]);
 
   useEffect(() => {
+    const personaIdParam = searchParams?.get("personaId");
+    if (!personaIdParam) return;
+    const parsed = Number.parseInt(personaIdParam, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    if (selectedUserId === parsed) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await identidad.personasCore.getResumen(parsed);
+        if (!data || cancelled) return;
+        await openChat(data);
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("No se pudo abrir el chat solicitado", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, selectedUserId, openChat]);
+
+  useEffect(() => {
     const previousTarget = typingStateRef.current.targetId;
     if (
       previousTarget &&
@@ -265,24 +293,27 @@ export default function ChatComponent() {
     };
   }, [selectedUserId, sendTyping]);
 
-  const openChat = async (persona: PersonaResumenDTO) => {
-    setActiveChats((prev) =>
-      prev.some((chat) => chat.id === persona.id) ? prev : [...prev, persona],
-    );
-    setSelectedPersona(persona);
-    setSelectedUserId(persona.id);
+  const openChat = useCallback(
+    async (persona: PersonaResumenDTO) => {
+      setActiveChats((prev) =>
+        prev.some((chat) => chat.id === persona.id) ? prev : [...prev, persona],
+      );
+      setSelectedPersona(persona);
+      setSelectedUserId(persona.id);
 
-    await loadHistory(persona.id);
-    await markRead(persona.id);
+      await loadHistory(persona.id);
+      await markRead(persona.id);
 
-    setUnreadCounts((prev) => ({
-      ...prev,
-      [persona.id]: 0,
-    }));
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [persona.id]: 0,
+      }));
 
-    refreshOnlineStatus([persona.id]);
-    setOpenChatDialog(false);
-  };
+      refreshOnlineStatus([persona.id]);
+      setOpenChatDialog(false);
+    },
+    [loadHistory, markRead, refreshOnlineStatus],
+  );
 
   const finalizeTyping = () => {
     if (typingTimeoutRef.current) {

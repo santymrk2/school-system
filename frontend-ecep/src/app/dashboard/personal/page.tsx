@@ -870,8 +870,12 @@ export default function PersonalPage() {
   );
 
   useEffect(() => {
+    if (loading || !user) {
+      return;
+    }
+
     refreshData({ search: debouncedSearchTerm, page: 1 });
-  }, [debouncedSearchTerm, refreshData]);
+  }, [loading, user, debouncedSearchTerm, refreshData]);
 
   useEffect(() => {
     setCurrentPage(1);

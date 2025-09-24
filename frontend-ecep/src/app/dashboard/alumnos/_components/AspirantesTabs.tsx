@@ -49,7 +49,7 @@ import {
   X,
 } from "lucide-react";
 import type * as DTO from "@/types/api-generated";
-import { admisiones } from "@/services/api/modules";
+import { admisiones, identidad } from "@/services/api/modules";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -125,8 +125,49 @@ type Props = {
   searchTerm: string;
 };
 
+type SolicitudAspirante = DTO.AspiranteDTO & {
+  nombre?: string | null;
+  apellido?: string | null;
+  emailContacto?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+};
+
+type SolicitudAdmisionItem = DTO.SolicitudAdmisionDTO & {
+  aspirante?: SolicitudAspirante;
+  aspirantePersona?: DTO.PersonaDTO | null;
+};
+
+const resolveAspiranteNombre = (solicitud: SolicitudAdmisionItem) => {
+  const aspirante = solicitud.aspirante;
+  const persona = solicitud.aspirantePersona;
+  const nombre = aspirante?.nombre ?? persona?.nombre ?? "";
+  const apellido = aspirante?.apellido ?? persona?.apellido ?? "";
+  const fullName = `${nombre} ${apellido}`.trim();
+  if (fullName) return fullName;
+  if (persona?.dni) return `Aspirante DNI ${persona.dni}`;
+  return `Solicitud #${solicitud.id}`;
+};
+
+const resolveAspiranteEmail = (solicitud: SolicitudAdmisionItem) => {
+  const aspirante = solicitud.aspirante;
+  const persona = solicitud.aspirantePersona;
+  return aspirante?.emailContacto ?? aspirante?.email ?? persona?.email ?? "—";
+};
+
+const resolveAspiranteTelefono = (solicitud: SolicitudAdmisionItem) => {
+  const aspirante = solicitud.aspirante;
+  const persona = solicitud.aspirantePersona;
+  return (
+    aspirante?.telefono ??
+    persona?.celular ??
+    persona?.telefono ??
+    "—"
+  );
+};
+
 function useSolicitudesAdmision(query: string) {
-  const [data, setData] = useState<DTO.SolicitudAdmisionDTO[]>([]);
+  const [data, setData] = useState<SolicitudAdmisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -135,7 +176,40 @@ function useSolicitudesAdmision(query: string) {
     setError(null);
     try {
       const res = await admisiones.solicitudesAdmision.list();
-      setData(res.data ?? []);
+      const solicitudes = res.data ?? [];
+
+      const personaIds = Array.from(
+        new Set(
+          solicitudes
+            .map((item) => item.aspirante?.personaId)
+            .filter((id): id is number => typeof id === "number"),
+        ),
+      );
+
+      let personaById = new Map<number, DTO.PersonaDTO>();
+      if (personaIds.length > 0) {
+        try {
+          const personasRes = await identidad.personasCore.getManyById(personaIds);
+          const personas = personasRes.data ?? [];
+          personaById = new Map(personas.map((persona) => [persona.id, persona]));
+        } catch (personaErr) {
+          // eslint-disable-next-line no-console
+          console.error(
+            "No se pudieron cargar los datos de las personas asociadas a las solicitudes",
+            personaErr,
+          );
+        }
+      }
+
+      const enriched: SolicitudAdmisionItem[] = solicitudes.map((item) => ({
+        ...item,
+        aspirantePersona:
+          item.aspirante?.personaId != null
+            ? personaById.get(item.aspirante.personaId) ?? null
+            : null,
+      }));
+
+      setData(enriched);
     } catch (e) {
       setError(e);
       setData([]);
@@ -160,10 +234,17 @@ function useSolicitudesAdmision(query: string) {
     if (!q) return data;
     return data.filter((item) => {
       const aspirante = item.aspirante;
-      const nombre = `${aspirante?.nombre ?? ""} ${aspirante?.apellido ?? ""}`.toLowerCase();
+      const persona = item.aspirantePersona;
+      const nombre = resolveAspiranteNombre(item).toLowerCase();
       const curso = formatCurso(aspirante?.cursoSolicitado).toLowerCase();
       const estado = String(item.estado ?? "").toLowerCase();
-      return nombre.includes(q) || curso.includes(q) || estado.includes(q);
+      const dni = persona?.dni?.toLowerCase() ?? "";
+      return (
+        nombre.includes(q) ||
+        curso.includes(q) ||
+        estado.includes(q) ||
+        dni.includes(q)
+      );
     });
   }, [data, query]);
 
@@ -179,10 +260,10 @@ export default function AspirantesTab({ searchTerm }: Props) {
   } = useSolicitudesAdmision(searchTerm);
 
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selected, setSelected] = useState<DTO.SolicitudAdmisionDTO | null>(null);
+  const [selected, setSelected] = useState<SolicitudAdmisionItem | null>(null);
   const [promptInterviewOpen, setPromptInterviewOpen] = useState(false);
 
-  const openDetail = (row: DTO.SolicitudAdmisionDTO) => {
+  const openDetail = (row: SolicitudAdmisionItem) => {
     setSelected(row);
     setDetailOpen(true);
   };
@@ -253,7 +334,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
             </TableHeader>
             <TableBody>
               {solicitudes.map((row) => {
-                const nombre = `${row.aspirante?.nombre ?? ""} ${row.aspirante?.apellido ?? ""}`.trim();
+                const nombre = resolveAspiranteNombre(row);
                 return (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">{nombre || "—"}</TableCell>
@@ -295,7 +376,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
 
 type DetailProps = {
   open: boolean;
-  solicitud: DTO.SolicitudAdmisionDTO;
+  solicitud: SolicitudAdmisionItem;
   onOpenChange: (open: boolean) => void;
   onUpdated: () => void;
   promptInterviewOpen: boolean;
@@ -319,6 +400,10 @@ function SolicitudDetailDialog({
   const estado = String(solicitud.estado ?? "").toUpperCase();
   const propuestas = solicitud.fechasPropuestas ?? [];
   const fechaConfirmada = solicitud.fechaEntrevistaConfirmada;
+  const aspiranteNombre = resolveAspiranteNombre(solicitud);
+  const aspiranteEmail = resolveAspiranteEmail(solicitud);
+  const aspiranteTelefono = resolveAspiranteTelefono(solicitud);
+  const aspiranteDni = solicitud.aspirantePersona?.dni ?? null;
 
   const reset = () => {
     setRejectOpen(false);
@@ -449,7 +534,7 @@ function SolicitudDetailDialog({
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              Solicitud #{solicitud.id} — {solicitud.aspirante?.nombre} {solicitud.aspirante?.apellido}
+              Solicitud #{solicitud.id} — {aspiranteNombre}
             </DialogTitle>
           </DialogHeader>
 
@@ -471,12 +556,15 @@ function SolicitudDetailDialog({
                 <h4 className="font-semibold mb-2">Contacto</h4>
                 <p className="text-sm flex items-center gap-2 text-muted-foreground">
                   <Mail className="h-4 w-4" />
-                  {solicitud.aspirante?.emailContacto ?? solicitud.aspirante?.email ?? "—"}
+                  {aspiranteEmail}
                 </p>
                 <p className="text-sm flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-4 w-4" />
-                  {solicitud.aspirante?.telefono ?? "—"}
+                  {aspiranteTelefono}
                 </p>
+                {aspiranteDni && (
+                  <p className="text-sm text-muted-foreground">DNI: {aspiranteDni}</p>
+                )}
               </div>
             </div>
 

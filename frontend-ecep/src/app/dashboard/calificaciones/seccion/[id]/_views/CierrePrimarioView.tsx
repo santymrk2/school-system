@@ -34,13 +34,17 @@ import {
 } from "@/components/ui/table";
 import {
   TRIMESTRE_ESTADO_LABEL,
+  formatTrimestreRange,
   getTrimestreEstado,
+  getTrimestreFin,
+  getTrimestreInicio,
   resolveTrimestrePeriodoId,
   type TrimestreEstado,
 } from "@/lib/trimestres";
 import { toast } from "sonner";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const CONCEPTOS = Object.values(CalificacionConceptual).filter(
   (value): value is CalificacionConceptual => typeof value === "string",
@@ -214,6 +218,28 @@ export default function CierrePrimarioView({
 
   const activeTrimestreEstado = useMemo<TrimestreEstado>(() => {
     return getTrimestreEstado(activeTrimestre);
+  }, [activeTrimestre]);
+
+  const activeTrimestreLabel = useMemo(() => {
+    return TRIMESTRE_ESTADO_LABEL[activeTrimestreEstado] ?? "";
+  }, [activeTrimestreEstado]);
+
+  const activeTrimestreRange = useMemo(() => {
+    return formatTrimestreRange(activeTrimestre);
+  }, [activeTrimestre]);
+
+  const activeTrimestreHasRange = useMemo(() => {
+    if (!activeTrimestre) return false;
+    return (
+      Boolean(getTrimestreInicio(activeTrimestre)) &&
+      Boolean(getTrimestreFin(activeTrimestre))
+    );
+  }, [activeTrimestre]);
+
+  const activeTrimestreNombre = useMemo(() => {
+    if (!activeTrimestre) return "Trimestre";
+    const numero = activeTrimestre.orden ?? activeTrimestre.id;
+    return numero ? `Trimestre ${numero}` : "Trimestre";
   }, [activeTrimestre]);
 
   const triCerrado = activeTrimestreEstado === "cerrado";
@@ -579,32 +605,50 @@ export default function CierrePrimarioView({
                   onValueChange={(value) => setTriId(String(value))}
                   className="w-full"
                 >
-                  <TabsList className="!w-full flex-wrap gap-2">
-                    {triOpts.map((o) => {
-                      const estadoLabel = TRIMESTRE_ESTADO_LABEL[o.estado] ?? "";
-                      return (
-                        <TabsTrigger
-                          key={o.id}
-                          value={String(o.id)}
-                          className="flex-1 justify-between gap-2 whitespace-normal text-left"
-                        >
-                          <span>{o.label}</span>
-                          {estadoLabel ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                              <TrimestreEstadoBadge
-                                estado={o.estado}
-                                showLabel={false}
-                                circleClassName="h-4 w-4"
-                                iconClassName="h-2 w-2"
-                              />
-                              <span>{estadoLabel}</span>
-                            </span>
-                          ) : null}
-                        </TabsTrigger>
-                      );
-                    })}
+                  <TabsList className="flex flex-wrap gap-2">
+                    {triOpts.map((o) => (
+                      <TabsTrigger key={o.id} value={String(o.id)}>
+                        {o.label}
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </Tabs>
+                {activeTrimestre && (
+                  <div className="space-y-2 rounded-lg border border-dashed p-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+                        <span>{activeTrimestreNombre}</span>
+                        <TrimestreEstadoBadge
+                          estado={activeTrimestreEstado}
+                          className="text-xs text-muted-foreground"
+                        />
+                      </div>
+                      {activeTrimestreRange && (
+                        <p className="text-xs text-muted-foreground">
+                          {activeTrimestreRange}
+                        </p>
+                      )}
+                    </div>
+                    {!activeTrimestreHasRange && (
+                      <p className="text-sm text-muted-foreground">
+                        Configurá las fechas de inicio y fin del trimestre para
+                        gestionar calificaciones.
+                      </p>
+                    )}
+                    {triSoloLectura && (
+                      <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                        <AlertTitle>
+                          {activeTrimestreLabel || "Estado del trimestre"}
+                        </AlertTitle>
+                        <AlertDescription>
+                          {triCerrado
+                            ? "Este trimestre está cerrado. Las calificaciones son solo de lectura."
+                            : "Este trimestre está inactivo. No podés registrar calificaciones."}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
               )}
             </div>
             <div className="space-y-2">

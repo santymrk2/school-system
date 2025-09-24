@@ -611,55 +611,57 @@ export default function CierrePrimarioView({
                   No hay trimestres configurados.
                 </p>
               ) : (
-                <Tabs
-                  value={triId || undefined}
-                  onValueChange={(value) => setTriId(String(value))}
-                  className="w-full"
-                >
-                  <TabsList className="flex flex-wrap gap-2">
-                    {triOpts.map((o) => (
-                      <TabsTrigger key={o.id} value={String(o.id)}>
-                        {o.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-                {activeTrimestre && (
-                  <div className="space-y-2 rounded-lg border border-dashed p-3">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-                        <span>{activeTrimestreNombre}</span>
-                        <TrimestreEstadoBadge
-                          estado={activeTrimestreEstado}
-                          className="text-xs text-muted-foreground"
-                        />
+                <>
+                  <Tabs
+                    value={triId || undefined}
+                    onValueChange={(value) => setTriId(String(value))}
+                    className="w-full"
+                  >
+                    <TabsList className="flex flex-wrap gap-2">
+                      {triOpts.map((o) => (
+                        <TabsTrigger key={o.id} value={String(o.id)}>
+                          {o.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  {activeTrimestre && (
+                    <div className="space-y-2 rounded-lg border border-dashed p-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+                          <span>{activeTrimestreNombre}</span>
+                          <TrimestreEstadoBadge
+                            estado={activeTrimestreEstado}
+                            className="text-xs text-muted-foreground"
+                          />
+                        </div>
+                        {activeTrimestreRange && (
+                          <p className="text-xs text-muted-foreground">
+                            {activeTrimestreRange}
+                          </p>
+                        )}
                       </div>
-                      {activeTrimestreRange && (
-                        <p className="text-xs text-muted-foreground">
-                          {activeTrimestreRange}
+                      {!activeTrimestreHasRange && (
+                        <p className="text-sm text-muted-foreground">
+                          Configurá las fechas de inicio y fin del trimestre para
+                          gestionar calificaciones.
                         </p>
                       )}
+                      {triSoloLectura && (
+                        <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                          <AlertTitle>
+                            {activeTrimestreLabel || "Estado del trimestre"}
+                          </AlertTitle>
+                          <AlertDescription>
+                            {triCerrado
+                              ? "Este trimestre está cerrado. Las calificaciones son solo de lectura."
+                              : "Este trimestre está inactivo. No podés registrar calificaciones."}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </div>
-                    {!activeTrimestreHasRange && (
-                      <p className="text-sm text-muted-foreground">
-                        Configurá las fechas de inicio y fin del trimestre para
-                        gestionar calificaciones.
-                      </p>
-                    )}
-                    {triSoloLectura && (
-                      <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-                        <AlertTitle>
-                          {activeTrimestreLabel || "Estado del trimestre"}
-                        </AlertTitle>
-                        <AlertDescription>
-                          {triCerrado
-                            ? "Este trimestre está cerrado. Las calificaciones son solo de lectura."
-                            : "Este trimestre está inactivo. No podés registrar calificaciones."}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                )}
+                  )}
+                </>
               )}
             </div>
             <div className="space-y-2">

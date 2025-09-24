@@ -1,19 +1,22 @@
 package edu.ecep.base_app.identidad.presentation.rest;
 
+import edu.ecep.base_app.identidad.application.PersonaPhotoStorageService;
 import edu.ecep.base_app.identidad.domain.Persona;
-import edu.ecep.base_app.identidad.presentation.dto.PersonaCreateDTO;
-import edu.ecep.base_app.identidad.presentation.dto.PersonaDTO;
-import edu.ecep.base_app.identidad.presentation.dto.PersonaUpdateDTO;
 import edu.ecep.base_app.identidad.infrastructure.mapper.PersonaMapper;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoRepository;
 import edu.ecep.base_app.admisiones.infrastructure.persistence.AspiranteRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.EmpleadoRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.FamiliarRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.PersonaRepository;
+import edu.ecep.base_app.identidad.presentation.dto.FotoPerfilUploadResponse;
+import edu.ecep.base_app.identidad.presentation.dto.PersonaCreateDTO;
+import edu.ecep.base_app.identidad.presentation.dto.PersonaDTO;
+import edu.ecep.base_app.identidad.presentation.dto.PersonaUpdateDTO;
 import edu.ecep.base_app.shared.exception.NotFoundException;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +29,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +49,7 @@ public class PersonaController {
     private final AspiranteRepository aspiranteRepository;
     private final PersonaMapper personaMapper;
     private final PasswordEncoder passwordEncoder;
+    private final PersonaPhotoStorageService personaPhotoStorageService;
 
     @GetMapping
     public ResponseEntity<List<PersonaDTO>> findAllById(@RequestParam(name = "ids", required = false) List<Long> ids) {
@@ -86,6 +92,10 @@ public class PersonaController {
             throw new IllegalArgumentException("Ya existe una persona con ese email");
         }
         Persona entity = personaMapper.toEntity(dto);
+        if (dto.getFotoPerfilUrl() != null) {
+            String trimmedPhotoUrl = dto.getFotoPerfilUrl().trim();
+            entity.setFotoPerfilUrl(trimmedPhotoUrl.isEmpty() ? null : trimmedPhotoUrl);
+        }
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             entity.setPassword(passwordEncoder.encode(dto.getPassword()));
         } else {
@@ -120,6 +130,11 @@ public class PersonaController {
 
         personaMapper.update(entity, dto);
 
+        if (dto.getFotoPerfilUrl() != null) {
+            String trimmedPhotoUrl = dto.getFotoPerfilUrl().trim();
+            entity.setFotoPerfilUrl(trimmedPhotoUrl.isEmpty() ? null : trimmedPhotoUrl);
+        }
+
         if (dto.getPassword() != null) {
             if (!dto.getPassword().isBlank()) {
                 entity.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -135,6 +150,24 @@ public class PersonaController {
 
         personaRepository.save(entity);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','SECRETARY','COORDINATOR')")
+    public ResponseEntity<FotoPerfilUploadResponse> uploadFotoPerfil(
+            @RequestParam("file") MultipartFile file) {
+        PersonaPhotoStorageService.StoredPhoto stored = personaPhotoStorageService.store(file);
+        String url = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/media/")
+                .path(stored.relativePath())
+                .toUriString();
+
+        FotoPerfilUploadResponse response = new FotoPerfilUploadResponse(
+                url,
+                stored.fileName(),
+                stored.size()
+        );
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{personaId}/roles")

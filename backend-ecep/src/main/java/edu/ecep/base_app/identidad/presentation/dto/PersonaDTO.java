@@ -32,6 +32,7 @@ public class PersonaDTO {
     private String telefono;
     private String celular;
     private String email;
+    private String fotoPerfilUrl;
     private Set<UserRole> roles;
     private boolean credencialesActivas;
 }

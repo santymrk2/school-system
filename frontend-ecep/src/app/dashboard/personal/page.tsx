@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -148,6 +148,22 @@ const SITUACION_PRESET_OPTIONS = [
 
 const DEFAULT_PAGE_SIZE = 8;
 
+const MAX_PHOTO_SIZE_MB = 2;
+const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+const PHOTO_TYPE_EXTENSIONS: Record<(typeof ALLOWED_PHOTO_TYPES)[number], string[]> = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+};
+const ALLOWED_PHOTO_LABEL = "JPG, PNG o WEBP";
+const PHOTO_INPUT_ACCEPT = ALLOWED_PHOTO_TYPES.join(",");
+const PHOTO_URL_REGEX = /^(https?:\/\/.+|\/.+)$/i;
+
 const initialPersonaForm = {
   nombre: "",
   apellido: "",
@@ -160,6 +176,7 @@ const initialPersonaForm = {
   telefono: "",
   celular: "",
   email: "",
+  fotoPerfilUrl: "",
 };
 
 const initialEmpleadoForm = {
@@ -250,6 +267,17 @@ function buildFullName(persona?: PersonaDTO | null) {
   const nombre = persona?.nombre ?? "";
   const apellido = persona?.apellido ?? "";
   return `${nombre} ${apellido}`.trim();
+}
+
+function getInitialsFromNames(
+  nombre?: string | null,
+  apellido?: string | null,
+) {
+  const firstName = (nombre ?? "").trim();
+  const lastName = (apellido ?? "").trim();
+  const nombreInitial = firstName.length > 0 ? firstName[0] : "";
+  const apellidoInitial = lastName.length > 0 ? lastName[0] : "";
+  return `${nombreInitial}${apellidoInitial}`.toUpperCase();
 }
 
 function formatSeccionLabel(seccion?: Partial<SeccionDTO> | null) {
@@ -379,6 +407,13 @@ function splitCuilParts(cuil?: string | null) {
 function normalizeIsoDate(value?: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function isValidPhotoUrl(value?: string | null) {
+  if (!value) {
+    return true;
+  }
+  return PHOTO_URL_REGEX.test(value.trim());
 }
 
 function todayIso(reference: Date = new Date()) {
@@ -518,6 +553,14 @@ export default function PersonalPage() {
   const [newLicense, setNewLicense] = useState<NewLicenseForm>({
     ...initialLicenseForm,
   });
+  const [newPersonaPhotoUploading, setNewPersonaPhotoUploading] = useState(false);
+  const [newPersonaPhotoError, setNewPersonaPhotoError] = useState<string | null>(
+    null,
+  );
+  const [editPersonaPhotoUploading, setEditPersonaPhotoUploading] = useState(false);
+  const [editPersonaPhotoError, setEditPersonaPhotoError] = useState<string | null>(
+    null,
+  );
 
   const resetNewPersonalForm = useCallback(() => {
     setNewPersona({ ...initialPersonaForm });
@@ -526,6 +569,8 @@ export default function PersonalPage() {
     setFormacionNotas({ ...initialFormacionNotas });
     setNewEmpleadoCuilPrefix("");
     setNewEmpleadoCuilSuffix("");
+    setNewPersonaPhotoError(null);
+    setNewPersonaPhotoUploading(false);
   }, []);
 
   const resetEditForm = useCallback(() => {
@@ -536,6 +581,8 @@ export default function PersonalPage() {
     setEditingIds(null);
     setEditingName("");
     setSavingEditPersonal(false);
+    setEditPersonaPhotoError(null);
+    setEditPersonaPhotoUploading(false);
   }, []);
 
   const resetNewLicenseForm = useCallback(() => {
@@ -1007,6 +1054,15 @@ export default function PersonalPage() {
       );
   }, [personal]);
 
+  const newPersonaInitials = getInitialsFromNames(
+    newPersona.nombre,
+    newPersona.apellido,
+  );
+  const editPersonaInitials = getInitialsFromNames(
+    editPersona.nombre,
+    editPersona.apellido,
+  );
+
   const condicionLaboralSelectOptions = useMemo(() => {
     const map = new Map<string, string>();
     CONDICION_LABORAL_PRESET_OPTIONS.forEach((option) =>
@@ -1361,6 +1417,121 @@ export default function PersonalPage() {
     });
   }, []);
 
+  const validatePhotoFile = useCallback((file: File) => {
+    const normalizedType = (file.type || "").toLowerCase();
+    const isAllowedType = ALLOWED_PHOTO_TYPES.includes(
+      normalizedType as (typeof ALLOWED_PHOTO_TYPES)[number],
+    );
+    const lowerName = file.name.toLowerCase();
+    const isAllowedExtension = ALLOWED_PHOTO_TYPES.some((type) =>
+      PHOTO_TYPE_EXTENSIONS[type].some((ext) => lowerName.endsWith(ext)),
+    );
+
+    if (!isAllowedType && !isAllowedExtension) {
+      return `Formato no soportado. Permitidos: ${ALLOWED_PHOTO_LABEL}.`;
+    }
+
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      return `La imagen supera ${MAX_PHOTO_SIZE_MB} MB.`;
+    }
+
+    return null;
+  }, []);
+
+  const handleNewPersonaPhotoFile = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] ?? null;
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+
+      setNewPersonaPhotoError(null);
+      const validationError = validatePhotoFile(file);
+      if (validationError) {
+        setNewPersonaPhotoError(validationError);
+        toast.error("Archivo inválido", { description: validationError });
+        return;
+      }
+
+      setNewPersonaPhotoUploading(true);
+      try {
+        const response = await identidad.personasCore.uploadPhoto(file);
+        const url = response.data?.url;
+        if (!url) {
+          throw new Error("No recibimos la URL generada para la foto");
+        }
+        setNewPersona((prev) => ({ ...prev, fotoPerfilUrl: url }));
+        toast.success("Foto de perfil cargada", {
+          description: "Guardá el formulario para confirmar los cambios.",
+        });
+      } catch (error: any) {
+        console.error("Error al subir foto de perfil", error);
+        const description =
+          error?.response?.data?.message ??
+          error?.message ??
+          "No pudimos subir la imagen seleccionada.";
+        setNewPersonaPhotoError(description);
+        toast.error("No se pudo subir la foto", { description });
+      } finally {
+        setNewPersonaPhotoUploading(false);
+      }
+    },
+    [validatePhotoFile],
+  );
+
+  const handleEditPersonaPhotoFile = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] ?? null;
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+
+      setEditPersonaPhotoError(null);
+      const validationError = validatePhotoFile(file);
+      if (validationError) {
+        setEditPersonaPhotoError(validationError);
+        toast.error("Archivo inválido", { description: validationError });
+        return;
+      }
+
+      setEditPersonaPhotoUploading(true);
+      try {
+        const response = await identidad.personasCore.uploadPhoto(file);
+        const url = response.data?.url;
+        if (!url) {
+          throw new Error("No recibimos la URL generada para la foto");
+        }
+        setEditPersona((prev) => ({ ...prev, fotoPerfilUrl: url }));
+        toast.success("Foto de perfil actualizada", {
+          description: "Recordá guardar los cambios del legajo.",
+        });
+      } catch (error: any) {
+        console.error("Error al subir foto de perfil", error);
+        const description =
+          error?.response?.data?.message ??
+          error?.message ??
+          "No pudimos subir la imagen seleccionada.";
+        setEditPersonaPhotoError(description);
+        toast.error("No se pudo subir la foto", { description });
+      } finally {
+        setEditPersonaPhotoUploading(false);
+      }
+    },
+    [validatePhotoFile],
+  );
+
+  const clearNewPersonaPhoto = useCallback(() => {
+    setNewPersona((prev) => ({ ...prev, fotoPerfilUrl: "" }));
+    setNewPersonaPhotoError(null);
+  }, []);
+
+  const clearEditPersonaPhoto = useCallback(() => {
+    setEditPersona((prev) => ({ ...prev, fotoPerfilUrl: "" }));
+    setEditPersonaPhotoError(null);
+  }, []);
+
   const handleOpenEditDialog = useCallback((item: EmpleadoView) => {
     const persona = item.persona;
     const empleado = item.empleado;
@@ -1381,6 +1552,7 @@ export default function PersonalPage() {
       telefono: persona.telefono ?? "",
       celular: persona.celular ?? "",
       email: persona.email ?? "",
+      fotoPerfilUrl: persona.fotoPerfilUrl ?? "",
     });
 
     setEditEmpleado({
@@ -1401,6 +1573,8 @@ export default function PersonalPage() {
     setEditEmpleadoCuilSuffix(suffix);
     setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
     setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
+    setEditPersonaPhotoError(null);
+    setEditPersonaPhotoUploading(false);
     setEditDialogOpen(true);
   }, []);
   const handleCreatePersonal = useCallback(
@@ -1447,6 +1621,7 @@ export default function PersonalPage() {
       const telefono = newPersona.telefono.trim();
       const celular = newPersona.celular.trim();
       const email = newPersona.email.trim();
+      const fotoPerfilUrl = newPersona.fotoPerfilUrl.trim();
 
       if (
         !genero ||
@@ -1461,6 +1636,14 @@ export default function PersonalPage() {
           description:
             "Completá género, estado civil y los datos de contacto obligatorios.",
         });
+        return;
+      }
+
+      if (fotoPerfilUrl && !isValidPhotoUrl(fotoPerfilUrl)) {
+        const description =
+          "Ingresá una URL válida que comience con http(s):// o utilice recursos del sistema.";
+        setNewPersonaPhotoError(description);
+        toast.error("URL de foto inválida", { description });
         return;
       }
 
@@ -1577,6 +1760,7 @@ export default function PersonalPage() {
           telefono,
           celular,
           email,
+          fotoPerfilUrl: fotoPerfilUrl || undefined,
         };
 
         const personaRes = await identidad.personasCore.create(personaPayload);
@@ -1714,6 +1898,7 @@ export default function PersonalPage() {
       const telefono = editPersona.telefono.trim();
       const celular = editPersona.celular.trim();
       const email = editPersona.email.trim();
+      const fotoPerfilUrl = editPersona.fotoPerfilUrl.trim();
 
       if (
         !genero ||
@@ -1728,6 +1913,14 @@ export default function PersonalPage() {
           description:
             "Completá género, estado civil y los datos de contacto obligatorios.",
         });
+        return;
+      }
+
+      if (fotoPerfilUrl && !isValidPhotoUrl(fotoPerfilUrl)) {
+        const description =
+          "Ingresá una URL válida que comience con http(s):// o utilice recursos del sistema.";
+        setEditPersonaPhotoError(description);
+        toast.error("URL de foto inválida", { description });
         return;
       }
 
@@ -1781,6 +1974,7 @@ export default function PersonalPage() {
           celular,
           email,
           cuil,
+          fotoPerfilUrl: fotoPerfilUrl || undefined,
         };
 
         await identidad.personasCore.update(
@@ -2242,10 +2436,11 @@ export default function PersonalPage() {
                   const fullName =
                     buildFullName(persona) ||
                     `Empleado #${item.empleado.id ?? empleadoId}`;
-                  const initials =
-                    `${(persona?.nombre?.[0] ?? "").toUpperCase()}${(
-                      persona?.apellido?.[0] ?? ""
-                    ).toUpperCase()}`.trim();
+                  const initials = getInitialsFromNames(
+                    persona?.nombre,
+                    persona?.apellido,
+                  );
+                  const fotoPerfilUrl = persona?.fotoPerfilUrl?.trim() ?? "";
                   const licenciasOrdenadas = [...item.licencias].sort((a, b) =>
                     getLicenseStart(b).localeCompare(getLicenseStart(a)),
                   );
@@ -2292,6 +2487,12 @@ export default function PersonalPage() {
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-12 w-12">
+                              {fotoPerfilUrl ? (
+                                <AvatarImage
+                                  src={fotoPerfilUrl}
+                                  alt={`Foto de ${fullName}`}
+                                />
+                              ) : null}
                               <AvatarFallback>
                                 {initials.length ? (
                                   initials
@@ -2428,42 +2629,64 @@ export default function PersonalPage() {
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 Datos personales
                               </div>
-                              <div className="mt-3 space-y-2 text-muted-foreground">
-                                <div>
-                                  <span className="font-medium text-foreground">
-                                    DNI:
-                                  </span>{" "}
-                                  {dni}
-                                </div>
-                                <div>
-                                  <span className="font-medium text-foreground">
-                                    CUIL:
-                                  </span>{" "}
-                                  {cuil}
-                                </div>
-                                <div>
-                                  <span className="font-medium text-foreground">
-                                    Nacimiento:
-                                  </span>{" "}
-                                  {fechaNacimiento || "Sin registrar"}
-                                </div>
-                                <div>
-                                  <span className="font-medium text-foreground">
-                                    Nacionalidad:
-                                  </span>{" "}
-                                  {nacionalidad}
-                                </div>
-                                <div>
-                                  <span className="font-medium text-foreground">
-                                    Estado civil:
-                                  </span>{" "}
-                                  {estadoCivil}
-                                </div>
-                                <div>
-                                  <span className="font-medium text-foreground">
-                                    Género:
-                                  </span>{" "}
-                                  {genero}
+                              <div className="mt-3 space-y-3 text-muted-foreground">
+                                {fotoPerfilUrl ? (
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-16 w-16">
+                                      <AvatarImage
+                                        src={fotoPerfilUrl}
+                                        alt={`Foto de ${fullName}`}
+                                      />
+                                      <AvatarFallback>
+                                        {initials.length ? (
+                                          initials
+                                        ) : (
+                                          <User className="h-5 w-5" />
+                                        )}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-xs text-muted-foreground">
+                                      Foto actual del legajo
+                                    </span>
+                                  </div>
+                                ) : null}
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="font-medium text-foreground">
+                                      DNI:
+                                    </span>{" "}
+                                    {dni}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-foreground">
+                                      CUIL:
+                                    </span>{" "}
+                                    {cuil}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-foreground">
+                                      Nacimiento:
+                                    </span>{" "}
+                                    {fechaNacimiento || "Sin registrar"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-foreground">
+                                      Nacionalidad:
+                                    </span>{" "}
+                                    {nacionalidad}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-foreground">
+                                      Estado civil:
+                                    </span>{" "}
+                                    {estadoCivil}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-foreground">
+                                      Género:
+                                    </span>{" "}
+                                    {genero}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -3094,6 +3317,76 @@ export default function PersonalPage() {
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="editar-foto">Foto de perfil</Label>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                      <Avatar className="h-16 w-16">
+                        {editPersona.fotoPerfilUrl.trim() ? (
+                          <AvatarImage
+                            src={editPersona.fotoPerfilUrl}
+                            alt={`Foto de ${editingName || "la persona"}`}
+                          />
+                        ) : null}
+                        <AvatarFallback>
+                          {editPersonaInitials.length ? (
+                            editPersonaInitials
+                          ) : (
+                            <User className="h-5 w-5" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          id="editar-foto"
+                          type="file"
+                          accept={PHOTO_INPUT_ACCEPT}
+                          onChange={handleEditPersonaPhotoFile}
+                          disabled={editPersonaPhotoUploading}
+                        />
+                        {editPersonaPhotoUploading ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Subiendo foto…
+                          </div>
+                        ) : null}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            id="editar-foto-url"
+                            type="url"
+                            placeholder="https://…"
+                            value={editPersona.fotoPerfilUrl}
+                            onChange={(event) => {
+                              setEditPersonaPhotoError(null);
+                              setEditPersona((prev) => ({
+                                ...prev,
+                                fotoPerfilUrl: event.target.value,
+                              }));
+                            }}
+                            aria-invalid={editPersonaPhotoError ? true : undefined}
+                          />
+                          {editPersona.fotoPerfilUrl ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={clearEditPersonaPhoto}
+                              disabled={editPersonaPhotoUploading}
+                            >
+                              Quitar foto
+                            </Button>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Formatos permitidos: {ALLOWED_PHOTO_LABEL}. Tamaño máximo {MAX_PHOTO_SIZE_MB} MB.
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Podés pegar una URL externa válida o subir una imagen desde tu equipo.
+                        </div>
+                        {editPersonaPhotoError ? (
+                          <p className="text-xs text-destructive">{editPersonaPhotoError}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="editar-nombre">Nombres</Label>
                     <Input
@@ -3538,6 +3831,76 @@ export default function PersonalPage() {
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="nuevo-foto">Foto de perfil</Label>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                      <Avatar className="h-16 w-16">
+                        {newPersona.fotoPerfilUrl.trim() ? (
+                          <AvatarImage
+                            src={newPersona.fotoPerfilUrl}
+                            alt={`Foto de ${newPersona.nombre || "la persona"}`}
+                          />
+                        ) : null}
+                        <AvatarFallback>
+                          {newPersonaInitials.length ? (
+                            newPersonaInitials
+                          ) : (
+                            <User className="h-5 w-5" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          id="nuevo-foto"
+                          type="file"
+                          accept={PHOTO_INPUT_ACCEPT}
+                          onChange={handleNewPersonaPhotoFile}
+                          disabled={newPersonaPhotoUploading}
+                        />
+                        {newPersonaPhotoUploading ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Subiendo foto…
+                          </div>
+                        ) : null}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            id="nuevo-foto-url"
+                            type="url"
+                            placeholder="https://…"
+                            value={newPersona.fotoPerfilUrl}
+                            onChange={(event) => {
+                              setNewPersonaPhotoError(null);
+                              setNewPersona((prev) => ({
+                                ...prev,
+                                fotoPerfilUrl: event.target.value,
+                              }));
+                            }}
+                            aria-invalid={newPersonaPhotoError ? true : undefined}
+                          />
+                          {newPersona.fotoPerfilUrl ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={clearNewPersonaPhoto}
+                              disabled={newPersonaPhotoUploading}
+                            >
+                              Quitar foto
+                            </Button>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Formatos permitidos: {ALLOWED_PHOTO_LABEL}. Tamaño máximo {MAX_PHOTO_SIZE_MB} MB.
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Podés pegar una URL externa válida o subir una imagen desde tu equipo.
+                        </div>
+                        {newPersonaPhotoError ? (
+                          <p className="text-xs text-destructive">{newPersonaPhotoError}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-nombre">Nombres</Label>
                     <Input

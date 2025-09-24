@@ -55,6 +55,7 @@ public class Persona extends BaseEntity {
     @Email
     private String emailContacto;
 
+    @Column(length = 1024)
     private String fotoPerfilUrl;
 
     /** Contraseña codificada (BCrypt). */

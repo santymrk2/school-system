@@ -5,6 +5,13 @@ import type * as DTO from "@/types/api-generated";
 export const personasCore = {
   findIdByDni: (dni: string) => http.get<number>(`/api/personas/dni/${dni}`),
   create: (body: DTO.PersonaCreateDTO) => http.post<number>(`/api/personas`, body),
+  uploadPhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return http.post<DTO.PersonaFotoUploadResponse>(`/api/personas/foto`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
   getManyById: (ids: number[]) =>
     http.get<DTO.PersonaDTO[]>(`/api/personas`, {
       params: { ids: ids.join(",") },

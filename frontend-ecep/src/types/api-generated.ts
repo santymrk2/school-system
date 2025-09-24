@@ -622,6 +622,7 @@ export interface PersonaDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  fotoPerfilUrl?: string;
   observacionesGenerales?: string;
   roles?: UserRole[];
   credencialesActivas?: boolean;
@@ -639,6 +640,7 @@ export interface PersonaCreateDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  fotoPerfilUrl?: string;
   password?: string;
   roles?: UserRole[];
 }
@@ -657,9 +659,16 @@ export interface PersonaUpdateDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  fotoPerfilUrl?: string;
   observacionesGenerales?: string;
   password?: string;
   roles?: UserRole[];
+}
+
+export interface PersonaFotoUploadResponse {
+  url: string;
+  fileName: string;
+  size: number;
 }
 
 export interface ReciboSueldoCreateDTO {

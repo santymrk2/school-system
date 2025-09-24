@@ -6,6 +6,8 @@ export const asignacionDocenteSeccion = {
     http.get<DTO.AsignacionDocenteSeccionDTO[]>("/api/asignaciones/seccion"),
   create: (body: DTO.AsignacionDocenteSeccionCreateDTO) =>
     http.post<number>("/api/asignaciones/seccion", body),
+  delete: (id: number) =>
+    http.delete<void>(`/api/asignaciones/seccion/${id}`),
   byEmpleado: (empleadoId: number, fecha?: string) =>
     http.get<DTO.AsignacionDocenteSeccionDTO[]>(
       "/api/asignaciones/seccion/by-docente",
@@ -18,4 +20,6 @@ export const asignacionDocenteMateria = {
     http.get<DTO.AsignacionDocenteMateriaDTO[]>("/api/asignaciones/materia"),
   create: (body: DTO.AsignacionDocenteMateriaCreateDTO) =>
     http.post<number>("/api/asignaciones/materia", body),
+  delete: (id: number) =>
+    http.delete<void>(`/api/asignaciones/materia/${id}`),
 };

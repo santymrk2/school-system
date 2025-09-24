@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -8,9 +8,8 @@ import {
   identidad,
   vidaEscolar,
 } from "@/services/api/modules";
-import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
+import { isBirthDateValid, maxBirthDate, formatDni } from "@/lib/form-utils";
 import type * as DTO from "@/types/api-generated";
-import { formatDni } from "@/lib/form-utils";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
@@ -83,7 +82,9 @@ const emptyAlumno: AlumnoForm = {
 export default function AltaAlumnoPage() {
   const router = useRouter();
   const [personaId, setPersonaId] = useState<number | null>(null);
-  const [personaPreview, setPersonaPreview] = useState<DTO.PersonaDTO | null>(null);
+  const [personaPreview, setPersonaPreview] = useState<DTO.PersonaDTO | null>(
+    null,
+  );
   const [personaForm, setPersonaForm] = useState<PersonaForm>(emptyPersona);
   const [dniLookupLoading, setDniLookupLoading] = useState(false);
   const [lastLookupDni, setLastLookupDni] = useState<string>("");
@@ -92,6 +93,19 @@ export default function AltaAlumnoPage() {
   const [creatingAlumno, setCreatingAlumno] = useState(false);
   const [secciones, setSecciones] = useState<DTO.SeccionDTO[]>([]);
   const { periodoEscolarId: activePeriodId } = useActivePeriod();
+
+  const canSubmit = useMemo(() => {
+    const nombreOk = Boolean(personaForm.nombre.trim());
+    const apellidoOk = Boolean(personaForm.apellido.trim());
+    const dniOk = formatDni(personaForm.dni).length >= 7;
+    const seccionOk = Boolean(alumnoForm.seccionId);
+    return nombreOk && apellidoOk && dniOk && seccionOk;
+  }, [
+    personaForm.nombre,
+    personaForm.apellido,
+    personaForm.dni,
+    alumnoForm.seccionId,
+  ]);
 
   useEffect(() => {
     if (!activePeriodId) {
@@ -213,6 +227,24 @@ export default function AltaAlumnoPage() {
     return newId;
   };
 
+  const handleAsignarSeccion = useCallback(
+    async (matriculaId: number) => {
+      if (!alumnoForm.seccionId) return;
+      try {
+        await vidaEscolar.matriculaSeccionHistorial.create({
+          matriculaId,
+          seccionId: Number(alumnoForm.seccionId),
+          desde:
+            alumnoForm.fechaInscripcion ||
+            new Date().toISOString().slice(0, 10),
+        });
+      } catch (error: any) {
+        toast.error(error?.message ?? "No se pudo asignar la sección");
+      }
+    },
+    [alumnoForm.fechaInscripcion, alumnoForm.seccionId],
+  );
+
   const handleCrearAlumno = async () => {
     if (!alumnoForm.seccionId) {
       toast.error("Seleccioná una sección para matricular al alumno");
@@ -239,7 +271,8 @@ export default function AltaAlumnoPage() {
       const payload: DTO.AlumnoDTO = {
         personaId: personaPersistidaId,
         fechaInscripcion: alumnoForm.fechaInscripcion || undefined,
-        observacionesGenerales: alumnoForm.observacionesGenerales || undefined,
+        observacionesGenerales:
+          alumnoForm.observacionesGenerales || undefined,
         motivoRechazoBaja: alumnoForm.motivoRechazoBaja || undefined,
       };
       const { data: alumnoId } = await identidad.alumnos.create(payload);
@@ -263,10 +296,7 @@ export default function AltaAlumnoPage() {
   return (
     <DashboardLayout>
       <div className="flex-1 space-y-6 p-4 md:p-8">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/alumnos")}
-        >
+        <Button variant="outline" onClick={() => router.push("/dashboard/alumnos")}>
           Volver
         </Button>
         <div>
@@ -278,13 +308,13 @@ export default function AltaAlumnoPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Datos de la persona</CardTitle>
+            <CardTitle>Identificación del alumno</CardTitle>
             <CardDescription>
-              Ingresá los datos básicos. Si el DNI ya está registrado, se completarán automáticamente.
+              Ingresá los datos personales. Si el DNI ya está registrado, completaremos la información automáticamente.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative">
+          <CardContent className="space-y-6">
+            <div className="relative space-y-6">
               <PersonaFormFields
                 values={personaForm}
                 onChange={(field, value) =>
@@ -302,27 +332,25 @@ export default function AltaAlumnoPage() {
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" /> Buscando persona…
                 </div>
               )}
-              {personaId && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Persona existente detectada (ID #{personaId}). Actualizá los datos si es necesario.
-                </div>
-              )}
             </div>
+            {personaId && (
+              <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                Persona existente detectada (ID #{personaId}). Actualizá los datos si es necesario antes de registrar al alumno.
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Separator />
-
         <Card>
           <CardHeader>
-            <CardTitle>Datos del alumno</CardTitle>
+            <CardTitle>Información académica</CardTitle>
             <CardDescription>
-              Podés completar observaciones internas o la fecha de inscripción.
+              Definí la matriculación inicial y registrá cualquier observación relevante para el legajo del alumno.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
-              <div>
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
                   Fecha de inscripción
                 </label>
@@ -330,71 +358,92 @@ export default function AltaAlumnoPage() {
                   type="date"
                   value={alumnoForm.fechaInscripcion}
                   onChange={(e) =>
-                  setAlumnoForm((prev) => ({ ...prev, fechaInscripcion: e.target.value }))
-                }
-              />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                Motivo de rechazo (opcional)
-                </label>
-                <Input
-                  value={alumnoForm.motivoRechazoBaja}
-                  onChange={(e) =>
-                    setAlumnoForm((prev) => ({ ...prev, motivoRechazoBaja: e.target.value }))
+                    setAlumnoForm((prev) => ({
+                      ...prev,
+                      fechaInscripcion: e.target.value,
+                    }))
                   }
-                  placeholder="Si es un reingreso u observación particular"
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
                   Sección
                 </label>
-                <select
+                <Select
                   value={alumnoForm.seccionId}
-                  onChange={(e) =>
-                    setAlumnoForm((prev) => ({ ...prev, seccionId: e.target.value }))
+                  onValueChange={(value) =>
+                    setAlumnoForm((prev) => ({
+                      ...prev,
+                      seccionId: value,
+                    }))
                   }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  disabled={!secciones.length}
                 >
-                  <option value="">Seleccioná...</option>
-                  {secciones.map((sec) => (
-                    <option key={sec.id} value={sec.id}
-                    >
-                      {sec.nivel} — {sec.gradoSala} {sec.division} ({sec.turno})
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccioná la sección" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {secciones.map((sec) => (
+                      <SelectItem key={sec.id} value={String(sec.id)}>
+                        {sec.nivel} — {sec.gradoSala} {sec.division} ({sec.turno})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!secciones.length && (
+                  <p className="text-xs text-muted-foreground">
+                    No hay secciones disponibles para el período escolar activo.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Motivo de rechazo (opcional)
+                </label>
+                <Textarea
+                  rows={3}
+                  value={alumnoForm.motivoRechazoBaja}
+                  onChange={(e) =>
+                    setAlumnoForm((prev) => ({
+                      ...prev,
+                      motivoRechazoBaja: e.target.value,
+                    }))
+                  }
+                  placeholder="Por ejemplo, si se rechazó una baja previa o requiere seguimiento especial"
+                />
               </div>
             </div>
-            <div>
+            <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">
-                Observaciones
+                Observaciones generales
               </label>
               <Textarea
                 rows={4}
                 value={alumnoForm.observacionesGenerales}
                 onChange={(e) =>
-                  setAlumnoForm((prev) => ({ ...prev, observacionesGenerales: e.target.value }))
+                  setAlumnoForm((prev) => ({
+                    ...prev,
+                    observacionesGenerales: e.target.value,
+                  }))
                 }
+                placeholder="Notas internas, antecedentes o información complementaria"
               />
             </div>
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => router.push("/dashboard/alumnos")}>Cancelar</Button>
-         <Button
-           onClick={handleCrearAlumno}
-           disabled={creatingAlumno || !personaId}
-         >
-           {creatingAlumno && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-           Registrar alumno
-         </Button>
-       </div>
-     </div>
-   </DashboardLayout>
- );
+          <Button variant="outline" onClick={() => router.push("/dashboard/alumnos")}>
+            Cancelar
+          </Button>
+          <Button onClick={handleCrearAlumno} disabled={creatingAlumno || !canSubmit}>
+            {creatingAlumno && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Registrar alumno
+          </Button>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 }
 
 type PersonaFormFieldsProps = {
@@ -404,119 +453,150 @@ type PersonaFormFieldsProps = {
 
 function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Nombre *</label>
-        <Input
-          value={values.nombre}
-          onChange={(e) => onChange("nombre", e.target.value)}
-          placeholder="Nombre"
-        />
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          Datos personales
+        </h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Nombre *
+            </label>
+            <Input
+              value={values.nombre}
+              onChange={(e) => onChange("nombre", e.target.value)}
+              placeholder="Nombre"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Apellido *
+            </label>
+            <Input
+              value={values.apellido}
+              onChange={(e) => onChange("apellido", e.target.value)}
+              placeholder="Apellido"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              DNI *
+            </label>
+            <Input
+              value={values.dni}
+              inputMode="numeric"
+              pattern="\d*"
+              minLength={7}
+              maxLength={10}
+              onChange={(e) => onChange("dni", formatDni(e.target.value))}
+              placeholder="DNI"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Fecha de nacimiento
+            </label>
+            <Input
+              type="date"
+              max={maxBirthDate}
+              value={values.fechaNacimiento}
+              onChange={(e) => onChange("fechaNacimiento", e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Género
+            </label>
+            <Select
+              value={values.genero || undefined}
+              onValueChange={(value) => onChange("genero", value)}
+            >
+              <SelectTrigger aria-required="true">
+                <SelectValue placeholder="Seleccioná el género" />
+              </SelectTrigger>
+              <SelectContent>
+                {GENERO_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Estado civil
+            </label>
+            <Input
+              value={values.estadoCivil}
+              onChange={(e) => onChange("estadoCivil", e.target.value)}
+              placeholder="Soltero, casado, etc."
+            />
+          </div>
+          <div className="md:col-span-2 space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Nacionalidad
+            </label>
+            <Input
+              value={values.nacionalidad}
+              onChange={(e) => onChange("nacionalidad", e.target.value)}
+              placeholder="Argentina, peruana, etc."
+            />
+          </div>
+        </div>
       </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Apellido *</label>
-        <Input
-          value={values.apellido}
-          onChange={(e) => onChange("apellido", e.target.value)}
-          placeholder="Apellido"
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">DNI *</label>
-        <Input
-          value={values.dni}
-          inputMode="numeric"
-          pattern="\d*"
-          minLength={7}
-          maxLength={10}
-          onChange={(e) => onChange("dni", formatDni(e.target.value))}
-          placeholder="DNI"
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Fecha de nacimiento</label>
-        <Input
-          type="date"
-          max={maxBirthDate}
-          value={values.fechaNacimiento}
-          onChange={(e) => onChange("fechaNacimiento", e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Género</label>
-        <Select
-          value={values.genero || undefined}
-          onValueChange={(value) => onChange("genero", value)}
-        >
-          <SelectTrigger aria-required="true">
-            <SelectValue placeholder="Seleccioná el género" />
-          </SelectTrigger>
-          <SelectContent>
-            {GENERO_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Estado civil</label>
-        <Input
-          value={values.estadoCivil}
-          onChange={(e) => onChange("estadoCivil", e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Nacionalidad</label>
-        <Input
-          value={values.nacionalidad}
-          onChange={(e) => onChange("nacionalidad", e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Domicilio</label>
-        <Input
-          value={values.domicilio}
-          onChange={(e) => onChange("domicilio", e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Teléfono</label>
-        <Input
-          value={values.telefono}
-          onChange={(e) => onChange("telefono", e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">Celular</label>
-        <Input
-          value={values.celular}
-          onChange={(e) => onChange("celular", e.target.value)}
-        />
-      </div>
-      <div className="md:col-span-2">
-        <label className="text-sm font-medium text-muted-foreground">Email</label>
-        <Input
-          type="email"
-          value={values.email}
-          onChange={(e) => onChange("email", e.target.value)}
-          placeholder="correo@ejemplo.com"
-        />
+
+      <Separator />
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          Datos de contacto
+        </h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="md:col-span-2 space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Domicilio
+            </label>
+            <Input
+              value={values.domicilio}
+              onChange={(e) => onChange("domicilio", e.target.value)}
+              placeholder="Calle, número y localidad"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Teléfono
+            </label>
+            <Input
+              value={values.telefono}
+              onChange={(e) => onChange("telefono", e.target.value)}
+              placeholder="Teléfono fijo"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Celular
+            </label>
+            <Input
+              value={values.celular}
+              onChange={(e) => onChange("celular", e.target.value)}
+              placeholder="Número móvil"
+            />
+          </div>
+          <div className="md:col-span-2 space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">
+              Email
+            </label>
+            <Input
+              type="email"
+              value={values.email}
+              onChange={(e) => onChange("email", e.target.value)}
+              placeholder="correo@ejemplo.com"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
-  const handleAsignarSeccion = async (matriculaId: number) => {
-    if (!alumnoForm.seccionId) return;
-    try {
-      await vidaEscolar.matriculaSeccionHistorial.create({
-        matriculaId,
-        seccionId: Number(alumnoForm.seccionId),
-        desde: alumnoForm.fechaInscripcion || new Date().toISOString().slice(0, 10),
-      });
-    } catch (error: any) {
-      toast.error(error?.message ?? "No se pudo asignar la sección");
-    }
-  };

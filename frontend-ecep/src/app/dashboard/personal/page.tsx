@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
@@ -33,7 +27,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -437,7 +437,9 @@ export default function PersonalPage() {
   const pageSize = DEFAULT_PAGE_SIZE;
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [expandedEmployees, setExpandedEmployees] = useState<Set<number>>(new Set<number>());
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<number>>(
+    new Set<number>(),
+  );
 
   const [dataLoading, setDataLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -450,8 +452,10 @@ export default function PersonalPage() {
   const [creatingLicense, setCreatingLicense] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [savingEditPersonal, setSavingEditPersonal] = useState(false);
-  const [editingIds, setEditingIds] =
-    useState<{ personaId: number; empleadoId: number } | null>(null);
+  const [editingIds, setEditingIds] = useState<{
+    personaId: number;
+    empleadoId: number;
+  } | null>(null);
   const [editingName, setEditingName] = useState("");
 
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
@@ -484,7 +488,9 @@ export default function PersonalPage() {
   const updateNewFormacionEntry = useCallback(
     (index: number, patch: Partial<NewFormacionEntry>) => {
       setNewFormaciones((prev) =>
-        prev.map((entry, idx) => (idx === index ? { ...entry, ...patch } : entry)),
+        prev.map((entry, idx) =>
+          idx === index ? { ...entry, ...patch } : entry,
+        ),
       );
     },
     [],
@@ -590,7 +596,8 @@ export default function PersonalPage() {
 
     setAccessForm((prev) => {
       const hasSameEmail = prev.email === email;
-      const hasEmptyPasswords = prev.password === "" && prev.confirmPassword === "";
+      const hasEmptyPasswords =
+        prev.password === "" && prev.confirmPassword === "";
       const hasSameRoles =
         prev.roles.length === normalizedRoles.length &&
         prev.roles.every((role, index) => role === normalizedRoles[index]);
@@ -767,7 +774,7 @@ export default function PersonalPage() {
       const personalData: EmpleadoView[] = empleados.map((empleado) => {
         const persona =
           typeof empleado.personaId === "number"
-            ? personaMap.get(empleado.personaId) ?? null
+            ? (personaMap.get(empleado.personaId) ?? null)
             : null;
 
         const seccionesIds = Array.from(
@@ -790,17 +797,22 @@ export default function PersonalPage() {
           .filter((m): m is MateriaDTO => Boolean(m))
           .map((m) => ({ id: m.id!, nombre: m.nombre ?? `Materia #${m.id}` }));
 
-        const formacionInfo = formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
+        const formacionInfo =
+          formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
         const licenciasInfo = licenciasPorEmpleado.get(empleado.id ?? 0) ?? [];
 
         const situacionActualRaw = (empleado.situacionActual ?? "").trim();
         const situacionBase =
-          situacionActualRaw.length > 0 ? situacionActualRaw : DEFAULT_SITUACION;
+          situacionActualRaw.length > 0
+            ? situacionActualRaw
+            : DEFAULT_SITUACION;
         const activeLicense =
           licenciasInfo.find((licencia) =>
             isLicenseActiveOn(licencia, referenciaIso),
           ) ?? null;
-        const situacionVisible = activeLicense ? LICENCIA_SITUACION : situacionBase;
+        const situacionVisible = activeLicense
+          ? LICENCIA_SITUACION
+          : situacionBase;
 
         const empleadoViewData: EmpleadoDTO = {
           ...empleado,
@@ -922,7 +934,9 @@ export default function PersonalPage() {
       });
     });
     return Array.from(set.values()).sort((a, b) =>
-      formatNivel(a).localeCompare(formatNivel(b), "es", { sensitivity: "base" }),
+      formatNivel(a).localeCompare(formatNivel(b), "es", {
+        sensitivity: "base",
+      }),
     );
   }, [personal]);
 
@@ -988,7 +1002,9 @@ export default function PersonalPage() {
     });
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+      );
   }, [personal]);
 
   const condicionLaboralSelectOptions = useMemo(() => {
@@ -1004,12 +1020,16 @@ export default function PersonalPage() {
     });
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+      );
   }, [personal]);
 
   const cargoSelectOptions = useMemo(() => {
     const map = new Map<string, string>();
-    CARGO_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
+    CARGO_PRESET_OPTIONS.forEach((option) =>
+      map.set(option.value, option.label),
+    );
     personal.forEach((p) => {
       const value = p.empleado.cargo?.trim();
       if (value) {
@@ -1018,12 +1038,16 @@ export default function PersonalPage() {
     });
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+      );
   }, [personal]);
 
   const situacionSelectOptions = useMemo(() => {
     const map = new Map<string, string>();
-    SITUACION_PRESET_OPTIONS.forEach((option) => map.set(option.value, option.label));
+    SITUACION_PRESET_OPTIONS.forEach((option) =>
+      map.set(option.value, option.label),
+    );
     personal.forEach((p) => {
       const base = p.empleado.situacionActual?.trim();
       if (base) {
@@ -1036,7 +1060,9 @@ export default function PersonalPage() {
     });
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+      );
   }, [personal]);
 
   const filteredPersonal = useMemo(() => {
@@ -1077,16 +1103,14 @@ export default function PersonalPage() {
         const matchesSearch =
           !term ||
           haystack.some(
-            (value) =>
-              value && value.toString().toLowerCase().includes(term),
+            (value) => value && value.toString().toLowerCase().includes(term),
           );
         if (!matchesSearch) return false;
 
         if (
           normalizedNivel &&
           !item.secciones.some(
-            (s) =>
-              String(s.nivel ?? "").toLowerCase() === normalizedNivel,
+            (s) => String(s.nivel ?? "").toLowerCase() === normalizedNivel,
           )
         ) {
           return false;
@@ -1153,8 +1177,11 @@ export default function PersonalPage() {
           `Empleado #${empleadoId}`,
         empleadoCargo: info?.cargo ?? personalInfo?.empleado.cargo ?? null,
         empleadoSituacionVisible:
-          personalInfo?.situacionVisible ?? personalInfo?.empleado.situacionActual ?? null,
-        empleadoSituacionOriginal: personalInfo?.empleado.situacionActual ?? null,
+          personalInfo?.situacionVisible ??
+          personalInfo?.empleado.situacionActual ??
+          null,
+        empleadoSituacionOriginal:
+          personalInfo?.empleado.situacionActual ?? null,
         secciones: personalInfo?.secciones ?? [],
         materias: personalInfo?.materias ?? [],
       };
@@ -1195,8 +1222,7 @@ export default function PersonalPage() {
         if (
           normalizedNivel &&
           !secciones.some(
-            (s) =>
-              String(s.nivel ?? "").toLowerCase() === normalizedNivel,
+            (s) => String(s.nivel ?? "").toLowerCase() === normalizedNivel,
           )
         ) {
           return false;
@@ -1225,8 +1251,10 @@ export default function PersonalPage() {
 
         if (
           normalizedSituacion &&
-          (empleadoSituacionVisible ?? "").toLowerCase() !== normalizedSituacion &&
-          (empleadoSituacionOriginal ?? "").toLowerCase() !== normalizedSituacion
+          (empleadoSituacionVisible ?? "").toLowerCase() !==
+            normalizedSituacion &&
+          (empleadoSituacionOriginal ?? "").toLowerCase() !==
+            normalizedSituacion
         ) {
           return false;
         }
@@ -1277,7 +1305,9 @@ export default function PersonalPage() {
         name: info.name,
         cargo: info.cargo ?? null,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, "es", { sensitivity: "base" }),
+      );
   }, [empleadoNameMap]);
 
   const hasActiveFilters = useMemo(
@@ -1331,51 +1361,48 @@ export default function PersonalPage() {
     });
   }, []);
 
-  const handleOpenEditDialog = useCallback(
-    (item: EmpleadoView) => {
-      const persona = item.persona;
-      const empleado = item.empleado;
-      if (!persona?.id || typeof empleado.id !== "number") {
-        toast.error("No encontramos la ficha completa de este personal.");
-        return;
-      }
+  const handleOpenEditDialog = useCallback((item: EmpleadoView) => {
+    const persona = item.persona;
+    const empleado = item.empleado;
+    if (!persona?.id || typeof empleado.id !== "number") {
+      toast.error("No encontramos la ficha completa de este personal.");
+      return;
+    }
 
-      setEditPersona({
-        nombre: persona.nombre ?? "",
-        apellido: persona.apellido ?? "",
-        dni: formatDni(persona.dni ?? ""),
-        fechaNacimiento: persona.fechaNacimiento ?? "",
-        genero: normalizeGenero(persona.genero) || DEFAULT_GENERO_VALUE,
-        estadoCivil: persona.estadoCivil ?? "",
-        nacionalidad: persona.nacionalidad ?? "",
-        domicilio: persona.domicilio ?? "",
-        telefono: persona.telefono ?? "",
-        celular: persona.celular ?? "",
-        email: persona.email ?? "",
-      });
+    setEditPersona({
+      nombre: persona.nombre ?? "",
+      apellido: persona.apellido ?? "",
+      dni: formatDni(persona.dni ?? ""),
+      fechaNacimiento: persona.fechaNacimiento ?? "",
+      genero: normalizeGenero(persona.genero) || DEFAULT_GENERO_VALUE,
+      estadoCivil: persona.estadoCivil ?? "",
+      nacionalidad: persona.nacionalidad ?? "",
+      domicilio: persona.domicilio ?? "",
+      telefono: persona.telefono ?? "",
+      celular: persona.celular ?? "",
+      email: persona.email ?? "",
+    });
 
-      setEditEmpleado({
-        rolEmpleado: empleado.rolEmpleado ?? RolEmpleado.DOCENTE,
-        cuil: empleado.cuil ?? persona.cuil ?? "",
-        condicionLaboral: empleado.condicionLaboral ?? "",
-        cargo: empleado.cargo ?? "",
-        situacionActual: empleado.situacionActual ?? DEFAULT_SITUACION,
-        fechaIngreso: empleado.fechaIngreso ?? "",
-        antecedentesLaborales: empleado.antecedentesLaborales ?? "",
-        observacionesGenerales: empleado.observacionesGenerales ?? "",
-      });
+    setEditEmpleado({
+      rolEmpleado: empleado.rolEmpleado ?? RolEmpleado.DOCENTE,
+      cuil: empleado.cuil ?? persona.cuil ?? "",
+      condicionLaboral: empleado.condicionLaboral ?? "",
+      cargo: empleado.cargo ?? "",
+      situacionActual: empleado.situacionActual ?? DEFAULT_SITUACION,
+      fechaIngreso: empleado.fechaIngreso ?? "",
+      antecedentesLaborales: empleado.antecedentesLaborales ?? "",
+      observacionesGenerales: empleado.observacionesGenerales ?? "",
+    });
 
-      const { prefix, suffix } = splitCuilParts(
-        empleado.cuil ?? persona.cuil ?? "",
-      );
-      setEditEmpleadoCuilPrefix(prefix);
-      setEditEmpleadoCuilSuffix(suffix);
-      setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
-      setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
-      setEditDialogOpen(true);
-    },
-    [],
-  );
+    const { prefix, suffix } = splitCuilParts(
+      empleado.cuil ?? persona.cuil ?? "",
+    );
+    setEditEmpleadoCuilPrefix(prefix);
+    setEditEmpleadoCuilSuffix(suffix);
+    setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
+    setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
+    setEditDialogOpen(true);
+  }, []);
   const handleCreatePersonal = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -1562,7 +1589,9 @@ export default function PersonalPage() {
 
         const extraNotas: string[] = [];
         if (formacionNotas.otrosTitulos.trim().length > 0) {
-          extraNotas.push(`Otros títulos: ${formacionNotas.otrosTitulos.trim()}`);
+          extraNotas.push(
+            `Otros títulos: ${formacionNotas.otrosTitulos.trim()}`,
+          );
         }
         if (formacionNotas.especializaciones.trim().length > 0) {
           extraNotas.push(
@@ -1754,7 +1783,10 @@ export default function PersonalPage() {
           cuil,
         };
 
-        await identidad.personasCore.update(editingIds.personaId, personaPayload);
+        await identidad.personasCore.update(
+          editingIds.personaId,
+          personaPayload,
+        );
 
         await identidad.empleados.update(editingIds.empleadoId, {
           rolEmpleado: editEmpleado.rolEmpleado,
@@ -1937,7 +1969,9 @@ export default function PersonalPage() {
     setSavingAccess(true);
     try {
       await identidad.personasCore.update(persona.id, payload);
-      const { data: refreshed } = await identidad.personasCore.getById(persona.id);
+      const { data: refreshed } = await identidad.personasCore.getById(
+        persona.id,
+      );
       if (refreshed) {
         setActiveAccess((prev) =>
           prev ? { ...prev, persona: refreshed ?? null } : prev,
@@ -1958,7 +1992,9 @@ export default function PersonalPage() {
     }
   }, [accessForm, activeAccess, refreshData]);
 
-  const renderLoadingState = () => <LoadingState label="Cargando información…" />;
+  const renderLoadingState = () => (
+    <LoadingState label="Cargando información…" />
+  );
 
   const renderErrorState = () => (
     <Alert variant="destructive">
@@ -1976,7 +2012,9 @@ export default function PersonalPage() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">
-          {context === "personal" ? "Filtros del personal" : "Filtros de licencias"}
+          {context === "personal"
+            ? "Filtros del personal"
+            : "Filtros de licencias"}
         </CardTitle>
         <CardDescription>
           {context === "personal"
@@ -2142,11 +2180,12 @@ export default function PersonalPage() {
     <DashboardLayout>
       <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de personal</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Gestión de personal
+          </h1>
           <p className="text-muted-foreground">
-            Administra la información del personal docente y no docente, registra nuevas altas y
-            realiza el seguimiento de licencias. Consultá los indicadores generales desde la
-            pestaña Reportes &gt; Licencias.
+            Administra la información del personal docente y no docente,
+            registra nuevas altas y realiza el seguimiento de licencias.
           </p>
         </div>
 
@@ -2189,7 +2228,8 @@ export default function PersonalPage() {
               <div className="space-y-4">
                 <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <span>
-                    Mostrando {paginatedPersonal.length} de {totalItems} integrantes
+                    Mostrando {paginatedPersonal.length} de {totalItems}{" "}
+                    integrantes
                   </span>
                   <span>
                     Página {currentPage} de {totalPages}
@@ -2200,22 +2240,26 @@ export default function PersonalPage() {
                   const empleadoId = rawEmpleadoId ?? index;
                   const persona = item.persona;
                   const fullName =
-                    buildFullName(persona) || `Empleado #${item.empleado.id ?? empleadoId}`;
-                  const initials = `${(persona?.nombre?.[0] ?? "").toUpperCase()}${(
-                    persona?.apellido?.[0] ?? ""
-                  ).toUpperCase()}`.trim();
+                    buildFullName(persona) ||
+                    `Empleado #${item.empleado.id ?? empleadoId}`;
+                  const initials =
+                    `${(persona?.nombre?.[0] ?? "").toUpperCase()}${(
+                      persona?.apellido?.[0] ?? ""
+                    ).toUpperCase()}`.trim();
                   const licenciasOrdenadas = [...item.licencias].sort((a, b) =>
                     getLicenseStart(b).localeCompare(getLicenseStart(a)),
                   );
                   const ultimaLicencia = licenciasOrdenadas[0];
                   const fechaIngreso = formatDate(item.empleado.fechaIngreso);
-                  const condicion = item.empleado.condicionLaboral ?? "No especificada";
+                  const condicion =
+                    item.empleado.condicionLaboral ?? "No especificada";
                   const situacion =
                     item.situacionVisible ||
                     item.empleado.situacionActual ||
                     DEFAULT_SITUACION;
                   const dni = persona?.dni ?? "Sin registrar";
-                  const cuil = item.empleado.cuil ?? persona?.cuil ?? "Sin registrar";
+                  const cuil =
+                    item.empleado.cuil ?? persona?.cuil ?? "Sin registrar";
                   const fechaNacimiento = formatDate(persona?.fechaNacimiento);
                   const nacionalidad = persona?.nacionalidad ?? "No informada";
                   const estadoCivil = persona?.estadoCivil ?? "No informado";
@@ -2223,7 +2267,8 @@ export default function PersonalPage() {
                   const email = persona?.email ?? "Sin correo registrado";
                   const telefono = persona?.telefono ?? "Sin teléfono";
                   const celular = persona?.celular ?? "Sin celular";
-                  const domicilio = persona?.domicilio ?? "Sin domicilio registrado";
+                  const domicilio =
+                    persona?.domicilio ?? "Sin domicilio registrado";
                   const licenciaActiva = item.activeLicense;
                   const personaId = persona?.id ?? null;
                   const roleOptions = normalizeRoles([
@@ -2248,14 +2293,22 @@ export default function PersonalPage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-12 w-12">
                               <AvatarFallback>
-                                {initials.length ? initials : <User className="h-5 w-5" />}
+                                {initials.length ? (
+                                  initials
+                                ) : (
+                                  <User className="h-5 w-5" />
+                                )}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-lg font-semibold leading-none">{fullName}</h3>
+                                <h3 className="text-lg font-semibold leading-none">
+                                  {fullName}
+                                </h3>
                                 {item.empleado.cargo ? (
-                                  <Badge variant="outline">{item.empleado.cargo}</Badge>
+                                  <Badge variant="outline">
+                                    {item.empleado.cargo}
+                                  </Badge>
                                 ) : null}
                               </div>
                               <p className="text-sm text-muted-foreground">
@@ -2268,7 +2321,9 @@ export default function PersonalPage() {
                               type="button"
                               size="sm"
                               variant={isExpanded ? "secondary" : "outline"}
-                              onClick={() => toggleEmployeeDetails(item.empleado.id)}
+                              onClick={() =>
+                                toggleEmployeeDetails(item.empleado.id)
+                              }
                             >
                               {isExpanded ? (
                                 <>
@@ -2295,12 +2350,15 @@ export default function PersonalPage() {
                               </Button>
                             ) : null}
                             {getSituacionBadge(item.situacionVisible)}
-                            {canRegisterLicenses && typeof item.empleado.id === "number" ? (
+                            {canRegisterLicenses &&
+                            typeof item.empleado.id === "number" ? (
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleOpenLicenseDialog(item.empleado.id)}
+                                onClick={() =>
+                                  handleOpenLicenseDialog(item.empleado.id)
+                                }
                               >
                                 <FileText className="mr-2 h-4 w-4" />
                                 Registrar licencia
@@ -2308,7 +2366,8 @@ export default function PersonalPage() {
                             ) : null}
                           </div>
                         </div>
-                        {(item.secciones.length > 0 || item.materias.length > 0) && (
+                        {(item.secciones.length > 0 ||
+                          item.materias.length > 0) && (
                           <div className="flex flex-wrap gap-2">
                             {item.secciones.map((seccion) => (
                               <Badge
@@ -2317,7 +2376,9 @@ export default function PersonalPage() {
                                 className="flex items-center gap-1"
                               >
                                 <Users className="h-3 w-3" />
-                                <span>{formatNivel(seccion.nivel)} • {seccion.label}</span>
+                                <span>
+                                  {formatNivel(seccion.nivel)} • {seccion.label}
+                                </span>
                               </Badge>
                             ))}
                             {item.materias.map((materia) => (
@@ -2335,93 +2396,123 @@ export default function PersonalPage() {
                       </CardHeader>
                       {isExpanded ? (
                         <CardContent className="space-y-4 text-sm">
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                          <div className="rounded-lg border bg-muted/40 p-4">
-                            <div className="flex items-center gap-2 text-sm font-semibold">
-                              <Briefcase className="h-4 w-4 text-muted-foreground" />
-                              Información laboral
-                            </div>
-                            <div className="mt-3 space-y-2 text-muted-foreground">
-                              <div>
-                                <span className="font-medium text-foreground">Condición:</span> {condicion}
+                          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            <div className="rounded-lg border bg-muted/40 p-4">
+                              <div className="flex items-center gap-2 text-sm font-semibold">
+                                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                Información laboral
                               </div>
-                              <div>
-                                <span className="font-medium text-foreground">Situación:</span> {situacion}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span>
-                                  Ingreso: {fechaIngreso || "Sin registrar"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="rounded-lg border bg-muted/40 p-4">
-                            <div className="flex items-center gap-2 text-sm font-semibold">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              Datos personales
-                            </div>
-                            <div className="mt-3 space-y-2 text-muted-foreground">
-                              <div>
-                                <span className="font-medium text-foreground">DNI:</span> {dni}
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">CUIL:</span> {cuil}
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">Nacimiento:</span> {fechaNacimiento || "Sin registrar"}
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">Nacionalidad:</span> {nacionalidad}
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">Estado civil:</span> {estadoCivil}
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">Género:</span> {genero}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="rounded-lg border bg-muted/40 p-4">
-                            <div className="flex items-center gap-2 text-sm font-semibold">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              Información de contacto
-                            </div>
-                            <div className="mt-3 space-y-2 text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Mail className="h-4 w-4 text-muted-foreground" />
-                                <span>{email}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <span>Tel.: {telefono}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <span>Cel.: {celular}</span>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                                <span>{domicilio}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="rounded-lg border bg-muted/40 p-4">
-                            <div className="flex items-center gap-2 text-sm font-semibold">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              Licencias registradas
-                            </div>
                               <div className="mt-3 space-y-2 text-muted-foreground">
                                 <div>
-                                  <span className="font-medium text-foreground">Total:</span> {item.licencias.length}
+                                  <span className="font-medium text-foreground">
+                                    Condición:
+                                  </span>{" "}
+                                  {condicion}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Situación:
+                                  </span>{" "}
+                                  {situacion}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span>
+                                    Ingreso: {fechaIngreso || "Sin registrar"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="rounded-lg border bg-muted/40 p-4">
+                              <div className="flex items-center gap-2 text-sm font-semibold">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                Datos personales
+                              </div>
+                              <div className="mt-3 space-y-2 text-muted-foreground">
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    DNI:
+                                  </span>{" "}
+                                  {dni}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    CUIL:
+                                  </span>{" "}
+                                  {cuil}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Nacimiento:
+                                  </span>{" "}
+                                  {fechaNacimiento || "Sin registrar"}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Nacionalidad:
+                                  </span>{" "}
+                                  {nacionalidad}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Estado civil:
+                                  </span>{" "}
+                                  {estadoCivil}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Género:
+                                  </span>{" "}
+                                  {genero}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="rounded-lg border bg-muted/40 p-4">
+                              <div className="flex items-center gap-2 text-sm font-semibold">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                Información de contacto
+                              </div>
+                              <div className="mt-3 space-y-2 text-muted-foreground">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                  <span>{email}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  <span>Tel.: {telefono}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  <span>Cel.: {celular}</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                  <span>{domicilio}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="rounded-lg border bg-muted/40 p-4">
+                              <div className="flex items-center gap-2 text-sm font-semibold">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                Licencias registradas
+                              </div>
+                              <div className="mt-3 space-y-2 text-muted-foreground">
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Total:
+                                  </span>{" "}
+                                  {item.licencias.length}
                                 </div>
                                 {licenciaActiva ? (
                                   <div>
-                                    <span className="font-medium text-foreground">Estado actual:</span> {LICENCIA_SITUACION}
-                                    {" "}
+                                    <span className="font-medium text-foreground">
+                                      Estado actual:
+                                    </span>{" "}
+                                    {LICENCIA_SITUACION}{" "}
                                     {formatDate(licenciaActiva.fechaInicio) ? (
                                       <span className="text-xs text-muted-foreground">
-                                        (desde {formatDate(licenciaActiva.fechaInicio)}
+                                        (desde{" "}
+                                        {formatDate(licenciaActiva.fechaInicio)}
                                         {licenciaActiva.fechaFin
                                           ? ` hasta ${formatDate(licenciaActiva.fechaFin)}`
                                           : ""}
@@ -2432,239 +2523,285 @@ export default function PersonalPage() {
                                 ) : null}
                                 {ultimaLicencia ? (
                                   <div>
-                                    <span className="font-medium text-foreground">Última:</span> {formatTipoLicencia(ultimaLicencia.tipoLicencia)}
-                                    {" "}• {formatDate(ultimaLicencia.fechaInicio) || "Sin inicio"}
-                                  {ultimaLicencia.fechaFin ? ` al ${formatDate(ultimaLicencia.fechaFin)}` : ""}
-                                </div>
-                              ) : (
-                                <div>No hay licencias cargadas.</div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="rounded-lg border bg-muted/40 p-4">
-                            <div className="flex items-center gap-2 text-sm font-semibold">
-                              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                              Formación académica
-                            </div>
-                            <div className="mt-3 space-y-2 text-muted-foreground">
-                              {item.formaciones.length > 0 ? (
-                                item.formaciones.map((formacion) => (
-                                  <div key={`formacion-${empleadoId}-${formacion.id}`}>
-                                    <div className="font-medium text-foreground">
-                                      {formacion.tituloObtenido ?? "Título sin nombre"}
-                                    </div>
-                                    <div>
-                                      {formacion.institucion ?? "Institución no informada"}
-                                      {formacion.nivel ? ` • ${formacion.nivel}` : ""}
-                                    </div>
-                                    <div className="text-xs">
-                                      {formacion.fechaInicio
-                                        ? `Desde ${formatDate(formacion.fechaInicio)}`
-                                        : "Fecha de inicio no registrada"}
-                                      {formacion.fechaFin
-                                        ? ` hasta ${formatDate(formacion.fechaFin)}`
-                                        : ""}
-                                    </div>
+                                    <span className="font-medium text-foreground">
+                                      Última:
+                                    </span>{" "}
+                                    {formatTipoLicencia(
+                                      ultimaLicencia.tipoLicencia,
+                                    )}{" "}
+                                    •{" "}
+                                    {formatDate(ultimaLicencia.fechaInicio) ||
+                                      "Sin inicio"}
+                                    {ultimaLicencia.fechaFin
+                                      ? ` al ${formatDate(ultimaLicencia.fechaFin)}`
+                                      : ""}
                                   </div>
-                                ))
-                              ) : (
-                                <div>No se registraron títulos o cursos.</div>
-                              )}
+                                ) : (
+                                  <div>No hay licencias cargadas.</div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          {(item.empleado.antecedentesLaborales || item.empleado.observacionesGenerales) && (
+                          <div className="grid gap-4 md:grid-cols-2">
                             <div className="rounded-lg border bg-muted/40 p-4">
                               <div className="flex items-center gap-2 text-sm font-semibold">
-                                <FileText className="h-4 w-4 text-muted-foreground" />
-                                Notas y antecedentes
+                                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                                Formación académica
                               </div>
-                              <div className="mt-3 space-y-3 text-muted-foreground">
-                                {item.empleado.antecedentesLaborales ? (
-                                  <div>
-                                    <div className="font-medium text-foreground">Antecedentes laborales</div>
-                                    <div className="whitespace-pre-wrap">
-                                      {item.empleado.antecedentesLaborales}
-                                    </div>
-                                  </div>
-                                ) : null}
-                                {item.empleado.observacionesGenerales ? (
-                                  <div>
-                                    <div className="font-medium text-foreground">Observaciones</div>
-                                    <div className="whitespace-pre-wrap">
-                                      {item.empleado.observacionesGenerales}
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="rounded-lg border bg-muted/40 p-4">
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div className="space-y-1 text-sm">
-                              <div className="text-sm font-semibold text-foreground">
-                                Acceso al sistema
-                              </div>
-                              {persona?.credencialesActivas ? (
-                                <div className="space-y-1 text-muted-foreground">
-                                  <div className="font-medium text-foreground">
-                                    {persona.email ?? "Sin email"}
-                                  </div>
-                                  <div>
-                                    Roles:{" "}
-                                    {persona.roles && persona.roles.length > 0
-                                      ? normalizeRoles(persona.roles)
-                                          .map((role) => displayRole(role))
-                                          .join(", ")
-                                      : "Sin roles"}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="text-muted-foreground">
-                                  El personal todavía no tiene credenciales asignadas.
-                                </div>
-                              )}
-                            </div>
-                            {canManageAccess && personaId ? (
-                              <Dialog
-                                open={isAccessDialogOpen}
-                                onOpenChange={(open) => {
-                                  if (open) {
-                                    handleOpenAccessDialog(persona, item.empleado);
-                                  } else {
-                                    setAccessDialogOpen(false);
-                                  }
-                                }}
-                              >
-                                <DialogTrigger asChild>
-                                  <Button type="button" size="sm" disabled={savingAccess && isAccessDialogOpen}>
-                                    Gestionar acceso
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-md">
-                                  <DialogHeader>
-                                    <DialogTitle>
-                                      {persona?.credencialesActivas
-                                        ? "Actualizar acceso"
-                                        : "Crear acceso"}
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                      Administrá el correo, la contraseña y los roles del personal.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div className="space-y-2">
-                                      <Label>Email</Label>
-                                      <Input
-                                        type="email"
-                                        value={accessForm.email}
-                                        onChange={(event) =>
-                                          setAccessForm((prev) => ({
-                                            ...prev,
-                                            email: event.target.value,
-                                          }))
-                                        }
-                                        disabled={savingAccess}
-                                      />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <Label>Contraseña</Label>
-                                      <Input
-                                        type="password"
-                                        value={accessForm.password}
-                                        placeholder={
-                                          persona?.credencialesActivas
-                                            ? "Ingresá una nueva contraseña"
-                                            : "Contraseña inicial"
-                                        }
-                                        onChange={(event) =>
-                                          setAccessForm((prev) => ({
-                                            ...prev,
-                                            password: event.target.value,
-                                          }))
-                                        }
-                                        disabled={savingAccess}
-                                      />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <Label>Confirmar contraseña</Label>
-                                      <Input
-                                        type="password"
-                                        value={accessForm.confirmPassword}
-                                        onChange={(event) =>
-                                          setAccessForm((prev) => ({
-                                            ...prev,
-                                            confirmPassword: event.target.value,
-                                          }))
-                                        }
-                                        disabled={savingAccess}
-                                      />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <Label>Roles del sistema</Label>
-                                      <div className="grid gap-2">
-                                        {roleOptions.map((role) => {
-                                          const checked = accessForm.roles.includes(role);
-                                          return (
-                                            <label
-                                              key={`${personaId}-${role}`}
-                                              className="flex items-center gap-2 text-sm text-muted-foreground"
-                                            >
-                                              <Checkbox
-                                                checked={checked}
-                                                onCheckedChange={(value) =>
-                                                  setAccessForm((prev) => {
-                                                    const isChecked = value === true;
-                                                    const nextRoles = isChecked
-                                                      ? [...prev.roles, role]
-                                                      : prev.roles.filter((r) => r !== role);
-                                                    return {
-                                                      ...prev,
-                                                      roles: normalizeRoles(nextRoles),
-                                                    };
-                                                  })
-                                                }
-                                                disabled={savingAccess}
-                                              />
-                                              <span>{displayRole(role)}</span>
-                                            </label>
-                                          );
-                                        })}
+                              <div className="mt-3 space-y-2 text-muted-foreground">
+                                {item.formaciones.length > 0 ? (
+                                  item.formaciones.map((formacion) => (
+                                    <div
+                                      key={`formacion-${empleadoId}-${formacion.id}`}
+                                    >
+                                      <div className="font-medium text-foreground">
+                                        {formacion.tituloObtenido ??
+                                          "Título sin nombre"}
                                       </div>
-                                      <p className="text-xs text-muted-foreground">
-                                        Seleccioná los permisos que tendrá el personal en la plataforma.
-                                      </p>
+                                      <div>
+                                        {formacion.institucion ??
+                                          "Institución no informada"}
+                                        {formacion.nivel
+                                          ? ` • ${formacion.nivel}`
+                                          : ""}
+                                      </div>
+                                      <div className="text-xs">
+                                        {formacion.fechaInicio
+                                          ? `Desde ${formatDate(formacion.fechaInicio)}`
+                                          : "Fecha de inicio no registrada"}
+                                        {formacion.fechaFin
+                                          ? ` hasta ${formatDate(formacion.fechaFin)}`
+                                          : ""}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div>No se registraron títulos o cursos.</div>
+                                )}
+                              </div>
+                            </div>
+                            {(item.empleado.antecedentesLaborales ||
+                              item.empleado.observacionesGenerales) && (
+                              <div className="rounded-lg border bg-muted/40 p-4">
+                                <div className="flex items-center gap-2 text-sm font-semibold">
+                                  <FileText className="h-4 w-4 text-muted-foreground" />
+                                  Notas y antecedentes
+                                </div>
+                                <div className="mt-3 space-y-3 text-muted-foreground">
+                                  {item.empleado.antecedentesLaborales ? (
+                                    <div>
+                                      <div className="font-medium text-foreground">
+                                        Antecedentes laborales
+                                      </div>
+                                      <div className="whitespace-pre-wrap">
+                                        {item.empleado.antecedentesLaborales}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                  {item.empleado.observacionesGenerales ? (
+                                    <div>
+                                      <div className="font-medium text-foreground">
+                                        Observaciones
+                                      </div>
+                                      <div className="whitespace-pre-wrap">
+                                        {item.empleado.observacionesGenerales}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="rounded-lg border bg-muted/40 p-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                              <div className="space-y-1 text-sm">
+                                <div className="text-sm font-semibold text-foreground">
+                                  Acceso al sistema
+                                </div>
+                                {persona?.credencialesActivas ? (
+                                  <div className="space-y-1 text-muted-foreground">
+                                    <div className="font-medium text-foreground">
+                                      {persona.email ?? "Sin email"}
+                                    </div>
+                                    <div>
+                                      Roles:{" "}
+                                      {persona.roles && persona.roles.length > 0
+                                        ? normalizeRoles(persona.roles)
+                                            .map((role) => displayRole(role))
+                                            .join(", ")
+                                        : "Sin roles"}
                                     </div>
                                   </div>
-                                  <DialogFooter>
-                                    <DialogClose asChild>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        disabled={savingAccess}
-                                        onClick={() => setAccessDialogOpen(false)}
-                                      >
-                                        Cancelar
-                                      </Button>
-                                    </DialogClose>
+                                ) : (
+                                  <div className="text-muted-foreground">
+                                    El personal todavía no tiene credenciales
+                                    asignadas.
+                                  </div>
+                                )}
+                              </div>
+                              {canManageAccess && personaId ? (
+                                <Dialog
+                                  open={isAccessDialogOpen}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      handleOpenAccessDialog(
+                                        persona,
+                                        item.empleado,
+                                      );
+                                    } else {
+                                      setAccessDialogOpen(false);
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
                                     <Button
                                       type="button"
-                                      onClick={handleSaveAccess}
-                                      disabled={savingAccess}
+                                      size="sm"
+                                      disabled={
+                                        savingAccess && isAccessDialogOpen
+                                      }
                                     >
-                                      {savingAccess && (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      )}
-                                      Guardar acceso
+                                      Gestionar acceso
                                     </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            ) : null}
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        {persona?.credencialesActivas
+                                          ? "Actualizar acceso"
+                                          : "Crear acceso"}
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Administrá el correo, la contraseña y
+                                        los roles del personal.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div className="space-y-2">
+                                        <Label>Email</Label>
+                                        <Input
+                                          type="email"
+                                          value={accessForm.email}
+                                          onChange={(event) =>
+                                            setAccessForm((prev) => ({
+                                              ...prev,
+                                              email: event.target.value,
+                                            }))
+                                          }
+                                          disabled={savingAccess}
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Contraseña</Label>
+                                        <Input
+                                          type="password"
+                                          value={accessForm.password}
+                                          placeholder={
+                                            persona?.credencialesActivas
+                                              ? "Ingresá una nueva contraseña"
+                                              : "Contraseña inicial"
+                                          }
+                                          onChange={(event) =>
+                                            setAccessForm((prev) => ({
+                                              ...prev,
+                                              password: event.target.value,
+                                            }))
+                                          }
+                                          disabled={savingAccess}
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Confirmar contraseña</Label>
+                                        <Input
+                                          type="password"
+                                          value={accessForm.confirmPassword}
+                                          onChange={(event) =>
+                                            setAccessForm((prev) => ({
+                                              ...prev,
+                                              confirmPassword:
+                                                event.target.value,
+                                            }))
+                                          }
+                                          disabled={savingAccess}
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Roles del sistema</Label>
+                                        <div className="grid gap-2">
+                                          {roleOptions.map((role) => {
+                                            const checked =
+                                              accessForm.roles.includes(role);
+                                            return (
+                                              <label
+                                                key={`${personaId}-${role}`}
+                                                className="flex items-center gap-2 text-sm text-muted-foreground"
+                                              >
+                                                <Checkbox
+                                                  checked={checked}
+                                                  onCheckedChange={(value) =>
+                                                    setAccessForm((prev) => {
+                                                      const isChecked =
+                                                        value === true;
+                                                      const nextRoles =
+                                                        isChecked
+                                                          ? [
+                                                              ...prev.roles,
+                                                              role,
+                                                            ]
+                                                          : prev.roles.filter(
+                                                              (r) => r !== role,
+                                                            );
+                                                      return {
+                                                        ...prev,
+                                                        roles:
+                                                          normalizeRoles(
+                                                            nextRoles,
+                                                          ),
+                                                      };
+                                                    })
+                                                  }
+                                                  disabled={savingAccess}
+                                                />
+                                                <span>{displayRole(role)}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          Seleccioná los permisos que tendrá el
+                                          personal en la plataforma.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <DialogClose asChild>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          disabled={savingAccess}
+                                          onClick={() =>
+                                            setAccessDialogOpen(false)
+                                          }
+                                        >
+                                          Cancelar
+                                        </Button>
+                                      </DialogClose>
+                                      <Button
+                                        type="button"
+                                        onClick={handleSaveAccess}
+                                        disabled={savingAccess}
+                                      >
+                                        {savingAccess && (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        )}
+                                        Guardar acceso
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
                         </CardContent>
                       ) : null}
                     </Card>
@@ -2683,7 +2820,11 @@ export default function PersonalPage() {
                                 handlePageChange(currentPage - 1);
                               }
                             }}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              currentPage === 1
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
                         {visiblePages.length > 0 && visiblePages[0] > 1 ? (
@@ -2724,7 +2865,8 @@ export default function PersonalPage() {
                         {visiblePages.length > 0 &&
                         visiblePages[visiblePages.length - 1] < totalPages ? (
                           <>
-                            {visiblePages[visiblePages.length - 1] < totalPages - 1 ? (
+                            {visiblePages[visiblePages.length - 1] <
+                            totalPages - 1 ? (
                               <PaginationItem>
                                 <PaginationEllipsis />
                               </PaginationItem>
@@ -2795,8 +2937,11 @@ export default function PersonalPage() {
                     index,
                   ) => {
                     const licenseKey = licencia.id ?? `${empleadoId}-${index}`;
-                    const fechaInicio = formatDate(licencia.fechaInicio) || "Sin inicio";
-                    const fechaFin = licencia.fechaFin ? formatDate(licencia.fechaFin) : "";
+                    const fechaInicio =
+                      formatDate(licencia.fechaInicio) || "Sin inicio";
+                    const fechaFin = licencia.fechaFin
+                      ? formatDate(licencia.fechaFin)
+                      : "";
                     return (
                       <Card key={`licencia-${licenseKey}`}>
                         <CardHeader className="space-y-2">
@@ -2809,8 +2954,16 @@ export default function PersonalPage() {
                                 <Badge variant="outline">
                                   {formatTipoLicencia(licencia.tipoLicencia)}
                                 </Badge>
-                                <Badge variant={licencia.justificada ? "secondary" : "destructive"}>
-                                  {licencia.justificada ? "Justificada" : "Sin justificar"}
+                                <Badge
+                                  variant={
+                                    licencia.justificada
+                                      ? "secondary"
+                                      : "destructive"
+                                  }
+                                >
+                                  {licencia.justificada
+                                    ? "Justificada"
+                                    : "Sin justificar"}
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground">
@@ -2829,7 +2982,9 @@ export default function PersonalPage() {
                               {typeof licencia.horasAusencia === "number" ? (
                                 <div className="flex items-center gap-1">
                                   <Clock className="h-4 w-4" />
-                                  <span>{licencia.horasAusencia} hs de ausencia</span>
+                                  <span>
+                                    {licencia.horasAusencia} hs de ausencia
+                                  </span>
                                 </div>
                               ) : null}
                             </div>
@@ -2839,12 +2994,15 @@ export default function PersonalPage() {
                           <div className="flex items-start gap-2 text-foreground">
                             <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />
                             <span>
-                              <span className="font-semibold">Motivo:</span> {licencia.motivo || "Sin detallar"}
+                              <span className="font-semibold">Motivo:</span>{" "}
+                              {licencia.motivo || "Sin detallar"}
                             </span>
                           </div>
                           {licencia.observaciones ? (
                             <div className="whitespace-pre-wrap">
-                              <span className="font-semibold text-foreground">Observaciones:</span>{" "}
+                              <span className="font-semibold text-foreground">
+                                Observaciones:
+                              </span>{" "}
                               {licencia.observaciones}
                             </div>
                           ) : null}
@@ -2857,7 +3015,10 @@ export default function PersonalPage() {
                                   className="flex items-center gap-1"
                                 >
                                   <Users className="h-3 w-3" />
-                                  <span>{formatNivel(seccion.nivel)} • {seccion.label}</span>
+                                  <span>
+                                    {formatNivel(seccion.nivel)} •{" "}
+                                    {seccion.label}
+                                  </span>
                                 </Badge>
                               ))}
                             </div>
@@ -2878,12 +3039,16 @@ export default function PersonalPage() {
                           ) : null}
                           {empleadoSituacionVisible ? (
                             <div>
-                              <span className="font-semibold text-foreground">Situación actual:</span>{" "}
+                              <span className="font-semibold text-foreground">
+                                Situación actual:
+                              </span>{" "}
                               {empleadoSituacionVisible}
                               {empleadoSituacionOriginal &&
-                              empleadoSituacionOriginal !== empleadoSituacionVisible ? (
+                              empleadoSituacionOriginal !==
+                                empleadoSituacionVisible ? (
                                 <span className="text-xs text-muted-foreground">
-                                  {" "}(registrada como {empleadoSituacionOriginal})
+                                  {" "}
+                                  (registrada como {empleadoSituacionOriginal})
                                 </span>
                               ) : null}
                             </div>
@@ -2913,14 +3078,17 @@ export default function PersonalPage() {
             <DialogHeader>
               <DialogTitle>Editar datos del personal</DialogTitle>
               <DialogDescription>
-                Actualizá la información de {editingName || "la persona seleccionada"}.
+                Actualizá la información de{" "}
+                {editingName || "la persona seleccionada"}.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Datos personales</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Datos personales
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     Revisá y actualizá la información básica del legajo.
                   </p>
@@ -2932,7 +3100,10 @@ export default function PersonalPage() {
                       id="editar-nombre"
                       value={editPersona.nombre}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, nombre: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          nombre: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -2943,7 +3114,10 @@ export default function PersonalPage() {
                       id="editar-apellido"
                       value={editPersona.apellido}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, apellido: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          apellido: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -2967,7 +3141,9 @@ export default function PersonalPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="editar-fecha-nac">Fecha de nacimiento</Label>
+                    <Label htmlFor="editar-fecha-nac">
+                      Fecha de nacimiento
+                    </Label>
                     <Input
                       id="editar-fecha-nac"
                       type="date"
@@ -3007,10 +3183,16 @@ export default function PersonalPage() {
                     <Select
                       value={editPersona.estadoCivil}
                       onValueChange={(value) =>
-                        setEditPersona((prev) => ({ ...prev, estadoCivil: value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          estadoCivil: value,
+                        }))
                       }
                     >
-                      <SelectTrigger id="editar-estado-civil" aria-required="true">
+                      <SelectTrigger
+                        id="editar-estado-civil"
+                        aria-required="true"
+                      >
                         <SelectValue placeholder="Seleccioná el estado civil" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3028,7 +3210,10 @@ export default function PersonalPage() {
                       id="editar-nacionalidad"
                       value={editPersona.nacionalidad}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, nacionalidad: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          nacionalidad: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -3038,7 +3223,9 @@ export default function PersonalPage() {
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Información de contacto</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Información de contacto
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     Datos para comunicaciones institucionales y seguimiento.
                   </p>
@@ -3050,7 +3237,10 @@ export default function PersonalPage() {
                       id="editar-domicilio"
                       value={editPersona.domicilio}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, domicilio: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          domicilio: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -3062,7 +3252,10 @@ export default function PersonalPage() {
                       type="tel"
                       value={editPersona.telefono}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, telefono: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          telefono: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -3074,7 +3267,10 @@ export default function PersonalPage() {
                       type="tel"
                       value={editPersona.celular}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, celular: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          celular: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -3086,7 +3282,10 @@ export default function PersonalPage() {
                       type="email"
                       value={editPersona.email}
                       onChange={(event) =>
-                        setEditPersona((prev) => ({ ...prev, email: event.target.value }))
+                        setEditPersona((prev) => ({
+                          ...prev,
+                          email: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -3096,9 +3295,12 @@ export default function PersonalPage() {
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Datos laborales</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Datos laborales
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Actualizá la asignación institucional y la situación del personal.
+                    Actualizá la asignación institucional y la situación del
+                    personal.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -3172,7 +3374,10 @@ export default function PersonalPage() {
                     <Select
                       value={editEmpleado.condicionLaboral}
                       onValueChange={(value) =>
-                        setEditEmpleado((prev) => ({ ...prev, condicionLaboral: value }))
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          condicionLaboral: value,
+                        }))
                       }
                     >
                       <SelectTrigger id="editar-condicion" aria-required="true">
@@ -3212,7 +3417,10 @@ export default function PersonalPage() {
                     <Select
                       value={editEmpleado.situacionActual ?? DEFAULT_SITUACION}
                       onValueChange={(value) =>
-                        setEditEmpleado((prev) => ({ ...prev, situacionActual: value }))
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          situacionActual: value,
+                        }))
                       }
                     >
                       <SelectTrigger id="editar-situacion" aria-required="true">
@@ -3228,7 +3436,9 @@ export default function PersonalPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="editar-fecha-ingreso">Fecha de ingreso</Label>
+                    <Label htmlFor="editar-fecha-ingreso">
+                      Fecha de ingreso
+                    </Label>
                     <Input
                       id="editar-fecha-ingreso"
                       type="date"
@@ -3243,7 +3453,9 @@ export default function PersonalPage() {
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="editar-antecedentes">Antecedentes laborales</Label>
+                    <Label htmlFor="editar-antecedentes">
+                      Antecedentes laborales
+                    </Label>
                     <Textarea
                       id="editar-antecedentes"
                       value={editEmpleado.antecedentesLaborales}
@@ -3258,7 +3470,9 @@ export default function PersonalPage() {
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="editar-observaciones">Observaciones generales</Label>
+                    <Label htmlFor="editar-observaciones">
+                      Observaciones generales
+                    </Label>
                     <Textarea
                       id="editar-observaciones"
                       value={editEmpleado.observacionesGenerales}
@@ -3278,7 +3492,11 @@ export default function PersonalPage() {
 
             <DialogFooter className="gap-2">
               <DialogClose asChild>
-                <Button type="button" variant="outline" disabled={savingEditPersonal}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={savingEditPersonal}
+                >
                   Cancelar
                 </Button>
               </DialogClose>
@@ -3302,17 +3520,21 @@ export default function PersonalPage() {
             <DialogHeader>
               <DialogTitle>Alta de nuevo personal</DialogTitle>
               <DialogDescription>
-                Completa la ficha para incorporar un nuevo integrante. Los campos marcados como
-                obligatorios permiten garantizar la trazabilidad del legajo.
+                Completa la ficha para incorporar un nuevo integrante. Los
+                campos marcados como obligatorios permiten garantizar la
+                trazabilidad del legajo.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Datos personales</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Datos personales
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Información básica de identificación del docente o integrante.
+                    Información básica de identificación del docente o
+                    integrante.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -3322,7 +3544,10 @@ export default function PersonalPage() {
                       id="nuevo-nombre"
                       value={newPersona.nombre}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, nombre: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          nombre: event.target.value,
+                        }))
                       }
                       placeholder="Nombre completo"
                       required
@@ -3334,7 +3559,10 @@ export default function PersonalPage() {
                       id="nuevo-apellido"
                       value={newPersona.apellido}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, apellido: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          apellido: event.target.value,
+                        }))
                       }
                       placeholder="Apellido"
                       required
@@ -3367,7 +3595,10 @@ export default function PersonalPage() {
                       max={maxBirthDate}
                       value={newPersona.fechaNacimiento}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, fechaNacimiento: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          fechaNacimiento: event.target.value,
+                        }))
                       }
                       required
                     />
@@ -3397,10 +3628,16 @@ export default function PersonalPage() {
                     <Select
                       value={newPersona.estadoCivil}
                       onValueChange={(value) =>
-                        setNewPersona((prev) => ({ ...prev, estadoCivil: value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          estadoCivil: value,
+                        }))
                       }
                     >
-                      <SelectTrigger id="nuevo-estado-civil" aria-required="true">
+                      <SelectTrigger
+                        id="nuevo-estado-civil"
+                        aria-required="true"
+                      >
                         <SelectValue placeholder="Seleccioná el estado civil" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3418,7 +3655,10 @@ export default function PersonalPage() {
                       id="nuevo-nacionalidad"
                       value={newPersona.nacionalidad}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, nacionalidad: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          nacionalidad: event.target.value,
+                        }))
                       }
                       placeholder="Argentina, Uruguaya…"
                       required
@@ -3473,7 +3713,9 @@ export default function PersonalPage() {
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Información de contacto</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Información de contacto
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     Datos para comunicación institucional y notificaciones.
                   </p>
@@ -3485,7 +3727,10 @@ export default function PersonalPage() {
                       id="nuevo-domicilio"
                       value={newPersona.domicilio}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, domicilio: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          domicilio: event.target.value,
+                        }))
                       }
                       placeholder="Calle, número, localidad"
                       required
@@ -3498,7 +3743,10 @@ export default function PersonalPage() {
                       type="tel"
                       value={newPersona.telefono}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, telefono: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          telefono: event.target.value,
+                        }))
                       }
                       placeholder="Teléfono fijo"
                       required
@@ -3511,7 +3759,10 @@ export default function PersonalPage() {
                       type="tel"
                       value={newPersona.celular}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, celular: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          celular: event.target.value,
+                        }))
                       }
                       placeholder="Número de contacto"
                       required
@@ -3524,7 +3775,10 @@ export default function PersonalPage() {
                       type="email"
                       value={newPersona.email}
                       onChange={(event) =>
-                        setNewPersona((prev) => ({ ...prev, email: event.target.value }))
+                        setNewPersona((prev) => ({
+                          ...prev,
+                          email: event.target.value,
+                        }))
                       }
                       placeholder="nombre@institucion.edu.ar"
                       required
@@ -3535,7 +3789,9 @@ export default function PersonalPage() {
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Datos laborales</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Datos laborales
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     Rol, cargo y situación dentro de la institución.
                   </p>
@@ -3546,7 +3802,10 @@ export default function PersonalPage() {
                     <Select
                       value={newEmpleado.rolEmpleado}
                       onValueChange={(value) =>
-                        setNewEmpleado((prev) => ({ ...prev, rolEmpleado: value as RolEmpleado }))
+                        setNewEmpleado((prev) => ({
+                          ...prev,
+                          rolEmpleado: value as RolEmpleado,
+                        }))
                       }
                     >
                       <SelectTrigger id="nuevo-rol">
@@ -3614,40 +3873,56 @@ export default function PersonalPage() {
                       className="bg-muted/40"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Al registrar un nuevo personal se inicia con estado "Activo".
+                      Al registrar un nuevo personal se inicia con estado
+                      "Activo".
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="nuevo-fecha-ingreso">Fecha de ingreso</Label>
+                    <Label htmlFor="nuevo-fecha-ingreso">
+                      Fecha de ingreso
+                    </Label>
                     <Input
                       id="nuevo-fecha-ingreso"
                       type="date"
                       value={newEmpleado.fechaIngreso}
                       onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, fechaIngreso: event.target.value }))
+                        setNewEmpleado((prev) => ({
+                          ...prev,
+                          fechaIngreso: event.target.value,
+                        }))
                       }
                       required
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="nuevo-antecedentes">Antecedentes laborales</Label>
+                    <Label htmlFor="nuevo-antecedentes">
+                      Antecedentes laborales
+                    </Label>
                     <Textarea
                       id="nuevo-antecedentes"
                       value={newEmpleado.antecedentesLaborales}
                       onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, antecedentesLaborales: event.target.value }))
+                        setNewEmpleado((prev) => ({
+                          ...prev,
+                          antecedentesLaborales: event.target.value,
+                        }))
                       }
                       placeholder="Experiencia previa, instituciones en las que trabajó…"
                       rows={3}
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="nuevo-observaciones">Observaciones generales</Label>
+                    <Label htmlFor="nuevo-observaciones">
+                      Observaciones generales
+                    </Label>
                     <Textarea
                       id="nuevo-observaciones"
                       value={newEmpleado.observacionesGenerales}
                       onChange={(event) =>
-                        setNewEmpleado((prev) => ({ ...prev, observacionesGenerales: event.target.value }))
+                        setNewEmpleado((prev) => ({
+                          ...prev,
+                          observacionesGenerales: event.target.value,
+                        }))
                       }
                       placeholder="Notas internas, requerimientos o documentación adicional"
                       rows={3}
@@ -3658,9 +3933,12 @@ export default function PersonalPage() {
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Formación académica</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Formación académica
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Registra la titulación principal y otras certificaciones relevantes.
+                    Registra la titulación principal y otras certificaciones
+                    relevantes.
                   </p>
                 </div>
                 <div className="space-y-4">
@@ -3759,13 +4037,19 @@ export default function PersonalPage() {
                               value={formacion.fechaFin}
                               onChange={(event) => {
                                 const value = event.target.value;
-                                if (value && formacion.fechaInicio && value < formacion.fechaInicio) {
+                                if (
+                                  value &&
+                                  formacion.fechaInicio &&
+                                  value < formacion.fechaInicio
+                                ) {
                                   updateNewFormacionEntry(index, {
                                     fechaFin: formacion.fechaInicio,
                                   });
                                   return;
                                 }
-                                updateNewFormacionEntry(index, { fechaFin: value });
+                                updateNewFormacionEntry(index, {
+                                  fechaFin: value,
+                                });
                               }}
                             />
                           </div>
@@ -3784,7 +4068,8 @@ export default function PersonalPage() {
                       <Plus className="mr-2 h-4 w-4" /> Agregar otra formación
                     </Button>
                     <p className="text-xs text-muted-foreground sm:text-right">
-                      Podés registrar varias formaciones. Las que dejes vacías no se guardarán.
+                      Podés registrar varias formaciones. Las que dejes vacías
+                      no se guardarán.
                     </p>
                   </div>
                 </div>
@@ -3795,19 +4080,27 @@ export default function PersonalPage() {
                       id="nuevo-otros-titulos"
                       value={formacionNotas.otrosTitulos}
                       onChange={(event) =>
-                        setFormacionNotas((prev) => ({ ...prev, otrosTitulos: event.target.value }))
+                        setFormacionNotas((prev) => ({
+                          ...prev,
+                          otrosTitulos: event.target.value,
+                        }))
                       }
                       placeholder="Especializaciones o formaciones complementarias"
                       rows={3}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="nuevo-especializaciones">Especializaciones</Label>
+                    <Label htmlFor="nuevo-especializaciones">
+                      Especializaciones
+                    </Label>
                     <Textarea
                       id="nuevo-especializaciones"
                       value={formacionNotas.especializaciones}
                       onChange={(event) =>
-                        setFormacionNotas((prev) => ({ ...prev, especializaciones: event.target.value }))
+                        setFormacionNotas((prev) => ({
+                          ...prev,
+                          especializaciones: event.target.value,
+                        }))
                       }
                       placeholder="Posgrados, diplomaturas…"
                       rows={3}
@@ -3819,7 +4112,10 @@ export default function PersonalPage() {
                       id="nuevo-cursos"
                       value={formacionNotas.cursos}
                       onChange={(event) =>
-                        setFormacionNotas((prev) => ({ ...prev, cursos: event.target.value }))
+                        setFormacionNotas((prev) => ({
+                          ...prev,
+                          cursos: event.target.value,
+                        }))
                       }
                       placeholder="Cursos o capacitaciones recientes"
                       rows={3}
@@ -3831,7 +4127,11 @@ export default function PersonalPage() {
 
             <DialogFooter className="gap-2">
               <DialogClose asChild>
-                <Button type="button" variant="outline" disabled={creatingPersonal}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={creatingPersonal}
+                >
                   Cancelar
                 </Button>
               </DialogClose>
@@ -3855,7 +4155,8 @@ export default function PersonalPage() {
             <DialogHeader>
               <DialogTitle>Nueva licencia</DialogTitle>
               <DialogDescription>
-                Registra las fechas y el motivo de la licencia para mantener actualizado el legajo.
+                Registra las fechas y el motivo de la licencia para mantener
+                actualizado el legajo.
               </DialogDescription>
             </DialogHeader>
 
@@ -3952,7 +4253,9 @@ export default function PersonalPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="licencia-justificada">¿La licencia está justificada?</Label>
+                <Label htmlFor="licencia-justificada">
+                  ¿La licencia está justificada?
+                </Label>
                 <Select
                   value={newLicense.justificada}
                   onValueChange={(value: "si" | "no") =>
@@ -3975,7 +4278,10 @@ export default function PersonalPage() {
                     id="licencia-motivo"
                     value={newLicense.motivo}
                     onChange={(event) =>
-                      setNewLicense((prev) => ({ ...prev, motivo: event.target.value }))
+                      setNewLicense((prev) => ({
+                        ...prev,
+                        motivo: event.target.value,
+                      }))
                     }
                     placeholder="Describe el motivo de la licencia"
                     rows={3}
@@ -3983,14 +4289,19 @@ export default function PersonalPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="licencia-horas">Horas de ausencia (opcional)</Label>
+                  <Label htmlFor="licencia-horas">
+                    Horas de ausencia (opcional)
+                  </Label>
                   <Input
                     id="licencia-horas"
                     type="number"
                     min="0"
                     value={newLicense.horasAusencia}
                     onChange={(event) =>
-                      setNewLicense((prev) => ({ ...prev, horasAusencia: event.target.value }))
+                      setNewLicense((prev) => ({
+                        ...prev,
+                        horasAusencia: event.target.value,
+                      }))
                     }
                     placeholder="Cantidad de horas"
                   />
@@ -4002,7 +4313,10 @@ export default function PersonalPage() {
                   id="licencia-observaciones"
                   value={newLicense.observaciones}
                   onChange={(event) =>
-                    setNewLicense((prev) => ({ ...prev, observaciones: event.target.value }))
+                    setNewLicense((prev) => ({
+                      ...prev,
+                      observaciones: event.target.value,
+                    }))
                   }
                   placeholder="Detalles adicionales o documentación presentada"
                   rows={3}
@@ -4012,7 +4326,11 @@ export default function PersonalPage() {
 
             <DialogFooter className="gap-2">
               <DialogClose asChild>
-                <Button type="button" variant="outline" disabled={creatingLicense}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={creatingLicense}
+                >
                   Cancelar
                 </Button>
               </DialogClose>

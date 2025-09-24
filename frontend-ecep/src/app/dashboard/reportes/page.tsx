@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -816,6 +817,37 @@ export default function ReportesPage() {
     );
     return section?.students ?? [];
   }, [boletinSections, selectedSectionId]);
+
+  const boletinTableData = useMemo(() => {
+    if (!activeBoletin || activeBoletin.level !== "Primario") {
+      return {
+        trimesters: [] as { id: number; label: string }[],
+        subjects: [] as BoletinSubject[],
+      };
+    }
+
+    const trimesterMap = new Map<number, string>();
+
+    activeBoletin.subjects.forEach((subject) => {
+      subject.grades.forEach((grade) => {
+        if (!trimesterMap.has(grade.trimestreId)) {
+          trimesterMap.set(grade.trimestreId, grade.trimestreLabel);
+        }
+      });
+    });
+
+    const trimesters = Array.from(trimesterMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([id, label]) => ({ id, label }));
+
+    return {
+      trimesters,
+      subjects: activeBoletin.subjects,
+    };
+  }, [activeBoletin]);
+
+  const boletinTrimesters = boletinTableData.trimesters;
+  const boletinSubjectsForTable = boletinTableData.subjects;
 
   useEffect(() => {
     boletinSections.forEach((section) => {
@@ -2580,56 +2612,88 @@ export default function ReportesPage() {
                 {activeBoletin.level === "Primario" ? (
                   <div className="rounded-lg border">
                     <div className="border-b px-4 py-3 text-sm font-semibold">
-                      Materias cursadas
+                      Boletín por materia
                     </div>
-                    <div className="divide-y">
-                      {activeBoletin.subjects.length === 0 && (
-                        <div className="p-4 text-xs text-muted-foreground">
-                          No hay calificaciones registradas para este alumno.
-                        </div>
-                      )}
-                      {activeBoletin.subjects.map((subject) => {
-                        const displayTeacher = subject.teacher
-                          ? String(subject.teacher).trim()
-                          : null;
-                        return (
-                          <div key={subject.id} className="grid gap-2 p-4">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium">{subject.name}</span>
-                              <div className="flex flex-wrap gap-2">
-                                {subject.grades.map((grade) => {
-                                  const value =
-                                    typeof grade.notaNumerica === "number"
-                                      ? grade.notaNumerica.toFixed(1)
-                                      : grade.notaConceptual ?? "—";
+                    {boletinSubjectsForTable.length === 0 ||
+                    boletinTrimesters.length === 0 ? (
+                      <div className="p-4 text-xs text-muted-foreground">
+                        No hay calificaciones registradas para este alumno.
+                      </div>
+                    ) : (
+                      <ScrollArea className="w-full">
+                        <div className="min-w-full">
+                          <table className="w-full border-collapse text-xs sm:text-sm">
+                            <thead>
+                              <tr>
+                                <th className="w-[140px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
+                                  Trimestre
+                                </th>
+                                {boletinSubjectsForTable.map((subject) => {
+                                  const displayTeacher = subject.teacher
+                                    ? String(subject.teacher).trim()
+                                    : null;
+                                  const showTeacher =
+                                    displayTeacher && displayTeacher !== "—";
                                   return (
-                                    <Badge key={`${subject.id}-${grade.trimestreId}`} variant="outline">
-                                      {grade.trimestreLabel}: {value}
-                                    </Badge>
+                                    <th
+                                      key={subject.id}
+                                      className="min-w-[180px] border border-border bg-muted/40 px-3 py-2 text-left font-medium"
+                                    >
+                                      <div className="flex flex-col gap-1">
+                                        <span>{subject.name}</span>
+                                        {showTeacher && (
+                                          <span className="text-[0.7rem] font-normal text-muted-foreground">
+                                            Docente: {displayTeacher}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </th>
                                   );
                                 })}
-                              </div>
-                            </div>
-                            {displayTeacher && displayTeacher !== "—" && (
-                              <p className="text-xs text-muted-foreground">
-                                Docente: {displayTeacher}
-                              </p>
-                            )}
-                            {subject.grades.some((g) => g.observaciones) && (
-                              <div className="space-y-1 text-xs text-muted-foreground">
-                                {subject.grades
-                                  .filter((g) => g.observaciones)
-                                  .map((grade) => (
-                                    <p key={`${subject.id}-${grade.trimestreId}-obs`}>
-                                      {grade.trimestreLabel}: {grade.observaciones}
-                                    </p>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {boletinTrimesters.map((trimester) => (
+                                <tr key={trimester.id} className="even:bg-muted/10">
+                                  <th
+                                    scope="row"
+                                    className="whitespace-nowrap border border-border bg-muted/30 px-3 py-2 text-left font-medium"
+                                  >
+                                    {trimester.label}
+                                  </th>
+                                  {boletinSubjectsForTable.map((subject) => {
+                                    const grade = subject.grades.find(
+                                      (g) => g.trimestreId === trimester.id,
+                                    );
+                                    const gradeValue =
+                                      grade && typeof grade.notaNumerica === "number"
+                                        ? grade.notaNumerica.toFixed(1)
+                                        : grade?.notaConceptual ?? "—";
+                                    const observations = grade?.observaciones?.trim();
+                                    return (
+                                      <td
+                                        key={`${trimester.id}-${subject.id}`}
+                                        className="border border-border px-3 py-2 align-top"
+                                      >
+                                        <div className="space-y-1">
+                                          <span className="font-medium">{gradeValue}</span>
+                                          {observations && (
+                                            <p className="whitespace-pre-wrap text-[0.7rem] text-muted-foreground">
+                                              {observations}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border">

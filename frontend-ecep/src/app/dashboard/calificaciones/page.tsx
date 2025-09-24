@@ -146,7 +146,7 @@ export default function CalificacionesIndexPage() {
             onValueChange={(value) => setTab(value as "primario" | "inicial")}
             className="space-y-4"
           >
-            <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+            <TabsList className="justify-start overflow-x-auto">
               <TabsTrigger value="primario">Primario</TabsTrigger>
               <TabsTrigger value="inicial">Inicial</TabsTrigger>
             </TabsList>

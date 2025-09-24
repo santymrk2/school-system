@@ -1526,7 +1526,7 @@ export default function PagosPage() {
             onValueChange={(value) => setSelectedTab(value)}
             className="space-y-6"
           >
-            <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+            <TabsList className="justify-start overflow-x-auto">
               {availableTabs.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
                   {tab.label}

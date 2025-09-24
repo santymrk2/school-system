@@ -275,7 +275,8 @@ export default function AccidentesIndexPage() {
 
   const personalDisplayById = useMemo(() => {
     const map = new Map<number, string>();
-    for (const p of personal as any[]) {
+    const items = Array.isArray(personal) ? personal : [];
+    for (const p of items as any[]) {
       const label =
         `${p.apellido ?? ""} ${p.nombre ?? ""}`.trim() ||
         p.nombreCompleto ||

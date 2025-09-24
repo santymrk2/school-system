@@ -4,6 +4,7 @@ import edu.ecep.base_app.identidad.domain.enums.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,6 +34,8 @@ public class PersonaCreateDTO {
     private String celular;
     @Email
     private String email;
+    @Size(max = 1024, message = "La URL de la foto no puede superar los 1024 caracteres")
+    private String fotoPerfilUrl;
     private String password;
     private Set<UserRole> roles;
 }

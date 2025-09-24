@@ -31,6 +31,9 @@ public class Empleado {
     @Column(length = 11, unique = true)
     private String cuil;
 
+    @Column(length = 20, unique = true)
+    private String legajo;
+
     private LocalDate fechaIngreso;
     private String condicionLaboral;
     private String cargo;

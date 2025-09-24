@@ -23,12 +23,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class EmpleadoService {
+
+    private static final Pattern LEGAJO_PATTERN = Pattern.compile("^[A-Z0-9-]{4,20}$");
 
     private final EmpleadoRepository repo;
     private final PersonaRepository personaRepository;
@@ -91,11 +95,16 @@ public class EmpleadoService {
             throw new IllegalArgumentException("La persona ya tiene rol Empleado");
         }
 
-        // 3) Crear empleado (si usás @MapsId, el id del empleado será el de persona)
+        // 3) Validar legajo
+        String legajo = requireValidLegajo(dto.getLegajo());
+        ensureLegajoDisponible(legajo, null);
+
+        // 4) Crear empleado (si usás @MapsId, el id del empleado será el de persona)
         Empleado p = new Empleado();
         p.setPersona(persona);
         p.setRolEmpleado(dto.getRolEmpleado());
         p.setCuil(dto.getCuil());
+        p.setLegajo(legajo);
         p.setCondicionLaboral(dto.getCondicionLaboral());
         p.setCargo(dto.getCargo());
         p.setSituacionActual(dto.getSituacionActual());
@@ -127,6 +136,14 @@ public class EmpleadoService {
         // Update laboral (solo campos no nulos)
         if (dto.getRolEmpleado() != null)       p.setRolEmpleado(dto.getRolEmpleado());
         if (dto.getCuil() != null)              p.setCuil(dto.getCuil());
+        if (dto.getLegajo() != null) {
+            String legajo = requireValidLegajo(dto.getLegajo());
+            String currentLegajo = p.getLegajo();
+            if (currentLegajo == null || !currentLegajo.equalsIgnoreCase(legajo)) {
+                ensureLegajoDisponible(legajo, p.getId());
+            }
+            p.setLegajo(legajo);
+        }
         if (dto.getCondicionLaboral() != null)  p.setCondicionLaboral(dto.getCondicionLaboral());
         if (dto.getCargo() != null)             p.setCargo(dto.getCargo());
         if (dto.getSituacionActual() != null)   p.setSituacionActual(dto.getSituacionActual());
@@ -156,5 +173,31 @@ public class EmpleadoService {
         // (Opcional) validar asignaciones si tenés estos métodos:
         // if (adsRepo.existsByEmpleadoId(id) || admRepo.existsByEmpleadoId(id)) ...
         return null;
+    }
+
+    private String requireValidLegajo(String legajo) {
+        if (!StringUtils.hasText(legajo)) {
+            throw new IllegalArgumentException("Debe enviar legajo");
+        }
+        String normalized = normalizeLegajo(legajo);
+        if (!LEGAJO_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException(
+                    "El legajo debe tener entre 4 y 20 caracteres alfanuméricos y puede incluir guiones"
+            );
+        }
+        return normalized;
+    }
+
+    private void ensureLegajoDisponible(String legajo, Long excludeId) {
+        repo.findByLegajoIgnoreCase(legajo)
+                .ifPresent(existing -> {
+                    if (excludeId == null || !existing.getId().equals(excludeId)) {
+                        throw new IllegalArgumentException("Ya existe un empleado con el legajo indicado");
+                    }
+                });
+    }
+
+    private String normalizeLegajo(String legajo) {
+        return legajo.trim().toUpperCase();
     }
 }

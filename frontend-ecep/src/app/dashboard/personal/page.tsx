@@ -146,6 +146,21 @@ const SITUACION_PRESET_OPTIONS = [
   { value: "Suspendido", label: "Suspendido" },
 ];
 
+const LEGAJO_MAX_LENGTH = 20;
+const LEGAJO_REGEX = /^[A-Z0-9-]{4,20}$/;
+
+function sanitizeLegajoInput(value: string) {
+  return value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, LEGAJO_MAX_LENGTH);
+}
+
+function normalizeLegajo(value: string) {
+  return sanitizeLegajoInput(value).trim();
+}
+
+function isLegajoFormatValid(value: string) {
+  return LEGAJO_REGEX.test(value);
+}
+
 const DEFAULT_PAGE_SIZE = 8;
 
 const MAX_PHOTO_SIZE_MB = 2;
@@ -182,6 +197,7 @@ const initialPersonaForm = {
 const initialEmpleadoForm = {
   rolEmpleado: RolEmpleado.DOCENTE,
   cuil: "",
+  legajo: "",
   condicionLaboral: "",
   cargo: "",
   situacionActual: DEFAULT_SITUACION,
@@ -1142,6 +1158,7 @@ export default function PersonalPage() {
           item.persona?.celular ?? "",
           item.persona?.domicilio ?? "",
           item.empleado.cuil ?? "",
+          item.empleado.legajo ?? "",
           item.empleado.cargo ?? "",
           item.empleado.condicionLaboral ?? "",
           item.empleado.situacionActual ?? "",
@@ -1558,6 +1575,7 @@ export default function PersonalPage() {
     setEditEmpleado({
       rolEmpleado: empleado.rolEmpleado ?? RolEmpleado.DOCENTE,
       cuil: empleado.cuil ?? persona.cuil ?? "",
+      legajo: normalizeLegajo(empleado.legajo ?? ""),
       condicionLaboral: empleado.condicionLaboral ?? "",
       cargo: empleado.cargo ?? "",
       situacionActual: empleado.situacionActual ?? DEFAULT_SITUACION,
@@ -1650,6 +1668,24 @@ export default function PersonalPage() {
       if (!newEmpleado.rolEmpleado) {
         toast.error("Rol requerido", {
           description: "Seleccioná el rol institucional del personal.",
+        });
+        return;
+      }
+
+      const legajo = normalizeLegajo(newEmpleado.legajo ?? "");
+
+      if (!legajo) {
+        toast.error("Legajo requerido", {
+          description:
+            "Ingresá el legajo institucional (4 a 20 caracteres alfanuméricos o guiones).",
+        });
+        return;
+      }
+
+      if (!isLegajoFormatValid(legajo)) {
+        toast.error("Formato de legajo inválido", {
+          description:
+            "Usá entre 4 y 20 caracteres, solo letras mayúsculas, números y guiones.",
         });
         return;
       }
@@ -1796,6 +1832,7 @@ export default function PersonalPage() {
           personaId,
           rolEmpleado: newEmpleado.rolEmpleado,
           cuil,
+          legajo,
           condicionLaboral,
           cargo,
           situacionActual: DEFAULT_SITUACION,
@@ -1931,6 +1968,24 @@ export default function PersonalPage() {
         return;
       }
 
+      const legajo = normalizeLegajo(editEmpleado.legajo ?? "");
+
+      if (!legajo) {
+        toast.error("Legajo requerido", {
+          description:
+            "Ingresá el legajo institucional (4 a 20 caracteres alfanuméricos o guiones).",
+        });
+        return;
+      }
+
+      if (!isLegajoFormatValid(legajo)) {
+        toast.error("Formato de legajo inválido", {
+          description:
+            "Usá entre 4 y 20 caracteres, solo letras mayúsculas, números y guiones.",
+        });
+        return;
+      }
+
       const condicionLaboral = editEmpleado.condicionLaboral.trim();
       const cargo = editEmpleado.cargo.trim();
       const fechaIngreso = editEmpleado.fechaIngreso;
@@ -1985,6 +2040,7 @@ export default function PersonalPage() {
         await identidad.empleados.update(editingIds.empleadoId, {
           rolEmpleado: editEmpleado.rolEmpleado,
           cuil,
+          legajo,
           condicionLaboral,
           cargo,
           situacionActual,
@@ -2455,6 +2511,7 @@ export default function PersonalPage() {
                   const dni = persona?.dni ?? "Sin registrar";
                   const cuil =
                     item.empleado.cuil ?? persona?.cuil ?? "Sin registrar";
+                  const legajo = item.empleado.legajo ?? "Sin registrar";
                   const fechaNacimiento = formatDate(persona?.fechaNacimiento);
                   const nacionalidad = persona?.nacionalidad ?? "No informada";
                   const estadoCivil = persona?.estadoCivil ?? "No informado";
@@ -2514,6 +2571,12 @@ export default function PersonalPage() {
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 {formatRol(item.empleado.rolEmpleado)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Legajo:{" "}
+                                <span className="font-medium text-foreground">
+                                  {legajo}
+                                </span>
                               </p>
                             </div>
                           </div>
@@ -2604,6 +2667,12 @@ export default function PersonalPage() {
                                 Información laboral
                               </div>
                               <div className="mt-3 space-y-2 text-muted-foreground">
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    Legajo:
+                                  </span>{" "}
+                                  {legajo}
+                                </div>
                                 <div>
                                   <span className="font-medium text-foreground">
                                     Condición:
@@ -3663,6 +3732,25 @@ export default function PersonalPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="editar-legajo">Legajo institucional</Label>
+                    <Input
+                      id="editar-legajo"
+                      value={editEmpleado.legajo}
+                      onChange={(event) =>
+                        setEditEmpleado((prev) => ({
+                          ...prev,
+                          legajo: sanitizeLegajoInput(event.target.value),
+                        }))
+                      }
+                      maxLength={LEGAJO_MAX_LENGTH}
+                      placeholder="Ej.: DOC-2025-01"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Solo letras mayúsculas, números y guiones.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="editar-condicion">Condición laboral</Label>
                     <Select
                       value={editEmpleado.condicionLaboral}
@@ -4070,6 +4158,25 @@ export default function PersonalPage() {
                         className="w-14"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nuevo-legajo">Legajo institucional</Label>
+                    <Input
+                      id="nuevo-legajo"
+                      value={newEmpleado.legajo}
+                      onChange={(event) =>
+                        setNewEmpleado((prev) => ({
+                          ...prev,
+                          legajo: sanitizeLegajoInput(event.target.value),
+                        }))
+                      }
+                      maxLength={LEGAJO_MAX_LENGTH}
+                      placeholder="Ej.: DOC-2025-01"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Solo letras mayúsculas, números y guiones.
+                    </p>
                   </div>
                 </div>
               </section>

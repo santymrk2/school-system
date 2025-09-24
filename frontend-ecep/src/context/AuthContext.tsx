@@ -159,7 +159,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
   // ----- roles normalizados desde el usuario -----
   const userRoles = user?.roles;
-  const roles = useMemo<UserRole[]>(() => normalizeRoles(userRoles), [userRoles]);
+  const roles = useMemo<UserRole[]>(
+    () => normalizeRoles(userRoles),
+    [userRoles],
+  );
 
   // ----- carga de sesión al iniciar -----
   const checkAuth = useCallback(async () => {
@@ -233,7 +236,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
       }
       setUser(patched);
 
-      const normalized = normalizeRoles(me.data.roles);
+      const normalized = normalizeRoles(patched.roles);
 
       if (normalized.length === 0) {
         // Sin roles: quedate en login; podés mostrar un toast desde la página

@@ -249,7 +249,7 @@ export default function LoginPage() {
 
         {/* Información adicional */}
         <div className="text-center text-sm text-gray-600 space-y-2">
-          <div className="flex items-center justify-center space-x-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <div className="flex items-center">
               <GraduationCap className="h-4 w-4 mr-1" />
               <span>Nivel Inicial</span>

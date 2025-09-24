@@ -131,7 +131,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* MENÚ por grupos + separador entre grupos */}
-          <div className="flex-1 px-4 lg:pr-0 lg:pl-4 space-y-4 flex justify-center items-center">
+          <div className="flex-1 px-4 lg:pr-0 lg:pl-4 py-4 overflow-y-auto">
             <nav className="space-y-1">
               {groupedMenu.map(([groupKey, items], groupIndex) => (
                 <div key={groupKey} className="space-y-1">

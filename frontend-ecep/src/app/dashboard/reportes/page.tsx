@@ -2662,10 +2662,13 @@ export default function ReportesPage() {
                                       const grade = subject.grades.find(
                                         (g) => g.trimestreId === trimester.id,
                                       );
+                                      const conceptualGrade = grade?.notaConceptual?.trim();
                                       const gradeValue =
-                                        grade && typeof grade.notaNumerica === "number"
-                                          ? grade.notaNumerica.toFixed(1)
-                                          : grade?.notaConceptual ?? "—";
+                                        conceptualGrade && conceptualGrade !== "—"
+                                          ? conceptualGrade
+                                          : grade && typeof grade.notaNumerica === "number"
+                                            ? grade.notaNumerica.toFixed(1)
+                                            : "—";
                                       const observations = grade?.observaciones?.trim();
 
                                       return (

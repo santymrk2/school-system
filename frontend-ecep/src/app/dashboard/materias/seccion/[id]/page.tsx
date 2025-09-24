@@ -599,6 +599,7 @@ export default function MateriasSeccionPage() {
                     const tit = titularVigente(sm.id);
                     const sup = suplenteVigente(sm.id);
 
+
                     return (
                       <div key={sm.id} className="border rounded p-3">
                         <div className="flex items-center justify-between">

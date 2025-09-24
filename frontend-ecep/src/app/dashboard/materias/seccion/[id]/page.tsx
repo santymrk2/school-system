@@ -23,9 +23,12 @@ import type {
   MateriaDTO,
   NivelAcademico,
   AsignacionDocenteMateriaDTO,
+  AsignacionDocenteSeccionDTO,
+  RolSeccion,
 } from "@/types/api-generated";
 import AddMateriaToSeccionDialog from "@/app/dashboard/materias/_components/AddMateriaToSeccionDialog";
 import AsignarDocenteMateriaDialog from "@/app/dashboard/materias/_components/AsignarDocenteMateriaDialog";
+import AsignarDocenteSeccionDialog from "@/app/dashboard/materias/_components/AsignarDocenteSeccionDialog";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
@@ -39,6 +42,14 @@ type Asignacion = {
   empleadoId: number;
   rol: "TITULAR" | "SUPLENTE";
   vigenciaDesde: string; // YYYY-MM-DD
+  vigenciaHasta?: string | null;
+};
+type AsignacionSeccion = {
+  id: number;
+  seccionId: number;
+  empleadoId: number;
+  rol: RolSeccion;
+  vigenciaDesde: string;
   vigenciaHasta?: string | null;
 };
 type EmpleadoLite = {
@@ -73,11 +84,27 @@ function isPrimario(s: Seccion) {
   return !gs.includes("sala");
 }
 
+function isInicial(s: Seccion) {
+  const n = (s.nivel as NivelAcademico | undefined) ?? (s as any).nivel;
+  return n ? String(n).toUpperCase() === "INICIAL" : false;
+}
+
 function formatTurnoLabel(turno?: string | null) {
   if (!turno) return null;
   const map: Record<string, string> = { MANANA: "Mañana", TARDE: "Tarde" };
   const normalized = map[String(turno).toUpperCase()] ?? turno;
   return `Turno ${normalized}`;
+}
+
+function formatRolSeccionLabel(rol?: RolSeccion | string | null) {
+  if (!rol) return "—";
+  const map: Record<string, string> = {
+    MAESTRO_TITULAR: "Maestro/a titular",
+    SUPLENTE: "Suplente",
+    PRECEPTOR: "Preceptor/a",
+    AUXILIAR: "Auxiliar",
+  };
+  return map[String(rol).toUpperCase()] ?? String(rol);
 }
 
 export default function MateriasSeccionPage() {
@@ -103,6 +130,8 @@ export default function MateriasSeccionPage() {
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [sms, setSms] = useState<SM[]>([]);
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
+  const [asignacionesSeccion, setAsignacionesSeccion] =
+    useState<AsignacionSeccion[]>([]);
   const [empleados, setEmpleados] = useState<EmpleadoLite[]>([]);
 
   const [openAdd, setOpenAdd] = useState(false);
@@ -113,6 +142,9 @@ export default function MateriasSeccionPage() {
       titularId?: number | null;
       suplenteId?: number | null;
     };
+  } | null>(null);
+  const [openAsignarSeccion, setOpenAsignarSeccion] = useState<{
+    rol?: RolSeccion.MAESTRO_TITULAR | RolSeccion.SUPLENTE;
   } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +190,59 @@ export default function MateriasSeccionPage() {
     return m;
   }, [asignaciones]);
 
+  const asignacionesSeccionOrdenadas = useMemo(() => {
+    const arr = [...asignacionesSeccion];
+    arr.sort((a, b) =>
+      (b.vigenciaDesde ?? "").localeCompare(a.vigenciaDesde ?? ""),
+    );
+    return arr;
+  }, [asignacionesSeccion]);
+
+  const titularSeccion = useMemo(
+    () =>
+      asignacionesSeccionOrdenadas.find(
+        (a) => a.rol === RolSeccion.MAESTRO_TITULAR && vigenteHoy(a),
+      ) ?? null,
+    [asignacionesSeccionOrdenadas],
+  );
+
+  const suplenteSeccion = useMemo(
+    () =>
+      asignacionesSeccionOrdenadas.find(
+        (a) => a.rol === RolSeccion.SUPLENTE && vigenteHoy(a),
+      ) ?? null,
+    [asignacionesSeccionOrdenadas],
+  );
+
+  const otrosRolesSeccion = useMemo(
+    () =>
+      asignacionesSeccionOrdenadas.filter(
+        (a) =>
+          a.rol !== RolSeccion.MAESTRO_TITULAR &&
+          a.rol !== RolSeccion.SUPLENTE &&
+          vigenteHoy(a),
+      ),
+    [asignacionesSeccionOrdenadas],
+  );
+
   const turnoBadgeLabel = formatTurnoLabel(seccion?.turno);
+  const esInicial = seccion ? isInicial(seccion) : false;
+  const esPrimario = seccion ? isPrimario(seccion) : false;
+  const seccionLabel = seccion ? fmtSeccion(seccion) : `Sección #${seccionId}`;
+  const nivelBadge = seccion
+    ? esInicial
+      ? "Inicial"
+      : esPrimario
+        ? "Primario"
+        : (seccion.nivel as string | undefined) ?? null
+    : null;
+  const ocupadosSeccion = useMemo(
+    () => ({
+      titularId: titularSeccion?.empleadoId ?? null,
+      suplenteId: suplenteSeccion?.empleadoId ?? null,
+    }),
+    [titularSeccion?.empleadoId, suplenteSeccion?.empleadoId],
+  );
 
   useEffect(() => {
     if (accessStatus !== "ok") return;
@@ -168,26 +252,32 @@ export default function MateriasSeccionPage() {
       try {
         setLoading(true);
         setError(null);
-        const [secRes, matRes, smRes, asgRes, empRes] = await Promise.all([
+        const [
+          secRes,
+          matRes,
+          smRes,
+          asgMatRes,
+          asgSecRes,
+          empRes,
+        ] = await Promise.all([
           gestionAcademica.secciones.list(),
           gestionAcademica.materias.list(),
           gestionAcademica.seccionMaterias.list(),
           gestionAcademica.asignacionDocenteMateria.list(),
+          gestionAcademica.asignacionDocenteSeccion.bySeccion(seccionId),
           identidad.empleados.list(),
         ]);
 
         const allSec = (secRes.data ?? []) as Seccion[];
         const sec = allSec.find((x) => x.id === seccionId) ?? null;
         if (!sec) throw new Error("No existe la sección.");
-        if (!isPrimario(sec))
-          throw new Error("La sección no pertenece a PRIMARIO.");
 
         const allMat = (matRes.data ?? []) as Materia[];
         const allSm = ((smRes.data ?? []) as SM[]).filter(
           (x) => x.seccionId === seccionId,
         );
         const smIds = new Set(allSm.map((x) => x.id));
-        const allAsgRaw = (asgRes.data ?? []) as AsignacionDocenteMateriaDTO[];
+        const allAsgRaw = (asgMatRes.data ?? []) as AsignacionDocenteMateriaDTO[];
         const allAsg: Asignacion[] = allAsgRaw
           .map((a) => {
             const smId =
@@ -209,6 +299,33 @@ export default function MateriasSeccionPage() {
             } satisfies Asignacion;
           })
           .filter((a): a is Asignacion => !!a && smIds.has(a.seccionMateriaId));
+
+        const allAsgSecRaw =
+          (asgSecRes.data ?? []) as AsignacionDocenteSeccionDTO[];
+        const allAsgSeccion: AsignacionSeccion[] = allAsgSecRaw
+          .map((a) => {
+            const secId =
+              (a as any).seccionId ?? (a as any).seccion?.id ?? null;
+            const empId =
+              (a as any).empleadoId ??
+              (a as any).personalId ??
+              (a as any).docenteId ??
+              null;
+            if (!secId || !empId) return null;
+            const hasta = (a as any).vigenciaHasta ?? null;
+            return {
+              id: a.id,
+              seccionId: secId,
+              empleadoId: empId,
+              rol: ((a as any).rol ?? "MAESTRO_TITULAR") as RolSeccion,
+              vigenciaDesde: ((a as any).vigenciaDesde || "0001-01-01") as string,
+              vigenciaHasta: hasta && String(hasta).length ? String(hasta) : null,
+            } satisfies AsignacionSeccion;
+          })
+          .filter(
+            (a): a is AsignacionSeccion =>
+              !!a && a.seccionId === seccionId,
+          );
 
         const empleados = pageContent<any>(empRes.data);
         const personaIds = Array.from(
@@ -239,6 +356,7 @@ export default function MateriasSeccionPage() {
         setMaterias(allMat);
         setSms(allSm);
         setAsignaciones(allAsg);
+        setAsignacionesSeccion(allAsgSeccion);
         setEmpleados(per);
       } catch (e: any) {
         if (alive) setError(e?.message ?? "No se pudo cargar la información.");
@@ -310,13 +428,14 @@ export default function MateriasSeccionPage() {
           Volver
         </Button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-2xl font-bold">Materias</h2>
+            <h2 className="text-2xl font-bold">Docentes y materias</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline">
-                {seccion ? fmtSeccion(seccion) : `Sección #${seccionId}`}
-              </Badge>
+              <Badge variant="outline">{seccionLabel}</Badge>
+              {nivelBadge && (
+                <Badge variant="outline">{nivelBadge}</Badge>
+              )}
               {turnoBadgeLabel && (
                 <Badge variant="outline">{turnoBadgeLabel}</Badge>
               )}
@@ -327,95 +446,233 @@ export default function MateriasSeccionPage() {
               )}
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Asignaciones y vigencias
+              {esInicial
+                ? "Gestioná la maestra titular, suplente y otros roles de la sección."
+                : "Asignaciones y vigencias de docentes por materia."}
             </p>
           </div>
-          <div>
-            <Button onClick={() => setOpenAdd(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Agregar materia
-            </Button>
-          </div>
+          {esPrimario && (
+            <div>
+              <Button onClick={() => setOpenAdd(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Agregar materia
+              </Button>
+            </div>
+          )}
         </div>
 
         {loading ? (
-          <LoadingState label="Cargando materias…" />
+          <LoadingState label="Cargando asignaciones…" />
         ) : error ? (
           <div className="text-sm text-red-600">{error}</div>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Listado</CardTitle>
-              <CardDescription>
-                Docente titular y suplente vigentes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {sms.length === 0 && (
-                <div className="text-sm text-muted-foreground">
-                  Sin materias aún.
-                </div>
-              )}
-
-              {sms.map((sm) => {
-                const mat = materiasById.get(sm.materiaId);
-                const tit = titularVigente(sm.id);
-                const sup = suplenteVigente(sm.id);
-
-                return (
-                  <div key={sm.id} className="border rounded p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">
-                        {mat?.nombre ?? `Materia #${sm.materiaId}`}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            mat &&
-                              setOpenAsignar({
-                                sm,
-                                materia: mat,
-                                ocupados: {
-                                  titularId: titularVigente(sm.id)?.empleadoId ?? null,
-                                  suplenteId: suplenteVigente(sm.id)?.empleadoId ?? null,
-                                },
-                              })
-                          }
-                        >
-                          <UserPlus className="h-4 w-4 mr-1" />
-                          Asignar docente
-                        </Button>
-                        {/* Si luego agregás DELETE en /api/secciones-materias, activás esto */}
-                        {/* <Button size="sm" variant="destructive" onClick={() => unlink(sm.id)}>Quitar</Button> */}
-                      </div>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Docentes de la sección</CardTitle>
+                <CardDescription>
+                  Maestra titular, suplente y otros roles vigentes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium">Titular</div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setOpenAsignarSeccion({
+                            rol: RolSeccion.MAESTRO_TITULAR,
+                          })
+                        }
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Asignar
+                      </Button>
                     </div>
-
-                    <Separator className="my-2" />
-
-                    <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="default">Titular</Badge>
-                        <span className="truncate">
-                          {fmtEmpleado(empleadoById.get(tit?.empleadoId ?? 0))}
-                        </span>
+                    <div className="mt-2">
+                      <div className="font-medium">
+                        {fmtEmpleado(
+                          titularSeccion
+                            ? empleadoById.get(titularSeccion.empleadoId)
+                            : undefined,
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">Suplente</Badge>
-                        <span className="truncate">
-                          {fmtEmpleado(empleadoById.get(sup?.empleadoId ?? 0))}
-                        </span>
-                      </div>
+                      {titularSeccion ? (
+                        <div className="text-xs text-muted-foreground">
+                          Vigente desde {titularSeccion.vigenciaDesde}
+                          {titularSeccion.vigenciaHasta
+                            ? ` hasta ${titularSeccion.vigenciaHasta}`
+                            : ""}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          Sin titular asignado.
+                        </div>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                  <div className="rounded border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium">Suplente</div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setOpenAsignarSeccion({ rol: RolSeccion.SUPLENTE })
+                        }
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Asignar
+                      </Button>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-medium">
+                        {fmtEmpleado(
+                          suplenteSeccion
+                            ? empleadoById.get(suplenteSeccion.empleadoId)
+                            : undefined,
+                        )}
+                      </div>
+                      {suplenteSeccion ? (
+                        <div className="text-xs text-muted-foreground">
+                          Vigente del {suplenteSeccion.vigenciaDesde} al
+                          {" "}
+                          {suplenteSeccion.vigenciaHasta ?? "—"}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          Sin suplente vigente.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {otrosRolesSeccion.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase text-muted-foreground">
+                      Otros roles asignados
+                    </div>
+                    <div className="space-y-1">
+                      {otrosRolesSeccion.map((a) => (
+                        <div
+                          key={`${a.id}-${a.rol}`}
+                          className="flex flex-wrap items-center gap-2"
+                        >
+                          <span className="font-medium">
+                            {fmtEmpleado(empleadoById.get(a.empleadoId))}
+                          </span>
+                          <Badge variant="outline">
+                            {formatRolSeccionLabel(a.rol)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {a.vigenciaDesde}
+                            {a.vigenciaHasta ? ` → ${a.vigenciaHasta}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {esPrimario ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Materias</CardTitle>
+                  <CardDescription>
+                    Docente titular y suplente vigentes por materia.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {sms.length === 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Sin materias aún.
+                    </div>
+                  )}
+
+                  {sms.map((sm) => {
+                    const mat = materiasById.get(sm.materiaId);
+                    const tit = titularVigente(sm.id);
+                    const sup = suplenteVigente(sm.id);
+
+                    return (
+                      <div key={sm.id} className="border rounded p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">
+                            {mat?.nombre ?? `Materia #${sm.materiaId}`}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                mat &&
+                                  setOpenAsignar({
+                                    sm,
+                                    materia: mat,
+                                    ocupados: {
+                                      titularId:
+                                        titularVigente(sm.id)?.empleadoId ?? null,
+                                      suplenteId:
+                                        suplenteVigente(sm.id)?.empleadoId ?? null,
+                                    },
+                                  })
+                              }
+                            >
+                              <UserPlus className="h-4 w-4 mr-1" />
+                              Asignar docente
+                            </Button>
+                            {/* Si luego agregás DELETE en /api/secciones-materias, activás esto */}
+                            {/* <Button size="sm" variant="destructive" onClick={() => unlink(sm.id)}>Quitar</Button> */}
+                          </div>
+                        </div>
+
+                        <Separator className="my-2" />
+
+                        <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default">Titular</Badge>
+                            <span className="truncate">
+                              {fmtEmpleado(empleadoById.get(tit?.empleadoId ?? 0))}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">Suplente</Badge>
+                            <span className="truncate">
+                              {fmtEmpleado(empleadoById.get(sup?.empleadoId ?? 0))}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Materias</CardTitle>
+                  <CardDescription>
+                    En el nivel inicial no se gestionan materias, solo docentes de
+                    sección.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground">
+                    No hay materias asociadas a esta sección.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
       </div>
 
-      {openAdd && seccion && (
+      {openAdd && seccion && esPrimario && (
         <AddMateriaToSeccionDialog
           seccion={seccion}
           materias={materias}
@@ -432,6 +689,20 @@ export default function MateriasSeccionPage() {
           empleados={empleados /* siempre [] o array */}
           ocupados={openAsignar.ocupados}
           onClose={() => setOpenAsignar(null)}
+          onCreated={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
+
+      {openAsignarSeccion && seccion && (
+        <AsignarDocenteSeccionDialog
+          seccionId={seccion.id}
+          seccionNombre={seccionLabel}
+          empleados={empleados}
+          ocupados={ocupadosSeccion}
+          initialRol={
+            openAsignarSeccion.rol ?? RolSeccion.MAESTRO_TITULAR
+          }
+          onClose={() => setOpenAsignarSeccion(null)}
           onCreated={() => setRefreshKey((k) => k + 1)}
         />
       )}

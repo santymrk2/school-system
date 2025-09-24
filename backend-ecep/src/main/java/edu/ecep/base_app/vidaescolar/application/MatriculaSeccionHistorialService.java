@@ -1,5 +1,6 @@
 package edu.ecep.base_app.vidaescolar.application;
 
+import edu.ecep.base_app.vidaescolar.domain.MatriculaSeccionHistorial;
 import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaSeccionHistorialCreateDTO;
 import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaSeccionHistorialDTO;
 import edu.ecep.base_app.vidaescolar.infrastructure.mapper.MatriculaSeccionHistorialMapper;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -26,10 +28,12 @@ public class MatriculaSeccionHistorialService {
                 .toList();
     }
 
+    @Transactional
     public Long asignar(MatriculaSeccionHistorialCreateDTO dto) {
         if (dto.getHasta() != null && dto.getHasta().isBefore(dto.getDesde())) {
             throw new IllegalArgumentException("Rango inválido");
         }
+        cerrarHistorialesVigentes(dto.getMatriculaId(), dto.getDesde());
         // NOTA: acá podrías validar solapamientos con una consulta adicional
         return repo.save(mapper.toEntity(dto)).getId();
     }
@@ -47,5 +51,29 @@ public class MatriculaSeccionHistorialService {
         }
 
         repo.save(entity);
+    }
+
+    private void cerrarHistorialesVigentes(Long matriculaId, LocalDate nuevaDesde) {
+        if (matriculaId == null || nuevaDesde == null) {
+            return;
+        }
+        List<MatriculaSeccionHistorial> vigentes = repo.findVigente(matriculaId, nuevaDesde);
+        for (MatriculaSeccionHistorial vigente : vigentes) {
+            if (vigente.getHasta() != null && vigente.getHasta().isBefore(nuevaDesde)) {
+                continue;
+            }
+
+            LocalDate nuevoHasta = nuevaDesde.minusDays(1);
+            if (nuevoHasta.isBefore(vigente.getDesde())) {
+                // La nueva asignación comienza el mismo día (o antes) que la anterior.
+                // No tiene sentido conservar el registro previo porque nunca quedó vigente,
+                // así que lo damos de baja lógica para evitar solapamientos.
+                repo.delete(vigente);
+                continue;
+            }
+
+            vigente.setHasta(nuevoHasta);
+            repo.save(vigente);
+        }
     }
 }

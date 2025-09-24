@@ -460,7 +460,7 @@ export default function FamilyCalificacionesView({
                                 return (
                                   <div
                                     key={`${materia.seccionMateriaId}-${tri.id}`}
-                                    className="rounded border p-3"
+                                    className="rounded-full border p-3"
                                   >
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                       <span className="font-semibold">
@@ -503,7 +503,7 @@ export default function FamilyCalificacionesView({
                         return (
                           <div
                             key={`informe-${tri.id}`}
-                            className="rounded border p-3"
+                            className="rounded-full border p-3"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-semibold">

@@ -584,7 +584,7 @@ export default function CierrePrimarioView({
                         type="button"
                         variant={active ? "default" : "outline"}
                         className={cn(
-                          "w-full justify-between gap-2 text-left",
+                          "w-full justify-between gap-2 rounded-full text-left",
                           !active && "bg-muted/40 hover:bg-muted",
                         )}
                         onClick={() => setTriId(String(o.id))}

@@ -96,11 +96,14 @@ export function useQuickStats() {
           const sol =
             (await admisiones.solicitudesAdmision.list().catch(() => ({ data: [] })))
               .data ?? [];
-          postulPend = sol.filter((s: any) =>
-            String(s.estado ?? "")
-              .toUpperCase()
-              .includes("PEND"),
-          ).length;
+          const estadosFinales = new Set(["ACEPTADA", "RECHAZADA"]);
+          postulPend = sol.filter((s: any) => {
+            const estado = String(s.estado ?? "")
+              .trim()
+              .toUpperCase();
+            if (!estado) return true;
+            return !estadosFinales.has(estado);
+          }).length;
         }
 
         // ========= Licencias activas hoy =========

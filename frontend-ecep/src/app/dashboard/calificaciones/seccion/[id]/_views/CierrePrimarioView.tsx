@@ -163,11 +163,20 @@ export default function CierrePrimarioView({
     };
   }, [seccionId, hoy, periodoEscolarId, calendarVersion]);
 
+  const validTrimestres = useMemo(
+    () =>
+      (trimestres ?? []).filter(
+        (t: any): t is Record<string, unknown> & { id: number } =>
+          Boolean(t) && typeof t === "object" && typeof t.id === "number",
+      ),
+    [trimestres],
+  );
+
   const triOpts = useMemo<
     { id: number; label: string; estado: TrimestreEstado }[]
   >(
     () =>
-      (trimestres ?? [])
+      validTrimestres
         .slice()
         .sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
         .map((t: any) => {
@@ -179,7 +188,7 @@ export default function CierrePrimarioView({
             estado,
           };
         }),
-    [trimestres],
+    [validTrimestres],
   );
 
   const materiasPorId = useMemo(() => {
@@ -213,8 +222,10 @@ export default function CierrePrimarioView({
 
   const activeTrimestre = useMemo(() => {
     if (!triId) return null;
-    return trimestres.find((x) => x.id === Number(triId)) ?? null;
-  }, [trimestres, triId]);
+    const parsedId = Number(triId);
+    if (!Number.isFinite(parsedId)) return null;
+    return validTrimestres.find((x) => x.id === parsedId) ?? null;
+  }, [validTrimestres, triId]);
 
   const activeTrimestreEstado = useMemo<TrimestreEstado>(() => {
     return getTrimestreEstado(activeTrimestre);

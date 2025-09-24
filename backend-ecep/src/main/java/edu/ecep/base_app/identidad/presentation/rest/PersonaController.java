@@ -24,9 +24,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/personas")
@@ -41,6 +44,19 @@ public class PersonaController {
     private final AspiranteRepository aspiranteRepository;
     private final PersonaMapper personaMapper;
     private final PasswordEncoder passwordEncoder;
+
+    @GetMapping
+    public ResponseEntity<List<PersonaDTO>> findAllById(@RequestParam(name = "ids", required = false) List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        List<PersonaDTO> personas = personaRepository.findAllById(ids).stream()
+                .map(personaMapper::toDto)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(personas);
+    }
 
     @GetMapping("/{personaId}")
     public ResponseEntity<PersonaDTO> get(@PathVariable Long personaId) {

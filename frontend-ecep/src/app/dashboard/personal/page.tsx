@@ -681,21 +681,27 @@ export default function PersonalPage() {
         ),
       );
 
-      const personaEntries = await Promise.all(
-        personaIds.map(async (id) => {
-          try {
-            const res = await identidad.personasCore.getById(id);
-            return [id, res.data ?? null] as const;
-          } catch (error) {
-            console.error("No se pudo obtener la persona", id, error);
-            return [id, null] as const;
-          }
-        }),
-      );
+      const personaMap = new Map<number, PersonaDTO | null>();
+      if (personaIds.length > 0) {
+        const personas = await safeRequest<PersonaDTO[]>(
+          identidad.personasCore.getManyById(personaIds),
+          [] as PersonaDTO[],
+          "No se pudo obtener la información personal",
+        );
 
-      const personaMap = new Map<number, PersonaDTO | null>(
-        personaEntries as Array<readonly [number, PersonaDTO | null]>,
-      );
+        personas.forEach((persona) => {
+          const personaId = persona?.id;
+          if (typeof personaId === "number") {
+            personaMap.set(personaId, persona);
+          }
+        });
+
+        personaIds.forEach((id) => {
+          if (!personaMap.has(id)) {
+            personaMap.set(id, null);
+          }
+        });
+      }
 
       const seccionMap = new Map<number, SeccionDTO>();
       for (const seccion of secciones) {

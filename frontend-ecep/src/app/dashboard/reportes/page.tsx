@@ -2586,9 +2586,6 @@ export default function ReportesPage() {
                 <SheetTitle>{activeBoletin.name}</SheetTitle>
                 <SheetDescription className="space-x-1">
                   <span>{activeBoletin.section}</span>
-                  {typeof activeBoletin.average === "number" && (
-                    <span>• promedio {activeBoletin.average.toFixed(1)}</span>
-                  )}
                   {typeof activeBoletin.attendancePercentage === "number" && (
                     <span>
                       • {formatPercent(activeBoletin.attendancePercentage, 0)} de asistencia
@@ -2625,22 +2622,35 @@ export default function ReportesPage() {
                           <table className="w-full border-collapse text-xs sm:text-sm">
                             <thead>
                               <tr>
-                                <th className="w-[140px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
-                                  Trimestre
+                                <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
+                                  Materia
                                 </th>
-                                {boletinSubjectsForTable.map((subject) => {
-                                  const displayTeacher = subject.teacher
-                                    ? String(subject.teacher).trim()
-                                    : null;
-                                  const showTeacher =
-                                    displayTeacher && displayTeacher !== "—";
-                                  return (
+                                {boletinTrimesters.map((trimester) => (
+                                  <th
+                                    key={trimester.id}
+                                    className="min-w-[140px] border border-border bg-muted/40 px-3 py-2 text-left font-medium"
+                                  >
+                                    {trimester.label}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {boletinSubjectsForTable.map((subject) => {
+                                const displayTeacher = subject.teacher
+                                  ? String(subject.teacher).trim()
+                                  : null;
+                                const showTeacher =
+                                  displayTeacher && displayTeacher !== "—";
+
+                                return (
+                                  <tr key={subject.id} className="even:bg-muted/10">
                                     <th
-                                      key={subject.id}
-                                      className="min-w-[180px] border border-border bg-muted/40 px-3 py-2 text-left font-medium"
+                                      scope="row"
+                                      className="min-w-[180px] border border-border bg-muted/30 px-3 py-2 text-left"
                                     >
                                       <div className="flex flex-col gap-1">
-                                        <span>{subject.name}</span>
+                                        <span className="font-medium">{subject.name}</span>
                                         {showTeacher && (
                                           <span className="text-[0.7rem] font-normal text-muted-foreground">
                                             Docente: {displayTeacher}
@@ -2648,46 +2658,35 @@ export default function ReportesPage() {
                                         )}
                                       </div>
                                     </th>
-                                  );
-                                })}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {boletinTrimesters.map((trimester) => (
-                                <tr key={trimester.id} className="even:bg-muted/10">
-                                  <th
-                                    scope="row"
-                                    className="whitespace-nowrap border border-border bg-muted/30 px-3 py-2 text-left font-medium"
-                                  >
-                                    {trimester.label}
-                                  </th>
-                                  {boletinSubjectsForTable.map((subject) => {
-                                    const grade = subject.grades.find(
-                                      (g) => g.trimestreId === trimester.id,
-                                    );
-                                    const gradeValue =
-                                      grade && typeof grade.notaNumerica === "number"
-                                        ? grade.notaNumerica.toFixed(1)
-                                        : grade?.notaConceptual ?? "—";
-                                    const observations = grade?.observaciones?.trim();
-                                    return (
-                                      <td
-                                        key={`${trimester.id}-${subject.id}`}
-                                        className="border border-border px-3 py-2 align-top"
-                                      >
-                                        <div className="space-y-1">
-                                          <span className="font-medium">{gradeValue}</span>
-                                          {observations && (
-                                            <p className="whitespace-pre-wrap text-[0.7rem] text-muted-foreground">
-                                              {observations}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              ))}
+                                    {boletinTrimesters.map((trimester) => {
+                                      const grade = subject.grades.find(
+                                        (g) => g.trimestreId === trimester.id,
+                                      );
+                                      const gradeValue =
+                                        grade && typeof grade.notaNumerica === "number"
+                                          ? grade.notaNumerica.toFixed(1)
+                                          : grade?.notaConceptual ?? "—";
+                                      const observations = grade?.observaciones?.trim();
+
+                                      return (
+                                        <td
+                                          key={`${subject.id}-${trimester.id}`}
+                                          className="border border-border px-3 py-2 align-top"
+                                        >
+                                          <div className="space-y-1">
+                                            <span className="font-medium">{gradeValue}</span>
+                                            {observations && (
+                                              <p className="whitespace-pre-wrap text-[0.7rem] text-muted-foreground">
+                                                {observations}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>

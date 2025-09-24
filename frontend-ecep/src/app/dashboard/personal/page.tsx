@@ -25,6 +25,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,6 +73,8 @@ import {
 } from "@/lib/genero";
 import {
   RolEmpleado,
+  RolMateria,
+  RolSeccion,
   UserRole,
   type AsignacionDocenteMateriaDTO,
   type AsignacionDocenteSeccionDTO,
@@ -252,15 +267,60 @@ type AccessFormState = {
   roles: UserRole[];
 };
 
+type EmpleadoSeccionView = {
+  id: number;
+  label: string;
+  nivel?: string | null;
+  asignacionId?: number;
+  rol?: RolSeccion | null;
+  vigenciaDesde?: string | null;
+  vigenciaHasta?: string | null;
+};
+
+type EmpleadoMateriaView = {
+  id: number;
+  nombre: string;
+  asignacionId?: number;
+  seccionMateriaId?: number | null;
+  rol?: RolMateria | null;
+  vigenciaDesde?: string | null;
+  vigenciaHasta?: string | null;
+};
+
 type EmpleadoView = {
   empleado: EmpleadoDTO;
   persona: PersonaDTO | null;
-  secciones: Array<{ id: number; label: string; nivel?: string | null }>;
-  materias: Array<{ id: number; nombre: string }>;
+  secciones: EmpleadoSeccionView[];
+  materias: EmpleadoMateriaView[];
   formaciones: FormacionAcademicaDTO[];
   licencias: LicenciaDTO[];
   situacionVisible: string;
   activeLicense: LicenciaDTO | null;
+};
+
+type MultiSelectOption = {
+  id: number;
+  label: string;
+  description?: string;
+};
+
+type MultiSelectControlProps = {
+  label: string;
+  placeholder: string;
+  options: MultiSelectOption[];
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+  disabled?: boolean;
+  emptyMessage?: string;
+  summaryEmptyText?: string;
+  badgeVariant?: "secondary" | "outline";
+};
+
+type AssignmentManagerProps = {
+  empleadoId: number | null;
+  secciones: EmpleadoSeccionView[];
+  materias: EmpleadoMateriaView[];
+  disabled?: boolean;
 };
 
 const nivelLabel: Record<string, string> = {
@@ -436,6 +496,137 @@ function todayIso(reference: Date = new Date()) {
   return reference.toISOString().slice(0, 10);
 }
 
+function MultiSelectControl({
+  label,
+  placeholder,
+  options,
+  selectedIds,
+  onChange,
+  disabled,
+  emptyMessage,
+  summaryEmptyText,
+  badgeVariant = "secondary",
+}: MultiSelectControlProps) {
+  const [open, setOpen] = useState(false);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedOptions = useMemo(
+    () => options.filter((option) => selectedSet.has(option.id)),
+    [options, selectedSet],
+  );
+
+  const toggleOption = useCallback(
+    (id: number) => {
+      onChange(
+        selectedSet.has(id)
+          ? selectedIds.filter((current) => current !== id)
+          : Array.from(new Set([...selectedIds, id])),
+      );
+    },
+    [onChange, selectedIds, selectedSet],
+  );
+
+  const resolvedPlaceholder = selectedOptions.length
+    ? `${selectedOptions.length} seleccionada${
+        selectedOptions.length === 1 ? "" : "s"
+      }`
+    : placeholder;
+
+  const resolvedEmptyMessage = emptyMessage ?? "Sin opciones disponibles";
+  const resolvedSummaryEmpty =
+    summaryEmptyText ??
+    (options.length === 0
+      ? resolvedEmptyMessage
+      : "Seleccioná una o más opciones según corresponda.");
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Popover
+        open={disabled ? false : open}
+        onOpenChange={(next) => {
+          if (!disabled) {
+            setOpen(next);
+          }
+        }}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+            disabled={disabled || options.length === 0}
+          >
+            <span className="truncate text-left">{resolvedPlaceholder}</span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[260px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={`Buscar ${label.toLowerCase()}…`} />
+            <CommandList>
+              <CommandEmpty>{resolvedEmptyMessage}</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const checked = selectedSet.has(option.id);
+                  return (
+                    <CommandItem
+                      key={option.id}
+                      onSelect={() => {
+                        toggleOption(option.id);
+                      }}
+                    >
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">{option.label}</p>
+                          {option.description ? (
+                            <p className="text-xs text-muted-foreground">
+                              {option.description}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            toggleOption(option.id);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <Checkbox checked={checked} disabled={disabled} />
+                        </div>
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {selectedOptions.length ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {selectedOptions.map((option) => (
+            <Badge
+              key={`selected-${label}-${option.id}`}
+              variant={badgeVariant}
+              className="flex items-center gap-1"
+            >
+              {option.description ? (
+                <span className="text-xs text-muted-foreground">
+                  {option.description}
+                </span>
+              ) : null}
+              <span>{option.label}</span>
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">{resolvedSummaryEmpty}</p>
+      )}
+    </div>
+  );
+}
+
 function isLicenseActiveOn(licencia: LicenciaDTO, referenceIso: string) {
   const start = normalizeIsoDate(licencia.fechaInicio);
   if (!start || start > referenceIso) {
@@ -496,6 +687,8 @@ export default function PersonalPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [personal, setPersonal] = useState<EmpleadoView[]>([]);
   const [allLicencias, setAllLicencias] = useState<LicenciaDTO[]>([]);
+  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>([]);
+  const [availableMaterias, setAvailableMaterias] = useState<MateriaDTO[]>([]);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [licenseDialogOpen, setLicenseDialogOpen] = useState(false);
@@ -530,6 +723,8 @@ export default function PersonalPage() {
   });
   const [newEmpleadoCuilPrefix, setNewEmpleadoCuilPrefix] = useState("");
   const [newEmpleadoCuilSuffix, setNewEmpleadoCuilSuffix] = useState("");
+  const [newSeccionIds, setNewSeccionIds] = useState<number[]>([]);
+  const [newMateriaIds, setNewMateriaIds] = useState<number[]>([]);
   const [newFormaciones, setNewFormaciones] = useState<NewFormacionEntry[]>([
     { ...initialFormacionEntry },
   ]);
@@ -566,6 +761,10 @@ export default function PersonalPage() {
   });
   const [editEmpleadoCuilPrefix, setEditEmpleadoCuilPrefix] = useState("");
   const [editEmpleadoCuilSuffix, setEditEmpleadoCuilSuffix] = useState("");
+  const [editSeccionIds, setEditSeccionIds] = useState<number[]>([]);
+  const [editMateriaIds, setEditMateriaIds] = useState<number[]>([]);
+  const [editSeccionDetails, setEditSeccionDetails] = useState<EmpleadoSeccionView[]>([]);
+  const [editMateriaDetails, setEditMateriaDetails] = useState<EmpleadoMateriaView[]>([]);
   const [newLicense, setNewLicense] = useState<NewLicenseForm>({
     ...initialLicenseForm,
   });
@@ -585,8 +784,9 @@ export default function PersonalPage() {
     setFormacionNotas({ ...initialFormacionNotas });
     setNewEmpleadoCuilPrefix("");
     setNewEmpleadoCuilSuffix("");
-    setNewPersonaPhotoError(null);
-    setNewPersonaPhotoUploading(false);
+    setNewSeccionIds([]);
+    setNewMateriaIds([]);
+
   }, []);
 
   const resetEditForm = useCallback(() => {
@@ -597,8 +797,10 @@ export default function PersonalPage() {
     setEditingIds(null);
     setEditingName("");
     setSavingEditPersonal(false);
-    setEditPersonaPhotoError(null);
-    setEditPersonaPhotoUploading(false);
+    setEditSeccionIds([]);
+    setEditMateriaIds([]);
+    setEditSeccionDetails([]);
+    setEditMateriaDetails([]);
   }, []);
 
   const resetNewLicenseForm = useCallback(() => {
@@ -788,7 +990,7 @@ export default function PersonalPage() {
         }
       }
 
-      const seccionesPorEmpleado = new Map<number, Set<number>>();
+      const seccionesPorEmpleado = new Map<number, EmpleadoSeccionView[]>();
       for (const asign of asignacionesSeccion as Array<any>) {
         const empleadoId =
           asign.empleadoId ?? asign.personalId ?? asign.docenteId;
@@ -796,24 +998,81 @@ export default function PersonalPage() {
         if (typeof empleadoId !== "number" || typeof seccionId !== "number") {
           continue;
         }
-        if (!seccionesPorEmpleado.has(empleadoId)) {
-          seccionesPorEmpleado.set(empleadoId, new Set());
-        }
-        seccionesPorEmpleado.get(empleadoId)!.add(seccionId);
+        const asignacionId =
+          typeof asign.id === "number" ? asign.id : undefined;
+        const rol = (asign.rol ?? asign.rolSeccion ?? null) as
+          | RolSeccion
+          | null
+          | undefined;
+        const vigenciaDesdeRaw =
+          asign.vigenciaDesde ?? asign.vigencia_desde ?? asign.desde ?? null;
+        const vigenciaHastaRaw =
+          asign.vigenciaHasta ?? asign.vigencia_hasta ?? asign.hasta ?? null;
+        const entry: EmpleadoSeccionView = {
+          id: seccionId,
+          label: "",
+          asignacionId,
+          rol: rol ?? null,
+          vigenciaDesde:
+            typeof vigenciaDesdeRaw === "string"
+              ? normalizeIsoDate(vigenciaDesdeRaw) || vigenciaDesdeRaw
+              : undefined,
+          vigenciaHasta:
+            typeof vigenciaHastaRaw === "string"
+              ? normalizeIsoDate(vigenciaHastaRaw) || vigenciaHastaRaw
+              : undefined,
+        };
+        const current = seccionesPorEmpleado.get(empleadoId) ?? [];
+        current.push(entry);
+        seccionesPorEmpleado.set(empleadoId, current);
       }
 
-      const materiasPorEmpleado = new Map<number, Set<number>>();
+      const materiasPorEmpleado = new Map<number, EmpleadoMateriaView[]>();
       for (const asign of asignacionesMateria as Array<any>) {
         const empleadoId =
           asign.empleadoId ?? asign.personalId ?? asign.docenteId;
-        const materiaId = asign.materiaId ?? asign.materia?.id;
-        if (typeof empleadoId !== "number" || typeof materiaId !== "number") {
+        const seccionMateriaId =
+          asign.seccionMateriaId ?? asign.seccionMateria?.id ?? null;
+        const materiaId =
+          asign.materiaId ??
+          asign.materia?.id ??
+          asign.seccionMateria?.materiaId ??
+          asign.seccionMateria?.materia?.id ??
+          null;
+        if (typeof empleadoId !== "number") {
           continue;
         }
-        if (!materiasPorEmpleado.has(empleadoId)) {
-          materiasPorEmpleado.set(empleadoId, new Set());
-        }
-        materiasPorEmpleado.get(empleadoId)!.add(materiaId);
+        const asignacionId =
+          typeof asign.id === "number" ? asign.id : undefined;
+        const rol = (asign.rol ?? null) as RolMateria | null | undefined;
+        const vigenciaDesdeRaw =
+          asign.vigenciaDesde ?? asign.vigencia_desde ?? asign.desde ?? null;
+        const vigenciaHastaRaw =
+          asign.vigenciaHasta ?? asign.vigencia_hasta ?? asign.hasta ?? null;
+        const entry: EmpleadoMateriaView = {
+          id:
+            typeof materiaId === "number"
+              ? materiaId
+              : typeof seccionMateriaId === "number"
+                ? seccionMateriaId
+                : asignacionId ?? 0,
+          nombre: "",
+          asignacionId,
+          seccionMateriaId:
+            typeof seccionMateriaId === "number" ? seccionMateriaId : null,
+          rol: rol ?? null,
+          vigenciaDesde:
+            typeof vigenciaDesdeRaw === "string"
+              ? normalizeIsoDate(vigenciaDesdeRaw) || vigenciaDesdeRaw
+              : undefined,
+          vigenciaHasta:
+            typeof vigenciaHastaRaw === "string"
+              ? normalizeIsoDate(vigenciaHastaRaw) || vigenciaHastaRaw
+              : undefined,
+        };
+        const current = materiasPorEmpleado.get(empleadoId) ?? [];
+        current.push(entry);
+        materiasPorEmpleado.set(empleadoId, current);
       }
 
       const licenciasPorEmpleado = new Map<number, LicenciaDTO[]>();
@@ -840,25 +1099,42 @@ export default function PersonalPage() {
             ? (personaMap.get(empleado.personaId) ?? null)
             : null;
 
-        const seccionesIds = Array.from(
-          seccionesPorEmpleado.get(empleado.id ?? 0) ?? [],
-        );
-        const seccionesInfo = seccionesIds
-          .map((id) => seccionMap.get(id))
-          .filter((s): s is SeccionDTO => Boolean(s))
-          .map((s) => ({
-            id: s.id!,
-            label: formatSeccionLabel(s),
-            nivel: s.nivel ?? null,
-          }));
+        const seccionAssignments =
+          seccionesPorEmpleado.get(empleado.id ?? 0) ?? [];
+        const seccionesInfo: EmpleadoSeccionView[] = seccionAssignments
+          .map((assignment) => {
+            const seccion = seccionMap.get(assignment.id);
+            if (!seccion) {
+              return null;
+            }
+            return {
+              ...assignment,
+              id: seccion.id!,
+              label: formatSeccionLabel(seccion),
+              nivel: seccion.nivel ?? null,
+            } satisfies EmpleadoSeccionView;
+          })
+          .filter((value): value is EmpleadoSeccionView => Boolean(value));
 
-        const materiasIds = Array.from(
-          materiasPorEmpleado.get(empleado.id ?? 0) ?? [],
-        );
-        const materiasInfo = materiasIds
-          .map((id) => materiaMap.get(id))
-          .filter((m): m is MateriaDTO => Boolean(m))
-          .map((m) => ({ id: m.id!, nombre: m.nombre ?? `Materia #${m.id}` }));
+        const materiaAssignments =
+          materiasPorEmpleado.get(empleado.id ?? 0) ?? [];
+        const materiasInfo: EmpleadoMateriaView[] = materiaAssignments
+          .map((assignment) => {
+            const materia =
+              typeof assignment.id === "number"
+                ? materiaMap.get(assignment.id)
+                : undefined;
+            const materiaNombre = materia?.nombre ?? `Materia #${assignment.id}`;
+            return {
+              ...assignment,
+              nombre: materiaNombre,
+              id:
+                typeof assignment.id === "number"
+                  ? assignment.id
+                  : assignment.seccionMateriaId ?? assignment.asignacionId ?? 0,
+            } satisfies EmpleadoMateriaView;
+          })
+          .filter((value): value is EmpleadoMateriaView => Boolean(value));
 
         const formacionInfo =
           formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
@@ -898,7 +1174,7 @@ export default function PersonalPage() {
         getLicenseStart(b).localeCompare(getLicenseStart(a)),
       );
 
-      return { personalData, licenciasOrdenadas, pageInfo };
+      return { personalData, licenciasOrdenadas, pageInfo, secciones, materias };
     },
     [pageSize],
   );
@@ -913,13 +1189,21 @@ export default function PersonalPage() {
           1,
           options.page ?? currentPageRef.current ?? 1,
         );
-        const { personalData, licenciasOrdenadas, pageInfo } = await fetchData({
+        const {
+          personalData,
+          licenciasOrdenadas,
+          pageInfo,
+          secciones,
+          materias,
+        } = await fetchData({
           search: searchValue,
           page: requestedPage,
         });
         if (!mountedRef.current) return;
         setPersonal(personalData);
         setAllLicencias(licenciasOrdenadas);
+        setAvailableSecciones(secciones);
+        setAvailableMaterias(materias);
         const resolvedPage = Math.max(1, pageInfo.page);
         setCurrentPage(resolvedPage);
         currentPageRef.current = resolvedPage;
@@ -932,6 +1216,8 @@ export default function PersonalPage() {
         setLoadError("No se pudo obtener la información del personal.");
         setPersonal([]);
         setAllLicencias([]);
+        setAvailableSecciones([]);
+        setAvailableMaterias([]);
         setCurrentPage(1);
         currentPageRef.current = 1;
         setTotalPages(1);
@@ -1026,6 +1312,251 @@ export default function PersonalPage() {
       a[1].localeCompare(b[1], "es", { sensitivity: "base" }),
     );
   }, [personal]);
+
+  const seccionMultiOptions = useMemo(() => {
+    return availableSecciones
+      .filter((seccion): seccion is SeccionDTO & { id: number } =>
+        typeof seccion.id === "number",
+      )
+      .map((seccion) => ({
+        id: seccion.id!,
+        label: formatSeccionLabel(seccion),
+        description: seccion.nivel ? formatNivel(seccion.nivel) : undefined,
+      }))
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+      );
+  }, [availableSecciones]);
+
+  const materiaMultiOptions = useMemo(() => {
+    return availableMaterias
+      .filter((materia): materia is MateriaDTO & { id: number } =>
+        typeof materia.id === "number",
+      )
+      .map((materia) => ({
+        id: materia.id!,
+        label: materia.nombre ?? `Materia #${materia.id}`,
+      }))
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+      );
+  }, [availableMaterias]);
+
+  const syncEmployeeAssignments = useCallback(
+    async ({
+      empleadoId,
+      targetSeccionIds,
+      targetMateriaIds,
+      existingSecciones,
+      existingMaterias,
+    }: {
+      empleadoId: number;
+      targetSeccionIds: number[];
+      targetMateriaIds: number[];
+      existingSecciones: EmpleadoSeccionView[];
+      existingMaterias: EmpleadoMateriaView[];
+    }) => {
+      const normalizedSecciones = Array.from(
+        new Set(
+          targetSeccionIds
+            .map((id) => Number(id))
+            .filter((value) => Number.isFinite(value) && value > 0),
+        ),
+      );
+      const normalizedMaterias = Array.from(
+        new Set(
+          targetMateriaIds
+            .map((id) => Number(id))
+            .filter((value) => Number.isFinite(value) && value > 0),
+        ),
+      );
+
+      const existingSeccionIds = new Set(
+        existingSecciones.map((item) => item.id),
+      );
+      const existingMateriaIds = new Set(
+        existingMaterias.map((item) => item.id),
+      );
+
+      const seccionesToCreate = normalizedSecciones.filter(
+        (id) => !existingSeccionIds.has(id),
+      );
+      const materiasToCreate = normalizedMaterias.filter(
+        (id) => !existingMateriaIds.has(id),
+      );
+
+      const seccionesToRemove = existingSecciones.filter(
+        (item) => !normalizedSecciones.includes(item.id),
+      );
+      const materiasToRemove = existingMaterias.filter(
+        (item) => !normalizedMaterias.includes(item.id),
+      );
+
+      if (
+        seccionesToCreate.length === 0 &&
+        materiasToCreate.length === 0 &&
+        seccionesToRemove.length === 0 &&
+        materiasToRemove.length === 0
+      ) {
+        return;
+      }
+
+      for (const assignment of seccionesToRemove) {
+        if (typeof assignment.asignacionId === "number") {
+          await gestionAcademica.asignacionDocenteSeccion.delete(
+            assignment.asignacionId,
+          );
+        }
+      }
+
+      for (const assignment of materiasToRemove) {
+        if (typeof assignment.asignacionId === "number") {
+          await gestionAcademica.asignacionDocenteMateria.delete(
+            assignment.asignacionId,
+          );
+        }
+      }
+
+      for (const seccionId of seccionesToCreate) {
+        await gestionAcademica.asignacionDocenteSeccion.create({
+          empleadoId,
+          seccionId,
+          rol: RolSeccion.MAESTRO_TITULAR,
+          vigenciaDesde: todayIso(),
+        });
+      }
+
+      for (const materiaId of materiasToCreate) {
+        await gestionAcademica.asignacionDocenteMateria.create({
+          empleadoId,
+          materiaId,
+          rol: RolMateria.TITULAR,
+          vigenciaDesde: todayIso(),
+        } as any);
+      }
+    },
+    [],
+  );
+
+  const AssignmentManager = ({
+    empleadoId,
+    secciones,
+    materias,
+    disabled,
+  }: AssignmentManagerProps) => {
+    const [selectedSecciones, setSelectedSecciones] = useState<number[]>(() =>
+      secciones.map((seccion) => seccion.id),
+    );
+    const [selectedMaterias, setSelectedMaterias] = useState<number[]>(() =>
+      materias.map((materia) => materia.id),
+    );
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      setSelectedSecciones(secciones.map((seccion) => seccion.id));
+    }, [secciones]);
+
+    useEffect(() => {
+      setSelectedMaterias(materias.map((materia) => materia.id));
+    }, [materias]);
+
+    const handleSave = useCallback(async () => {
+      if (!empleadoId) {
+        return;
+      }
+      setSaving(true);
+      try {
+        await syncEmployeeAssignments({
+          empleadoId,
+          targetSeccionIds: selectedSecciones,
+          targetMateriaIds: selectedMaterias,
+          existingSecciones: secciones,
+          existingMaterias: materias,
+        });
+        toast.success("Asignaciones actualizadas correctamente");
+        await refreshData();
+      } catch (error: any) {
+        console.error("Error al guardar asignaciones", error);
+        const description =
+          error?.response?.data?.message ??
+          error?.message ??
+          "No se pudieron guardar las asignaciones del personal.";
+        toast.error("Error al guardar asignaciones", { description });
+      } finally {
+        setSaving(false);
+      }
+    }, [
+      empleadoId,
+      materias,
+      refreshData,
+      secciones,
+      selectedMaterias,
+      selectedSecciones,
+      syncEmployeeAssignments,
+    ]);
+
+    const isDisabled = disabled || !empleadoId || saving;
+
+    return (
+      <div className="rounded-lg border bg-muted/40 p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          Gestión de asignaciones
+        </div>
+        <div className="mt-3 space-y-3">
+          <MultiSelectControl
+            label="Secciones asignadas"
+            placeholder="Seleccioná las secciones"
+            options={seccionMultiOptions}
+            selectedIds={selectedSecciones}
+            onChange={(ids) => setSelectedSecciones(ids)}
+            disabled={isDisabled}
+            summaryEmptyText={
+              isDisabled
+                ? "Sin secciones asignadas."
+                : "Seleccioná las secciones o dejalo vacío para no asignar ninguna."
+            }
+          />
+          <MultiSelectControl
+            label="Materias asignadas"
+            placeholder="Seleccioná las materias"
+            options={materiaMultiOptions}
+            selectedIds={selectedMaterias}
+            onChange={(ids) => setSelectedMaterias(ids)}
+            disabled={isDisabled}
+            badgeVariant="outline"
+            summaryEmptyText={
+              isDisabled
+                ? "Sin materias asignadas."
+                : "Seleccioná las materias o dejalo vacío para removerlas."
+            }
+          />
+          <div className="flex flex-col gap-2 pt-1 text-xs text-muted-foreground">
+            <p>
+              Los cambios aplican inmediatamente sobre la planificación y las
+              vistas académicas.
+            </p>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={isDisabled}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando…
+                  </>
+                ) : (
+                  "Guardar asignaciones"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const cargoOptions = useMemo(() => {
     const set = new Set<string>();
@@ -1589,6 +2120,10 @@ export default function PersonalPage() {
     );
     setEditEmpleadoCuilPrefix(prefix);
     setEditEmpleadoCuilSuffix(suffix);
+    setEditSeccionDetails(item.secciones);
+    setEditMateriaDetails(item.materias);
+    setEditSeccionIds(item.secciones.map((seccion) => seccion.id));
+    setEditMateriaIds(item.materias.map((materia) => materia.id));
     setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
     setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
     setEditPersonaPhotoError(null);
@@ -1845,6 +2380,30 @@ export default function PersonalPage() {
         const empleadoRes = await identidad.empleados.create(empleadoPayload);
         const empleadoId = empleadoRes.data?.id;
 
+        try {
+          if (typeof empleadoId === "number") {
+            await syncEmployeeAssignments({
+              empleadoId,
+              targetSeccionIds: newSeccionIds,
+              targetMateriaIds: newMateriaIds,
+              existingSecciones: [],
+              existingMaterias: [],
+            });
+          }
+        } catch (assignError) {
+          if (typeof empleadoId === "number") {
+            try {
+              await identidad.empleados.delete(empleadoId);
+            } catch (deleteError) {
+              console.error(
+                "No se pudo revertir el empleado tras un error en las asignaciones",
+                deleteError,
+              );
+            }
+          }
+          throw assignError;
+        }
+
         if (empleadoId && formacionesARegistrar.length > 0) {
           for (const formacion of formacionesARegistrar) {
             await identidad.formaciones.create({
@@ -1882,7 +2441,10 @@ export default function PersonalPage() {
       newEmpleadoCuilSuffix,
       newFormaciones,
       newPersona,
+      newSeccionIds,
+      newMateriaIds,
       refreshData,
+      syncEmployeeAssignments,
     ],
   );
 
@@ -2051,6 +2613,24 @@ export default function PersonalPage() {
             editEmpleado.observacionesGenerales?.trim() || undefined,
         });
 
+        try {
+          await syncEmployeeAssignments({
+            empleadoId: editingIds.empleadoId,
+            targetSeccionIds: editSeccionIds,
+            targetMateriaIds: editMateriaIds,
+            existingSecciones: editSeccionDetails,
+            existingMaterias: editMateriaDetails,
+          });
+        } catch (assignmentError: any) {
+          console.error("Error al actualizar asignaciones", assignmentError);
+          const description =
+            assignmentError?.response?.data?.message ??
+            assignmentError?.message ??
+            "No se pudieron actualizar las asignaciones del personal.";
+          toast.error("Error al actualizar asignaciones", { description });
+          return;
+        }
+
         toast.success("Datos del personal actualizados");
         setEditDialogOpen(false);
         await refreshData();
@@ -2071,7 +2651,12 @@ export default function PersonalPage() {
       editEmpleadoCuilSuffix,
       editPersona,
       editingIds,
+      editSeccionIds,
+      editMateriaIds,
+      editSeccionDetails,
+      editMateriaDetails,
       refreshData,
+      syncEmployeeAssignments,
     ],
   );
 
@@ -2833,6 +3418,16 @@ export default function PersonalPage() {
                                 )}
                               </div>
                             </div>
+                            <AssignmentManager
+                              empleadoId={
+                                typeof item.empleado.id === "number"
+                                  ? item.empleado.id
+                                  : null
+                              }
+                              secciones={item.secciones}
+                              materias={item.materias}
+                              disabled={dataLoading || !canEditThis}
+                            />
                           </div>
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="rounded-lg border bg-muted/40 p-4">
@@ -3869,6 +4464,36 @@ export default function PersonalPage() {
                   </div>
                 </div>
               </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Asignaciones docentes
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Actualizá las secciones y materias que tiene a cargo.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <MultiSelectControl
+                    label="Secciones asignadas"
+                    placeholder="Seleccioná las secciones"
+                    options={seccionMultiOptions}
+                    selectedIds={editSeccionIds}
+                    onChange={(ids) => setEditSeccionIds(ids)}
+                    summaryEmptyText="Seleccioná las secciones correspondientes o dejalo vacío."
+                  />
+                  <MultiSelectControl
+                    label="Materias asignadas"
+                    placeholder="Seleccioná las materias"
+                    options={materiaMultiOptions}
+                    selectedIds={editMateriaIds}
+                    onChange={(ids) => setEditMateriaIds(ids)}
+                    badgeVariant="outline"
+                    summaryEmptyText="Seleccioná las materias correspondientes o dejalo vacío."
+                  />
+                </div>
+              </section>
             </div>
 
             <DialogFooter className="gap-2">
@@ -4398,6 +5023,38 @@ export default function PersonalPage() {
                       rows={3}
                     />
                   </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Asignaciones docentes
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Definí las secciones y materias a cargo del nuevo
+                    integrante. Podés dejarlo vacío si aún no tiene
+                    asignaciones.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <MultiSelectControl
+                    label="Secciones asignadas"
+                    placeholder="Seleccioná las secciones"
+                    options={seccionMultiOptions}
+                    selectedIds={newSeccionIds}
+                    onChange={(ids) => setNewSeccionIds(ids)}
+                    summaryEmptyText="Seleccioná las secciones correspondientes o dejalo vacío."
+                  />
+                  <MultiSelectControl
+                    label="Materias asignadas"
+                    placeholder="Seleccioná las materias"
+                    options={materiaMultiOptions}
+                    selectedIds={newMateriaIds}
+                    onChange={(ids) => setNewMateriaIds(ids)}
+                    badgeVariant="outline"
+                    summaryEmptyText="Seleccioná las materias correspondientes o dejalo vacío."
+                  />
                 </div>
               </section>
 

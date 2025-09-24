@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 public class EmpleadoService {
 
     private static final Pattern LEGAJO_PATTERN = Pattern.compile("^[A-Z0-9-]{4,20}$");
+    private static final Pattern CUIL_PATTERN = Pattern.compile("^\\d{11}$");
 
     private final EmpleadoRepository repo;
     private final PersonaRepository personaRepository;
@@ -103,7 +104,13 @@ public class EmpleadoService {
         Empleado p = new Empleado();
         p.setPersona(persona);
         p.setRolEmpleado(dto.getRolEmpleado());
-        p.setCuil(dto.getCuil());
+
+        String cuil = normalizeOptionalCuil(dto.getCuil());
+        if (cuil != null) {
+            ensureCuilDisponible(cuil, null);
+        }
+        p.setCuil(cuil);
+
         p.setLegajo(legajo);
         p.setCondicionLaboral(dto.getCondicionLaboral());
         p.setCargo(dto.getCargo());
@@ -135,7 +142,16 @@ public class EmpleadoService {
 
         // Update laboral (solo campos no nulos)
         if (dto.getRolEmpleado() != null)       p.setRolEmpleado(dto.getRolEmpleado());
-        if (dto.getCuil() != null)              p.setCuil(dto.getCuil());
+        if (dto.getCuil() != null) {
+            String cuil = normalizeOptionalCuil(dto.getCuil());
+            String currentCuil = p.getCuil();
+            if (cuil != null) {
+                if (currentCuil == null || !currentCuil.equals(cuil)) {
+                    ensureCuilDisponible(cuil, p.getId());
+                }
+            }
+            p.setCuil(cuil);
+        }
         if (dto.getLegajo() != null) {
             String legajo = requireValidLegajo(dto.getLegajo());
             String currentLegajo = p.getLegajo();
@@ -197,7 +213,27 @@ public class EmpleadoService {
                 });
     }
 
+    private void ensureCuilDisponible(String cuil, Long excludeId) {
+        repo.findByCuil(cuil)
+                .ifPresent(existing -> {
+                    if (excludeId == null || !existing.getId().equals(excludeId)) {
+                        throw new IllegalArgumentException("Ya existe un empleado con el CUIL indicado");
+                    }
+                });
+    }
+
     private String normalizeLegajo(String legajo) {
         return legajo.trim().toUpperCase();
+    }
+
+    private String normalizeOptionalCuil(String cuil) {
+        if (!StringUtils.hasText(cuil)) {
+            return null;
+        }
+        String digitsOnly = cuil.replaceAll("\\D", "");
+        if (!CUIL_PATTERN.matcher(digitsOnly).matches()) {
+            throw new IllegalArgumentException("El CUIL debe tener exactamente 11 dígitos numéricos");
+        }
+        return digitsOnly;
     }
 }

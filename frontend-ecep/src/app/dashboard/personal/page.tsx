@@ -377,6 +377,11 @@ function formatSeccionLabel(seccion?: Partial<SeccionDTO> | null) {
   return composed ? `${composed}${turno}` : `Sección #${seccion.id ?? ""}`;
 }
 
+function getSeccionDisplayName(label?: string | null) {
+  if (!label) return "";
+  return label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
 
 function formatDate(value?: string | null) {
@@ -3330,36 +3335,86 @@ export default function PersonalPage() {
                             ) : null}
                           </div>
                         </div>
-                        {(item.secciones.length > 0 ||
-                          item.materias.length > 0) && (
+                        {item.secciones.length > 0 && (
                           <div className="flex flex-wrap gap-2">
-                          {item.secciones.map((seccion) => (
-                            <Badge
-                              key={`seccion-${empleadoId}-${seccion.seccionId}`}
-                              variant="secondary"
-                              className="flex items-center gap-1"
-                            >
-                              <Users className="h-3 w-3" />
-                              <span>
-                                {formatNivel(seccion.nivel)} • {seccion.label}
-                              </span>
-                            </Badge>
-                          ))}
-                          {item.materias.map((materia) => (
-                            <Badge
-                              key={`materia-${empleadoId}-${materia.seccionMateriaId}`}
-                              variant="outline"
-                              className="flex items-center gap-1"
-                            >
-                              <GraduationCap className="h-3 w-3" />
-                              <span>
-                                {materia.materiaNombre}
-                                {materia.seccionLabel
-                                  ? ` • ${materia.seccionLabel}`
-                                  : ""}
-                              </span>
-                            </Badge>
-                          ))}
+                            {(() => {
+                              const materiasPorSeccion = new Map<
+                                number,
+                                EmpleadoMateriaView[]
+                              >();
+                              for (const materia of item.materias) {
+                                const list =
+                                  materiasPorSeccion.get(materia.seccionId) ?? [];
+                                list.push(materia);
+                                materiasPorSeccion.set(materia.seccionId, list);
+                              }
+
+                              return item.secciones.map((seccion) => {
+                                const materiasAsignadas =
+                                  materiasPorSeccion.get(seccion.seccionId) ?? [];
+                                const seccionNombre =
+                                  getSeccionDisplayName(seccion.label);
+                                const badgeKey = `seccion-${empleadoId}-${seccion.seccionId}`;
+                                const contenidoMaterias = materiasAsignadas.length ? (
+                                  <ul className="space-y-1 text-sm text-muted-foreground">
+                                    {materiasAsignadas.map((materia) => (
+                                      <li
+                                        key={`materia-${badgeKey}-${materia.seccionMateriaId}`}
+                                        className="flex items-start gap-2"
+                                      >
+                                        <GraduationCap className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                        <span className="text-foreground">
+                                          {materia.materiaNombre}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">
+                                    Sin materias registradas.
+                                  </p>
+                                );
+
+                                return (
+                                  <Popover key={badgeKey}>
+                                    <PopoverTrigger asChild>
+                                      <Badge
+                                        variant="secondary"
+                                        className="flex cursor-pointer items-center gap-1"
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`Ver materias asignadas en ${seccionNombre}`}
+                                      >
+                                        <Users className="h-3 w-3" />
+                                        <span>{seccionNombre}</span>
+                                      </Badge>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                      align="start"
+                                      sideOffset={4}
+                                      className="w-64 space-y-2 p-3"
+                                    >
+                                      <div>
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {seccionNombre || "Sección sin nombre"}
+                                        </p>
+                                        {seccion.nivel ? (
+                                          <p className="text-xs text-muted-foreground">
+                                            {formatNivel(seccion.nivel)}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                      <div className="space-y-1">
+                                        <p className="text-xs font-medium uppercase text-muted-foreground">
+                                          Materias asignadas
+                                        </p>
+                                        {contenidoMaterias}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                );
+                              });
+                            })()}
                           </div>
                         )}
                       </CardHeader>

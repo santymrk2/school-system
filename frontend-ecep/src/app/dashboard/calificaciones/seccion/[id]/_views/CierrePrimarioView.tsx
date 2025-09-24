@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalificacionConceptual, EvaluacionDTO, ResultadoEvaluacionDTO } from "@/types/api-generated";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -37,7 +38,6 @@ import {
   resolveTrimestrePeriodoId,
   type TrimestreEstado,
 } from "@/lib/trimestres";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
@@ -574,35 +574,37 @@ export default function CierrePrimarioView({
                   No hay trimestres configurados.
                 </p>
               ) : (
-                <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {triOpts.map((o) => {
-                    const active = String(o.id) === triId;
-                    const estadoLabel = TRIMESTRE_ESTADO_LABEL[o.estado] ?? "";
-                    return (
-                      <Button
-                        key={o.id}
-                        type="button"
-                        variant={active ? "default" : "outline"}
-                        className={cn(
-                          "w-full justify-between gap-2 rounded-full text-left",
-                          !active && "bg-muted/40 hover:bg-muted",
-                        )}
-                        onClick={() => setTriId(String(o.id))}
-                      >
-                        <span>{o.label}</span>
-                        {estadoLabel ? (
-                          <TrimestreEstadoBadge
-                            estado={o.estado}
-                            label={estadoLabel}
-                            className="ml-2 shrink-0 text-[11px] text-muted-foreground"
-                            circleClassName="h-5 w-5"
-                            iconClassName="h-2.5 w-2.5"
-                          />
-                        ) : null}
-                      </Button>
-                    );
-                  })}
-                </div>
+                <Tabs
+                  value={triId || undefined}
+                  onValueChange={(value) => setTriId(String(value))}
+                  className="w-full"
+                >
+                  <TabsList className="!w-full flex-wrap gap-2">
+                    {triOpts.map((o) => {
+                      const estadoLabel = TRIMESTRE_ESTADO_LABEL[o.estado] ?? "";
+                      return (
+                        <TabsTrigger
+                          key={o.id}
+                          value={String(o.id)}
+                          className="flex-1 justify-between gap-2 whitespace-normal text-left"
+                        >
+                          <span>{o.label}</span>
+                          {estadoLabel ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <TrimestreEstadoBadge
+                                estado={o.estado}
+                                showLabel={false}
+                                circleClassName="h-4 w-4"
+                                iconClassName="h-2 w-2"
+                              />
+                              <span>{estadoLabel}</span>
+                            </span>
+                          ) : null}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                </Tabs>
               )}
             </div>
             <div className="space-y-2">

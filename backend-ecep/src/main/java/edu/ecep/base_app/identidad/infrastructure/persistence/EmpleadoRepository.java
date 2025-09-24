@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
     Optional<Empleado> findByPersonaId(Long personaId);
     boolean existsByPersonaId(Long id);
+    Optional<Empleado> findByLegajoIgnoreCase(String legajo);
 
     @Query("""
         select e
@@ -25,6 +26,7 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
             lower(coalesce(p.dni, '')) like lower(concat('%', :search, '%')) or
             lower(coalesce(p.email, '')) like lower(concat('%', :search, '%')) or
             lower(coalesce(e.cuil, '')) like lower(concat('%', :search, '%')) or
+            lower(coalesce(e.legajo, '')) like lower(concat('%', :search, '%')) or
             lower(coalesce(e.cargo, '')) like lower(concat('%', :search, '%')) or
             lower(coalesce(e.condicionLaboral, '')) like lower(concat('%', :search, '%')) or
             lower(coalesce(e.situacionActual, '')) like lower(concat('%', :search, '%'))

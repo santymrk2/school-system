@@ -14,6 +14,7 @@ public class EmpleadoUpdateDTO {
 
     private RolEmpleado rolEmpleado;
     private String cuil;
+    private String legajo;
     // ---- Campos laborales de Empelado (opcionales en update) ----
     private String condicionLaboral;
     private String cargo;

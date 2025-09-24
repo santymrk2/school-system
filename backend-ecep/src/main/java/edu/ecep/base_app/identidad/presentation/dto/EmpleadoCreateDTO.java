@@ -15,6 +15,7 @@ public class EmpleadoCreateDTO {
 
     private RolEmpleado rolEmpleado;
     private String cuil;
+    private String legajo;
     private String condicionLaboral;
     private String cargo;
     private String situacionActual;

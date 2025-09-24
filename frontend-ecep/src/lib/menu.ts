@@ -85,7 +85,7 @@ export const MENU: MenuItem[] = [
     icon: UserCheck,
     label: "Personal",
     href: "/dashboard/personal",
-    roles: [UserRole.DIRECTOR, UserRole.SECRETARY],
+    roles: [UserRole.DIRECTOR, UserRole.ADMIN, UserRole.SECRETARY],
     color: "bg-teal-500",
     group: "third",
   },

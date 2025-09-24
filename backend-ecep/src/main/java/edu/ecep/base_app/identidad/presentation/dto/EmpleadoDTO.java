@@ -19,6 +19,7 @@ public class EmpleadoDTO {
     @NotNull
     private RolEmpleado rolEmpleado;
     private String cuil;
+    private String legajo;
     private LocalDate fechaIngreso;
     private String condicionLaboral;
     private String cargo;

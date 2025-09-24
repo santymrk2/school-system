@@ -1,4 +1,4 @@
-// types/api-generated.ts — AUTO-GENERATED from backend DTOs and Enums (2025-09-12)
+// types/api-generated.ts — AUTO-GENERATED from backend DTOs and Enums (2025-02-09)
 // Conventions:
 //  - ISODate = 'YYYY-MM-DD' (LocalDate)
 //  - ISODateTime = ISO 8601 string (OffsetDateTime/LocalDateTime)
@@ -438,6 +438,7 @@ export interface EmpleadoCreateDTO {
   personaId?: number;
   rolEmpleado?: RolEmpleado;
   cuil?: string;
+  legajo?: string;
   condicionLaboral?: string;
   cargo?: string;
   situacionActual?: string;
@@ -451,6 +452,7 @@ export interface EmpleadoDTO {
   personaId?: number;
   rolEmpleado?: RolEmpleado;
   cuil?: string;
+  legajo?: string;
   fechaIngreso?: ISODate;
   condicionLaboral?: string;
   cargo?: string;
@@ -464,6 +466,7 @@ export interface EmpleadoUpdateDTO {
   personaId?: number;
   rolEmpleado?: RolEmpleado;
   cuil?: string;
+  legajo?: string;
   condicionLaboral?: string;
   cargo?: string;
   situacionActual?: string;
@@ -622,6 +625,7 @@ export interface PersonaDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  fotoPerfilUrl?: string;
   observacionesGenerales?: string;
   roles?: UserRole[];
   credencialesActivas?: boolean;
@@ -639,6 +643,7 @@ export interface PersonaCreateDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  fotoPerfilUrl?: string;
   password?: string;
   roles?: UserRole[];
 }
@@ -657,9 +662,16 @@ export interface PersonaUpdateDTO {
   telefono?: string;
   celular?: string;
   email?: string;
+  fotoPerfilUrl?: string;
   observacionesGenerales?: string;
   password?: string;
   roles?: UserRole[];
+}
+
+export interface PersonaFotoUploadResponse {
+  url: string;
+  fileName: string;
+  size: number;
 }
 
 export interface ReciboSueldoCreateDTO {

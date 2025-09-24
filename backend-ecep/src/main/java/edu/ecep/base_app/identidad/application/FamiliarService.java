@@ -2,6 +2,7 @@ package edu.ecep.base_app.identidad.application;
 
 import edu.ecep.base_app.identidad.domain.Familiar;
 import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.identidad.domain.enums.UserRole;
 import edu.ecep.base_app.identidad.presentation.dto.FamiliarDTO;
 import edu.ecep.base_app.identidad.infrastructure.mapper.FamiliarMapper;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepository;
@@ -9,7 +10,9 @@ import edu.ecep.base_app.admisiones.infrastructure.persistence.AspiranteFamiliar
 import edu.ecep.base_app.identidad.infrastructure.persistence.FamiliarRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.PersonaRepository;
 import edu.ecep.base_app.shared.exception.NotFoundException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import edu.ecep.base_app.shared.exception.ReferencedException;
 import edu.ecep.base_app.shared.exception.ReferencedWarning;
@@ -65,11 +68,15 @@ public class FamiliarService {
         Familiar entity = mapper.toEntity(dto);
         entity.setPersona(persona); // dejar que @MapsId copie el id de Persona
 
+        ensurePersonaHasRole(persona, UserRole.FAMILY);
+        personaRepository.save(persona);
+
         Familiar saved = familiarRepository.save(entity);
         Long familiarId = saved.getId();
         return familiarId != null ? familiarId : persona.getId();
     }
 
+    @Transactional
     public void update(Long id, FamiliarDTO dto) {
         Familiar entity = familiarRepository.findById(id).orElseThrow(NotFoundException::new);
         if (dto.getPersonaId() != null) {
@@ -82,6 +89,10 @@ public class FamiliarService {
         }
 
         mapper.update(entity, dto);
+        if (entity.getPersona() != null) {
+            ensurePersonaHasRole(entity.getPersona(), UserRole.FAMILY);
+            personaRepository.save(entity.getPersona());
+        }
         familiarRepository.save(entity);
     }
 
@@ -105,5 +116,19 @@ public class FamiliarService {
             return w;
         }
         return null;
+    }
+
+    private void ensurePersonaHasRole(Persona persona, UserRole role) {
+        if (persona == null) {
+            return;
+        }
+        Set<UserRole> roles = persona.getRoles();
+        if (roles == null) {
+            roles = new HashSet<>();
+            persona.setRoles(roles);
+        }
+        if (!roles.contains(role)) {
+            roles.add(role);
+        }
     }
 }

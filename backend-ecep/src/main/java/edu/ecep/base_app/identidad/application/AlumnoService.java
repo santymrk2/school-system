@@ -13,7 +13,9 @@ import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaReposit
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaSeccionHistorialRepository;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import edu.ecep.base_app.shared.exception.ReferencedException;
 import edu.ecep.base_app.shared.exception.ReferencedWarning;
@@ -26,6 +28,9 @@ import org.springframework.stereotype.Service;
 
 
 import lombok.RequiredArgsConstructor;
+
+import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.identidad.domain.enums.UserRole;
 @Service @RequiredArgsConstructor
 public class AlumnoService {
 
@@ -94,6 +99,9 @@ public class AlumnoService {
         var entity = alumnoMapper.toEntity(dto);
         entity.setPersona(persona);
 
+        ensurePersonaHasRole(persona, UserRole.STUDENT);
+        personaRepository.save(persona);
+
         return alumnoRepository.save(entity).getId();
     }
 
@@ -117,10 +125,17 @@ public class AlumnoService {
                 throw new IllegalArgumentException("La persona ya tiene rol Alumno");
             }
             existing.setPersona(persona);
+            ensurePersonaHasRole(persona, UserRole.STUDENT);
+            personaRepository.save(persona);
         }
 
         // actualizar otros campos del alumno
         alumnoMapper.update(existing, dto);
+
+        if (existing.getPersona() != null) {
+            ensurePersonaHasRole(existing.getPersona(), UserRole.STUDENT);
+            personaRepository.save(existing.getPersona());
+        }
         alumnoRepository.save(existing);
     }
 
@@ -183,5 +198,19 @@ public class AlumnoService {
             return w;
         }
         return null;
+    }
+
+    private void ensurePersonaHasRole(Persona persona, UserRole role) {
+        if (persona == null) {
+            return;
+        }
+        Set<UserRole> roles = persona.getRoles();
+        if (roles == null) {
+            roles = new HashSet<>();
+            persona.setRoles(roles);
+        }
+        if (!roles.contains(role)) {
+            roles.add(role);
+        }
     }
 }

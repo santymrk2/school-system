@@ -1454,12 +1454,22 @@ export default function ReportesPage() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="boletines">Boletines</TabsTrigger>
-            <TabsTrigger value="aprobacion">Aprobación</TabsTrigger>
-            <TabsTrigger value="asistencias">Asistencias</TabsTrigger>
-            <TabsTrigger value="licencias">Licencias</TabsTrigger>
-            <TabsTrigger value="actas">Actas</TabsTrigger>
+          <TabsList className="w-full h-auto flex-wrap gap-2">
+            <TabsTrigger value="boletines" className="flex flex-1 min-w-[8rem]">
+              Boletines
+            </TabsTrigger>
+            <TabsTrigger value="aprobacion" className="flex flex-1 min-w-[8rem]">
+              Aprobación
+            </TabsTrigger>
+            <TabsTrigger value="asistencias" className="flex flex-1 min-w-[8rem]">
+              Asistencias
+            </TabsTrigger>
+            <TabsTrigger value="licencias" className="flex flex-1 min-w-[8rem]">
+              Licencias
+            </TabsTrigger>
+            <TabsTrigger value="actas" className="flex flex-1 min-w-[8rem]">
+              Actas
+            </TabsTrigger>
           </TabsList>
 
           {/* -------------------------- Reporte de Boletines ------------------ */}

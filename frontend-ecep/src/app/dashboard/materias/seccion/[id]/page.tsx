@@ -24,6 +24,7 @@ import type {
   NivelAcademico,
   AsignacionDocenteMateriaDTO,
   AsignacionDocenteSeccionDTO,
+
 } from "@/types/api-generated";
 import { RolSeccion } from "@/types/api-generated";
 import AddMateriaToSeccionDialog from "@/app/dashboard/materias/_components/AddMateriaToSeccionDialog";

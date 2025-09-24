@@ -14,6 +14,7 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
     Optional<Empleado> findByPersonaId(Long personaId);
     boolean existsByPersonaId(Long id);
     Optional<Empleado> findByLegajoIgnoreCase(String legajo);
+    Optional<Empleado> findByCuil(String cuil);
 
     @Query("""
         select e

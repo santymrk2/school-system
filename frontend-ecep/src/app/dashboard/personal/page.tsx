@@ -399,11 +399,12 @@ function isLicenseActiveOn(licencia: LicenciaDTO, referenceIso: string) {
 export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
   const router = useRouter();
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(false);
   const searchRef = useRef<string>("");
   const currentPageRef = useRef(1);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };

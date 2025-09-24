@@ -1,6 +1,13 @@
 "use client";
 
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
@@ -165,7 +172,10 @@ const LEGAJO_MAX_LENGTH = 20;
 const LEGAJO_REGEX = /^[A-Z0-9-]{4,20}$/;
 
 function sanitizeLegajoInput(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, LEGAJO_MAX_LENGTH);
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, "")
+    .slice(0, LEGAJO_MAX_LENGTH);
 }
 
 function normalizeLegajo(value: string) {
@@ -180,12 +190,11 @@ const DEFAULT_PAGE_SIZE = 8;
 
 const MAX_PHOTO_SIZE_MB = 2;
 const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
-const ALLOWED_PHOTO_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
-const PHOTO_TYPE_EXTENSIONS: Record<(typeof ALLOWED_PHOTO_TYPES)[number], string[]> = {
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+const PHOTO_TYPE_EXTENSIONS: Record<
+  (typeof ALLOWED_PHOTO_TYPES)[number],
+  string[]
+> = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
   "image/webp": [".webp"],
@@ -687,7 +696,9 @@ export default function PersonalPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [personal, setPersonal] = useState<EmpleadoView[]>([]);
   const [allLicencias, setAllLicencias] = useState<LicenciaDTO[]>([]);
-  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>([]);
+  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>(
+    [],
+  );
   const [availableMaterias, setAvailableMaterias] = useState<MateriaDTO[]>([]);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -763,19 +774,25 @@ export default function PersonalPage() {
   const [editEmpleadoCuilSuffix, setEditEmpleadoCuilSuffix] = useState("");
   const [editSeccionIds, setEditSeccionIds] = useState<number[]>([]);
   const [editMateriaIds, setEditMateriaIds] = useState<number[]>([]);
-  const [editSeccionDetails, setEditSeccionDetails] = useState<EmpleadoSeccionView[]>([]);
-  const [editMateriaDetails, setEditMateriaDetails] = useState<EmpleadoMateriaView[]>([]);
+  const [editSeccionDetails, setEditSeccionDetails] = useState<
+    EmpleadoSeccionView[]
+  >([]);
+  const [editMateriaDetails, setEditMateriaDetails] = useState<
+    EmpleadoMateriaView[]
+  >([]);
   const [newLicense, setNewLicense] = useState<NewLicenseForm>({
     ...initialLicenseForm,
   });
-  const [newPersonaPhotoUploading, setNewPersonaPhotoUploading] = useState(false);
-  const [newPersonaPhotoError, setNewPersonaPhotoError] = useState<string | null>(
-    null,
-  );
-  const [editPersonaPhotoUploading, setEditPersonaPhotoUploading] = useState(false);
-  const [editPersonaPhotoError, setEditPersonaPhotoError] = useState<string | null>(
-    null,
-  );
+  const [newPersonaPhotoUploading, setNewPersonaPhotoUploading] =
+    useState(false);
+  const [newPersonaPhotoError, setNewPersonaPhotoError] = useState<
+    string | null
+  >(null);
+  const [editPersonaPhotoUploading, setEditPersonaPhotoUploading] =
+    useState(false);
+  const [editPersonaPhotoError, setEditPersonaPhotoError] = useState<
+    string | null
+  >(null);
 
   const resetNewPersonalForm = useCallback(() => {
     setNewPersona({ ...initialPersonaForm });
@@ -786,7 +803,6 @@ export default function PersonalPage() {
     setNewEmpleadoCuilSuffix("");
     setNewSeccionIds([]);
     setNewMateriaIds([]);
-
   }, []);
 
   const resetEditForm = useCallback(() => {
@@ -1055,7 +1071,7 @@ export default function PersonalPage() {
               ? materiaId
               : typeof seccionMateriaId === "number"
                 ? seccionMateriaId
-                : asignacionId ?? 0,
+                : (asignacionId ?? 0),
           nombre: "",
           asignacionId,
           seccionMateriaId:
@@ -1124,14 +1140,17 @@ export default function PersonalPage() {
               typeof assignment.id === "number"
                 ? materiaMap.get(assignment.id)
                 : undefined;
-            const materiaNombre = materia?.nombre ?? `Materia #${assignment.id}`;
+            const materiaNombre =
+              materia?.nombre ?? `Materia #${assignment.id}`;
             return {
               ...assignment,
               nombre: materiaNombre,
               id:
                 typeof assignment.id === "number"
                   ? assignment.id
-                  : assignment.seccionMateriaId ?? assignment.asignacionId ?? 0,
+                  : (assignment.seccionMateriaId ??
+                    assignment.asignacionId ??
+                    0),
             } satisfies EmpleadoMateriaView;
           })
           .filter((value): value is EmpleadoMateriaView => Boolean(value));
@@ -1174,7 +1193,13 @@ export default function PersonalPage() {
         getLicenseStart(b).localeCompare(getLicenseStart(a)),
       );
 
-      return { personalData, licenciasOrdenadas, pageInfo, secciones, materias };
+      return {
+        personalData,
+        licenciasOrdenadas,
+        pageInfo,
+        secciones,
+        materias,
+      };
     },
     [pageSize],
   );
@@ -1315,8 +1340,9 @@ export default function PersonalPage() {
 
   const seccionMultiOptions = useMemo(() => {
     return availableSecciones
-      .filter((seccion): seccion is SeccionDTO & { id: number } =>
-        typeof seccion.id === "number",
+      .filter(
+        (seccion): seccion is SeccionDTO & { id: number } =>
+          typeof seccion.id === "number",
       )
       .map((seccion) => ({
         id: seccion.id!,
@@ -1330,8 +1356,9 @@ export default function PersonalPage() {
 
   const materiaMultiOptions = useMemo(() => {
     return availableMaterias
-      .filter((materia): materia is MateriaDTO & { id: number } =>
-        typeof materia.id === "number",
+      .filter(
+        (materia): materia is MateriaDTO & { id: number } =>
+          typeof materia.id === "number",
       )
       .map((materia) => ({
         id: materia.id!,
@@ -3148,11 +3175,8 @@ export default function PersonalPage() {
                                 <h3 className="text-lg font-semibold leading-none">
                                   {fullName}
                                 </h3>
-                                {item.empleado.cargo ? (
-                                  <Badge variant="outline">
-                                    {item.empleado.cargo}
-                                  </Badge>
-                                ) : null}
+
+                                {getSituacionBadge(item.situacionVisible)}
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 {formatRol(item.empleado.rolEmpleado)}
@@ -3198,7 +3222,6 @@ export default function PersonalPage() {
                                 Editar ficha
                               </Button>
                             ) : null}
-                            {getSituacionBadge(item.situacionVisible)}
                             {canRegisterLicenses &&
                             typeof item.empleado.id === "number" ? (
                               <Button
@@ -4009,7 +4032,8 @@ export default function PersonalPage() {
                         />
                         {editPersonaPhotoUploading ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Subiendo foto…
+                            <Loader2 className="h-3 w-3 animate-spin" />{" "}
+                            Subiendo foto…
                           </div>
                         ) : null}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -4025,7 +4049,9 @@ export default function PersonalPage() {
                                 fotoPerfilUrl: event.target.value,
                               }));
                             }}
-                            aria-invalid={editPersonaPhotoError ? true : undefined}
+                            aria-invalid={
+                              editPersonaPhotoError ? true : undefined
+                            }
                           />
                           {editPersona.fotoPerfilUrl ? (
                             <Button
@@ -4040,13 +4066,17 @@ export default function PersonalPage() {
                           ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Formatos permitidos: {ALLOWED_PHOTO_LABEL}. Tamaño máximo {MAX_PHOTO_SIZE_MB} MB.
+                          Formatos permitidos: {ALLOWED_PHOTO_LABEL}. Tamaño
+                          máximo {MAX_PHOTO_SIZE_MB} MB.
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Podés pegar una URL externa válida o subir una imagen desde tu equipo.
+                          Podés pegar una URL externa válida o subir una imagen
+                          desde tu equipo.
                         </div>
                         {editPersonaPhotoError ? (
-                          <p className="text-xs text-destructive">{editPersonaPhotoError}</p>
+                          <p className="text-xs text-destructive">
+                            {editPersonaPhotoError}
+                          </p>
                         ) : null}
                       </div>
                     </div>
@@ -4572,7 +4602,8 @@ export default function PersonalPage() {
                         />
                         {newPersonaPhotoUploading ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Subiendo foto…
+                            <Loader2 className="h-3 w-3 animate-spin" />{" "}
+                            Subiendo foto…
                           </div>
                         ) : null}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -4588,7 +4619,9 @@ export default function PersonalPage() {
                                 fotoPerfilUrl: event.target.value,
                               }));
                             }}
-                            aria-invalid={newPersonaPhotoError ? true : undefined}
+                            aria-invalid={
+                              newPersonaPhotoError ? true : undefined
+                            }
                           />
                           {newPersona.fotoPerfilUrl ? (
                             <Button
@@ -4603,13 +4636,17 @@ export default function PersonalPage() {
                           ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Formatos permitidos: {ALLOWED_PHOTO_LABEL}. Tamaño máximo {MAX_PHOTO_SIZE_MB} MB.
+                          Formatos permitidos: {ALLOWED_PHOTO_LABEL}. Tamaño
+                          máximo {MAX_PHOTO_SIZE_MB} MB.
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Podés pegar una URL externa válida o subir una imagen desde tu equipo.
+                          Podés pegar una URL externa válida o subir una imagen
+                          desde tu equipo.
                         </div>
                         {newPersonaPhotoError ? (
-                          <p className="text-xs text-destructive">{newPersonaPhotoError}</p>
+                          <p className="text-xs text-destructive">
+                            {newPersonaPhotoError}
+                          </p>
                         ) : null}
                       </div>
                     </div>

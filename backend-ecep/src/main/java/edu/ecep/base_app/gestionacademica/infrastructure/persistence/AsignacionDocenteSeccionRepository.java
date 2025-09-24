@@ -20,6 +20,9 @@ public interface AsignacionDocenteSeccionRepository extends JpaRepository<Asigna
     boolean existsByEmpleadoId(Long empleadoId);
 
     List<AsignacionDocenteSeccion> findByEmpleado_Id(Long empleadoId);
+
+    @EntityGraph(attributePaths = {"seccion", "empleado"})
+    List<AsignacionDocenteSeccion> findBySeccion_Id(Long seccionId);
     @Query("""
       select (count(a) > 0) from AsignacionDocenteSeccion a
       where a.seccion.id = :seccionId and a.rol = edu.ecep.base_app.gestionacademica.domain.enums.RolSeccion.MAESTRO_TITULAR
@@ -41,6 +44,16 @@ public interface AsignacionDocenteSeccionRepository extends JpaRepository<Asigna
     """)
     List<AsignacionDocenteSeccion> findVigentesByEmpleado(@Param("empleadoId") Long empleadoId,
                                                           @Param("fecha") LocalDate fecha);
+
+    @Query("""
+      select a from AsignacionDocenteSeccion a
+      where a.seccion.id = :seccionId and a.rol = edu.ecep.base_app.gestionacademica.domain.enums.RolSeccion.MAESTRO_TITULAR
+        and a.vigenciaDesde <= :fecha
+        and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
+      order by a.vigenciaDesde desc
+    """)
+    List<AsignacionDocenteSeccion> findTitularesVigentesEn(@Param("seccionId") Long seccionId,
+                                                           @Param("fecha") LocalDate fecha);
 
     @Query("""
            select a.seccion

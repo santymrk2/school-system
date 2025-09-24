@@ -26,9 +26,20 @@ public class AsignacionDocenteSeccionController {
         return service.findAll();
     }
 
+    @GetMapping(params = "seccionId")
+    public List<AsignacionDocenteSeccionDTO> bySeccion(@RequestParam Long seccionId) {
+        return service.findBySeccion(seccionId);
+    }
+
     @PostMapping
     public ResponseEntity<Long> create(@RequestBody @Valid AsignacionDocenteSeccionCreateDTO dto) {
         return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 
     @GetMapping("/by-docente")

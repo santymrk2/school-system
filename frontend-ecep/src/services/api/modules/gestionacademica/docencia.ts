@@ -8,6 +8,11 @@ export const asignacionDocenteSeccion = {
     http.post<number>("/api/asignaciones/seccion", body),
   delete: (id: number) =>
     http.delete<void>(`/api/asignaciones/seccion/${id}`),
+  bySeccion: (seccionId: number) =>
+    http.get<DTO.AsignacionDocenteSeccionDTO[]>(
+      "/api/asignaciones/seccion",
+      { params: { seccionId } },
+    ),
   byEmpleado: (empleadoId: number, fecha?: string) =>
     http.get<DTO.AsignacionDocenteSeccionDTO[]>(
       "/api/asignaciones/seccion/by-docente",

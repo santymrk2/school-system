@@ -1,7 +1,7 @@
 // app/postulacion/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatDni } from "@/lib/form-utils";
 import { admisiones, identidad } from "@/services/api/modules"; // ← módulos API
+import { BASE } from "@/services/api/http";
 import * as DTO from "@/types/api-generated";
 import { isBirthDateValid } from "@/lib/form-utils";
 
@@ -17,6 +18,7 @@ import { Step2 } from "./Step2";
 import { Step3 } from "./Step3";
 import { Step4 } from "./Step4";
 import { Step5 } from "./Step5";
+import { ExistingFamiliarDialog } from "./ExistingFamiliarDialog";
 import type {
   PostulacionFormData,
   FamiliarForm,
@@ -72,6 +74,67 @@ const initialFormData: PostulacionFormData = {
   familiares: [],
 };
 
+type FamiliarRecordDTO = DTO.FamiliarDTO & { ocupacion?: string | null };
+
+type FamiliarPromptInfo = {
+  index: number;
+  dni: string;
+  persona: DTO.PersonaDTO;
+  familiar?: FamiliarRecordDTO | null;
+};
+
+type FamiliarLookupState = {
+  dni: string;
+  status: "pending" | "prompted" | "completed" | "notfound";
+};
+
+const buildSolicitudObservaciones = (
+  data: PostulacionFormData,
+): string | undefined => {
+  const lines: string[] = [];
+  lines.push("Resumen generado automáticamente desde el formulario web.");
+  if (data.escuelaActual) {
+    lines.push(`Escuela actual: ${data.escuelaActual}`);
+  }
+  if (data.conectividadInternet) {
+    lines.push(`Conectividad en el hogar: ${data.conectividadInternet}`);
+  }
+  if (data.dispositivosDisponibles) {
+    lines.push(`Dispositivos disponibles: ${data.dispositivosDisponibles}`);
+  }
+  if (data.idiomasHabladosHogar) {
+    lines.push(`Idiomas hablados en el hogar: ${data.idiomasHabladosHogar}`);
+  }
+  if (data.enfermedadesAlergias) {
+    lines.push(`Enfermedades o alergias: ${data.enfermedadesAlergias}`);
+  }
+  if (data.medicacionHabitual) {
+    lines.push(`Medicación habitual: ${data.medicacionHabitual}`);
+  }
+  if (data.limitacionesFisicasNeurologicas) {
+    lines.push(
+      `Limitaciones físicas o neurológicas: ${data.limitacionesFisicasNeurologicas}`,
+    );
+  }
+  if (data.tratamientosTerapeuticos) {
+    lines.push(
+      `Tratamientos terapéuticos en curso: ${data.tratamientosTerapeuticos}`,
+    );
+  }
+  if (data.usoAyudasMovilidad) {
+    lines.push("Utiliza ayudas de movilidad.");
+  }
+  if (data.coberturaMedica) {
+    lines.push(`Cobertura médica: ${data.coberturaMedica}`);
+  }
+  if (data.observacionesAdicionalesSalud) {
+    lines.push(
+      `Observaciones adicionales de salud: ${data.observacionesAdicionalesSalud}`,
+    );
+  }
+  return lines.filter(Boolean).join("\n") || undefined;
+};
+
 type PersonaInput = {
   personaId?: number | null;
   nombre: string;
@@ -98,6 +161,25 @@ export default function PostulacionPage() {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [communicationsAuthorized, setCommunicationsAuthorized] =
     useState(false);
+  const familiarLookupState = useRef<Record<number, FamiliarLookupState>>({});
+  const familiarPromptQueue = useRef<FamiliarPromptInfo[]>([]);
+  const [existingFamiliarPrompt, setExistingFamiliarPrompt] =
+    useState<FamiliarPromptInfo | null>(null);
+  const [familiarAuthLoading, setFamiliarAuthLoading] = useState(false);
+  const [familiarAuthError, setFamiliarAuthError] = useState<string | null>(
+    null,
+  );
+  const activePromptRef = useRef<FamiliarPromptInfo | null>(null);
+
+  useEffect(() => {
+    activePromptRef.current = existingFamiliarPrompt;
+  }, [existingFamiliarPrompt]);
+
+  useEffect(() => {
+    if (existingFamiliarPrompt) {
+      setFamiliarAuthError(null);
+    }
+  }, [existingFamiliarPrompt]);
   const handleInputChange = (
     field: string,
     value: any,
@@ -185,6 +267,197 @@ export default function PostulacionPage() {
       clearTimeout(handle);
     };
   }, [formData.dni, aspirantePersonaPreview, lastLookupDni]);
+
+  useEffect(() => {
+    const familiares = formData.familiares ?? [];
+    const cancelers: Array<() => void> = [];
+
+    familiares.forEach((familiarEntry, index) => {
+      const dni = formatDni(familiarEntry.familiar?.dni ?? "");
+      if (!dni || dni.length < 7) {
+        delete familiarLookupState.current[index];
+        return;
+      }
+
+      const currentState = familiarLookupState.current[index];
+      if (currentState && currentState.dni === dni && currentState.status !== "pending") {
+        return;
+      }
+
+      familiarLookupState.current[index] = { dni, status: "pending" };
+      let cancelled = false;
+      cancelers.push(() => {
+        cancelled = true;
+      });
+
+      (async () => {
+        try {
+          const { data: personaId } = await identidad.personasCore.findIdByDni(dni);
+          if (cancelled) return;
+          if (!personaId) {
+            familiarLookupState.current[index] = { dni, status: "notfound" };
+            return;
+          }
+
+          const personaPromise = identidad.personasCore.getById(Number(personaId));
+          const familiarPromise = identidad.familiares
+            .byId(Number(personaId))
+            .catch(() => null);
+          const [personaRes, familiarRes] = await Promise.all([
+            personaPromise,
+            familiarPromise,
+          ]);
+          if (cancelled) return;
+
+          const info: FamiliarPromptInfo = {
+            index,
+            dni,
+            persona: personaRes.data,
+            familiar:
+              (familiarRes?.data as FamiliarRecordDTO | undefined) ?? null,
+          };
+          familiarLookupState.current[index] = { dni, status: "prompted" };
+          if (activePromptRef.current) {
+            familiarPromptQueue.current.push(info);
+          } else {
+            setExistingFamiliarPrompt(info);
+          }
+        } catch (error: any) {
+          if (cancelled) return;
+          if (error?.response?.status === 404) {
+            familiarLookupState.current[index] = { dni, status: "notfound" };
+          } else {
+            console.error(error);
+            familiarLookupState.current[index] = { dni, status: "notfound" };
+          }
+        }
+      })();
+    });
+
+    return () => {
+      cancelers.forEach((cancel) => cancel());
+    };
+  }, [formData.familiares]);
+
+  const applyFamiliarData = (
+    index: number,
+    persona: DTO.PersonaDTO,
+    familiar?: FamiliarRecordDTO | null,
+  ) => {
+    setFormData((prev) => {
+      const familiares = [...(prev.familiares ?? [])];
+      if (!familiares[index]) return prev;
+      const current = familiares[index];
+      const basePersona = current.familiar ?? { ...emptyFamiliarPersona };
+      const updated = {
+        ...current,
+        id: familiar?.id ?? current.id,
+        familiar: {
+          ...basePersona,
+          personaId: persona.id ?? basePersona.personaId ?? null,
+          nombre: persona.nombre ?? "",
+          apellido: persona.apellido ?? "",
+          dni: formatDni(persona.dni ?? basePersona.dni ?? ""),
+          fechaNacimiento: persona.fechaNacimiento ?? basePersona.fechaNacimiento ?? "",
+          genero: persona.genero ?? basePersona.genero ?? "",
+          estadoCivil: persona.estadoCivil ?? basePersona.estadoCivil ?? "",
+          nacionalidad: persona.nacionalidad ?? basePersona.nacionalidad ?? "",
+          domicilio: persona.domicilio ?? basePersona.domicilio ?? "",
+          telefono: persona.telefono ?? basePersona.telefono ?? "",
+          celular: persona.celular ?? basePersona.celular ?? "",
+          email: persona.email ?? basePersona.email ?? "",
+          emailContacto: persona.email ?? basePersona.emailContacto ?? "",
+          lugarTrabajo: basePersona.lugarTrabajo ?? "",
+          ocupacion: familiar?.ocupacion ?? basePersona.ocupacion ?? "",
+        },
+      };
+      familiares[index] = updated;
+      return {
+        ...prev,
+        familiares,
+      };
+    });
+
+    setErrors((prev) => {
+      if (!Object.keys(prev).length) return prev;
+      const next = { ...prev };
+      const keysToClear = [
+        `familiares.${index}.tipoRelacion`,
+        `familiares.${index}.familiar.nombre`,
+        `familiares.${index}.familiar.apellido`,
+        `familiares.${index}.familiar.dni`,
+        `familiares.${index}.familiar.fechaNacimiento`,
+        `familiares.${index}.familiar.emailContacto`,
+      ];
+      keysToClear.forEach((key) => {
+        if (key in next) delete next[key];
+      });
+      return next;
+    });
+  };
+
+  const showNextPrompt = () => {
+    const next = familiarPromptQueue.current.shift() ?? null;
+    if (next) {
+      setExistingFamiliarPrompt(next);
+    }
+  };
+
+  const handleExistingFamiliarCancel = () => {
+    const active = activePromptRef.current;
+    if (!active) return;
+    familiarLookupState.current[active.index] = {
+      dni: active.dni,
+      status: "completed",
+    };
+    setExistingFamiliarPrompt(null);
+    setFamiliarAuthError(null);
+    setFamiliarAuthLoading(false);
+    showNextPrompt();
+  };
+
+  const handleExistingFamiliarConfirm = async (
+    email: string,
+    password: string,
+  ) => {
+    const active = activePromptRef.current;
+    if (!active) return;
+    setFamiliarAuthLoading(true);
+    setFamiliarAuthError(null);
+    try {
+      const response = await fetch(`${BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "omit",
+      });
+      if (!response.ok) {
+        let message = "No se pudo validar las credenciales.";
+        try {
+          const payload = await response.json();
+          if (payload?.message) {
+            message = payload.message;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+
+      applyFamiliarData(active.index, active.persona, active.familiar ?? null);
+      toast.success("Datos del familiar completados automáticamente.");
+      familiarLookupState.current[active.index] = {
+        dni: active.dni,
+        status: "completed",
+      };
+      setExistingFamiliarPrompt(null);
+      showNextPrompt();
+    } catch (error: any) {
+      const message = error?.message ?? "Credenciales inválidas.";
+      setFamiliarAuthError(message);
+      toast.error(message);
+    } finally {
+      setFamiliarAuthLoading(false);
+    }
+  };
 
   const buildPersonaPayload = (input: PersonaInput): DTO.PersonaCreateDTO => {
     const dni = formatDni(input.dni);
@@ -569,6 +842,7 @@ export default function PostulacionPage() {
         estado: "PENDIENTE",
         emailConfirmacionEnviado: communicationsAuthorized,
         entrevistaRealizada: false,
+        observaciones: buildSolicitudObservaciones(formData),
       };
       await admisiones.solicitudesAdmision.create(solicitudPayload);
 
@@ -679,6 +953,16 @@ export default function PostulacionPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ExistingFamiliarDialog
+        open={!!existingFamiliarPrompt}
+        persona={existingFamiliarPrompt?.persona}
+        dni={existingFamiliarPrompt?.dni}
+        loading={familiarAuthLoading}
+        error={familiarAuthError}
+        onConfirm={handleExistingFamiliarConfirm}
+        onCancel={handleExistingFamiliarCancel}
+      />
     </div>
   );
 }

@@ -24,7 +24,6 @@ import type {
   NivelAcademico,
   AsignacionDocenteMateriaDTO,
   AsignacionDocenteSeccionDTO,
-
 } from "@/types/api-generated";
 import { RolSeccion } from "@/types/api-generated";
 import AddMateriaToSeccionDialog from "@/app/dashboard/materias/_components/AddMateriaToSeccionDialog";
@@ -599,6 +598,7 @@ export default function MateriasSeccionPage() {
                     const mat = materiasById.get(sm.materiaId);
                     const tit = titularVigente(sm.id);
                     const sup = suplenteVigente(sm.id);
+
 
                     return (
                       <div key={sm.id} className="border rounded p-3">

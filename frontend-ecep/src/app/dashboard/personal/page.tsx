@@ -92,6 +92,7 @@ import {
   type PersonaDTO,
   type PersonaUpdateDTO,
   type SeccionDTO,
+  type SeccionMateriaDTO,
 } from "@/types/api-generated";
 import {
   AlertCircle,
@@ -277,7 +278,7 @@ type AccessFormState = {
 };
 
 type EmpleadoSeccionView = {
-  id: number;
+  seccionId: number;
   label: string;
   nivel?: string | null;
   asignacionId?: number;
@@ -287,10 +288,12 @@ type EmpleadoSeccionView = {
 };
 
 type EmpleadoMateriaView = {
-  id: number;
-  nombre: string;
+  seccionMateriaId: number;
+  seccionId: number;
+  seccionLabel: string;
+  materiaId: number;
+  materiaNombre: string;
   asignacionId?: number;
-  seccionMateriaId?: number | null;
   rol?: RolMateria | null;
   vigenciaDesde?: string | null;
   vigenciaHasta?: string | null;
@@ -696,9 +699,10 @@ export default function PersonalPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [personal, setPersonal] = useState<EmpleadoView[]>([]);
   const [allLicencias, setAllLicencias] = useState<LicenciaDTO[]>([]);
-  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>(
-    [],
-  );
+  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>([]);
+  const [availableSeccionMaterias, setAvailableSeccionMaterias] = useState<
+    SeccionMateriaDTO[]
+  >([]);
   const [availableMaterias, setAvailableMaterias] = useState<MateriaDTO[]>([]);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -926,6 +930,7 @@ export default function PersonalPage() {
         licencias,
         formaciones,
         secciones,
+        seccionMaterias,
         materias,
         asignacionesSeccion,
         asignacionesMateria,
@@ -944,6 +949,11 @@ export default function PersonalPage() {
           gestionAcademica.secciones.list(),
           [] as SeccionDTO[],
           "No se pudieron obtener las secciones",
+        ),
+        safeRequest<SeccionMateriaDTO[]>(
+          gestionAcademica.seccionMaterias.list(),
+          [] as SeccionMateriaDTO[],
+          "No se pudieron obtener las materias por sección",
         ),
         safeRequest<MateriaDTO[]>(
           gestionAcademica.materias.list(),
@@ -999,6 +1009,13 @@ export default function PersonalPage() {
         }
       }
 
+      const seccionMateriaMap = new Map<number, SeccionMateriaDTO>();
+      for (const seccionMateria of seccionMaterias) {
+        if (typeof seccionMateria.id === "number") {
+          seccionMateriaMap.set(seccionMateria.id, seccionMateria);
+        }
+      }
+
       const materiaMap = new Map<number, MateriaDTO>();
       for (const materia of materias) {
         if (typeof materia.id === "number") {
@@ -1025,7 +1042,7 @@ export default function PersonalPage() {
         const vigenciaHastaRaw =
           asign.vigenciaHasta ?? asign.vigencia_hasta ?? asign.hasta ?? null;
         const entry: EmpleadoSeccionView = {
-          id: seccionId,
+          seccionId,
           label: "",
           asignacionId,
           rol: rol ?? null,
@@ -1058,6 +1075,9 @@ export default function PersonalPage() {
         if (typeof empleadoId !== "number") {
           continue;
         }
+        if (typeof seccionMateriaId !== "number") {
+          continue;
+        }
         const asignacionId =
           typeof asign.id === "number" ? asign.id : undefined;
         const rol = (asign.rol ?? null) as RolMateria | null | undefined;
@@ -1065,17 +1085,24 @@ export default function PersonalPage() {
           asign.vigenciaDesde ?? asign.vigencia_desde ?? asign.desde ?? null;
         const vigenciaHastaRaw =
           asign.vigenciaHasta ?? asign.vigencia_hasta ?? asign.hasta ?? null;
-        const entry: EmpleadoMateriaView = {
-          id:
-            typeof materiaId === "number"
+        const seccionMateria = seccionMateriaMap.get(seccionMateriaId);
+        const resolvedMateriaId =
+          typeof seccionMateria?.materiaId === "number"
+            ? seccionMateria.materiaId
+            : typeof materiaId === "number"
               ? materiaId
-              : typeof seccionMateriaId === "number"
-                ? seccionMateriaId
-                : (asignacionId ?? 0),
-          nombre: "",
+              : 0;
+        const resolvedSeccionId =
+          typeof seccionMateria?.seccionId === "number"
+            ? seccionMateria.seccionId
+            : 0;
+        const entry: EmpleadoMateriaView = {
+          seccionMateriaId,
+          seccionId: resolvedSeccionId,
+          seccionLabel: "",
+          materiaId: resolvedMateriaId,
+          materiaNombre: "",
           asignacionId,
-          seccionMateriaId:
-            typeof seccionMateriaId === "number" ? seccionMateriaId : null,
           rol: rol ?? null,
           vigenciaDesde:
             typeof vigenciaDesdeRaw === "string"
@@ -1119,13 +1146,13 @@ export default function PersonalPage() {
           seccionesPorEmpleado.get(empleado.id ?? 0) ?? [];
         const seccionesInfo: EmpleadoSeccionView[] = seccionAssignments
           .map((assignment) => {
-            const seccion = seccionMap.get(assignment.id);
+            const seccion = seccionMap.get(assignment.seccionId);
             if (!seccion) {
               return null;
             }
             return {
               ...assignment,
-              id: seccion.id!,
+              seccionId: seccion.id!,
               label: formatSeccionLabel(seccion),
               nivel: seccion.nivel ?? null,
             } satisfies EmpleadoSeccionView;
@@ -1136,21 +1163,31 @@ export default function PersonalPage() {
           materiasPorEmpleado.get(empleado.id ?? 0) ?? [];
         const materiasInfo: EmpleadoMateriaView[] = materiaAssignments
           .map((assignment) => {
+            const seccionMateria = seccionMateriaMap.get(
+              assignment.seccionMateriaId,
+            );
+            if (!seccionMateria) {
+              return null;
+            }
+            const seccion =
+              typeof seccionMateria.seccionId === "number"
+                ? seccionMap.get(seccionMateria.seccionId)
+                : null;
             const materia =
-              typeof assignment.id === "number"
-                ? materiaMap.get(assignment.id)
-                : undefined;
+              typeof seccionMateria.materiaId === "number"
+                ? materiaMap.get(seccionMateria.materiaId)
+                : null;
+            if (!seccion || !materia) {
+              return null;
+            }
             const materiaNombre =
-              materia?.nombre ?? `Materia #${assignment.id}`;
+              materia.nombre ?? `Materia #${materia.id ?? assignment.materiaId}`;
             return {
               ...assignment,
-              nombre: materiaNombre,
-              id:
-                typeof assignment.id === "number"
-                  ? assignment.id
-                  : (assignment.seccionMateriaId ??
-                    assignment.asignacionId ??
-                    0),
+              seccionId: seccion.id!,
+              seccionLabel: formatSeccionLabel(seccion),
+              materiaId: materia.id!,
+              materiaNombre,
             } satisfies EmpleadoMateriaView;
           })
           .filter((value): value is EmpleadoMateriaView => Boolean(value));
@@ -1198,6 +1235,7 @@ export default function PersonalPage() {
         licenciasOrdenadas,
         pageInfo,
         secciones,
+        seccionMaterias,
         materias,
       };
     },
@@ -1219,6 +1257,7 @@ export default function PersonalPage() {
           licenciasOrdenadas,
           pageInfo,
           secciones,
+          seccionMaterias,
           materias,
         } = await fetchData({
           search: searchValue,
@@ -1228,6 +1267,7 @@ export default function PersonalPage() {
         setPersonal(personalData);
         setAllLicencias(licenciasOrdenadas);
         setAvailableSecciones(secciones);
+        setAvailableSeccionMaterias(seccionMaterias);
         setAvailableMaterias(materias);
         const resolvedPage = Math.max(1, pageInfo.page);
         setCurrentPage(resolvedPage);
@@ -1242,6 +1282,7 @@ export default function PersonalPage() {
         setPersonal([]);
         setAllLicencias([]);
         setAvailableSecciones([]);
+        setAvailableSeccionMaterias([]);
         setAvailableMaterias([]);
         setCurrentPage(1);
         currentPageRef.current = 1;
@@ -1318,7 +1359,7 @@ export default function PersonalPage() {
     const map = new Map<string, string>();
     personal.forEach((p) => {
       p.secciones.forEach((s) => {
-        map.set(String(s.id), s.label);
+        map.set(String(s.seccionId), s.label);
       });
     });
     return Array.from(map.entries()).sort((a, b) =>
@@ -1330,7 +1371,10 @@ export default function PersonalPage() {
     const map = new Map<string, string>();
     personal.forEach((p) => {
       p.materias.forEach((m) => {
-        map.set(String(m.id), m.nombre);
+        map.set(
+          String(m.seccionMateriaId),
+          `${m.materiaNombre} • ${m.seccionLabel}`,
+        );
       });
     });
     return Array.from(map.entries()).sort((a, b) =>
@@ -1355,19 +1399,48 @@ export default function PersonalPage() {
   }, [availableSecciones]);
 
   const materiaMultiOptions = useMemo(() => {
-    return availableMaterias
-      .filter(
-        (materia): materia is MateriaDTO & { id: number } =>
-          typeof materia.id === "number",
+    const seccionMap = new Map<number, SeccionDTO>();
+    availableSecciones.forEach((seccion) => {
+      if (typeof seccion.id === "number") {
+        seccionMap.set(seccion.id, seccion);
+      }
+    });
+    const materiaMap = new Map<number, MateriaDTO>();
+    availableMaterias.forEach((materia) => {
+      if (typeof materia.id === "number") {
+        materiaMap.set(materia.id, materia);
+      }
+    });
+
+    return availableSeccionMaterias
+      .filter((sm): sm is SeccionMateriaDTO & { id: number } =>
+        typeof sm.id === "number" &&
+        typeof sm.seccionId === "number" &&
+        typeof sm.materiaId === "number",
       )
-      .map((materia) => ({
-        id: materia.id!,
-        label: materia.nombre ?? `Materia #${materia.id}`,
-      }))
-      .sort((a, b) =>
-        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
-      );
-  }, [availableMaterias]);
+      .map((sm) => {
+        const seccion = seccionMap.get(sm.seccionId!);
+        const materia = materiaMap.get(sm.materiaId!);
+        const materiaNombre = materia?.nombre ?? `Materia #${sm.materiaId}`;
+        const seccionLabel = seccion ? formatSeccionLabel(seccion) : "Sección";
+        return {
+          id: sm.id!,
+          label: materiaNombre,
+          description: seccionLabel,
+        };
+      })
+      .sort((a, b) => {
+        const byMateria = a.label.localeCompare(b.label, "es", {
+          sensitivity: "base",
+        });
+        if (byMateria !== 0) {
+          return byMateria;
+        }
+        const descA = a.description ?? "";
+        const descB = b.description ?? "";
+        return descA.localeCompare(descB, "es", { sensitivity: "base" });
+      });
+  }, [availableMaterias, availableSeccionMaterias, availableSecciones]);
 
   const syncEmployeeAssignments = useCallback(
     async ({
@@ -1399,10 +1472,10 @@ export default function PersonalPage() {
       );
 
       const existingSeccionIds = new Set(
-        existingSecciones.map((item) => item.id),
+        existingSecciones.map((item) => item.seccionId),
       );
       const existingMateriaIds = new Set(
-        existingMaterias.map((item) => item.id),
+        existingMaterias.map((item) => item.seccionMateriaId),
       );
 
       const seccionesToCreate = normalizedSecciones.filter(
@@ -1413,10 +1486,10 @@ export default function PersonalPage() {
       );
 
       const seccionesToRemove = existingSecciones.filter(
-        (item) => !normalizedSecciones.includes(item.id),
+        (item) => !normalizedSecciones.includes(item.seccionId),
       );
       const materiasToRemove = existingMaterias.filter(
-        (item) => !normalizedMaterias.includes(item.id),
+        (item) => !normalizedMaterias.includes(item.seccionMateriaId),
       );
 
       if (
@@ -1453,10 +1526,10 @@ export default function PersonalPage() {
         });
       }
 
-      for (const materiaId of materiasToCreate) {
+      for (const seccionMateriaId of materiasToCreate) {
         await gestionAcademica.asignacionDocenteMateria.create({
           empleadoId,
-          materiaId,
+          seccionMateriaId,
           rol: RolMateria.TITULAR,
           vigenciaDesde: todayIso(),
         } as any);
@@ -1472,20 +1545,34 @@ export default function PersonalPage() {
     disabled,
   }: AssignmentManagerProps) => {
     const [selectedSecciones, setSelectedSecciones] = useState<number[]>(() =>
-      secciones.map((seccion) => seccion.id),
+      secciones.map((seccion) => seccion.seccionId),
     );
     const [selectedMaterias, setSelectedMaterias] = useState<number[]>(() =>
-      materias.map((materia) => materia.id),
+      materias.map((materia) => materia.seccionMateriaId),
     );
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-      setSelectedSecciones(secciones.map((seccion) => seccion.id));
+      setSelectedSecciones(secciones.map((seccion) => seccion.seccionId));
     }, [secciones]);
 
     useEffect(() => {
-      setSelectedMaterias(materias.map((materia) => materia.id));
+      setSelectedMaterias(
+        materias.map((materia) => materia.seccionMateriaId),
+      );
     }, [materias]);
+
+    const handleSeccionesChange = useCallback(
+      (ids: number[]) => {
+        if (ids.length > 2) {
+          toast.error(
+            "Solo se pueden asignar hasta dos secciones como titulares.",
+          );
+        }
+        setSelectedSecciones(ids.slice(0, 2));
+      },
+      [],
+    );
 
     const handleSave = useCallback(async () => {
       if (!empleadoId) {
@@ -1536,12 +1623,12 @@ export default function PersonalPage() {
             placeholder="Seleccioná las secciones"
             options={seccionMultiOptions}
             selectedIds={selectedSecciones}
-            onChange={(ids) => setSelectedSecciones(ids)}
+            onChange={handleSeccionesChange}
             disabled={isDisabled}
             summaryEmptyText={
               isDisabled
                 ? "Sin secciones asignadas."
-                : "Seleccioná las secciones o dejalo vacío para no asignar ninguna."
+                : "Seleccioná hasta dos secciones o dejalo vacío para no asignar ninguna."
             }
           />
           <MultiSelectControl
@@ -1555,7 +1642,7 @@ export default function PersonalPage() {
             summaryEmptyText={
               isDisabled
                 ? "Sin materias asignadas."
-                : "Seleccioná las materias o dejalo vacío para removerlas."
+                : "Seleccioná las materias por sección o dejalo vacío para removerlas."
             }
           />
           <div className="flex flex-col gap-2 pt-1 text-xs text-muted-foreground">
@@ -1724,7 +1811,8 @@ export default function PersonalPage() {
           item.empleado.rolEmpleado ?? "",
           ...item.secciones.map((s) => s.label ?? ""),
           ...item.secciones.map((s) => String(s.nivel ?? "")),
-          ...item.materias.map((m) => m.nombre ?? ""),
+          ...item.materias.map((m) => m.materiaNombre ?? ""),
+          ...item.materias.map((m) => m.seccionLabel ?? ""),
           ...item.formaciones.map((f) => f.tituloObtenido ?? ""),
           ...item.formaciones.map((f) => f.institucion ?? ""),
           item.empleado.antecedentesLaborales ?? "",
@@ -1756,7 +1844,9 @@ export default function PersonalPage() {
 
         if (
           normalizedMateria &&
-          !item.materias.some((m) => String(m.id) === normalizedMateria)
+          !item.materias.some(
+            (m) => String(m.seccionMateriaId) === normalizedMateria,
+          )
         ) {
           return false;
         }
@@ -2149,8 +2239,10 @@ export default function PersonalPage() {
     setEditEmpleadoCuilSuffix(suffix);
     setEditSeccionDetails(item.secciones);
     setEditMateriaDetails(item.materias);
-    setEditSeccionIds(item.secciones.map((seccion) => seccion.id));
-    setEditMateriaIds(item.materias.map((materia) => materia.id));
+    setEditSeccionIds(item.secciones.map((seccion) => seccion.seccionId));
+    setEditMateriaIds(
+      item.materias.map((materia) => materia.seccionMateriaId),
+    );
     setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
     setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
     setEditPersonaPhotoError(null);
@@ -3241,28 +3333,33 @@ export default function PersonalPage() {
                         {(item.secciones.length > 0 ||
                           item.materias.length > 0) && (
                           <div className="flex flex-wrap gap-2">
-                            {item.secciones.map((seccion) => (
-                              <Badge
-                                key={`seccion-${empleadoId}-${seccion.id}`}
-                                variant="secondary"
-                                className="flex items-center gap-1"
-                              >
-                                <Users className="h-3 w-3" />
-                                <span>
-                                  {formatNivel(seccion.nivel)} • {seccion.label}
-                                </span>
-                              </Badge>
-                            ))}
-                            {item.materias.map((materia) => (
-                              <Badge
-                                key={`materia-${empleadoId}-${materia.id}`}
-                                variant="outline"
-                                className="flex items-center gap-1"
-                              >
-                                <GraduationCap className="h-3 w-3" />
-                                <span>{materia.nombre}</span>
-                              </Badge>
-                            ))}
+                          {item.secciones.map((seccion) => (
+                            <Badge
+                              key={`seccion-${empleadoId}-${seccion.seccionId}`}
+                              variant="secondary"
+                              className="flex items-center gap-1"
+                            >
+                              <Users className="h-3 w-3" />
+                              <span>
+                                {formatNivel(seccion.nivel)} • {seccion.label}
+                              </span>
+                            </Badge>
+                          ))}
+                          {item.materias.map((materia) => (
+                            <Badge
+                              key={`materia-${empleadoId}-${materia.seccionMateriaId}`}
+                              variant="outline"
+                              className="flex items-center gap-1"
+                            >
+                              <GraduationCap className="h-3 w-3" />
+                              <span>
+                                {materia.materiaNombre}
+                                {materia.seccionLabel
+                                  ? ` • ${materia.seccionLabel}`
+                                  : ""}
+                              </span>
+                            </Badge>
+                          ))}
                           </div>
                         )}
                       </CardHeader>
@@ -3920,7 +4017,7 @@ export default function PersonalPage() {
                             <div className="flex flex-wrap gap-2">
                               {secciones.map((seccion) => (
                                 <Badge
-                                  key={`licencia-${licenseKey}-seccion-${seccion.id}`}
+                                  key={`licencia-${licenseKey}-seccion-${seccion.seccionId}`}
                                   variant="secondary"
                                   className="flex items-center gap-1"
                                 >
@@ -3937,12 +4034,17 @@ export default function PersonalPage() {
                             <div className="flex flex-wrap gap-2">
                               {materias.map((materia) => (
                                 <Badge
-                                  key={`licencia-${licenseKey}-materia-${materia.id}`}
+                                  key={`licencia-${licenseKey}-materia-${materia.seccionMateriaId}`}
                                   variant="outline"
                                   className="flex items-center gap-1"
                                 >
                                   <GraduationCap className="h-3 w-3" />
-                                  <span>{materia.nombre}</span>
+                                  <span>
+                                    {materia.materiaNombre}
+                                    {materia.seccionLabel
+                                      ? ` • ${materia.seccionLabel}`
+                                      : ""}
+                                  </span>
                                 </Badge>
                               ))}
                             </div>
@@ -4510,7 +4612,14 @@ export default function PersonalPage() {
                     placeholder="Seleccioná las secciones"
                     options={seccionMultiOptions}
                     selectedIds={editSeccionIds}
-                    onChange={(ids) => setEditSeccionIds(ids)}
+                    onChange={(ids) => {
+                      if (ids.length > 2) {
+                        toast.error(
+                          "Podés asignar hasta dos secciones como titulares.",
+                        );
+                      }
+                      setEditSeccionIds(ids.slice(0, 2));
+                    }}
                     summaryEmptyText="Seleccioná las secciones correspondientes o dejalo vacío."
                   />
                   <MultiSelectControl
@@ -5080,7 +5189,14 @@ export default function PersonalPage() {
                     placeholder="Seleccioná las secciones"
                     options={seccionMultiOptions}
                     selectedIds={newSeccionIds}
-                    onChange={(ids) => setNewSeccionIds(ids)}
+                    onChange={(ids) => {
+                      if (ids.length > 2) {
+                        toast.error(
+                          "Podés asignar hasta dos secciones como titulares.",
+                        );
+                      }
+                      setNewSeccionIds(ids.slice(0, 2));
+                    }}
                     summaryEmptyText="Seleccioná las secciones correspondientes o dejalo vacío."
                   />
                   <MultiSelectControl

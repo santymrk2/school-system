@@ -268,6 +268,7 @@ const STAFF_ROLE_OPTIONS: UserRole[] = normalizeRoles([
 type NewPersonaForm = typeof initialPersonaForm;
 type NewEmpleadoForm = typeof initialEmpleadoForm;
 type NewFormacionEntry = typeof initialFormacionEntry;
+type EditFormacionEntry = NewFormacionEntry & { id?: number | null };
 type FormacionNotas = typeof initialFormacionNotas;
 type NewLicenseForm = typeof initialLicenseForm;
 type AccessFormState = {
@@ -789,6 +790,40 @@ export default function PersonalPage() {
   const [editMateriaDetails, setEditMateriaDetails] = useState<
     EmpleadoMateriaView[]
   >([]);
+  const [editFormaciones, setEditFormaciones] = useState<
+    EditFormacionEntry[]
+  >([{ ...initialFormacionEntry }]);
+  const [editFormacionesToDelete, setEditFormacionesToDelete] = useState<
+    number[]
+  >([]);
+  const addEditFormacionEntry = useCallback(() => {
+    setEditFormaciones((prev) => [...prev, { ...initialFormacionEntry }]);
+  }, []);
+  const updateEditFormacionEntry = useCallback(
+    (index: number, patch: Partial<EditFormacionEntry>) => {
+      setEditFormaciones((prev) =>
+        prev.map((entry, idx) => (idx === index ? { ...entry, ...patch } : entry)),
+      );
+    },
+    [],
+  );
+  const removeEditFormacionEntry = useCallback((index: number) => {
+    setEditFormaciones((prev) => {
+      if (prev.length <= 1) {
+        return [{ ...initialFormacionEntry }];
+      }
+      const removed = prev[index];
+      const next = prev.filter((_, idx) => idx !== index);
+      if (removed?.id) {
+        setEditFormacionesToDelete((prevDeletes) =>
+          prevDeletes.includes(removed.id!)
+            ? prevDeletes
+            : [...prevDeletes, removed.id!],
+        );
+      }
+      return next.length ? next : [{ ...initialFormacionEntry }];
+    });
+  }, []);
   const [newLicense, setNewLicense] = useState<NewLicenseForm>({
     ...initialLicenseForm,
   });
@@ -826,6 +861,8 @@ export default function PersonalPage() {
     setEditMateriaIds([]);
     setEditSeccionDetails([]);
     setEditMateriaDetails([]);
+    setEditFormaciones([{ ...initialFormacionEntry }]);
+    setEditFormacionesToDelete([]);
   }, []);
 
   const resetNewLicenseForm = useCallback(() => {
@@ -2248,6 +2285,20 @@ export default function PersonalPage() {
     setEditMateriaIds(
       item.materias.map((materia) => materia.seccionMateriaId),
     );
+    setEditFormaciones(
+      item.formaciones.length > 0
+        ? item.formaciones.map((formacion) => ({
+            id:
+              typeof formacion.id === "number" ? formacion.id : undefined,
+            nivel: formacion.nivel ?? "",
+            tituloObtenido: formacion.tituloObtenido ?? "",
+            institucion: formacion.institucion ?? "",
+            fechaInicio: formacion.fechaInicio ?? "",
+            fechaFin: formacion.fechaFin ?? "",
+          }))
+        : [{ ...initialFormacionEntry }],
+    );
+    setEditFormacionesToDelete([]);
     setEditingIds({ personaId: persona.id, empleadoId: empleado.id });
     setEditingName(buildFullName(persona) || `Empleado #${empleado.id}`);
     setEditPersonaPhotoError(null);
@@ -2305,13 +2356,12 @@ export default function PersonalPage() {
         !estadoCivil ||
         !nacionalidad ||
         !domicilio ||
-        !telefono ||
         !celular ||
         !email
       ) {
         toast.error("Datos personales incompletos", {
           description:
-            "Completá género, estado civil y los datos de contacto obligatorios.",
+            "Completá género, estado civil y los datos de contacto obligatorios (celular y correo electrónico).",
         });
         return;
       }
@@ -2388,7 +2438,7 @@ export default function PersonalPage() {
         tituloObtenido: string;
         institucion: string;
         fechaInicio: string;
-        fechaFin?: string;
+        fechaFin: string | null;
       }> = [];
 
       for (let index = 0; index < normalizedFormaciones.length; index += 1) {
@@ -2437,7 +2487,7 @@ export default function PersonalPage() {
 
         formacionesARegistrar.push({
           ...formacion,
-          fechaFin: formacion.fechaFin || undefined,
+          fechaFin: formacion.fechaFin || null,
         });
       }
 
@@ -2452,7 +2502,7 @@ export default function PersonalPage() {
           estadoCivil,
           nacionalidad,
           domicilio,
-          telefono,
+          telefono: telefono || undefined,
           celular,
           email,
           fotoPerfilUrl: fotoPerfilUrl || undefined,
@@ -2628,13 +2678,12 @@ export default function PersonalPage() {
         !estadoCivil ||
         !nacionalidad ||
         !domicilio ||
-        !telefono ||
         !celular ||
         !email
       ) {
         toast.error("Datos personales incompletos", {
           description:
-            "Completá género, estado civil y los datos de contacto obligatorios.",
+            "Completá género, estado civil y los datos de contacto obligatorios (celular y correo electrónico).",
         });
         return;
       }
@@ -2700,6 +2749,107 @@ export default function PersonalPage() {
         return;
       }
 
+      const empleadoId = editingIds.empleadoId;
+      if (typeof empleadoId !== "number") {
+        toast.error("No encontramos la ficha seleccionada para editar.");
+        return;
+      }
+
+      const normalizedEditFormaciones = editFormaciones.map((entry) => ({
+        id: typeof entry.id === "number" ? entry.id : undefined,
+        nivel: entry.nivel.trim(),
+        tituloObtenido: entry.tituloObtenido.trim(),
+        institucion: entry.institucion.trim(),
+        fechaInicio: entry.fechaInicio.trim(),
+        fechaFin: entry.fechaFin.trim(),
+      }));
+
+      const formacionesAActualizar: Array<{
+        id: number;
+        nivel: string;
+        tituloObtenido: string;
+        institucion: string;
+        fechaInicio: string;
+        fechaFin: string | null;
+      }> = [];
+      const formacionesANuevas: Array<{
+        nivel: string;
+        tituloObtenido: string;
+        institucion: string;
+        fechaInicio: string;
+        fechaFin: string | null;
+      }> = [];
+
+      for (let index = 0; index < normalizedEditFormaciones.length; index += 1) {
+        const formacion = normalizedEditFormaciones[index];
+        const tieneDatos =
+          formacion.nivel.length > 0 ||
+          formacion.tituloObtenido.length > 0 ||
+          formacion.institucion.length > 0 ||
+          formacion.fechaInicio.length > 0 ||
+          formacion.fechaFin.length > 0;
+
+        if (!tieneDatos) {
+          continue;
+        }
+
+        const numeroFormacion = index + 1;
+
+        if (
+          !formacion.nivel ||
+          !formacion.tituloObtenido ||
+          !formacion.institucion ||
+          !formacion.fechaInicio
+        ) {
+          toast.error("Formación incompleta", {
+            description:
+              "Completá nivel, título, institución y fecha de inicio en la formación #" +
+              numeroFormacion +
+              " o eliminála si no querés guardarla.",
+          });
+          return;
+        }
+
+        if (
+          formacion.fechaFin &&
+          formacion.fechaFin.length > 0 &&
+          formacion.fechaFin < formacion.fechaInicio
+        ) {
+          toast.error("Fechas de formación inválidas", {
+            description:
+              "La fecha de fin no puede ser anterior a la de inicio en la formación #" +
+              numeroFormacion +
+              ".",
+          });
+          return;
+        }
+
+        const fechaFinNormalizada = formacion.fechaFin || null;
+
+        if (typeof formacion.id === "number") {
+          formacionesAActualizar.push({
+            id: formacion.id,
+            nivel: formacion.nivel,
+            tituloObtenido: formacion.tituloObtenido,
+            institucion: formacion.institucion,
+            fechaInicio: formacion.fechaInicio,
+            fechaFin: fechaFinNormalizada,
+          });
+        } else {
+          formacionesANuevas.push({
+            nivel: formacion.nivel,
+            tituloObtenido: formacion.tituloObtenido,
+            institucion: formacion.institucion,
+            fechaInicio: formacion.fechaInicio,
+            fechaFin: fechaFinNormalizada,
+          });
+        }
+      }
+
+      const formacionesAEliminar = editFormacionesToDelete.filter(
+        (id): id is number => typeof id === "number",
+      );
+
       setSavingEditPersonal(true);
       try {
         const personaPayload: Partial<PersonaUpdateDTO> = {
@@ -2711,7 +2861,7 @@ export default function PersonalPage() {
           estadoCivil,
           nacionalidad,
           domicilio,
-          telefono,
+          telefono: telefono || undefined,
           celular,
           email,
           cuil,
@@ -2736,6 +2886,63 @@ export default function PersonalPage() {
           observacionesGenerales:
             editEmpleado.observacionesGenerales?.trim() || undefined,
         });
+
+        for (const id of formacionesAEliminar) {
+          try {
+            await identidad.formaciones.delete(id);
+          } catch (formacionDeleteError: any) {
+            console.error("Error al eliminar formación", formacionDeleteError);
+            const description =
+              formacionDeleteError?.response?.data?.message ??
+              formacionDeleteError?.message ??
+              "No se pudo eliminar una formación académica.";
+            toast.error("Error al eliminar formación", { description });
+            return;
+          }
+        }
+
+        for (const formacion of formacionesAActualizar) {
+          try {
+            await identidad.formaciones.update(formacion.id, {
+              id: formacion.id,
+              empleadoId,
+              nivel: formacion.nivel,
+              tituloObtenido: formacion.tituloObtenido,
+              institucion: formacion.institucion,
+              fechaInicio: formacion.fechaInicio,
+              fechaFin: formacion.fechaFin,
+            });
+          } catch (formacionUpdateError: any) {
+            console.error("Error al actualizar formación", formacionUpdateError);
+            const description =
+              formacionUpdateError?.response?.data?.message ??
+              formacionUpdateError?.message ??
+              "No se pudo actualizar una formación académica.";
+            toast.error("Error al actualizar formación", { description });
+            return;
+          }
+        }
+
+        for (const formacion of formacionesANuevas) {
+          try {
+            await identidad.formaciones.create({
+              empleadoId,
+              nivel: formacion.nivel,
+              tituloObtenido: formacion.tituloObtenido,
+              institucion: formacion.institucion,
+              fechaInicio: formacion.fechaInicio,
+              fechaFin: formacion.fechaFin ?? null,
+            });
+          } catch (formacionCreateError: any) {
+            console.error("Error al crear formación", formacionCreateError);
+            const description =
+              formacionCreateError?.response?.data?.message ??
+              formacionCreateError?.message ??
+              "No se pudo registrar una formación académica.";
+            toast.error("Error al crear formación", { description });
+            return;
+          }
+        }
 
         try {
           await syncEmployeeAssignments({
@@ -2779,6 +2986,8 @@ export default function PersonalPage() {
       editMateriaIds,
       editSeccionDetails,
       editMateriaDetails,
+      editFormaciones,
+      editFormacionesToDelete,
       refreshData,
       syncEmployeeAssignments,
     ],
@@ -4401,7 +4610,6 @@ export default function PersonalPage() {
                           telefono: event.target.value,
                         }))
                       }
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -4648,6 +4856,149 @@ export default function PersonalPage() {
                       placeholder="Notas internas o consideraciones relevantes"
                       rows={3}
                     />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Formación académica
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Actualizá los estudios y certificaciones del personal.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {editFormaciones.map((formacion, index) => {
+                    const baseId = `editar-formacion-${index}`;
+                    const nivelId = `${baseId}-nivel`;
+                    const tituloId = `${baseId}-titulo`;
+                    const institucionId = `${baseId}-institucion`;
+                    const inicioId = `${baseId}-inicio`;
+                    const finId = `${baseId}-fin`;
+                    return (
+                      <div
+                        key={`editar-formacion-${formacion.id ?? index}`}
+                        className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <h4 className="text-sm font-semibold text-foreground">
+                            Formación {index + 1}
+                          </h4>
+                          {editFormaciones.length > 1 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeEditFormacionEntry(index)}
+                              className="h-8 px-2 text-sm"
+                            >
+                              <Trash2 className="mr-1.5 h-4 w-4" />
+                              Quitar
+                            </Button>
+                          ) : null}
+                        </div>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor={nivelId}>Nivel</Label>
+                            <Input
+                              id={nivelId}
+                              value={formacion.nivel}
+                              onChange={(event) =>
+                                updateEditFormacionEntry(index, {
+                                  nivel: event.target.value,
+                                })
+                              }
+                              placeholder="Terciario, Universitario, Posgrado…"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={tituloId}>Título principal</Label>
+                            <Input
+                              id={tituloId}
+                              value={formacion.tituloObtenido}
+                              onChange={(event) =>
+                                updateEditFormacionEntry(index, {
+                                  tituloObtenido: event.target.value,
+                                })
+                              }
+                              placeholder="Profesor/a en…"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={institucionId}>Institución</Label>
+                            <Input
+                              id={institucionId}
+                              value={formacion.institucion}
+                              onChange={(event) =>
+                                updateEditFormacionEntry(index, {
+                                  institucion: event.target.value,
+                                })
+                              }
+                              placeholder="Nombre de la institución"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={inicioId}>Fecha de inicio</Label>
+                            <Input
+                              id={inicioId}
+                              type="date"
+                              value={formacion.fechaInicio}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                updateEditFormacionEntry(index, {
+                                  fechaInicio: value,
+                                  fechaFin:
+                                    formacion.fechaFin &&
+                                    formacion.fechaFin < value
+                                      ? value
+                                      : formacion.fechaFin,
+                                });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={finId}>Fecha de finalización</Label>
+                            <Input
+                              id={finId}
+                              type="date"
+                              value={formacion.fechaFin}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                if (
+                                  value &&
+                                  formacion.fechaInicio &&
+                                  value < formacion.fechaInicio
+                                ) {
+                                  updateEditFormacionEntry(index, {
+                                    fechaFin: formacion.fechaInicio,
+                                  });
+                                  return;
+                                }
+                                updateEditFormacionEntry(index, {
+                                  fechaFin: value,
+                                });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addEditFormacionEntry}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Agregar otra formación
+                    </Button>
+                    <p className="text-xs text-muted-foreground sm:text-right">
+                      Las formaciones sin datos no se guardarán.
+                    </p>
                   </div>
                 </div>
               </section>
@@ -5045,7 +5396,6 @@ export default function PersonalPage() {
                         }))
                       }
                       placeholder="Teléfono fijo"
-                      required
                     />
                   </div>
                   <div className="space-y-2">

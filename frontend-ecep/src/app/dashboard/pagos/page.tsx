@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -1891,14 +1892,13 @@ export default function PagosPage() {
                     <Label htmlFor="fechaVencimiento">
                       Fecha de vencimiento
                     </Label>
-                    <Input
+                    <DatePicker
                       id="fechaVencimiento"
-                      type="date"
-                      value={createForm.fechaVencimiento}
-                      onChange={(event) =>
+                      value={createForm.fechaVencimiento || undefined}
+                      onChange={(value) =>
                         setCreateForm((prev) => ({
                           ...prev,
-                          fechaVencimiento: event.target.value,
+                          fechaVencimiento: value ?? "",
                         }))
                       }
                     />
@@ -2163,14 +2163,13 @@ export default function PagosPage() {
 
                     <div className="grid gap-2">
                       <Label htmlFor="fechaPago">Fecha de pago</Label>
-                      <Input
+                      <DatePicker
                         id="fechaPago"
-                        type="date"
-                        value={pagoForm.fecha}
-                        onChange={(event) =>
+                        value={pagoForm.fecha || undefined}
+                        onChange={(value) =>
                           setPagoForm((prev) => ({
                             ...prev,
-                            fecha: event.target.value,
+                            fecha: value ?? "",
                           }))
                         }
                       />

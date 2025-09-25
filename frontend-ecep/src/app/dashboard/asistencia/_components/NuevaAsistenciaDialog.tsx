@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -207,20 +207,21 @@ export default function NuevaAsistenciaDialog({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Fecha</Label>
-            <Input
-              type="date"
-              value={fecha}
+            <DatePicker
+              value={fecha || undefined}
               min={getTrimestreInicio(trimestre) || undefined}
               max={getTrimestreFin(trimestre) || undefined}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFecha(value);
+              onChange={(value) => {
+                const next = value ?? "";
+                setFecha(next);
                 if (!value) {
                   setDateError("Seleccioná una fecha");
                   return;
                 }
                 setDateError(computeDateError(value));
               }}
+              error={Boolean(dateError)}
+              required
             />
             {!dentro && (
               <p className="text-xs text-red-600 mt-1">Fuera del trimestre</p>

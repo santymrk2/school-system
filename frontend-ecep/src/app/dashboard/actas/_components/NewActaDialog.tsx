@@ -19,6 +19,7 @@ import type {
 } from "@/types/api-generated";
 import { RolEmpleado } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -438,12 +439,12 @@ export default function NewActaDialog({
                 <label className="text-sm font-medium text-foreground">
                   Fecha del suceso *
                 </label>
-                <Input
-                  type="date"
+                <DatePicker
                   min={min2DaysISO()}
                   max={todayISO()}
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
+                  value={fecha || undefined}
+                  onChange={(value) => setFecha(value ?? "")}
+                  required
                 />
               </div>
               <div className="space-y-2">

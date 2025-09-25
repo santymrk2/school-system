@@ -57,6 +57,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Edit, Plus, School, Clock3 } from "lucide-react";
@@ -486,13 +487,11 @@ export default function SeccionEvaluacionesPage() {
 
                   <div>
                     <label className="text-sm mb-1 block">Fecha</label>
-                    <Input
-                      type="date"
-                      value={fecha}
+                    <DatePicker
+                      value={fecha || undefined}
                       min={minDate}
                       max={maxDate}
-                      onChange={(e) => {
-                        const next = e.target.value;
+                      onChange={(next) => {
                         if (!next) {
                           setFecha(minDate);
                           return;
@@ -512,6 +511,7 @@ export default function SeccionEvaluacionesPage() {
                         }
                         setFecha(next);
                       }}
+                      required
                     />
                   </div>
 

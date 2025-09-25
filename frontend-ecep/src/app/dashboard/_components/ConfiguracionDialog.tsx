@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -678,22 +679,24 @@ function DireccionConfig({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Label>Desde</Label>
-                  <Input
-                    type="date"
-                    value={draft.inicio}
-                    onChange={(e) =>
-                      handleDraftChange(tri.id, "inicio", e.target.value)
+                  <DatePicker
+                    value={draft.inicio || undefined}
+                    max={draft.fin || undefined}
+                    onChange={(value) =>
+                      handleDraftChange(tri.id, "inicio", value ?? "")
                     }
+                    required
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Hasta</Label>
-                  <Input
-                    type="date"
-                    value={draft.fin}
-                    onChange={(e) =>
-                      handleDraftChange(tri.id, "fin", e.target.value)
+                  <DatePicker
+                    value={draft.fin || undefined}
+                    min={draft.inicio || undefined}
+                    onChange={(value) =>
+                      handleDraftChange(tri.id, "fin", value ?? "")
                     }
+                    required
                   />
                 </div>
               </div>

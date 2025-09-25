@@ -2,6 +2,7 @@
 "use client";
 import React from "react";
 import { User } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -102,16 +103,15 @@ export function Step1({
         {/* Fecha de Nacimiento */}
         <div>
           <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
-          <Input
+          <DatePicker
             id="fechaNacimiento"
-            type="date"
             max={maxBirthDate}
-            value={formData.fechaNacimiento || ""}
-            onChange={(e) =>
-              handleInputChange("fechaNacimiento", e.target.value)
+            value={formData.fechaNacimiento || undefined}
+            onChange={(value) =>
+              handleInputChange("fechaNacimiento", value ?? "")
             }
-            aria-invalid={errors.fechaNacimiento || undefined}
-            className={cn(errors.fechaNacimiento && "border-destructive")}
+            error={Boolean(errors.fechaNacimiento)}
+            required
           />
         </div>
 

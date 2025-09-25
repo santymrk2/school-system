@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { School, Clock3 } from "lucide-react";
@@ -582,10 +583,10 @@ export default function ExamenDetailPage() {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Fecha</label>
-                <Input
-                  type="date"
-                  value={editFecha}
-                  onChange={(e) => setEditFecha(e.target.value)}
+                <DatePicker
+                  value={editFecha || undefined}
+                  onChange={(value) => setEditFecha(value ?? "")}
+                  required
                 />
               </div>
             </div>

@@ -13,6 +13,7 @@ import type {
 } from "@/types/api-generated";
 import { RolEmpleado } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -288,10 +289,10 @@ export default function EditActaDialog({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm mb-1 block">Fecha del suceso</label>
-                <Input
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
+                <DatePicker
+                  value={fecha || undefined}
+                  onChange={(value) => setFecha(value ?? "")}
+                  required
                 />
               </div>
               <div>

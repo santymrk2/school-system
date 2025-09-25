@@ -165,7 +165,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Correo Electrónico</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -183,7 +183,7 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <Label htmlFor="password">Contraseña</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -196,7 +196,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {showPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -205,7 +205,7 @@ export default function LoginPage() {
                         )}
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Mínimo 8 caracteres, 2 números y 1 símbolo especial
                     </p>
                   </div>

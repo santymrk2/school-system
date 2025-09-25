@@ -472,7 +472,7 @@ export default function SeccionHistorialPage() {
                                       : "Trimestre no activo. Solo lectura"
                                   }
                                 >
-                                  <div className="flex items-center justify-between border rounded p-2 hover:bg-gray-50">
+                                  <div className="flex items-center justify-between border border-border rounded p-2 transition-colors hover:bg-muted">
                                     <div className="flex items-center gap-3">
                                       <Badge variant="outline">{fmt(d.fecha)}</Badge>
                                       <span className="text-sm">

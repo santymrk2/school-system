@@ -67,17 +67,23 @@ public class ActaAccidenteService {
             }
         }
 
+        Empleado previousFirmante = acta.getFirmante();
+
         validateFirmante(dto.firmanteId());
 
-        Long resolvedFirmanteId = dto.firmanteId() != null
+        Long firmanteForEstadoFirmada = dto.firmanteId() != null
                 ? dto.firmanteId()
-                : acta.getFirmante() != null ? acta.getFirmante().getId() : null;
+                : previousFirmante != null ? previousFirmante.getId() : null;
 
-        if (dto.estado() == EstadoActaAccidente.FIRMADA && resolvedFirmanteId == null) {
+        if (dto.estado() == EstadoActaAccidente.FIRMADA && firmanteForEstadoFirmada == null) {
             throw new IllegalArgumentException("El acta firmada debe tener una dirección asignada como firmante");
         }
 
         mapper.applyUpdate(acta, dto);
+
+        if (dto.firmanteId() == null && dto.estado() == EstadoActaAccidente.FIRMADA && previousFirmante != null) {
+            acta.setFirmante(previousFirmante);
+        }
         repo.save(acta);
     }
 

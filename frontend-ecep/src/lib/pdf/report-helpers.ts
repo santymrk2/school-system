@@ -21,12 +21,14 @@ export type ReportRenderParams = {
   metadataTitle?: string;
 };
 
-const REPORT_MARGIN_X = 48;
-const REPORT_MARGIN_TOP = 64;
+const REPORT_MARGIN_X = 40;
+const REPORT_MARGIN_TOP = 56;
+const TABLE_FONT_SIZE = 9;
+const TABLE_CELL_PADDING = 5;
 
 const ensureCursorPosition = (doc: jsPDF, cursorY: number) => {
   const pageHeight = doc.internal.pageSize.getHeight();
-  if (cursorY <= pageHeight - 120) {
+  if (cursorY <= pageHeight - 96) {
     return cursorY;
   }
 
@@ -58,8 +60,8 @@ const renderKeyValueSection = (
     body: pairs.map((pair) => [pair.label, pair.value]),
     styles: {
       font: "helvetica",
-      fontSize: 10,
-      cellPadding: 6,
+      fontSize: TABLE_FONT_SIZE,
+      cellPadding: TABLE_CELL_PADDING,
     },
     headStyles: {
       fillColor: [226, 232, 240],
@@ -73,7 +75,7 @@ const renderKeyValueSection = (
   });
 
   const finalY = (doc as any).lastAutoTable?.finalY ?? cursorY + 24;
-  return finalY + 16;
+  return finalY + 12;
 };
 
 const renderTableSection = (
@@ -113,8 +115,8 @@ const renderTableSection = (
     body,
     styles: {
       font: "helvetica",
-      fontSize: 10,
-      cellPadding: 6,
+      fontSize: TABLE_FONT_SIZE,
+      cellPadding: TABLE_CELL_PADDING,
     },
     headStyles: {
       fillColor: [226, 232, 240],
@@ -129,7 +131,7 @@ const renderTableSection = (
   });
 
   const finalY = (doc as any).lastAutoTable?.finalY ?? cursorY + 24;
-  return finalY + 16;
+  return finalY + 12;
 };
 
 export const renderInstitutionalReport = (doc: jsPDF, params: ReportRenderParams) => {

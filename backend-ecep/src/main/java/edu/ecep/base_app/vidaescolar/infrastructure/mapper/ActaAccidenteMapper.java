@@ -29,6 +29,8 @@ public interface ActaAccidenteMapper {
     void update(@MappingTarget ActaAccidente e, ActaAccidenteDTO dto);
 
     @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "alumno", source = "alumnoId")
+    @Mapping(target = "informante", source = "informanteId")
     @Mapping(target = "fechaSuceso", source = "fechaSuceso")
     @Mapping(target = "horaSuceso", source = "horaSuceso")
     @Mapping(target = "lugar", source = "lugar")

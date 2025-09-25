@@ -8,6 +8,8 @@ import edu.ecep.base_app.vidaescolar.domain.enums.EstadoActaAccidente;
 
 
 public record ActaAccidenteUpdateDTO(
+        @NotNull Long alumnoId,
+        @NotNull Long informanteId,
         @NotNull LocalDate fechaSuceso,
         @NotNull LocalTime horaSuceso,
         @NotBlank String lugar,

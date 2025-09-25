@@ -245,7 +245,9 @@ type ActaRegistro = {
   description: string;
   actions: string;
   informant: string;
+  informantDni?: string | null;
   signer?: string;
+  signerDni?: string | null;
   signed: boolean;
   familyName?: string | null;
   familyDni?: string | null;
@@ -396,7 +398,10 @@ export default function ReportesPage() {
   const [activeBoletin, setActiveBoletin] = useState<BoletinStudent | null>(null);
   const [exportingBoletin, setExportingBoletin] = useState(false);
   const [empleadoMap, setEmpleadoMap] = useState<
-    Record<number, { name: string; cargo?: string; situacion?: string }>
+    Record<
+      number,
+      { name: string; cargo?: string; situacion?: string; dni?: string | null }
+    >
   >({});
   const [personalSummary, setPersonalSummary] = useState({
     total: 0,
@@ -967,7 +972,10 @@ export default function ReportesPage() {
         if (!alive) return;
         const personaMap = new Map<number, any>(entries as any);
 
-        const map: Record<number, { name: string; cargo?: string; situacion?: string }> = {};
+        const map: Record<
+          number,
+          { name: string; cargo?: string; situacion?: string; dni?: string | null }
+        > = {};
         let activos = 0;
         let enLicencia = 0;
 
@@ -989,6 +997,7 @@ export default function ReportesPage() {
             name: nombre || `Empleado #${emp.id}`,
             cargo: emp.cargo ?? undefined,
             situacion,
+            dni: persona?.dni ?? null,
           };
         });
 
@@ -1449,7 +1458,9 @@ export default function ReportesPage() {
             description: acta.descripcion ?? "Sin descripción registrada.",
             actions: acta.acciones ?? "Sin acciones registradas.",
             informant: informant?.name ?? "Sin informante",
+            informantDni: informant?.dni ?? null,
             signer: signer?.name,
+            signerDni: signer?.dni ?? null,
             signed: acta.estado === EstadoActaAccidente.CERRADA,
             familyName: alumnoInfo?.familyName ?? null,
             familyDni: alumnoInfo?.familyDni ?? null,
@@ -3216,13 +3227,11 @@ const handleExportCurrent = async () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-muted-foreground">Fecha</span>
-                    <p className="font-medium">{activeActa.date}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Horario</span>
-                    <p className="font-medium">{activeActa.time}</p>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Fecha y horario</span>
+                    <p className="font-medium">
+                      {activeActa.date} • {activeActa.time}
+                    </p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Lugar</span>
@@ -3234,13 +3243,23 @@ const handleExportCurrent = async () => {
                       {activeActa.signed ? "Firmada" : "No firmada"}
                     </Badge>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Informante</span>
-                    <p className="font-medium">{activeActa.informant}</p>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Docente responsable</span>
+                    <p className="font-medium">
+                      {activeActa.informant}
+                      {activeActa.informantDni
+                        ? ` (DNI ${activeActa.informantDni})`
+                        : ""}
+                    </p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Firmante</span>
-                    <p className="font-medium">{activeActa.signer ?? "—"}</p>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Dirección / Firmante</span>
+                    <p className="font-medium">
+                      {activeActa.signer ?? "Pendiente de asignación"}
+                      {activeActa.signerDni
+                        ? ` (DNI ${activeActa.signerDni})`
+                        : ""}
+                    </p>
                   </div>
                 </div>
                 <div>
@@ -3274,9 +3293,10 @@ const handleExportCurrent = async () => {
                                 lugar: activeActa.location,
                                 descripcion: activeActa.description,
                                 acciones: activeActa.actions,
-                                creadoPor: activeActa.teacher,
                                 informante: activeActa.informant,
+                                informanteDni: activeActa.informantDni,
                                 firmante: activeActa.signer ?? undefined,
+                                firmanteDni: activeActa.signerDni,
                                 familiar: activeActa.familyName,
                                 familiarDni: activeActa.familyDni,
                               },

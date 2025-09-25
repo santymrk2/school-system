@@ -57,6 +57,14 @@ export default function ViewActaDialog({
 }) {
   const [downloading, setDownloading] = useState(false);
   const isCerrada = String(acta.estado).toUpperCase() === "CERRADA";
+  const docenteResponsable = acta.informante
+    ? `${acta.informante}${
+        acta.informanteDni ? ` (DNI ${acta.informanteDni})` : ""
+      }`
+    : "—";
+  const direccionFirmante = acta.firmante
+    ? `${acta.firmante}${acta.firmanteDni ? ` (DNI ${acta.firmanteDni})` : ""}`
+    : "Pendiente de asignación";
 
   const handleDownload = async () => {
     if (downloading) return;
@@ -106,7 +114,7 @@ export default function ViewActaDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <b>Alumno:</b> {acta.alumno}
             </div>
@@ -122,11 +130,8 @@ export default function ViewActaDialog({
             <div>
               <b>DNI del familiar:</b> {acta.familiarDni ?? "—"}
             </div>
-            <div>
-              <b>Fecha:</b> {acta.fecha}
-            </div>
-            <div>
-              <b>Hora:</b> {acta.hora ?? "—"}
+            <div className="sm:col-span-2">
+              <b>Fecha y horario:</b> {acta.fecha} • {acta.hora ?? "—"}
             </div>
             <div>
               <b>Lugar:</b> {acta.lugar ?? "—"}
@@ -134,11 +139,11 @@ export default function ViewActaDialog({
             <div>
               <b>Estado:</b> {String(acta.estado)}
             </div>
-            <div>
-              <b>Informante:</b> {acta.informante ?? "—"}
+            <div className="sm:col-span-2">
+              <b>Docente responsable:</b> {docenteResponsable}
             </div>
-            <div>
-              <b>Firmante:</b> {acta.firmante ?? "—"}
+            <div className="sm:col-span-2">
+              <b>Dirección / Firmante:</b> {direccionFirmante}
             </div>
           </div>
 

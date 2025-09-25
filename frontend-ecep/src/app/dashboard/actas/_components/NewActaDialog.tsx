@@ -19,7 +19,6 @@ import type {
 } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -224,7 +223,8 @@ export default function NewActaDialog({
                   .getById(e.personaId)
                   .then((r) => r.data);
                 const nom = `${p?.apellido ?? ""} ${p?.nombre ?? ""}`.trim();
-                if (nom) display = nom;
+                const dni = (p?.dni ?? "").trim();
+                if (nom) display = dni ? `${nom} — DNI ${dni}` : nom;
               } catch {
                 /* noop */
               }
@@ -352,10 +352,12 @@ export default function NewActaDialog({
         {loading ? (
           <LoadingState label="Cargando información…" />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5 text-sm">
             {/* Alumno (autocomplete) */}
-            <div>
-              <Label>Alumno *</Label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Alumno *
+              </label>
               <Input
                 placeholder="Buscar: Apellido, Nombre — Sección"
                 value={alumnoQuery}
@@ -364,22 +366,22 @@ export default function NewActaDialog({
                   setAlumnoId(null);
                 }}
               />
-              <div className="mt-1 border rounded max-h-44 overflow-auto">
+              <div className="border rounded max-h-40 overflow-auto text-sm">
                 {suggestions.map((s) => (
                   <div
                     key={s.id}
-                    className={`px-2 py-1 cursor-pointer hover:bg-accent text-sm ${alumnoId === s.id ? "bg-accent" : ""}`}
+                    className={`px-2 py-1 cursor-pointer hover:bg-accent ${alumnoId === s.id ? "bg-accent" : ""}`}
                     onClick={() => pickAlumno(s.id)}
                   >
                     {s.display}
                   </div>
                 ))}
                 {needsQueryHint ? (
-                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                  <div className="px-2 py-1 text-muted-foreground">
                     Escribí al menos 2 letras para buscar.
                   </div>
                 ) : suggestions.length === 0 ? (
-                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                  <div className="px-2 py-1 text-muted-foreground">
                     Sin resultados…
                   </div>
                 ) : null}
@@ -391,9 +393,11 @@ export default function NewActaDialog({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Fecha del suceso *</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Fecha del suceso *
+                </label>
                 <Input
                   type="date"
                   min={min2DaysISO()}
@@ -402,8 +406,10 @@ export default function NewActaDialog({
                   onChange={(e) => setFecha(e.target.value)}
                 />
               </div>
-              <div>
-                <Label>Hora (24h) *</Label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Hora (24h) *
+                </label>
                 <Input
                   type="time"
                   value={hora}
@@ -412,17 +418,21 @@ export default function NewActaDialog({
               </div>
             </div>
 
-            <div>
-              <Label>Descripción del suceso *</Label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Descripción del suceso *
+              </label>
               <Textarea
-                rows={4}
+                rows={3}
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
               />
             </div>
 
-            <div>
-              <Label>Lugar del suceso *</Label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Lugar del suceso *
+              </label>
               <Input
                 value={lugar}
                 onChange={(e) => setLugar(e.target.value)}
@@ -430,8 +440,10 @@ export default function NewActaDialog({
               />
             </div>
 
-            <div>
-              <Label>Acciones realizadas *</Label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Acciones realizadas *
+              </label>
               <Textarea
                 rows={3}
                 value={acciones}
@@ -440,8 +452,10 @@ export default function NewActaDialog({
             </div>
 
             {mode === "global" && (
-              <div>
-                <Label>Firmante (empleado) — opcional</Label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Firmante (empleado) — opcional
+                </label>
                 <Select
                   value={
                     firmadoPorEmpleadoId ? String(firmadoPorEmpleadoId) : ""
@@ -462,7 +476,7 @@ export default function NewActaDialog({
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
@@ -470,21 +484,8 @@ export default function NewActaDialog({
               >
                 Cancelar
               </Button>
-              <Button
-                onClick={submit}
-                disabled={
-                  submitting ||
-                  !alumnoId ||
-                  !fecha ||
-                  fecha < min2DaysISO() ||
-                  fecha > todayISO() ||
-                  !hora.trim() ||
-                  !lugar.trim() ||
-                  !descripcion.trim() ||
-                  !acciones.trim()
-                }
-              >
-                {submitting ? "Guardando…" : "Registrar Acta"}
+              <Button onClick={submit} disabled={submitting}>
+                {submitting ? "Guardando…" : "Registrar acta"}
               </Button>
             </div>
           </div>

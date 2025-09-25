@@ -13,7 +13,9 @@ export type AccidentActPdfData = {
   acciones?: string | null;
   creadoPor?: string | null;
   informante?: string | null;
+  informanteDni?: string | null;
   firmante?: string | null;
+  firmanteDni?: string | null;
   familiar?: string | null;
   familiarDni?: string | null;
 };
@@ -34,6 +36,22 @@ const fallback = (value: string | number | null | undefined, defaultValue = "—
   return text.length > 0 ? text : defaultValue;
 };
 
+const formatPersonWithDni = (
+  name?: string | null,
+  dni?: string | null,
+  emptyFallback = "",
+) => {
+  const formattedName = formatText(name);
+  const formattedDni = formatText(dni);
+  if (!formattedName && !formattedDni) {
+    return emptyFallback;
+  }
+  if (!formattedName) {
+    return formattedDni ? `DNI ${formattedDni}` : emptyFallback;
+  }
+  return formattedDni ? `${formattedName} — DNI ${formattedDni}` : formattedName;
+};
+
 const drawStatusBadge = (doc: jsPDF, label: string, x: number, y: number) => {
   const paddingX = 12;
   const paddingY = 6;
@@ -51,32 +69,39 @@ const drawStatusBadge = (doc: jsPDF, label: string, x: number, y: number) => {
   doc.setTextColor(15, 23, 42);
 };
 
-const drawHighlightedBox = (doc: jsPDF, label: string, value: string, x: number, y: number, width: number) => {
-  const padding = 14;
-  const height = 60;
+const drawHighlightedBox = (
+  doc: jsPDF,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+) => {
+  const padding = 12;
+  const height = 44;
 
   doc.setFillColor(240, 249, 255);
   doc.setDrawColor(191, 219, 254);
-  doc.roundedRect(x, y, width, height, 12, 12, "FD");
+  doc.roundedRect(x, y, width, height, 10, 10, "FD");
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(29, 78, 216);
+  doc.setTextColor(37, 99, 235);
   doc.text(label.toUpperCase(), x + padding, y + padding);
 
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setTextColor(15, 23, 42);
-  doc.text(value, x + padding, y + padding + 24);
+  doc.text(value, x + padding, y + padding + 18);
 
-  return y + height + 18;
+  return y + height + 14;
 };
 
 const drawSectionTitle = (doc: jsPDF, title: string, x: number, y: number) => {
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 41, 59);
   doc.text(title.toUpperCase(), x, y);
-  return y + 14;
+  return y + 12;
 };
 
 const drawTextBox = (
@@ -87,7 +112,7 @@ const drawTextBox = (
   y: number,
   width: number,
 ) => {
-  const padding = 14;
+  const padding = 12;
   const maxWidth = width - padding * 2;
   const content = text.trim().length > 0 ? text : emptyMessage;
   const isEmpty = text.trim().length === 0;
@@ -97,13 +122,13 @@ const drawTextBox = (
 
   paragraphs.forEach((paragraph, index) => {
     const lines = doc.splitTextToSize(paragraph, maxWidth);
-    totalHeight += lines.length * 14;
+    totalHeight += lines.length * 12;
     if (index < paragraphs.length - 1) {
-      totalHeight += 6;
+      totalHeight += 4;
     }
   });
 
-  const height = Math.max(totalHeight, 56);
+  const height = Math.max(totalHeight, 48);
 
   doc.setDrawColor(226, 232, 240);
   doc.setFillColor(isEmpty ? 248 : 255, isEmpty ? 250 : 255, isEmpty ? 252 : 255);
@@ -111,73 +136,86 @@ const drawTextBox = (
   doc.roundedRect(x, y, width, height, 14, 14, "D");
 
   doc.setFont("helvetica", isEmpty ? "italic" : "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(isEmpty ? 148 : 30, isEmpty ? 163 : 41, isEmpty ? 184 : 59);
+  doc.setFontSize(10);
+  doc.setTextColor(isEmpty ? 148 : 31, isEmpty ? 163 : 41, isEmpty ? 184 : 59);
 
-  let cursorY = y + padding + 4;
+  let cursorY = y + padding + 2;
   paragraphs.forEach((paragraph, index) => {
     const lines = doc.splitTextToSize(paragraph, maxWidth);
     lines.forEach((line) => {
       doc.text(line, x + padding, cursorY, { baseline: "top" });
-      cursorY += 14;
+      cursorY += 12;
     });
     if (index < paragraphs.length - 1) {
-      cursorY += 6;
+      cursorY += 4;
     }
   });
 
   doc.setFont("helvetica", "normal");
   doc.setTextColor(15, 23, 42);
 
-  return y + height + 16;
+  return y + height + 12;
 };
 
-const drawSignatureBox = (
+const drawDualSignatureRow = (
   doc: jsPDF,
-  signer: string,
+  left: { title: string; name: string; dni?: string | null; note?: string };
+  right: { title: string; name: string; dni?: string | null; note?: string };
   x: number,
   y: number,
   width: number,
 ) => {
-  const padding = 16;
-  const height = 140;
+  const gap = 24;
+  const boxWidth = (width - gap) / 2;
+  const height = 96;
+  const padding = 12;
+  const lineYOffset = 26;
 
-  doc.setDrawColor(37, 99, 235);
-  doc.setLineWidth(1);
-  doc.setLineDash([4, 4]);
-  doc.roundedRect(x, y, width, height, 16, 16, "D");
-  doc.setLineDash();
+  const drawBox = (
+    baseX: number,
+    data: { title: string; name: string; dni?: string | null; note?: string },
+  ) => {
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(baseX, y, boxWidth, height, 10, 10, "D");
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("FIRMA DE CONFORMIDAD", x + padding, y + padding);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(data.title.toUpperCase(), baseX + padding, y + padding);
 
-  const lineY = y + padding + 54;
-  doc.setDrawColor(148, 163, 184);
-  doc.setLineWidth(1.5);
-  doc.line(x + padding, lineY, x + width - padding, lineY);
+    const lineY = y + height - lineYOffset;
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(1);
+    doc.line(baseX + padding, lineY, baseX + boxWidth - padding, lineY);
 
-  doc.setFontSize(12);
-  doc.setTextColor(15, 23, 42);
-  doc.text(signer, x + width / 2, lineY + 20, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(data.name, baseX + boxWidth / 2, lineY + 14, { align: "center" });
 
-  doc.setFontSize(10);
-  doc.setTextColor(71, 85, 105);
-  doc.text("Responsable / Firmante asignado", x + width / 2, lineY + 38, {
-    align: "center",
-  });
+    if (data.dni) {
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`DNI ${data.dni}`, baseX + boxWidth / 2, lineY + 26, {
+        align: "center",
+      });
+    }
 
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.text(
-    "Al firmar, la persona responsable confirma la veracidad de la información asentada en el acta.",
-    x + width / 2,
-    lineY + 60,
-    { align: "center", maxWidth: width - padding * 2 },
-  );
+    if (data.note) {
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(data.note, baseX + boxWidth / 2, lineY + 38, {
+        align: "center",
+      });
+    }
 
-  doc.setTextColor(15, 23, 42);
-  return y + height + 16;
+    doc.setTextColor(15, 23, 42);
+  };
+
+  drawBox(x, left);
+  drawBox(x + boxWidth + gap, right);
+
+  return y + height + 12;
 };
 
 const autoTableFromEntries = (
@@ -211,12 +249,12 @@ const autoTableFromEntries = (
     theme: "grid",
     styles: {
       font: "helvetica",
-      fontSize: 10,
-      cellPadding: 8,
+      fontSize: 9,
+      cellPadding: 5,
     },
   });
 
-  return (doc as any).lastAutoTable.finalY + 16;
+  return (doc as any).lastAutoTable.finalY + 12;
 };
 
 export const renderAccidentActPdf = (
@@ -224,8 +262,8 @@ export const renderAccidentActPdf = (
   acta: AccidentActPdfData,
   { statusLabel, generatedAt }: AccidentActPdfOptions = {},
 ) => {
-  const marginX = 48;
-  let cursorY = 64;
+  const marginX = 44;
+  let cursorY = 52;
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentWidth = pageWidth - marginX * 2;
 
@@ -245,14 +283,14 @@ export const renderAccidentActPdf = (
   });
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(20);
   doc.setTextColor(15, 23, 42);
   doc.text(`Acta de Accidente #${idLabel}`, marginX, cursorY);
 
-  doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 116, 139);
-  doc.text("Registro institucional", marginX, cursorY + 16);
+  doc.setFontSize(10);
+  doc.setTextColor(71, 85, 105);
+  doc.text("Acta de la Escuela Complejo Evangelico Pilar", marginX, cursorY + 14);
 
   const badgeX = pageWidth - marginX;
   if (statusIsClosed) {
@@ -276,6 +314,7 @@ export const renderAccidentActPdf = (
   }
   doc.setTextColor(15, 23, 42);
 
+  cursorY += 24;
   cursorY = drawHighlightedBox(
     doc,
     "Alumno involucrado",
@@ -285,16 +324,21 @@ export const renderAccidentActPdf = (
       return dni ? `${nombre} • DNI ${dni}` : nombre;
     })(),
     marginX,
-    cursorY + 30,
+    cursorY,
     contentWidth,
   );
+
+  const fechaHoraValor = (() => {
+    const fecha = fallback(acta.fecha);
+    const hora = fallback(acta.hora);
+    return hora === "—" ? fecha : `${fecha} • ${hora}`;
+  })();
 
   const primaryDetails = [
     { label: "Alumno", value: fallback(acta.alumno, "Alumno sin registrar") },
     { label: "DNI del alumno", value: fallback(acta.alumnoDni) },
     { label: "Sección", value: fallback(acta.seccion) },
-    { label: "Fecha del suceso", value: fallback(acta.fecha) },
-    { label: "Hora", value: fallback(acta.hora) },
+    { label: "Fecha y horario", value: fechaHoraValor },
     { label: "Lugar", value: fallback(acta.lugar) },
     { label: "Estado", value: fallback(effectiveStatus) },
   ];
@@ -302,9 +346,18 @@ export const renderAccidentActPdf = (
   cursorY = autoTableFromEntries(doc, primaryDetails, cursorY, "Datos principales", marginX, contentWidth);
 
   const participantDetails = [
-    { label: "Creada por", value: formatText(acta.creadoPor) },
-    { label: "Informante", value: formatText(acta.informante) },
-    { label: "Firmante", value: formatText(acta.firmante) },
+    {
+      label: "Docente responsable",
+      value: formatPersonWithDni(acta.informante, acta.informanteDni),
+    },
+    {
+      label: "Dirección / Firmante",
+      value: formatPersonWithDni(
+        acta.firmante,
+        acta.firmanteDni,
+        "Pendiente de asignación",
+      ),
+    },
   ].filter((entry) => entry.value.length > 0);
 
   if (participantDetails.length > 0) {
@@ -353,10 +406,21 @@ export const renderAccidentActPdf = (
     contentWidth,
   );
 
-  cursorY = drawSectionTitle(doc, "Firma", marginX, cursorY);
-  cursorY = drawSignatureBox(
+  cursorY = drawSectionTitle(doc, "Firmas", marginX, cursorY);
+  cursorY = drawDualSignatureRow(
     doc,
-    formatText(acta.firmante) || "Pendiente de asignación",
+    {
+      title: "Docente responsable",
+      name: formatText(acta.informante) || "Pendiente de asignación",
+      dni: formatText(acta.informanteDni) || undefined,
+      note: "Firma y aclaración",
+    },
+    {
+      title: "Dirección",
+      name: formatText(acta.firmante) || "Pendiente de asignación",
+      dni: formatText(acta.firmanteDni) || undefined,
+      note: "Dirección del establecimiento",
+    },
     marginX,
     cursorY,
     contentWidth,
@@ -365,6 +429,6 @@ export const renderAccidentActPdf = (
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Generado el ${generatedLabel}`, marginX, cursorY + 8);
-  doc.text(`ID interno: ${idLabel}`, pageWidth - marginX, cursorY + 8, { align: "right" });
+  doc.text(`Generado el ${generatedLabel}`, marginX, cursorY + 6);
+  doc.text(`ID interno: ${idLabel}`, pageWidth - marginX, cursorY + 6, { align: "right" });
 };

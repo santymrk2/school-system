@@ -56,6 +56,7 @@ import type {
   SeccionDTO,
   EstadoActaAccidente,
   EmpleadoDTO,
+  PersonaDTO,
 } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 
@@ -77,7 +78,9 @@ type ActaVM = {
   creadoPor?: string | null;
   acciones?: string | null;
   informante?: string | null;
+  informanteDni?: string | null;
   firmante?: string | null;
+  firmanteDni?: string | null;
   informanteId?: number | null;
   firmanteId?: number | null;
 };
@@ -117,6 +120,9 @@ export default function AccidentesIndexPage() {
   const [secciones, setSecciones] = useState<SeccionDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [personal, setPersonal] = useState<EmpleadoDTO[]>([]);
+  const [personalPersonas, setPersonalPersonas] = useState<
+    Map<number, PersonaDTO | null>
+  >(new Map());
 
   // maps auxiliares
   const [alumnoInfo, setAlumnoInfo] = useState<Map<number, AlumnoExtendedInfo>>(
@@ -192,6 +198,75 @@ export default function AccidentesIndexPage() {
       alive = false;
     };
   }, [periodoEscolarId]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!personal.length) {
+        if (alive) setPersonalPersonas(new Map());
+        return;
+      }
+
+      const personaIds = Array.from(
+        new Set(
+          personal
+            .map((p) => p.personaId ?? null)
+            .filter((id): id is number => Number.isFinite(id)),
+        ),
+      );
+
+      if (!personaIds.length) {
+        if (alive) setPersonalPersonas(new Map());
+        return;
+      }
+
+      try {
+        const personaMap = new Map<number, PersonaDTO | null>();
+        try {
+          const res = await identidad.personasCore.getManyById(personaIds);
+          const list = Array.isArray(res.data) ? (res.data as PersonaDTO[]) : [];
+          for (const persona of list) {
+            if (persona?.id != null) {
+              personaMap.set(persona.id, persona);
+            }
+          }
+        } catch {
+          // noop, fallback abajo
+        }
+
+        const missing = personaIds.filter((id) => !personaMap.has(id));
+        if (missing.length) {
+          const entries = await Promise.all(
+            missing.map(async (id) => {
+              try {
+                const res = await identidad.personasCore.getById(id);
+                return [id, res.data ?? null] as const;
+              } catch {
+                return [id, null] as const;
+              }
+            }),
+          );
+          for (const [id, persona] of entries) {
+            personaMap.set(id, persona);
+          }
+        }
+
+        const pairs = personal.map((emp) => {
+          const persona =
+            emp.personaId != null ? personaMap.get(emp.personaId) ?? null : null;
+          return [emp.id, persona] as const;
+        });
+
+        if (alive) setPersonalPersonas(new Map(pairs));
+      } catch {
+        if (alive) setPersonalPersonas(new Map());
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [personal]);
 
   // alumnoId -> nombre "Apellido, Nombre" (vía Alumno → Persona)
   useEffect(() => {
@@ -276,18 +351,27 @@ export default function AccidentesIndexPage() {
     };
   }, [secciones, hoyISO]);
 
-  const personalDisplayById = useMemo(() => {
-    const map = new Map<number, string>();
+  const personalInfoById = useMemo(() => {
+    const map = new Map<number, { label: string; dni?: string | null }>();
     const items = Array.isArray(personal) ? personal : [];
     for (const p of items as any[]) {
+      if (p?.id == null) continue;
+      const persona = personalPersonas.get(p.id) ?? null;
+      const nombrePersona = `${persona?.apellido ?? ""} ${persona?.nombre ?? ""}`
+        .trim()
+        .replace(/\s+/g, " ");
+      const fallbackNombre = `${p.apellido ?? ""} ${p.nombre ?? ""}`
+        .trim()
+        .replace(/\s+/g, " ");
       const label =
-        `${p.apellido ?? ""} ${p.nombre ?? ""}`.trim() ||
-        p.nombreCompleto ||
+        nombrePersona ||
+        fallbackNombre ||
+        (p as any)?.nombreCompleto ||
         `Empleado #${p.id}`;
-      if (p.id != null) map.set(p.id, label);
+      map.set(p.id, { label, dni: persona?.dni ?? null });
     }
     return map;
-  }, [personal]);
+  }, [personal, personalPersonas]);
 
   // VM
   const actasVM: ActaVM[] = useMemo(() => {
@@ -295,6 +379,12 @@ export default function AccidentesIndexPage() {
       const info = alumnoInfo.get(a.alumnoId) ?? null;
       const alumnoLabel = info?.name ?? `Alumno #${a.alumnoId}`;
       const seccion = alumnoSeccion.get(a.alumnoId) ?? info?.section ?? null;
+      const informanteInfo =
+        a.informanteId != null ? personalInfoById.get(a.informanteId) : undefined;
+      const firmanteId = (a as any).firmanteId ?? null;
+      const firmanteInfo =
+        firmanteId != null ? personalInfoById.get(firmanteId) : undefined;
+
       return {
         id: a.id,
         alumnoId: a.alumnoId,
@@ -310,13 +400,15 @@ export default function AccidentesIndexPage() {
         acciones: (a as any).acciones ?? null,
         estado: String((a as any).estado ?? ""),
         creadoPor: (a as any).creadoPor ?? null,
-        informante: personalDisplayById.get(a.informanteId ?? 0) ?? undefined,
-        firmante: personalDisplayById.get((a as any).firmanteId ?? 0) ?? undefined,
+        informante: informanteInfo?.label ?? undefined,
+        informanteDni: informanteInfo?.dni ?? null,
+        firmante: firmanteInfo?.label ?? undefined,
+        firmanteDni: firmanteInfo?.dni ?? null,
         informanteId: a.informanteId ?? null,
-        firmanteId: (a as any).firmanteId ?? null,
+        firmanteId: firmanteId ?? null,
       } satisfies ActaVM;
     });
-  }, [actas, alumnoInfo, alumnoSeccion, personalDisplayById]);
+  }, [actas, alumnoInfo, alumnoSeccion, personalInfoById]);
 
   // opciones de filtro por alumno
   const alumnoOptions = useMemo(() => {
@@ -409,9 +501,15 @@ export default function AccidentesIndexPage() {
       );
       return;
     }
+    if (target.alumnoId == null || target.informanteId == null) {
+      toast.error("El acta no tiene asignado un alumno o docente responsable.");
+      return;
+    }
     try {
       setMarkingId(id);
       await vidaEscolar.actasAccidente.update(id, {
+        alumnoId: target.alumnoId,
+        informanteId: target.informanteId,
         fechaSuceso: target.fechaSuceso ?? todayISO(),
         horaSuceso: target.horaSuceso ?? "00:00",
         lugar: target.lugar ?? "",

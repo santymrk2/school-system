@@ -9,6 +9,7 @@ import type {
   EstadoActaAccidente,
   EmpleadoDTO,
   PersonaDTO,
+  AlumnoDTO,
 } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
+type PersonaAlumno = { id: number; display: string };
+
 export default function EditActaDialog({
   acta,
   onClose,
@@ -45,6 +48,11 @@ export default function EditActaDialog({
   const [personal, setPersonal] = useState<EmpleadoDTO[]>([]);
   const [personaMap, setPersonaMap] = useState<Map<number, PersonaDTO | null>>(
     new Map(),
+  );
+  const [alumnos, setAlumnos] = useState<PersonaAlumno[]>([]);
+  const [alumnoId, setAlumnoId] = useState<number | null>(acta.alumnoId ?? null);
+  const [alumnoQuery, setAlumnoQuery] = useState<string>(
+    acta.alumnoId != null ? `Alumno #${acta.alumnoId}` : "",
   );
 
   // form
@@ -63,7 +71,10 @@ export default function EditActaDialog({
     (async () => {
       try {
         setLoading(true);
-        const persRes = await identidad.empleados.list();
+        const [persRes, alumnosRes] = await Promise.all([
+          identidad.empleados.list(),
+          identidad.alumnos.list().catch(() => ({ data: [] })),
+        ]);
         const pers = pageContent<EmpleadoDTO>(persRes.data);
         if (!alive) return;
 
@@ -84,6 +95,38 @@ export default function EditActaDialog({
 
         setPersonal(pers);
         setPersonaMap(new Map(entries));
+
+        const alumnoItems = pageContent<AlumnoDTO>(alumnosRes.data)
+          .map((alumno) => {
+            const id = alumno?.id ?? null;
+            if (id == null) return null;
+            const lastName = (alumno.apellido ?? "").trim();
+            const firstName = (alumno.nombre ?? "").trim();
+            const fullName =
+              lastName && firstName
+                ? `${lastName}, ${firstName}`
+                : (lastName || firstName || "").trim();
+            const seccion = (alumno.seccionActualNombre ?? "").trim() || "Sin sección";
+            return {
+              id,
+              display: `${fullName || `Alumno #${id}`} — ${seccion}`,
+            } satisfies PersonaAlumno;
+          })
+          .filter(Boolean) as PersonaAlumno[];
+
+        const sortedAlumnos = alumnoItems.sort((a, b) =>
+          a.display.localeCompare(b.display, "es"),
+        );
+
+        const selectedId = acta.alumnoId ?? null;
+        const selectedAlumno = sortedAlumnos.find((item) => item.id === selectedId);
+
+        setAlumnos(sortedAlumnos);
+        setAlumnoId(selectedId);
+        setAlumnoQuery(
+          selectedAlumno?.display ??
+            (selectedId != null ? `Alumno #${selectedId}` : ""),
+        );
       } finally {
         if (alive) setLoading(false);
       }
@@ -106,11 +149,38 @@ export default function EditActaDialog({
     return m;
   }, [personal, personaMap]);
 
+  const alumnoSuggestions = useMemo(() => {
+    const q = alumnoQuery.trim().toLowerCase();
+    if (q.length < 2) return [] as PersonaAlumno[];
+    return alumnos
+      .filter((alumno) => alumno.display.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [alumnoQuery, alumnos]);
+
+  const needsAlumnoHint = alumnoQuery.trim().length < 2;
+
+  const pickAlumno = (id: number) => {
+    setAlumnoId(id);
+    const selected = alumnos.find((item) => item.id === id);
+    if (selected) setAlumnoQuery(selected.display);
+  };
+
   const allowFirmanteSelection = Boolean(canManageFirmante);
 
   const save = async () => {
     try {
       setSaving(true);
+
+      if (!alumnoId) {
+        toast.error("Seleccioná un alumno válido.");
+        return;
+      }
+
+      const informanteId = acta.informanteId ?? null;
+      if (informanteId == null) {
+        toast.error("El acta no tiene un docente informante asignado.");
+        return;
+      }
 
       if (!fecha) {
         toast.error("Seleccioná una fecha válida.");
@@ -136,6 +206,8 @@ export default function EditActaDialog({
       const chosen = firmanteId ? Number(firmanteId) : undefined;
 
       await vidaEscolar.actasAccidente.update(acta.id, {
+        alumnoId,
+        informanteId,
         fechaSuceso: fecha,
         horaSuceso: hora,
         lugar: lugar.trim(),
@@ -165,7 +237,48 @@ export default function EditActaDialog({
         {loading ? (
           <LoadingState label="Cargando acta…" />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5 text-sm">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Alumno
+              </label>
+              <Input
+                placeholder="Buscar: Apellido, Nombre — Sección"
+                value={alumnoQuery}
+                onChange={(e) => {
+                  setAlumnoQuery(e.target.value);
+                  setAlumnoId(null);
+                }}
+              />
+              <div className="border rounded max-h-40 overflow-auto text-sm">
+                {alumnoSuggestions.map((alumno) => (
+                  <div
+                    key={alumno.id}
+                    className={`px-2 py-1 cursor-pointer hover:bg-accent ${
+                      alumnoId === alumno.id ? "bg-accent" : ""
+                    }`}
+                    onClick={() => pickAlumno(alumno.id)}
+                  >
+                    {alumno.display}
+                  </div>
+                ))}
+                {needsAlumnoHint ? (
+                  <div className="px-2 py-1 text-muted-foreground">
+                    Escribí al menos 2 letras para buscar.
+                  </div>
+                ) : alumnoSuggestions.length === 0 ? (
+                  <div className="px-2 py-1 text-muted-foreground">
+                    Sin resultados…
+                  </div>
+                ) : null}
+              </div>
+              {!alumnoId && (
+                <div className="text-xs text-red-600">
+                  Seleccioná un alumno de la lista.
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm mb-1 block">Fecha del suceso</label>

@@ -50,36 +50,31 @@ export default function SelectRolPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Elegí con qué rol entrar</CardTitle>
           <CardDescription>
-            Tu usuario tiene varios roles asignados. Podés cambiarlo luego desde
-            el encabezado.
+            Tu usuario tiene varios roles asignados, elegir uno.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="block text-sm mb-2 text-muted-foreground">Rol</label>
-
-            <div className="flex flex-wrap gap-2 items-start content-start max-w-full">
-              {roles.map((r) => (
-                <Button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole(r as UserRole);
-                    router.replace("/dashboard");
-                  }}
-                  className={cn(
-                    "rounded-full px-4 h-9 text-sm whitespace-nowrap shrink-0 transition-all",
-                    "border border-border bg-muted text-foreground/80 hover:bg-muted/80",
-                  )}
-                >
-                  {displayRole(r)}
-                </Button>
-              ))}
-            </div>
+        <CardContent className="mt-4 space-y-4 flex flex-col justify-center itmes-center">
+          <div className="flex flex-col flex-wrap gap-2 items-start content-start max-w-full">
+            {roles.map((r) => (
+              <Button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setSelectedRole(r as UserRole);
+                  router.replace("/dashboard");
+                }}
+                className={cn(
+                  "rounded-full px-4 h-9 text-sm whitespace-nowrap shrink-0 transition-all",
+                  "border border-border bg-muted text-foreground/80 hover:bg-muted/80",
+                )}
+              >
+                {displayRole(r)}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>

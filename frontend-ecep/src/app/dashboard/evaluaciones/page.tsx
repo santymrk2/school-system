@@ -45,7 +45,7 @@ function formatTurnoLabel(turno?: string | null) {
 
 export default function EvaluacionesIndexPage() {
   const router = useRouter();
-  const { periodoEscolarId } = useActivePeriod();
+  const { periodoEscolarId, getPeriodoNombre } = useActivePeriod();
 
   const { activeRole } = useViewerScope();
   const isAdmin = activeRole === UserRole.ADMIN;
@@ -174,6 +174,8 @@ export default function EvaluacionesIndexPage() {
     materiaNombreById,
   ]);
 
+  const periodoLabel = getPeriodoNombre(periodoEscolarId ?? null);
+
   if (scope === "family" || scope === "student") {
     return (
       <DashboardLayout>
@@ -222,7 +224,9 @@ export default function EvaluacionesIndexPage() {
             <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline">Primario</Badge>
-              <Badge variant="outline">Período {periodoEscolarId ?? "—"}</Badge>
+              {periodoLabel && (
+                <Badge variant="outline">Período {periodoLabel}</Badge>
+              )}
             </div>
             <ActiveTrimestreBadge className="mt-2" />
           </div>

@@ -1714,7 +1714,7 @@ const handleExportCurrent = async () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-          <TabsList className="w-full h-auto flex-wrap gap-2">
+          <TabsList className="w-full h-auto flex gap-2 overflow-x-auto md:flex-wrap">
             <TabsTrigger value="boletines" className="flex flex-1 min-w-[8rem]">
               Boletines
             </TabsTrigger>

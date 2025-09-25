@@ -27,12 +27,7 @@ import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { toast } from "sonner";
 import { getTrimestreEstado, TRIMESTRE_ESTADO_LABEL } from "@/lib/trimestres";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
-import {
-  buildPdfHtml,
-  downloadPdfWithHtmlDocs,
-  escapeHtml,
-  suggestPdfFileName,
-} from "@/lib/pdf";
+import { downloadPdfDocument, escapeHtml, suggestPdfFileName } from "@/lib/pdf";
 
 function fmt(iso?: string) {
   if (!iso) return "";
@@ -147,12 +142,8 @@ export default function VistaDireccion() {
 
     try {
       setExportingCierreSectionId(item.s.id);
-      const documentHtml = buildPdfHtml({
-        title,
-        body: summaryHtml,
-      });
-      await downloadPdfWithHtmlDocs({
-        html: documentHtml,
+      await downloadPdfDocument({
+        html: summaryHtml,
         title,
         fileName: suggestPdfFileName(title),
       });

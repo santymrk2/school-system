@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { buildPdfHtml, downloadPdfWithHtmlDocs, escapeHtml, suggestPdfFileName } from "@/lib/pdf";
+import { downloadPdfDocument, escapeHtml, suggestPdfFileName } from "@/lib/pdf";
 import { Printer, Pencil, Trash2, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -60,10 +60,11 @@ export default function ViewActaDialog({
     try {
       setDownloading(true);
       const document = buildActaPdfDocument(acta, isCerrada);
-      await downloadPdfWithHtmlDocs({
+      await downloadPdfDocument({
         html: document.html,
         title: document.title,
         fileName: document.fileName,
+        includeTitle: document.includeTitle,
       });
     } catch (error) {
       const message =
@@ -172,120 +173,6 @@ export default function ViewActaDialog({
   );
 }
 
-const ACTA_PDF_STYLES = `
-  body {
-    color: #111827;
-    background: #ffffff;
-    font-size: 14px;
-  }
-  body > h1 {
-    display: none;
-  }
-  h1 {
-    font-size: 28px;
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-  .subtitle {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: #6b7280;
-    margin-bottom: 6px;
-  }
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 24px;
-    padding-bottom: 18px;
-    margin-bottom: 28px;
-    border-bottom: 1px solid #d1d5db;
-  }
-  .status-pill {
-    border: 1px solid #1f2937;
-    padding: 6px 14px;
-    border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #f9fafb;
-    color: #1f2937;
-  }
-  .status-pill.cerrada {
-    background: #1f2937;
-    color: #ffffff;
-  }
-  .section {
-    margin-top: 28px;
-  }
-  .section-title {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: #374151;
-    margin-bottom: 12px;
-  }
-  .details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
-  }
-  .detail-card {
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    padding: 12px;
-    background: #f9fafb;
-  }
-  .detail-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #6b7280;
-    margin-bottom: 4px;
-  }
-  .detail-value {
-    font-size: 14px;
-    font-weight: 500;
-    color: #111827;
-    line-height: 1.5;
-    white-space: pre-wrap;
-  }
-  .text-box {
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    padding: 16px;
-    background: #ffffff;
-    font-size: 14px;
-    line-height: 1.7;
-    color: #1f2937;
-  }
-  .text-box.empty {
-    color: #6b7280;
-    font-style: italic;
-  }
-  .text-box p {
-    margin: 0;
-  }
-  .text-box p + p {
-    margin-top: 10px;
-  }
-  .footer {
-    margin-top: 36px;
-    padding-top: 12px;
-    border-top: 1px solid #d1d5db;
-    font-size: 11px;
-    color: #6b7280;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-  }
-`;
-
 const buildActaPdfDocument = (acta: ActaVM, isCerrada: boolean) => {
   const title = `Acta de Accidente #${acta.id}`;
   const statusLabel = isCerrada ? "Cerrada" : "Borrador";
@@ -377,16 +264,10 @@ const buildActaPdfDocument = (acta: ActaVM, isCerrada: boolean) => {
     </footer>
   `;
 
-  const html = buildPdfHtml({
-    title,
-    body,
-    styles: ACTA_PDF_STYLES,
-  });
-
   const fileName = suggestPdfFileName(
     `acta-accidente-${acta.id}-${acta.alumno}`,
     `acta-accidente-${acta.id}`,
   );
 
-  return { html, title, fileName };
+  return { html: body, title, fileName, includeTitle: false };
 };

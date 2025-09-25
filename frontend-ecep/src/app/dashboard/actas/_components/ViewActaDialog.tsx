@@ -17,6 +17,9 @@ import { toast } from "sonner";
 type ActaVM = {
   id: number;
   alumno: string;
+  alumnoDni?: string | null;
+  familiar?: string | null;
+  familiarDni?: string | null;
   seccion?: string | null;
   fecha: string;
   hora?: string | null;
@@ -64,11 +67,11 @@ export default function ViewActaDialog({
         `acta-accidente-${acta.id}-${acta.alumno}`,
         `acta-accidente-${acta.id}`,
       );
-      await downloadPdfDocument({
-        create: (doc) =>
-          renderAccidentActPdf(
-            doc,
-            acta,
+          await downloadPdfDocument({
+            create: (doc) =>
+              renderAccidentActPdf(
+                doc,
+                acta,
             {
               statusLabel: isCerrada ? "Cerrada" : "Borrador",
             },
@@ -108,7 +111,16 @@ export default function ViewActaDialog({
               <b>Alumno:</b> {acta.alumno}
             </div>
             <div>
+              <b>DNI del alumno:</b> {acta.alumnoDni ?? "—"}
+            </div>
+            <div>
               <b>Sección:</b> {acta.seccion ?? "—"}
+            </div>
+            <div>
+              <b>Familiar responsable:</b> {acta.familiar ?? "—"}
+            </div>
+            <div>
+              <b>DNI del familiar:</b> {acta.familiarDni ?? "—"}
             </div>
             <div>
               <b>Fecha:</b> {acta.fecha}

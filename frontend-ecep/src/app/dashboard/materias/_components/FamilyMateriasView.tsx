@@ -13,6 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { gestionAcademica, identidad } from "@/services/api/modules";
 import { pageContent } from "@/lib/page-response";
+import {
+  formatPeriodoLabel,
+  type PeriodoLabelResolver,
+} from "@/lib/periodos";
 import type {
   AlumnoLiteDTO,
   EmpleadoDTO,
@@ -44,6 +48,7 @@ interface FamilyMateriasViewProps {
   alumnos: AlumnoLiteDTO[];
   initialLoading?: boolean;
   initialError?: string | null;
+  getPeriodoNombre?: PeriodoLabelResolver;
 }
 
 function resolveNivel(alumno: AlumnoLiteDTO | null, detalle: SeccionDetalle | null) {
@@ -94,6 +99,7 @@ export default function FamilyMateriasView({
   alumnos,
   initialLoading,
   initialError,
+  getPeriodoNombre,
 }: FamilyMateriasViewProps) {
   const [selectedMatriculaId, setSelectedMatriculaId] = useState<number | null>(
     null,
@@ -101,6 +107,13 @@ export default function FamilyMateriasView({
   const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<Map<number, SeccionDetalle>>(new Map());
+
+  const resolvePeriodoNombre = (
+    periodoId?: number | null,
+    periodo?: { anio?: number } | null,
+  ) =>
+    getPeriodoNombre?.(periodoId, periodo ?? null) ??
+    formatPeriodoLabel(periodo ?? null, periodoId);
 
   useEffect(() => {
     if (!alumnos.length) {
@@ -349,7 +362,14 @@ export default function FamilyMateriasView({
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
                       {detalle?.seccion?.periodoEscolarId && (
                         <Badge variant="outline">
-                          Período {detalle.seccion.periodoEscolarId}
+                          Período
+                          {" "}
+                          {resolvePeriodoNombre(
+                            detalle.seccion.periodoEscolarId,
+                            ((detalle.seccion as any)?.periodoEscolar ?? null) as
+                              | { anio?: number }
+                              | null,
+                          )}
                         </Badge>
                       )}
                     </div>
@@ -431,3 +451,4 @@ export default function FamilyMateriasView({
     </Tabs>
   );
 }
+

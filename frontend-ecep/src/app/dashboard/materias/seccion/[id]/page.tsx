@@ -30,6 +30,7 @@ import AddMateriaToSeccionDialog from "@/app/dashboard/materias/_components/AddM
 import AsignarDocenteMateriaDialog from "@/app/dashboard/materias/_components/AsignarDocenteMateriaDialog";
 import AsignarDocenteSeccionDialog from "@/app/dashboard/materias/_components/AsignarDocenteSeccionDialog";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
 
@@ -112,6 +113,7 @@ export default function MateriasSeccionPage() {
   const seccionId = Number(id);
   const router = useRouter();
   const { type, activeRole } = useViewerScope();
+  const { getPeriodoNombre } = useActivePeriod();
   const {
     loading: scopedLoading,
     secciones: accesibles,
@@ -236,6 +238,10 @@ export default function MateriasSeccionPage() {
         ? "Primario"
         : (seccion.nivel as string | undefined) ?? null
     : null;
+  const periodoNombre = getPeriodoNombre(
+    seccion?.periodoEscolarId,
+    ((seccion as any)?.periodoEscolar ?? null) as { anio?: number } | null,
+  );
   const ocupadosSeccion = useMemo(
     () => ({
       titularId: titularSeccion?.empleadoId ?? null,
@@ -441,7 +447,7 @@ export default function MateriasSeccionPage() {
               )}
               {seccion?.periodoEscolarId && (
                 <Badge variant="outline">
-                  Período {seccion.periodoEscolarId}
+                  Período {periodoNombre ?? "—"}
                 </Badge>
               )}
             </div>

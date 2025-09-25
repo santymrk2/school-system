@@ -48,6 +48,8 @@ export default function CalificacionesIndexPage() {
     secciones,
     hijos,
     periodoEscolarId,
+    periodoNombre,
+    getPeriodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
 
   const isAdmin = activeRole === UserRole.ADMIN;
@@ -71,6 +73,7 @@ export default function CalificacionesIndexPage() {
             initialLoading={loading}
             initialError={error ? String(error) : null}
             periodoEscolarId={periodoEscolarId}
+            getPeriodoNombre={getPeriodoNombre}
           />
         </div>
       </DashboardLayout>
@@ -130,8 +133,8 @@ export default function CalificacionesIndexPage() {
             <Badge variant="outline">
               Inicial: {loading ? "—" : inicial.length}
             </Badge>
-            {periodoEscolarId && (
-              <Badge variant="outline">Período {periodoEscolarId}</Badge>
+            {periodoNombre && (
+              <Badge variant="outline">Período {periodoNombre}</Badge>
             )}
           </div>
         </div>

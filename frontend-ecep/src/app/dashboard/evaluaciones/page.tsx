@@ -12,7 +12,6 @@ import type {
   EvaluacionDTO,
   NivelAcademico,
 } from "@/types/api-generated";
-import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { UserRole } from "@/types/api-generated";
@@ -45,7 +44,6 @@ function formatTurnoLabel(turno?: string | null) {
 
 export default function EvaluacionesIndexPage() {
   const router = useRouter();
-  const { periodoEscolarId } = useActivePeriod();
 
   const { activeRole } = useViewerScope();
   const isAdmin = activeRole === UserRole.ADMIN;
@@ -59,6 +57,8 @@ export default function EvaluacionesIndexPage() {
     secciones,
     titularBySeccionId,
     hijos,
+    periodoEscolarId,
+    periodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
 
   const [loading, setLoading] = useState(true);
@@ -222,7 +222,7 @@ export default function EvaluacionesIndexPage() {
             <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline">Primario</Badge>
-              <Badge variant="outline">Período {periodoEscolarId ?? "—"}</Badge>
+              <Badge variant="outline">Período {periodoNombre ?? "—"}</Badge>
             </div>
             <ActiveTrimestreBadge className="mt-2" />
           </div>

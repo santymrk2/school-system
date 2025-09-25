@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/select";
 import { Search, UserPlus } from "lucide-react";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
-import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
 import { identidad } from "@/services/api/modules";
@@ -125,12 +124,9 @@ export default function AlumnosIndexPage() {
     error,
     secciones,
     hijos,
-    periodoEscolarId,
+    periodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
   const { hasRole } = useAuth();
-
-  // Mostramos período activo con el hook (evita UTC vs local)
-  const { hoyISO } = useActivePeriod();
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchTerm), 350);
@@ -295,15 +291,21 @@ export default function AlumnosIndexPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Alumnos</h2>
-            <div className="text-muted-foreground">
-              {scope === "staff"
-                ? `Período escolar activo: #${periodoEscolarId ?? "—"} • Hoy: ${hoyISO}`
-                : scope === "teacher"
+            {scope === "staff" ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">
+                  Período {periodoNombre ?? "—"}
+                </Badge>
+              </div>
+            ) : (
+              <div className="text-muted-foreground">
+                {scope === "teacher"
                   ? "Gestión de alumnos por sección"
                   : scope === "student"
                     ? "Consulta de mi información académica"
                     : "Vista de hijos y perfiles"}
-            </div>
+              </div>
+            )}
           </div>
           {scope === "staff" && (
             <div className="flex items-center space-x-2">

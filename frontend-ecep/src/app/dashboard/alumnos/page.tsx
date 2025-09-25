@@ -35,10 +35,22 @@ const TURNO_LABELS: Record<string, string> = {
   TARDE: "Tarde",
 };
 
+function normalizeTurnoKey(turno: string) {
+  return turno
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
 function formatTurnoLabel(turno?: string | null) {
   if (!turno) return null;
-  const normalized = turno.trim().toUpperCase();
-  return TURNO_LABELS[normalized] ?? turno.trim();
+  const trimmed = turno.trim();
+  const normalized = normalizeTurnoKey(trimmed);
+  if (normalized in TURNO_LABELS) {
+    return TURNO_LABELS[normalized];
+  }
+  return trimmed;
 }
 
 function escapeRegExp(value: string) {
@@ -54,15 +66,34 @@ function cleanSeccionNombre(
   if (!base) return undefined;
 
   const variants = [turnoRaw, turnoLabel]
-    .map((variant) => variant?.trim())
+    .flatMap((variant) => {
+      const trimmed = variant?.trim();
+      if (!trimmed) return [];
+      const normalized = normalizeTurnoKey(trimmed);
+      const values = [trimmed, trimmed.toLowerCase()];
+      if (normalized) {
+        values.push(normalized, normalized.toLowerCase());
+      }
+      return Array.from(new Set(values));
+    })
     .filter((variant): variant is string => Boolean(variant));
 
   for (const variant of variants) {
-    const pattern = new RegExp(`\\s*\\(\\s*${escapeRegExp(variant)}\\s*\\)$`, "i");
+    const core = escapeRegExp(variant);
+    const pattern = new RegExp(
+      `\\s*\\(\\s*(?:turno\\s+)?${core}\\s*\\)$`,
+      "i",
+    );
     const cleaned = base.replace(pattern, "").trim();
     if (cleaned !== base) {
       return cleaned || base;
     }
+  }
+
+  const fallbackPattern = /\s*\(\s*turno[^)]*\)\s*$/i;
+  const cleaned = base.replace(fallbackPattern, "").trim();
+  if (cleaned && cleaned !== base) {
+    return cleaned;
   }
 
   return base;

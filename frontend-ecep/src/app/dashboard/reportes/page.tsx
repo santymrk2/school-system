@@ -444,18 +444,19 @@ const reportPdfStyles = StyleSheet.create({
 
 const renderKeyValueList = (pairs: { label: string; value: string }[]) => (
   <View style={reportPdfStyles.keyValueList}>
-    {pairs.map((pair, index) => (
-      <View
-        key={pair.label}
-        style={[
-          reportPdfStyles.keyValueRow,
-          index === pairs.length - 1 ? { borderBottomWidth: 0 } : null,
-        ]}
-      >
-        <Text style={reportPdfStyles.keyValueLabel}>{pair.label}</Text>
-        <Text style={reportPdfStyles.keyValueValue}>{pair.value}</Text>
-      </View>
-    ))}
+    {pairs.map((pair, index) => {
+      const rowStyles =
+        index === pairs.length - 1
+          ? [reportPdfStyles.keyValueRow, { borderBottomWidth: 0 }]
+          : [reportPdfStyles.keyValueRow];
+
+      return (
+        <View key={pair.label} style={rowStyles}>
+          <Text style={reportPdfStyles.keyValueLabel}>{pair.label}</Text>
+          <Text style={reportPdfStyles.keyValueValue}>{pair.value}</Text>
+        </View>
+      );
+    })}
   </View>
 );
 
@@ -470,42 +471,46 @@ const renderTable = (
 ) => (
   <View style={reportPdfStyles.table}>
     <View style={[reportPdfStyles.tableRow, reportPdfStyles.tableHeader]}>
-      {columns.map((column) => (
-        <Text
-          key={column.label}
-          style={[
-            reportPdfStyles.tableCell,
-            reportPdfStyles.tableCellBold,
-            column.width === "wide" ? reportPdfStyles.tableCellWide : null,
-          ]}
-        >
-          {column.label}
-        </Text>
-      ))}
-    </View>
-    {rows.map((row, rowIndex) => (
-      <View
-        key={rowIndex}
-        style={[
-          reportPdfStyles.tableRow,
-          rowIndex === rows.length - 1 ? { borderBottomWidth: 0 } : null,
-        ]}
-      >
-        {row.map((value, colIndex) => (
-          <Text
-            key={`${rowIndex}-${colIndex}`}
-            style={[
-              reportPdfStyles.tableCell,
-              columns[colIndex]?.width === "wide"
-                ? reportPdfStyles.tableCellWide
-                : null,
-            ]}
-          >
-            {String(value)}
+      {columns.map((column) => {
+        const headerStyles =
+          column.width === "wide"
+            ? [
+                reportPdfStyles.tableCell,
+                reportPdfStyles.tableCellBold,
+                reportPdfStyles.tableCellWide,
+              ]
+            : [reportPdfStyles.tableCell, reportPdfStyles.tableCellBold];
+
+        return (
+          <Text key={column.label} style={headerStyles}>
+            {column.label}
           </Text>
-        ))}
-      </View>
-    ))}
+        );
+      })}
+    </View>
+    {rows.map((row, rowIndex) => {
+      const rowStyles =
+        rowIndex === rows.length - 1
+          ? [reportPdfStyles.tableRow, { borderBottomWidth: 0 }]
+          : [reportPdfStyles.tableRow];
+
+      return (
+        <View key={rowIndex} style={rowStyles}>
+          {row.map((value, colIndex) => {
+            const cellStyles =
+              columns[colIndex]?.width === "wide"
+                ? [reportPdfStyles.tableCell, reportPdfStyles.tableCellWide]
+                : [reportPdfStyles.tableCell];
+
+            return (
+              <Text key={`${rowIndex}-${colIndex}`} style={cellStyles}>
+                {String(value)}
+              </Text>
+            );
+          })}
+        </View>
+      );
+    })}
   </View>
 );
 

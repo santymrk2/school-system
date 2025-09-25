@@ -270,27 +270,26 @@ export default function VistaDireccion() {
                   </Text>
                   <Text style={cierrePdfStyles.tableCell}>Valor</Text>
                 </View>
-                {detailRows.map((row, index) => (
-                  <View
-                    key={row.label}
-                    style={[
-                      cierrePdfStyles.tableRow,
-                      index === detailRows.length - 1
-                        ? { borderBottomWidth: 0 }
-                        : null,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        cierrePdfStyles.tableCell,
-                        cierrePdfStyles.tableCellLabel,
-                      ]}
-                    >
-                      {row.label}
-                    </Text>
-                    <Text style={cierrePdfStyles.tableCell}>{row.value}</Text>
-                  </View>
-                ))}
+                {detailRows.map((row, index) => {
+                  const rowStyles =
+                    index === detailRows.length - 1
+                      ? [cierrePdfStyles.tableRow, { borderBottomWidth: 0 }]
+                      : [cierrePdfStyles.tableRow];
+
+                  return (
+                    <View key={row.label} style={rowStyles}>
+                      <Text
+                        style={[
+                          cierrePdfStyles.tableCell,
+                          cierrePdfStyles.tableCellLabel,
+                        ]}
+                      >
+                        {row.label}
+                      </Text>
+                      <Text style={cierrePdfStyles.tableCell}>{row.value}</Text>
+                    </View>
+                  );
+                })}
               </View>
               <Text style={cierrePdfStyles.note}>
                 Elaborado automáticamente por el sistema de gestión institucional.

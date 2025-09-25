@@ -96,12 +96,7 @@ import {
 } from "@/types/api-generated";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  buildPdfHtml,
-  downloadPdfWithHtmlDocs,
-  escapeHtml,
-  suggestPdfFileName,
-} from "@/lib/pdf";
+import { downloadPdfDocument, escapeHtml, suggestPdfFileName } from "@/lib/pdf";
 
 // -----------------------------------------------------------------------------
 // Mock data (mantener hasta integrar API real en los demás reportes)
@@ -318,22 +313,9 @@ const startOfDay = (date: Date) => {
   return copy;
 };
 
-const REPORT_PDF_STYLES = `
-  p { margin: 0 0 8px; }
-  ul { padding-left: 20px; }
-  ol { padding-left: 24px; }
-  table thead th { font-weight: 600; }
-`;
-
 const exportHtmlAsPdf = async (html: string, title: string) => {
-  const documentHtml = buildPdfHtml({
-    title,
-    body: html,
-    styles: REPORT_PDF_STYLES,
-  });
-
-  await downloadPdfWithHtmlDocs({
-    html: documentHtml,
+  await downloadPdfDocument({
+    html,
     title,
     fileName: suggestPdfFileName(title),
   });

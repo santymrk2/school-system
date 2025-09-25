@@ -12,7 +12,6 @@ import edu.ecep.base_app.shared.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +40,7 @@ public class CalificacionTrimestralService {
 
     public CalificacionTrimestralDTO get(Long id) {
         CalificacionTrimestral entity = repo.findById(id)
+
                 .orElseThrow(() -> new NotFoundException("No encontrado"));
         docenteScopeService.ensurePuedeGestionarSeccionMateria(entity.getSeccionMateria().getId());
         return mapper.toDto(entity);
@@ -90,5 +90,25 @@ public class CalificacionTrimestralService {
                 .orElseThrow(() -> new NotFoundException("No encontrado"));
         docenteScopeService.ensurePuedeGestionarSeccionMateria(entity.getSeccionMateria().getId());
         repo.delete(entity);
+    }
+
+    private boolean shouldRestrictToClosedTrimestres() {
+        try {
+            var persona = personaAccountService.getCurrentPersona();
+            if(persona == null || persona.getRoles() == null || persona.getRoles().isEmpty()) {
+                return false;
+            }
+            if(!persona.getRoles().contains(UserRole.FAMILY)) {
+                return false;
+            }
+            for (UserRole role : persona.getRoles()) {
+                if(role != UserRole.FAMILY && role != UserRole.USER) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (ResponseStatusException ex) {
+            return false;
+        }
     }
 }

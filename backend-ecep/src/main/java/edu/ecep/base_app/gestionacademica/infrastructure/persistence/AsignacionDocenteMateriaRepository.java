@@ -37,4 +37,20 @@ public interface AsignacionDocenteMateriaRepository extends JpaRepository<Asigna
     """)
     List<AsignacionDocenteMateria> findTitularesVigentesEn(@Param("smId") Long seccionMateriaId,
                                                            @Param("fecha") LocalDate fecha);
+
+    @EntityGraph(attributePaths = {
+            "seccionMateria",
+            "seccionMateria.seccion",
+            "seccionMateria.materia",
+            "empleado"
+    })
+    @Query("""
+        select a
+        from AsignacionDocenteMateria a
+        where a.empleado.id = :empleadoId
+          and a.vigenciaDesde <= :fecha
+          and (a.vigenciaHasta is null or a.vigenciaHasta >= :fecha)
+    """)
+    List<AsignacionDocenteMateria> findVigentesByEmpleado(@Param("empleadoId") Long empleadoId,
+                                                          @Param("fecha") LocalDate fecha);
 }

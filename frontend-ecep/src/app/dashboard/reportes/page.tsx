@@ -3151,7 +3151,7 @@ const handleExportCurrent = async () => {
                         No hay calificaciones registradas para este alumno.
                       </div>
                     ) : (
-                      <div className="w-full overflow-x-auto lg:overflow-visible">
+                      <div className="w-full max-w-full overflow-x-auto">
                         <table className="min-w-full table-auto border-collapse text-xs sm:text-sm">
                           <thead>
                             <tr>

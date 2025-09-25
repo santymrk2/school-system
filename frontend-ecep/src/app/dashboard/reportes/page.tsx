@@ -1746,8 +1746,6 @@ const handleExportCurrent = async () => {
             onPrintStudent={handlePrintBoletin}
             exportingStudent={exportingBoletin}
             isActiveStudentPrimario={isActiveBoletinPrimario}
-            boletinTrimesters={boletinTrimesters}
-            boletinSubjectsForTable={boletinSubjectsForTable}
             boletinSubjectsByTrimester={boletinSubjectsByTrimester}
           />
 

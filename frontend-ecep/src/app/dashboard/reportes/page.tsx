@@ -4,80 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { pageContent } from "@/lib/page-response";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
-import LoadingState from "@/components/common/LoadingState";
-import { LicenseSummaryCards } from "./_components/LicenseSummaryCards";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { BoletinesReport } from "./_components/BoletinesReport";
+import { ApprovalReport } from "./_components/ApprovalReport";
+import { AttendanceReport } from "./_components/AttendanceReport";
+import { LicensesReport } from "./_components/LicensesReport";
+import { ActasReport } from "./_components/ActasReport";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  FileText,
-  Download,
-  GraduationCap,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  X,
-  Clock,
-  Search,
-  Calendar,
-  Printer,
-} from "lucide-react";
-import {
-  Pie,
-  PieChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { asistencias, calendario, gestionAcademica, identidad, vidaEscolar } from "@/services/api/modules";
@@ -100,290 +34,29 @@ import {
   type ReportSection,
   type TableColumn,
 } from "@/lib/pdf/report-helpers";
-
-// -----------------------------------------------------------------------------
-// Mock data (mantener hasta integrar API real en los demás reportes)
-// -----------------------------------------------------------------------------
-
-type BoletinSubjectGrade = {
-  trimestreId: number;
-  trimestreLabel: string;
-  notaNumerica?: number | null;
-  notaConceptual?: string | null;
-  observaciones?: string | null;
-};
-
-type BoletinSubject = {
-  id: string;
-  name: string;
-  teacher?: string | null;
-  grades: BoletinSubjectGrade[];
-};
-
-type BoletinInforme = {
-  trimestreId: number;
-  trimestreLabel: string;
-  descripcion: string;
-};
-
-type BoletinAttendance = {
-  workingDays: number;
-  attended: number;
-  justified: number;
-  unjustified: number;
-};
-
-type BoletinStudent = {
-  id: string;
-  matriculaId: number | null;
-  alumnoId: number | null;
-  name: string;
-  section: string;
-  sectionId: number;
-  level: "Inicial" | "Primario";
-  average?: number | null;
-  attendancePercentage?: number | null;
-  absencePercentage?: number | null;
-  attendanceDetail?: BoletinAttendance | null;
-  status?: string;
-  subjects: BoletinSubject[];
-  informes?: BoletinInforme[];
-};
-
-type BoletinSection = {
-  id: number;
-  label: string;
-  level: "Inicial" | "Primario";
-  students: BoletinStudent[];
-};
-
-const sanitizeTeacherName = (teacher?: string | null) => {
-  if (!teacher) return null;
-  const trimmed = String(teacher).trim();
-  return trimmed && trimmed !== "—" ? trimmed : null;
-};
-
-const getBoletinGradeDisplay = (grade?: BoletinSubjectGrade | null) => {
-  if (!grade) return "—";
-
-  const conceptual = grade.notaConceptual?.trim();
-  if (conceptual && conceptual !== "—") {
-    return conceptual;
-  }
-
-  const numeric = typeof grade.notaNumerica === "number" ? grade.notaNumerica : null;
-  if (numeric != null && Number.isFinite(numeric)) {
-    return numeric.toFixed(1);
-  }
-
-  return "—";
-};
-
-type ApprovalSummary = {
-  totalSubjects: number;
-  approved: number;
-  failed: number;
-  subjectWithMoreFails: string;
-  studentsWithPending: number;
-};
-
-type ApprovalRecord = {
-  studentId: string;
-  studentName: string;
-  subject: string;
-  grade: number;
-  status: "APROBADO" | "DESAPROBADO";
-  average: number;
-  failedCount: number;
-};
-
-type ApprovalSection = {
-  id: string;
-  label: string;
-  stats: {
-    approved: number;
-    failed: number;
-    averageApprovedPerStudent: number;
-  };
-  records: ApprovalRecord[];
-};
-
-type AttendanceSummaryStudent = {
-  id: string;
-  name: string;
-  total: number;
-  presentes: number;
-  ausentes: number;
-  tarde: number;
-  retiroAnticipado: number;
-  attendance: number;
-};
-
-type AttendanceSummarySection = {
-  sectionId: string;
-  label: string;
-  level: "Inicial" | "Primario";
-  students: AttendanceSummaryStudent[];
-  totalDays: number;
-  attended: number;
-};
-
-type LicenseReportRow = {
-  id: string;
-  teacherId: number | null;
-  teacherName: string;
-  cargo?: string;
-  situacion?: string;
-  tipo: string;
-  tipoLabel: string;
-  start: string;
-  end: string | null;
-  startLabel: string;
-  endLabel: string | null;
-  rangeLabel: string;
-  durationDays: number | null;
-  horas: number | null;
-  justificada: boolean;
-  motivo: string;
-  isActive: boolean;
-  expiresSoon: boolean;
-};
-
-type ActaRegistro = {
-  id: string;
-  student: string;
-  studentDni?: string | null;
-  section: string;
-  level: "Inicial" | "Primario";
-  teacher: string;
-  date: string;
-  time: string;
-  location: string;
-  description: string;
-  actions: string;
-  signer?: string;
-  signerDni?: string | null;
-  signed: boolean;
-  familyName?: string | null;
-  familyDni?: string | null;
-};
-
-type CachedAlumnoInfo = {
-  name: string;
-  section: string;
-  level: "Inicial" | "Primario";
-  dni?: string | null;
-  familyName?: string | null;
-  familyDni?: string | null;
-};
-
-const APPROVAL_DATA = {
-  summary: {
-    totalSubjects: 0,
-    approved: 0,
-    failed: 0,
-    subjectWithMoreFails: "Sin datos",
-    studentsWithPending: 0,
-  },
-  sections: [] as ApprovalSection[],
-};
-
-const PIE_COLORS = ["#0ea5e9", "#fb7185", "#6366f1", "#22c55e"];
-
-// -----------------------------------------------------------------------------
-// Utils
-// -----------------------------------------------------------------------------
-
-const parseISO = (value: string) => new Date(`${value}T00:00:00`);
-
-const withinRange = (value: string, from?: string, to?: string) => {
-  const date = parseISO(value).getTime();
-  if (from) {
-    const fromDate = parseISO(from).getTime();
-    if (date < fromDate) return false;
-  }
-  if (to) {
-    const toDate = parseISO(to).getTime();
-    if (date > toDate) return false;
-  }
-  return true;
-};
-
-const DAY_IN_MS = 1000 * 60 * 60 * 24;
-
-const tipoLicenciaOptions = [
-  { value: "ENFERMEDAD", label: "Enfermedad" },
-  { value: "CUIDADO_FAMILIAR", label: "Cuidado familiar" },
-  { value: "FORMACION", label: "Formación" },
-  { value: "PERSONAL", label: "Motivo personal" },
-  { value: "MATERNIDAD", label: "Maternidad / Paternidad" },
-  { value: "OTRA", label: "Otra" },
-];
-
-const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
-
-const formatDate = (value?: string | null) => {
-  if (!value) return "";
-  const parsed = parseISO(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return dateFormatter.format(parsed);
-};
-
-const formatTipoLicencia = (value?: string | null) => {
-  if (!value) return "Sin tipo";
-  const option = tipoLicenciaOptions.find((opt) => opt.value === value);
-  if (option) return option.label;
-  const normalized = value.replace(/_/g, " ").toLowerCase();
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-};
-
-const toDateOrNull = (value?: string | null) => {
-  if (!value) return null;
-  const parsed = parseISO(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-};
-
-const startOfDay = (date: Date) => {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-};
-
-const formatPercent = (value: number, digits = 0) =>
-  `${(value * 100).toFixed(digits)}%`;
-
-
-const computeAttendanceMetrics = (
-  section: AttendanceSection,
-  from?: string,
-  to?: string,
-) => {
-  const students = section.students.map((student) => {
-    const filtered = student.records.filter((r) => withinRange(r.date, from, to));
-    const total = filtered.length;
-    const attended = filtered.filter((r) => r.status === "ASISTIO").length;
-    const justified = filtered.filter((r) => r.status === "JUSTIFICADA").length;
-    const unjustified = filtered.filter((r) => r.status === "INJUSTIFICADA").length;
-    const attendance = total ? attended / total : 0;
-    return {
-      id: student.id,
-      name: student.name,
-      total,
-      attended,
-      justified,
-      unjustified,
-      attendance,
-    };
-  });
-  const totalDays = students.reduce((acc, cur) => acc + cur.total, 0);
-  const attended = students.reduce((acc, cur) => acc + cur.attended, 0);
-  return { students, totalDays, attended };
-};
-
-// -----------------------------------------------------------------------------
-// Page
-// -----------------------------------------------------------------------------
+import {
+  type ActaRegistro,
+  type ApprovalRecord,
+  type ApprovalSection,
+  type ApprovalSummary,
+  type AttendanceSummarySection,
+  type AttendanceSummaryStudent,
+  type BoletinSection,
+  type BoletinStudent,
+  type CachedAlumnoInfo,
+  type LicenseReportRow,
+} from "./types";
+import { APPROVAL_DATA, DAY_IN_MS, PIE_COLORS } from "./constants";
+import {
+  formatDate,
+  formatPercent,
+  formatTipoLicencia,
+  getBoletinGradeDisplay,
+  sanitizeTeacherName,
+  startOfDay,
+  toDateOrNull,
+  withinRange,
+} from "./utils";
 
 export default function ReportesPage() {
   const { hasRole, loading, user } = useAuth();
@@ -1563,7 +1236,7 @@ export default function ReportesPage() {
   const [actaSection, setActaSection] = useState<"all" | string>("all");
   const [actaStudentQuery, setActaStudentQuery] = useState<string>("");
   const [activeActa, setActiveActa] = useState<ActaRegistro | null>(null);
-  const [exportingActaId, setExportingActaId] = useState<number | null>(null);
+  const [exportingActaId, setExportingActaId] = useState<string | null>(null);
 
   const filteredActas = useMemo(() => {
     const filtered = actaRegistros.filter((acta) => {
@@ -1593,6 +1266,48 @@ export default function ReportesPage() {
       return actaRegistros.some((acta) => acta.section === prev) ? prev : "all";
     });
   }, [actaRegistros]);
+
+  const handleExportActa = useCallback(
+    async (acta: ActaRegistro) => {
+      const title = `Acta #${acta.id}`;
+      try {
+        setExportingActaId(acta.id ?? null);
+        await downloadPdfDocument({
+          create: (doc) =>
+            renderAccidentActPdf(
+              doc,
+              {
+                id: acta.id ?? title,
+                alumno: acta.student,
+                alumnoDni: acta.studentDni,
+                seccion: acta.section,
+                fecha: acta.date,
+                hora: acta.time,
+                lugar: acta.location,
+                descripcion: acta.description,
+                acciones: acta.actions,
+                firmante: acta.signer ?? undefined,
+                firmanteDni: acta.signerDni,
+                familiar: acta.familyName,
+                familiarDni: acta.familyDni,
+              },
+              { statusLabel: acta.signed ? "Firmada" : "No firmada" },
+            ),
+          fileName: suggestPdfFileName(title),
+        });
+        toast.success("Acta exportada en PDF.");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "No se pudo generar el PDF del acta.";
+        toast.error(message);
+      } finally {
+        setExportingActaId(null);
+      }
+    },
+    [setExportingActaId],
+  );
 
   // Export --------------------------------------------------------------------
   const reportRefs = {
@@ -2017,1362 +1732,107 @@ const handleExportCurrent = async () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* -------------------------- Reporte de Boletines ------------------ */}
-          <TabsContent value="boletines" ref={reportRefs.boletines} className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <GraduationCap className="h-5 w-5" /> Reporte de Boletines
-                </CardTitle>
-                <CardDescription>
-                  Seleccione una sección para visualizar el resumen académico de cada alumno.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="max-w-sm">
-                  <Label className="mb-1 block">Sección</Label>
-                  <Select
-                    value={selectedSectionId}
-                    onValueChange={setSelectedSectionId}
-                    disabled={loadingBoletines || availableSections.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          loadingBoletines
-                            ? "Cargando secciones…"
-                            : availableSections.length === 0
-                              ? "No hay secciones disponibles"
-                              : "Seleccione una sección"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSections.map((section) => (
-                        <SelectItem key={section.id} value={section.id}>
-                          {section.label}
-                          {section.level ? ` — ${section.level}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <BoletinesReport
+            reportRef={reportRefs.boletines}
+            loading={loadingBoletines}
+            error={boletinError}
+            sections={availableSections}
+            selectedSectionId={selectedSectionId}
+            onSelectSection={setSelectedSectionId}
+            students={boletinStudents}
+            onSelectStudent={setActiveBoletin}
+            activeStudent={activeBoletin}
+            onCloseStudent={() => setActiveBoletin(null)}
+            onPrintStudent={handlePrintBoletin}
+            exportingStudent={exportingBoletin}
+            isActiveStudentPrimario={isActiveBoletinPrimario}
+            boletinTrimesters={boletinTrimesters}
+            boletinSubjectsForTable={boletinSubjectsForTable}
+            boletinSubjectsByTrimester={boletinSubjectsByTrimester}
+          />
 
-                {boletinError && (
-                  <div className="rounded-lg border border-dashed bg-red-50 p-6 text-sm text-red-600">
-                    {boletinError}
-                  </div>
-                )}
+          <ApprovalReport
+            reportRef={reportRefs.aprobacion}
+            totalApprovalSubjects={totalApprovalSubjects}
+            overallPieData={overallPieData}
+            approvalSummary={approvalSummary}
+            approvalSections={approvalData.sections}
+            selectedApprovalSection={selectedApprovalSection}
+            onSelectApprovalSection={setSelectedApprovalSection}
+            approvalSort={approvalSort}
+            onChangeApprovalSort={setApprovalSort}
+            approvalOverview={approvalOverview}
+          />
 
-                {loadingBoletines && !boletinError ? (
-                  <div className="rounded-lg border border-dashed bg-muted/50 p-6">
-                    <LoadingState label="Cargando información académica…" />
-                  </div>
-                ) : !selectedSectionId ? (
-                  <div className="rounded-lg border border-dashed bg-muted/50 p-6 text-sm text-muted-foreground">
-                    Elegí una sección del listado para ver sus alumnos.
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {boletinStudents.map((student) => (
-                      <Card
-                        key={student.id}
-                        className="cursor-pointer transition-colors hover:border-primary"
-                        onClick={() => setActiveBoletin(student)}
-                      >
-                        <CardHeader className="space-y-1">
-                          <CardTitle className="text-base">{student.name}</CardTitle>
-                          <CardDescription>{student.section}</CardDescription>
-                          <Badge variant="outline" className="mt-1 w-fit">
-                            {student.level}
-                          </Badge>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant={
-                                student.status
-                                  ? student.status === "Promociona"
-                                    ? "default"
-                                    : student.status === "No Promociona"
-                                      ? "destructive"
-                                      : "outline"
-                                  : "outline"
-                              }
-                            >
-                              {student.status ?? "Sin estado"}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              Click para ver {student.level === "Primario" ? "boletín" : "informes"} completo
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {boletinStudents.length === 0 && (
-                      <div className="col-span-full rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                        No encontramos alumnos para la sección seleccionada.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <AttendanceReport
+            reportRef={reportRefs.asistencias}
+            attendanceFrom={attendanceFrom}
+            attendanceTo={attendanceTo}
+            setAttendanceFrom={setAttendanceFrom}
+            setAttendanceTo={setAttendanceTo}
+            attendanceSectionOptions={attendanceSectionOptions}
+            selectedAttendanceSections={selectedAttendanceSections}
+            setSelectedAttendanceSections={setSelectedAttendanceSections}
+            attendancePopoverOpen={attendancePopoverOpen}
+            setAttendancePopoverOpen={setAttendancePopoverOpen}
+            attendanceError={attendanceError}
+            loadingAttendance={loadingAttendance}
+            attendanceLevelSummary={attendanceLevelSummary}
+            attendanceSelectedSummaries={attendanceSelectedSummaries}
+          />
 
-          {/* -------------------- Reporte de Aprobados/Desaprobados ----------- */}
-          <TabsContent value="aprobacion" ref={reportRefs.aprobacion} className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <TrendingUp className="h-5 w-5" /> Reporte de Aprobación
-                </CardTitle>
-                <CardDescription>
-                  Indicadores generales del nivel primario. Nivel inicial se encuentra deshabilitado por no contar con evaluación por materia.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label>Nivel</Label>
-                    <Select defaultValue="Primario">
-                      <SelectTrigger className="w-[160px]">
-                        <SelectValue placeholder="Seleccionar nivel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Inicial" disabled>
-                          Inicial (no disponible)
-                        </SelectItem>
-                        <SelectItem value="Primario">Primario</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+          <LicensesReport
+            reportRef={reportRefs.licencias}
+            personalSummary={personalSummary}
+            licenseRows={licenseRows}
+            licenseLoading={licenseLoading}
+            licenseError={licenseError}
+            licenseQuery={licenseQuery}
+            setLicenseQuery={setLicenseQuery}
+            licenseTeacherFilter={licenseTeacherFilter}
+            setLicenseTeacherFilter={setLicenseTeacherFilter}
+            licenseTypeFilter={licenseTypeFilter}
+            setLicenseTypeFilter={setLicenseTypeFilter}
+            licenseJustificationFilter={licenseJustificationFilter}
+            setLicenseJustificationFilter={setLicenseJustificationFilter}
+            licenseFrom={licenseFrom}
+            setLicenseFrom={setLicenseFrom}
+            licenseTo={licenseTo}
+            setLicenseTo={setLicenseTo}
+            licenseTeacherOptions={licenseTeacherOptions}
+            licenseTypeData={licenseTypeData}
+            topLicenseTypes={topLicenseTypes}
+            activeLicenses={activeLicenses}
+            expiringLicenses={expiringLicenses}
+            filteredLicenses={filteredLicenses}
+            licenseFiltersActive={licenseFiltersActive}
+          />
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Card className="border shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Materias aprobadas vs desaprobadas</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex h-48 items-center justify-center">
-                      {totalApprovalSubjects === 0 ? (
-                        <div className="text-sm text-muted-foreground">
-                          No hay calificaciones registradas aún en el nivel primario.
-                        </div>
-                      ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={overallPieData}
-                              dataKey="value"
-                              nameKey="name"
-                              innerRadius={45}
-                              outerRadius={70}
-                            >
-                              {overallPieData.map((entry, index) => (
-                                <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip
-                              formatter={(value: number, name: string) => {
-                                const percent = totalApprovalSubjects
-                                  ? ((value as number) / totalApprovalSubjects) * 100
-                                  : 0;
-                                return [
-                                  `${value} materia(s)` as string,
-                                  `${name} (${percent.toFixed(1)}%)`,
-                                ];
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Materia con más desaprobaciones</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-lg font-semibold">
-                          <AlertCircle className="h-5 w-5 text-red-500" />
-                          {totalApprovalSubjects === 0
-                            ? "Sin datos disponibles"
-                            : approvalSummary.subjectWithMoreFails}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Identificar estos espacios ayuda a realizar intervenciones pedagógicas focalizadas.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Alumnos con materias pendientes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-3 text-lg font-semibold">
-                        <Users className="h-5 w-5 text-amber-500" />
-                        {totalApprovalSubjects === 0
-                          ? "—"
-                          : approvalSummary.studentsWithPending}
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Deben rendir instancias complementarias para promocionar el año.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  {approvalData.sections.map((section) => {
-                    const isActive = selectedApprovalSection === section.id;
-                    return (
-                      <Card
-                        key={section.id}
-                        className={`cursor-pointer border transition ${
-                          isActive ? "border-primary shadow" : "hover:border-primary/40"
-                        }`}
-                        onClick={() => setSelectedApprovalSection(section.id)}
-                      >
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">
-                            {section.label}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Aprobadas</span>
-                            <span className="font-semibold">{section.stats.approved}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Desaprobadas</span>
-                            <span className="font-semibold text-destructive">
-                              {section.stats.failed}
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Promedio aprobado / alumno: {section.stats.averageApprovedPerStudent.toFixed(1)}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-
-                {approvalData.sections.length === 0 && (
-                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                    No encontramos secciones con calificaciones cargadas en el nivel primario.
-                  </div>
-                )}
-
-                {approvalOverview ? (
-                  <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-                    <Card className="border">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          {approvalOverview.section.label}: estado general
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex h-56 flex-col items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={approvalOverview.chartData}
-                              dataKey="value"
-                              nameKey="name"
-                              innerRadius={50}
-                              outerRadius={80}
-                              label
-                            >
-                              {approvalOverview.chartData.map((entry, index) => (
-                                <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border">
-                      <CardHeader className="flex flex-wrap items-center justify-between gap-3 pb-2">
-                        <div>
-                          <CardTitle className="text-sm font-medium">
-                            Detalle por alumno
-                          </CardTitle>
-                          <CardDescription>
-                            Ordená la vista según tu necesidad de análisis
-                          </CardDescription>
-                          <p className="text-xs text-muted-foreground">
-                            Promedio de materias aprobadas por alumno: {approvalOverview.section.stats.averageApprovedPerStudent.toFixed(1)}
-                          </p>
-                        </div>
-                        <div className="w-[200px]">
-                          <Select
-                            value={approvalSort}
-                            onValueChange={(value: "nombre" | "promedio" | "desaprobadas") =>
-                              setApprovalSort(value)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Ordenar por" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="nombre">Nombre</SelectItem>
-                              <SelectItem value="promedio">Promedio general</SelectItem>
-                              <SelectItem value="desaprobadas">Materias desaprobadas</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="overflow-x-auto">
-                        <table className="w-full min-w-[560px] text-sm">
-                          <thead className="bg-muted text-xs uppercase">
-                            <tr>
-                              <th className="px-3 py-2 text-left">Alumno</th>
-                              <th className="px-3 py-2 text-left">Materia</th>
-                              <th className="px-3 py-2 text-left">Nota</th>
-                              <th className="px-3 py-2 text-left">Estado</th>
-                              <th className="px-3 py-2 text-left">Promedio</th>
-                              <th className="px-3 py-2 text-left">Materias desaprobadas</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {approvalOverview.sorted.map((record) => (
-                              <tr key={`${record.studentId}-${record.subject}`} className="border-b last:border-0">
-                                <td className="px-3 py-2">{record.studentName}</td>
-                                <td className="px-3 py-2">{record.subject}</td>
-                                <td className="px-3 py-2">{record.grade.toFixed(1)}</td>
-                                <td className="px-3 py-2">
-                                  <Badge
-                                    variant={
-                                      record.status === "APROBADO" ? "default" : "destructive"
-                                    }
-                                  >
-                                    {record.status === "APROBADO" ? "Aprobado" : "Desaprobado"}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2">{record.average.toFixed(1)}</td>
-                                <td className="px-3 py-2">{record.failedCount}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                    Seleccioná una sección para ver el detalle específico.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* ------------------------ Reporte de Asistencias ------------------ */}
-          <TabsContent value="asistencias" ref={reportRefs.asistencias} className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="h-5 w-5" /> Reporte de Asistencias de Alumnos
-                </CardTitle>
-                <CardDescription>
-                  Analizá el comportamiento de asistencia por nivel, sección y alumno.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <Label className="mb-1 block">Desde</Label>
-                    <Input
-                      type="date"
-                      value={attendanceFrom}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setAttendanceFrom(value);
-                        if (value && attendanceTo && value > attendanceTo) {
-                          setAttendanceTo(value);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block">Hasta</Label>
-                    <Input
-                      type="date"
-                      value={attendanceTo}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setAttendanceTo(value);
-                        if (value && attendanceFrom && value < attendanceFrom) {
-                          setAttendanceFrom(value);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="mb-1 block">Secciones</Label>
-                    <Popover open={attendancePopoverOpen} onOpenChange={setAttendancePopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                          {selectedAttendanceSections.length
-                            ? `${selectedAttendanceSections.length} sección(es) seleccionadas`
-                            : "Seleccionar secciones"}
-                          <Search className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[260px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Buscar sección..." />
-                          <CommandList>
-                            <CommandEmpty>Sin resultados</CommandEmpty>
-                            <CommandGroup>
-                              {attendanceSectionOptions.map((section) => {
-                                const checked = selectedAttendanceSections.includes(section.id);
-                                return (
-                                  <CommandItem
-                                    key={section.id}
-                                    onSelect={() => {
-                                      setSelectedAttendanceSections((prev) => {
-                                        if (checked) {
-                                          const updated = prev.filter((id) => id !== section.id);
-                                          return updated.length ? updated : [section.id];
-                                        }
-                                        return [...prev, section.id];
-                                      });
-                                    }}
-                                  >
-                                    <div className="flex w-full items-center justify-between gap-2">
-                                      <div>
-                                        <p className="text-sm font-medium">{section.label}</p>
-                                        <p className="text-xs text-muted-foreground">{section.level}</p>
-                                      </div>
-                                      <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(value) => {
-                                          setSelectedAttendanceSections((prev) => {
-                                            if (value) return [...prev, section.id];
-                                            const updated = prev.filter((id) => id !== section.id);
-                                            return updated.length ? updated : [];
-                                          });
-                                        }}
-                                      />
-                                    </div>
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {attendanceError && (
-                  <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
-                    {attendanceError}
-                  </div>
-                )}
-
-                {loadingAttendance && !attendanceError && (
-                  <div className="rounded-lg border border-dashed bg-muted/60 p-6">
-                    <LoadingState label="Cargando asistencia…" />
-                  </div>
-                )}
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  {Object.entries(attendanceLevelSummary).map(([level, summary], index) => {
-                    const attendance = summary.totalDays
-                      ? summary.attended / summary.totalDays
-                      : 0;
-                    return (
-                      <Card key={level} className="border shadow-sm">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Promedio de asistencia – {level}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex h-48 items-center justify-center">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={[
-                                  { name: "Asistencia", value: attendance },
-                                  { name: "Inasistencia", value: 1 - attendance },
-                                ]}
-                                dataKey="value"
-                                nameKey="name"
-                                innerRadius={45}
-                                outerRadius={70}
-                              >
-                                {[attendance, 1 - attendance].map((_, colorIndex) => (
-                                  <Cell
-                                    key={colorIndex}
-                                    fill={PIE_COLORS[(index + colorIndex) % PIE_COLORS.length]}
-                                  />
-                                ))}
-                              </Pie>
-                              <RechartsTooltip
-                                formatter={(value: number, name) =>
-                                  `${name}: ${(value * 100).toFixed(1)}%`
-                                }
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-
-                {attendanceSelectedSummaries.map((summary) => {
-                  const averageAttendance = summary.totalDays
-                    ? summary.attended / summary.totalDays
-                    : 0;
-                  return (
-                    <Card key={summary.sectionId} className="border">
-                      <CardHeader className="flex flex-wrap items-center justify-between gap-3 pb-2">
-                        <div>
-                          <CardTitle className="text-sm font-medium">
-                          {summary.label} • {summary.level}
-                          </CardTitle>
-                          <CardDescription>
-                          {summary.students.length} alumno(s) • {summary.totalDays} registros en el período seleccionado.
-                          </CardDescription>
-                        </div>
-                      <Badge variant="outline">Promedio de asistencia {formatPercent(averageAttendance, 1)}</Badge>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="overflow-x-auto">
-                          <table className="w-full min-w-[600px] text-sm">
-                          <thead className="bg-muted text-xs uppercase">
-                            <tr>
-                              <th className="px-3 py-2 text-left">Alumno</th>
-                              <th className="px-3 py-2 text-left">Días registrables</th>
-                              <th className="px-3 py-2 text-left">Asistidos</th>
-                              <th className="px-3 py-2 text-left">Ausentes</th>
-                              <th className="px-3 py-2 text-left">Llegadas tarde</th>
-                              <th className="px-3 py-2 text-left">Retiros ant.</th>
-                              <th className="px-3 py-2 text-left">% Asistencia</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {summary.students.map((student) => (
-                              <tr key={student.id} className="border-b last:border-0">
-                                <td className="px-3 py-2">{student.name}</td>
-                                <td className="px-3 py-2">{student.total}</td>
-                                <td className="px-3 py-2">{student.presentes}</td>
-                                <td className="px-3 py-2">{student.ausentes}</td>
-                                <td className="px-3 py-2">{student.tarde}</td>
-                                <td className="px-3 py-2">{student.retiroAnticipado}</td>
-                                <td className="px-3 py-2 font-semibold">
-                                  {formatPercent(student.attendance, 1)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={summary.students.map((student) => ({
-                              name: student.name,
-                              attendance: (student.attendance * 100).toFixed(1),
-                            }))}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" hide={summary.students.length > 6} />
-                            <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-                            <RechartsTooltip formatter={(value: string) => `${value}%`} />
-                            <Bar dataKey="attendance" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-
-                {!loadingAttendance &&
-                  !attendanceError &&
-                  attendanceSelectedSummaries.length === 0 && (
-                    <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                      No encontramos registros de asistencia para las secciones seleccionadas.
-                    </div>
-                  )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* -------------------- Reporte de Licencias ----------------------- */}
-          <TabsContent value="licencias" ref={reportRefs.licencias} className="space-y-4">
-            <LicenseSummaryCards
-              totalPersonal={personalSummary.total}
-              activos={personalSummary.activos}
-              enLicencia={personalSummary.enLicencia}
-              totalLicencias={licenseRows.length}
-              loadingLicencias={licenseLoading}
-            />
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5" /> Resumen de licencias
-                </CardTitle>
-                <CardDescription>
-                  Visualizá la distribución y el estado actual de las licencias del personal.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {licenseLoading ? (
-                  <div className="rounded-lg border border-dashed bg-muted/60 p-6">
-                    <LoadingState label="Cargando licencias…" />
-                  </div>
-                ) : licenseError ? (
-                  <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
-                    {licenseError}
-                  </div>
-                ) : licenseRows.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                    No encontramos licencias registradas en el sistema.
-                  </div>
-                ) : (
-                  <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-                    <div className="h-64 rounded-lg border bg-muted/30 p-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={licenseTypeData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={60}
-                            outerRadius={90}
-                            paddingAngle={2}
-                          >
-                            {licenseTypeData.map((entry, index) => (
-                              <Cell
-                                key={`${entry.name}-${index}`}
-                                fill={PIE_COLORS[index % PIE_COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <RechartsTooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-lg border bg-muted/30 p-4">
-                          <p className="text-sm text-muted-foreground">Licencias activas</p>
-                          <p className="text-2xl font-semibold">{activeLicenses}</p>
-                        </div>
-                        <div className="rounded-lg border bg-muted/30 p-4">
-                          <p className="text-sm text-muted-foreground">Próximas a vencer (7 días)</p>
-                          <p className="text-2xl font-semibold">{expiringLicenses}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-sm text-muted-foreground">
-                        <p>Tipos más frecuentes</p>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {topLicenseTypes.length ? (
-                            topLicenseTypes.map((item) => (
-                              <div
-                                key={item.name}
-                                className="flex items-center justify-between rounded-lg border bg-background px-3 py-2"
-                              >
-                                <span>{item.name}</span>
-                                <span className="font-semibold">{item.value}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="rounded-lg border bg-background px-3 py-2">
-                              <p>No hay datos suficientes.</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="h-5 w-5" /> Detalle de licencias por docente
-                </CardTitle>
-                <CardDescription>
-                  Filtrá por docente, tipo o justificación para analizar los movimientos del personal.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-5">
-                  <div className="md:col-span-2 space-y-1">
-                    <Label>Búsqueda</Label>
-                    <Input
-                      placeholder="Buscar por docente o motivo"
-                      value={licenseQuery}
-                      onChange={(event) => setLicenseQuery(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Docente</Label>
-                    <Select
-                      value={licenseTeacherFilter}
-                      onValueChange={setLicenseTeacherFilter}
-                      disabled={licenseTeacherOptions.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos los docentes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        {licenseTeacherOptions.map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Tipo</Label>
-                    <Select value={licenseTypeFilter} onValueChange={setLicenseTypeFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos los tipos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        {tipoLicenciaOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Justificación</Label>
-                    <Select
-                      value={licenseJustificationFilter}
-                      onValueChange={(value) =>
-                        setLicenseJustificationFilter(value as typeof licenseJustificationFilter)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas</SelectItem>
-                        <SelectItem value="justified">Justificadas</SelectItem>
-                        <SelectItem value="unjustified">Sin justificar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Desde</Label>
-                    <Input
-                      type="date"
-                      value={licenseFrom}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setLicenseFrom(value);
-                        if (licenseTo && value && value > licenseTo) {
-                          setLicenseTo(value);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Hasta</Label>
-                    <Input
-                      type="date"
-                      value={licenseTo}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setLicenseTo(value);
-                        if (licenseFrom && value && value < licenseFrom) {
-                          setLicenseFrom(value);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {licenseError && !licenseLoading ? (
-                  <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
-                    {licenseError}
-                  </div>
-                ) : null}
-
-                {licenseLoading ? (
-                  <div className="rounded-lg border border-dashed bg-muted/60 p-6">
-                    <LoadingState label="Cargando licencias…" />
-                  </div>
-                ) : filteredLicenses.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[760px] text-sm">
-                      <thead className="bg-muted text-xs uppercase">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Docente</th>
-                          <th className="px-3 py-2 text-left">Tipo</th>
-                          <th className="px-3 py-2 text-left">Período</th>
-                          <th className="px-3 py-2 text-left">Estado</th>
-                          <th className="px-3 py-2 text-left">Motivo</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredLicenses.map((licencia) => (
-                          <tr key={licencia.id} className="border-b last:border-0">
-                            <td className="px-3 py-3 align-top">
-                              <div className="font-medium text-foreground">{licencia.teacherName}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {licencia.cargo ? licencia.cargo : "Sin cargo asignado"}
-                                {licencia.situacion ? ` • ${licencia.situacion}` : ""}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              <Badge variant="outline">{licencia.tipoLabel}</Badge>
-                              {typeof licencia.horas === "number" ? (
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {licencia.horas} hs de ausencia
-                                </div>
-                              ) : null}
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              <div>{licencia.rangeLabel}</div>
-                              {licencia.durationDays ? (
-                                <div className="text-xs text-muted-foreground">
-                                  {licencia.durationDays} días
-                                </div>
-                              ) : null}
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              <div className="flex flex-wrap gap-2">
-                                <Badge
-                                  variant={
-                                    licencia.expiresSoon
-                                      ? "destructive"
-                                      : licencia.isActive
-                                        ? "default"
-                                        : "outline"
-                                  }
-                                >
-                                  {licencia.expiresSoon
-                                    ? "Próxima a vencer"
-                                    : licencia.isActive
-                                      ? "Activa"
-                                      : "Finalizada"}
-                                </Badge>
-                                <Badge variant={licencia.justificada ? "secondary" : "destructive"}>
-                                  {licencia.justificada ? "Justificada" : "Sin justificar"}
-                                </Badge>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              {licencia.motivo ? (
-                                <div className="whitespace-pre-wrap">{licencia.motivo}</div>
-                              ) : (
-                                <span className="text-muted-foreground">Sin detalle</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
-
-                {!licenseLoading && filteredLicenses.length === 0 && !licenseError ? (
-                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                    {licenseFiltersActive
-                      ? "No se encontraron licencias con los criterios seleccionados."
-                      : "Aún no se registraron licencias en el sistema."}
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          {/* -------------------------- Reporte de Actas ---------------------- */}
-          <TabsContent value="actas" ref={reportRefs.actas} className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5" /> Reporte de Actas de Accidentes
-                </CardTitle>
-                <CardDescription>
-                  Filtrá y consultá rápidamente los registros de actas.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-                  <Card className="border bg-muted/40">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Filtros</CardTitle>
-                      <CardDescription>Acotá la búsqueda según necesidad.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                      <div className="space-y-2">
-                        <Label>Desde</Label>
-                        <Input
-                          type="date"
-                          value={actaFrom}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setActaFrom(value);
-                            if (value && actaTo && value > actaTo) {
-                              setActaTo(value);
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Hasta</Label>
-                        <Input
-                          type="date"
-                          value={actaTo}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setActaTo(value);
-                            if (value && actaFrom && value < actaFrom) {
-                              setActaFrom(value);
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Nivel</Label>
-                        <Select value={actaLevel} onValueChange={(value) => setActaLevel(value as typeof actaLevel)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Todos los niveles" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Todos">Todos los niveles</SelectItem>
-                            <SelectItem value="Inicial">Inicial</SelectItem>
-                            <SelectItem value="Primario">Primario</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Sección</Label>
-                        <Select
-                          value={actaSection}
-                          onValueChange={(value) => setActaSection(value)}
-                          disabled={actaRegistros.length === 0}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Todas las secciones" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todas</SelectItem>
-                            {Array.from(new Set(actaRegistros.map((a) => a.section)))
-                              .filter(Boolean)
-                              .map((section) => (
-                                <SelectItem key={section} value={section}>
-                                  {section}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Alumno</Label>
-                        <Input
-                          placeholder="Nombre o apellido"
-                          value={actaStudentQuery}
-                          onChange={(e) => setActaStudentQuery(e.target.value)}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-4">
-                    {actaErrorMsg && (
-                      <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
-                        {actaErrorMsg}
-                      </div>
-                    )}
-
-                    {loadingActasRegistro && !actaErrorMsg && (
-                      <div className="rounded-lg border border-dashed bg-muted/60 p-4">
-                        <LoadingState label="Cargando actas…" />
-                      </div>
-                    )}
-
-                    <div className="rounded-lg border bg-muted/30 p-4">
-                      <p className="text-sm text-muted-foreground">Actas encontradas</p>
-                      <p className="text-2xl font-semibold">
-                        {loadingActasRegistro ? "—" : filteredActas.length}
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      {filteredActas.map((acta) => (
-                        <Card
-                          key={acta.id}
-                          className="cursor-pointer border transition hover:border-primary/40"
-                          onClick={() => setActiveActa(acta)}
-                        >
-                          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm">
-                            <div>
-                              <div className="font-medium">{acta.student}</div>
-                              <div className="text-muted-foreground">
-                                {acta.section} • {acta.teacher}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3 w-3" /> {acta.date}
-                              </span>
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> {acta.time}
-                              </span>
-                              <Badge variant={acta.signed ? "default" : "destructive"}>
-                                {acta.signed ? "Firmada" : "No firmada"}
-                              </Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                      {filteredActas.length === 0 && !loadingActasRegistro && !actaErrorMsg && (
-                        <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                          No encontramos actas con los criterios seleccionados.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <ActasReport
+            reportRef={reportRefs.actas}
+            actaFrom={actaFrom}
+            setActaFrom={setActaFrom}
+            actaTo={actaTo}
+            setActaTo={setActaTo}
+            actaLevel={actaLevel}
+            setActaLevel={setActaLevel}
+            actaSection={actaSection}
+            setActaSection={setActaSection}
+            actaStudentQuery={actaStudentQuery}
+            setActaStudentQuery={setActaStudentQuery}
+            actaRegistros={actaRegistros}
+            filteredActas={filteredActas}
+            loadingActasRegistro={loadingActasRegistro}
+            actaErrorMsg={actaErrorMsg}
+            activeActa={activeActa}
+            setActiveActa={setActiveActa}
+            exportingActaId={exportingActaId}
+            onExportActa={handleExportActa}
+          />
         </Tabs>
       </div>
 
-      {/* Lateral Boletín */}
-      <Sheet open={!!activeBoletin} onOpenChange={(open) => !open && setActiveBoletin(null)}>
-        <SheetContent className="flex h-full w-full max-w-full flex-col overflow-y-auto sm:max-w-3xl md:overflow-y-visible lg:w-[80vw] lg:max-w-5xl">
-          {activeBoletin && (
-            <>
-              <SheetHeader className="space-y-4 text-left">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-2">
-                    <SheetTitle className="text-xl lg:text-2xl">{activeBoletin.name}</SheetTitle>
-                    <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="font-medium text-foreground">{activeBoletin.section}</span>
-                      <span className="text-muted-foreground">
-                        Legajo: {activeBoletin.matriculaId ?? activeBoletin.alumnoId ?? "—"}
-                      </span>
-                    </SheetDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="justify-center lg:justify-start"
-                    onClick={handlePrintBoletin}
-                    disabled={exportingBoletin}
-                  >
-                    <Printer className="mr-2 h-4 w-4" />
-                    {exportingBoletin ? "Generando…" : "Imprimir resumen"}
-                  </Button>
-                </div>
-              </SheetHeader>
-              <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Promedio general
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">
-                    {typeof activeBoletin.average === "number"
-                      ? activeBoletin.average.toFixed(1)
-                      : "—"}
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Asistencia
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">
-                    {typeof activeBoletin.attendancePercentage === "number"
-                      ? formatPercent(activeBoletin.attendancePercentage, 1)
-                      : "—"}
-                  </p>
-                </div>
-              </div>
 
-              <div
-                className={`mt-6 flex-1 space-y-4 pb-8 text-sm ${
-                  isActiveBoletinPrimario
-                    ? "lg:grid lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start lg:gap-6 lg:space-y-0"
-                    : ""
-                }`}
-              >
-                {activeBoletin.attendanceDetail && (
-                  <div className="rounded-lg border p-4 lg:sticky lg:top-6">
-                    <h3 className="text-sm font-semibold">Detalle de asistencia</h3>
-                    <ul className="mt-2 space-y-1 text-muted-foreground">
-                      <li>Días hábiles: {activeBoletin.attendanceDetail.workingDays}</li>
-                      <li>Asistidos: {activeBoletin.attendanceDetail.attended}</li>
-                      <li>Inasistencias justificadas: {activeBoletin.attendanceDetail.justified}</li>
-                      <li>Inasistencias injustificadas: {activeBoletin.attendanceDetail.unjustified}</li>
-                    </ul>
-                  </div>
-                )}
-
-                {activeBoletin.level === "Primario" ? (
-                  <div className="rounded-lg border">
-                    <div className="border-b px-4 py-3 text-sm font-semibold">
-                      Boletín por materia
-                    </div>
-                    {boletinSubjectsForTable.length === 0 ||
-                    boletinTrimesters.length === 0 ? (
-                      <div className="p-4 text-xs text-muted-foreground">
-                        No hay calificaciones registradas para este alumno.
-                      </div>
-                    ) : (
-                      <>
-                        <div className="hidden flex-col gap-4 md:flex">
-                          {boletinSubjectsByTrimester.map((trimester) => (
-                            <div
-                              key={trimester.id}
-                              className="space-y-4 rounded-lg border border-border bg-background p-4 shadow-sm"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                                  {trimester.label}
-                                </h3>
-                                <span className="text-xs text-muted-foreground">
-                                  {trimester.subjects.length} materia
-                                  {trimester.subjects.length === 1 ? "" : "s"}
-                                </span>
-                              </div>
-                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                {trimester.subjects.map((subject) => (
-                                  <div
-                                    key={subject.id}
-                                    className="space-y-3 rounded-md border border-border bg-muted/20 p-3 shadow-sm"
-                                  >
-                                    <div className="space-y-1">
-                                      <p className="text-sm font-semibold">{subject.name}</p>
-                                      {subject.teacher && (
-                                        <p className="text-xs text-muted-foreground">Docente: {subject.teacher}</p>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center justify-between rounded border border-dashed border-border/60 bg-background px-3 py-2">
-                                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                        Calificación
-                                      </span>
-                                      <span className="text-base font-semibold text-foreground">
-                                        {subject.grade}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="grid gap-3 p-4 md:hidden">
-                          {boletinSubjectsForTable.map((subject) => {
-                            const displayTeacher = sanitizeTeacherName(subject.teacher);
-
-                            return (
-                              <div
-                                key={subject.id}
-                                className="space-y-3 rounded-md border border-border bg-background p-3 shadow-sm"
-                              >
-                                <div className="space-y-1">
-                                  <p className="text-sm font-semibold">{subject.name}</p>
-                                  {displayTeacher && (
-                                    <p className="text-xs text-muted-foreground">Docente: {displayTeacher}</p>
-                                  )}
-                                </div>
-                                <div className="grid gap-2">
-                                  {boletinTrimesters.map((trimester) => {
-                                    const grade = subject.grades.find(
-                                      (g) => g.trimestreId === trimester.id,
-                                    );
-                                    const gradeValue = getBoletinGradeDisplay(grade);
-
-                                    return (
-                                      <div
-                                        key={`${subject.id}-${trimester.id}`}
-                                        className="rounded border border-dashed border-border/60 p-2"
-                                      >
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                            {trimester.label}
-                                          </span>
-                                          <span className="text-sm font-semibold text-foreground">
-                                            {gradeValue}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border">
-                    <div className="border-b px-4 py-3 text-sm font-semibold">
-                      Informes por trimestre
-                    </div>
-                    <div className="divide-y">
-                      {activeBoletin.informes && activeBoletin.informes.length > 0 ? (
-                        activeBoletin.informes.map((informe) => (
-                          <div key={`${activeBoletin.id}-${informe.trimestreId}`} className="grid gap-2 p-4">
-                            <div className="font-medium">{informe.trimestreLabel}</div>
-                            <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                              {informe.descripcion || "Sin descripción"}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-xs text-muted-foreground">
-                          No hay informes cargados para este alumno.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Modal de Acta */}
-      <Dialog open={!!activeActa} onOpenChange={(open) => !open && setActiveActa(null)}>
-        <DialogContent className="max-w-2xl">
-          {activeActa && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Acta #{activeActa.id}</DialogTitle>
-                <DialogDescription>
-                  {activeActa.student} • {activeActa.section} • {activeActa.teacher}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 text-sm">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-muted-foreground">Alumno</span>
-                    <p className="font-medium">{activeActa.student}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">DNI del alumno</span>
-                    <p className="font-medium">{activeActa.studentDni ?? "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Familiar responsable</span>
-                    <p className="font-medium">{activeActa.familyName ?? "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">DNI del familiar</span>
-                    <p className="font-medium">{activeActa.familyDni ?? "—"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Fecha y horario</span>
-                    <p className="font-medium">
-                      {activeActa.date} • {activeActa.time}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Lugar</span>
-                    <p className="font-medium">{activeActa.location}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Estado</span>
-                    <Badge variant={activeActa.signed ? "default" : "destructive"}>
-                      {activeActa.signed ? "Firmada" : "No firmada"}
-                    </Badge>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Dirección firmante</span>
-                    <p className="font-medium">
-                      {activeActa.signer ?? "Pendiente de asignación"}
-                      {activeActa.signerDni
-                        ? ` (DNI ${activeActa.signerDni})`
-                        : ""}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Descripción</span>
-                  <p className="whitespace-pre-wrap text-sm">{activeActa.description}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Acciones realizadas</span>
-                  <p className="whitespace-pre-wrap text-sm">{activeActa.actions}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  disabled={exportingActaId === activeActa.id}
-                  onClick={() => {
-                    if (!activeActa) return;
-                    void (async () => {
-                      const title = `Acta #${activeActa.id}`;
-                      try {
-                        setExportingActaId(activeActa.id ?? null);
-                        await downloadPdfDocument({
-                          create: (doc) =>
-                            renderAccidentActPdf(
-                              doc,
-                              {
-                                id: activeActa.id ?? title,
-                                alumno: activeActa.student,
-                                alumnoDni: activeActa.studentDni,
-                                seccion: activeActa.section,
-                                fecha: activeActa.date,
-                                hora: activeActa.time,
-                                lugar: activeActa.location,
-                                descripcion: activeActa.description,
-                                acciones: activeActa.actions,
-                                firmante: activeActa.signer ?? undefined,
-                                firmanteDni: activeActa.signerDni,
-                                familiar: activeActa.familyName,
-                                familiarDni: activeActa.familyDni,
-                              },
-                              {
-                                statusLabel: activeActa.signed ? "Firmada" : "No firmada",
-                              },
-                            ),
-                          fileName: suggestPdfFileName(title),
-                        });
-                        toast.success("Acta exportada en PDF.");
-                      } catch (error) {
-                        const message =
-                          error instanceof Error
-                            ? error.message
-                            : "No se pudo generar el PDF del acta.";
-                        toast.error(message);
-                      } finally {
-                        setExportingActaId(null);
-                      }
-                    })();
-                  }}
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  {exportingActaId === activeActa.id ? "Generando…" : "Imprimir Acta"}
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }

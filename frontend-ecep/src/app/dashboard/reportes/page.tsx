@@ -3091,7 +3091,7 @@ const handleExportCurrent = async () => {
 
       {/* Lateral Boletín */}
       <Sheet open={!!activeBoletin} onOpenChange={(open) => !open && setActiveBoletin(null)}>
-        <SheetContent className="w-full sm:max-w-3xl sm:overflow-y-auto lg:w-[80vw] lg:max-w-5xl lg:overflow-visible">
+      <SheetContent className="flex h-full w-full max-w-full flex-col overflow-y-auto sm:max-w-3xl lg:w-[80vw] lg:max-w-5xl">
           {activeBoletin && (
             <>
               <SheetHeader className="space-y-4 text-left">
@@ -3122,7 +3122,7 @@ const handleExportCurrent = async () => {
                 </div>
               </SheetHeader>
               <div
-                className={`mt-6 space-y-4 text-sm ${
+                className={`mt-6 flex-1 space-y-4 pb-8 text-sm ${
                   isActiveBoletinPrimario
                     ? "lg:grid lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start lg:gap-6 lg:space-y-0"
                     : ""
@@ -3151,13 +3151,14 @@ const handleExportCurrent = async () => {
                         No hay calificaciones registradas para este alumno.
                       </div>
                     ) : (
-                      <div className="w-full max-w-full overflow-x-auto">
-                        <table className="min-w-full table-auto border-collapse text-xs sm:text-sm">
-                          <thead>
-                            <tr>
-                              <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
-                                Materia
-                              </th>
+                      <>
+                        <div className="hidden w-full max-w-full overflow-x-auto md:block">
+                          <table className="min-w-full table-auto border-collapse text-xs sm:text-sm">
+                            <thead>
+                              <tr>
+                                <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
+                                  Materia
+                                </th>
                                 {boletinTrimesters.map((trimester) => (
                                   <th
                                     key={trimester.id}
@@ -3219,6 +3220,58 @@ const handleExportCurrent = async () => {
                             </tbody>
                           </table>
                         </div>
+
+                        <div className="grid gap-3 p-4 md:hidden">
+                          {boletinSubjectsForTable.map((subject) => {
+                            const displayTeacher = sanitizeTeacherName(subject.teacher);
+
+                            return (
+                              <div
+                                key={subject.id}
+                                className="space-y-3 rounded-md border border-border bg-background p-3 shadow-sm"
+                              >
+                                <div className="space-y-1">
+                                  <p className="text-sm font-semibold">{subject.name}</p>
+                                  {displayTeacher && (
+                                    <p className="text-xs text-muted-foreground">Docente: {displayTeacher}</p>
+                                  )}
+                                </div>
+                                <div className="grid gap-2">
+                                  {boletinTrimesters.map((trimester) => {
+                                    const grade = subject.grades.find(
+                                      (g) => g.trimestreId === trimester.id,
+                                    );
+                                    const { value: gradeValue, observations } =
+                                      getBoletinGradeDisplay(grade);
+
+                                    return (
+                                      <div
+                                        key={`${subject.id}-${trimester.id}`}
+                                        className="rounded border border-dashed border-border/60 p-2"
+                                      >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                            {trimester.label}
+                                          </span>
+                                          <span className="text-sm font-semibold text-foreground">
+                                            {gradeValue}
+                                          </span>
+                                        </div>
+                                        {observations && (
+                                          <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                                            <span className="font-semibold uppercase tracking-wide">Observaciones:</span>{" "}
+                                            {observations}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
                 ) : (

@@ -320,7 +320,7 @@ export default function SeccionHistorialPage() {
             onValueChange={setSelectedTrimestreId}
             className="space-y-4"
           >
-            <TabsList className="flex flex-wrap gap-2">
+            <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
               {trimestresDelPeriodo.map((tri, index) => {
                 const label =
                   tri.orden != null

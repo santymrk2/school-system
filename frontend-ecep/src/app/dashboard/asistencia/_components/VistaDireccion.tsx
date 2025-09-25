@@ -27,11 +27,30 @@ import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { toast } from "sonner";
 import { getTrimestreEstado, TRIMESTRE_ESTADO_LABEL } from "@/lib/trimestres";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
+import {
+  buildPdfHtml,
+  downloadPdfWithHtmlDocs,
+  escapeHtml,
+  suggestPdfFileName,
+} from "@/lib/pdf";
 
 function fmt(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatMonthYearLabel(value: string) {
+  if (!value) return value;
+  const [yearPart, monthPart] = value.split("-");
+  const year = Number(yearPart);
+  const monthIndex = Number(monthPart) - 1;
+  if (Number.isNaN(year) || Number.isNaN(monthIndex)) return value;
+  const label = new Date(year, monthIndex).toLocaleDateString("es-AR", {
+    month: "long",
+    year: "numeric",
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export default function VistaDireccion() {
@@ -48,6 +67,9 @@ export default function VistaDireccion() {
 
   const [mes, setMes] = useState<string>(
     `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
+  );
+  const [exportingCierreSectionId, setExportingCierreSectionId] = useState<number | null>(
+    null,
   );
   const [nuevoTrimestre, setNuevoTrimestre] = useState<{
     inicio?: string;
@@ -75,11 +97,76 @@ export default function VistaDireccion() {
       (j) => j.seccionId === s.id && j.fecha >= start && j.fecha <= end,
     );
     const det = detalles.filter((d) => jor.some((j) => j.id === d.jornadaId));
-    const total = det.length || 1;
-    const pres = det.filter((d) => d.estado === "PRESENTE").length;
-    const pct = Math.round((pres / total) * 100);
-    return { s, pct, jCount: jor.length };
+    const totalRegistros = det.length;
+    const presentes = det.filter((d) => d.estado === "PRESENTE").length;
+    const ausentes = det.filter((d) => d.estado === "AUSENTE").length;
+    const llegadasTarde = det.filter((d) => d.estado === "TARDE").length;
+    const retirosAnticipados = det.filter(
+      (d) => d.estado === "RETIRO_ANTICIPADO",
+    ).length;
+    const pct = totalRegistros
+      ? Math.round((presentes / totalRegistros) * 100)
+      : 0;
+    return {
+      s,
+      pct,
+      jCount: jor.length,
+      totalRegistros,
+      presentes,
+      ausentes,
+      llegadasTarde,
+      retirosAnticipados,
+    };
   });
+
+  const exportCierreMensual = async (item: (typeof cierreMensual)[number]) => {
+    const sectionLabel = `${item.s.gradoSala} ${item.s.division}`.trim();
+    const monthLabel = formatMonthYearLabel(mes);
+    const title = `Cierre mensual ${sectionLabel} – ${monthLabel}`;
+    const summaryHtml = `
+      <div class="card">
+        <p><strong>Sección:</strong> ${escapeHtml(sectionLabel)}</p>
+        <p><strong>Mes:</strong> ${escapeHtml(monthLabel)}</p>
+        <p><strong>Jornadas registradas:</strong> ${escapeHtml(item.jCount)}</p>
+        <p><strong>Días no hábiles declarados:</strong> ${escapeHtml(diasNoHabilesEnMes)}</p>
+        <p><strong>Asistencia promedio:</strong> ${escapeHtml(item.pct)}%</p>
+      </div>
+      <div class="card">
+        <h2>Detalle de asistencias</h2>
+        <table>
+          <tbody>
+            <tr><th>Total de registros</th><td>${escapeHtml(item.totalRegistros)}</td></tr>
+            <tr><th>Presentes</th><td>${escapeHtml(item.presentes)}</td></tr>
+            <tr><th>Ausentes</th><td>${escapeHtml(item.ausentes)}</td></tr>
+            <tr><th>Llegadas tarde</th><td>${escapeHtml(item.llegadasTarde)}</td></tr>
+            <tr><th>Retiros anticipados</th><td>${escapeHtml(item.retirosAnticipados)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    try {
+      setExportingCierreSectionId(item.s.id);
+      const documentHtml = buildPdfHtml({
+        title,
+        body: summaryHtml,
+      });
+      await downloadPdfWithHtmlDocs({
+        html: documentHtml,
+        title,
+        fileName: suggestPdfFileName(title),
+      });
+      toast.success("PDF generado correctamente.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo generar el PDF del cierre mensual.";
+      toast.error(message);
+    } finally {
+      setExportingCierreSectionId(null);
+    }
+  };
 
   const crearTrimestre = async () => {
     try {
@@ -240,29 +327,37 @@ export default function VistaDireccion() {
             />
           </div>
           <div className="space-y-2">
-            {cierreMensual.map(({ s, pct, jCount }) => (
-              <div
-                key={s.id}
-                className="flex items-center justify-between border rounded p-2"
-              >
-                <div className="space-y-0.5">
-                  <div className="text-sm font-medium">
-                    {s.gradoSala} {s.division}
+            {cierreMensual.map((item) => {
+              const { s, pct, jCount } = item;
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between border rounded p-2"
+                >
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">
+                      {s.gradoSala} {s.division}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Jornadas: {jCount} — Días no hábiles: {diasNoHabilesEnMes}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600">
-                    Jornadas: {jCount} — Días no hábiles: {diasNoHabilesEnMes}
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm">{pct}%</div>
+                    <Progress value={pct} className="w-40 h-2" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void exportCierreMensual(item)}
+                      disabled={exportingCierreSectionId === s.id}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      {exportingCierreSectionId === s.id ? "Generando…" : "PDF"}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm">{pct}%</div>
-                  <Progress value={pct} className="w-40 h-2" />
-                  <Button variant="outline" size="sm">
-                    <FileText className="h-4 w-4 mr-2" />
-                    PDF
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

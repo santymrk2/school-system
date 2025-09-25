@@ -104,6 +104,7 @@ import {
   renderInstitutionalReport,
   type KeyValuePair,
   type ReportSection,
+  type TableColumn,
 } from "@/lib/pdf/report-helpers";
 
 // -----------------------------------------------------------------------------
@@ -160,6 +161,38 @@ type BoletinSection = {
   label: string;
   level: "Inicial" | "Primario";
   students: BoletinStudent[];
+};
+
+const sanitizeTeacherName = (teacher?: string | null) => {
+  if (!teacher) return null;
+  const trimmed = String(teacher).trim();
+  return trimmed && trimmed !== "—" ? trimmed : null;
+};
+
+const getBoletinGradeDisplay = (grade?: BoletinSubjectGrade | null) => {
+  const defaultResult = { value: "—", observations: null as string | null };
+  if (!grade) return defaultResult;
+
+  const conceptual = grade.notaConceptual?.trim();
+  if (conceptual && conceptual !== "—") {
+    return {
+      value: conceptual,
+      observations: grade.observaciones?.trim() || null,
+    };
+  }
+
+  const numeric = typeof grade.notaNumerica === "number" ? grade.notaNumerica : null;
+  if (numeric != null && Number.isFinite(numeric)) {
+    return {
+      value: numeric.toFixed(1),
+      observations: grade.observaciones?.trim() || null,
+    };
+  }
+
+  return {
+    value: "—",
+    observations: grade.observaciones?.trim() || null,
+  };
 };
 
 type ApprovalSummary = {
@@ -901,6 +934,36 @@ export default function ReportesPage() {
       });
     }
 
+    if (boletinSubjectsForTable.length && boletinTrimesters.length) {
+      const tableColumns: TableColumn[] = [
+        { label: "Materia", width: "wide" },
+        ...boletinTrimesters.map((trimester) => ({ label: trimester.label })),
+      ];
+
+      const tableRows = boletinSubjectsForTable.map((subject) => {
+        const displayTeacher = sanitizeTeacherName(subject.teacher);
+        const teacherLabel = displayTeacher ? `\nDocente: ${displayTeacher}` : "";
+        const subjectCell = `${subject.name}${teacherLabel}`;
+
+        const trimesterCells = boletinTrimesters.map((trimester) => {
+          const grade = subject.grades.find((g) => g.trimestreId === trimester.id);
+          const { value: gradeValue, observations } = getBoletinGradeDisplay(grade);
+          const observationLabel = observations ? `\nObservaciones: ${observations}` : "";
+
+          return `${gradeValue}${observationLabel}`;
+        });
+
+        return [subjectCell, ...trimesterCells];
+      });
+
+      sections.push({
+        type: "table",
+        title: "Calificaciones por trimestre",
+        columns: tableColumns,
+        rows: tableRows,
+      });
+    }
+
     try {
       setExportingBoletin(true);
       await downloadPdfDocument({
@@ -913,6 +976,9 @@ export default function ReportesPage() {
             metadataTitle: title,
           }),
         fileName: suggestPdfFileName(title),
+        options: {
+          orientation: "landscape",
+        },
       });
       toast.success("Resumen del boletín listo para imprimir.");
     } catch (error) {
@@ -924,7 +990,7 @@ export default function ReportesPage() {
     } finally {
       setExportingBoletin(false);
     }
-  }, [activeBoletin]);
+  }, [activeBoletin, boletinSubjectsForTable, boletinTrimesters]);
 
   const isActiveBoletinPrimario = activeBoletin?.level === "Primario";
 
@@ -3086,7 +3152,7 @@ const handleExportCurrent = async () => {
                       </div>
                     ) : (
                       <div className="w-full overflow-x-auto lg:overflow-visible">
-                        <table className="min-w-full border-collapse text-xs sm:text-sm lg:table-fixed">
+                        <table className="min-w-full table-auto border-collapse text-xs sm:text-sm">
                           <thead>
                             <tr>
                               <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
@@ -3104,11 +3170,7 @@ const handleExportCurrent = async () => {
                             </thead>
                             <tbody>
                               {boletinSubjectsForTable.map((subject) => {
-                                const displayTeacher = subject.teacher
-                                  ? String(subject.teacher).trim()
-                                  : null;
-                                const showTeacher =
-                                  displayTeacher && displayTeacher !== "—";
+                                const displayTeacher = sanitizeTeacherName(subject.teacher);
 
                                 return (
                                   <tr key={subject.id} className="even:bg-muted/10">
@@ -3118,7 +3180,7 @@ const handleExportCurrent = async () => {
                                     >
                                       <div className="flex flex-col gap-1">
                                         <span className="font-medium">{subject.name}</span>
-                                        {showTeacher && (
+                                        {displayTeacher && (
                                           <span className="text-[0.7rem] font-normal text-muted-foreground">
                                             Docente: {displayTeacher}
                                           </span>
@@ -3129,14 +3191,8 @@ const handleExportCurrent = async () => {
                                       const grade = subject.grades.find(
                                         (g) => g.trimestreId === trimester.id,
                                       );
-                                      const conceptualGrade = grade?.notaConceptual?.trim();
-                                      const gradeValue =
-                                        conceptualGrade && conceptualGrade !== "—"
-                                          ? conceptualGrade
-                                          : grade && typeof grade.notaNumerica === "number"
-                                            ? grade.notaNumerica.toFixed(1)
-                                            : "—";
-                                      const observations = grade?.observaciones?.trim();
+                                      const { value: gradeValue, observations } =
+                                        getBoletinGradeDisplay(grade);
 
                                       return (
                                         <td
@@ -3147,6 +3203,9 @@ const handleExportCurrent = async () => {
                                             <span className="font-medium">{gradeValue}</span>
                                             {observations && (
                                               <p className="whitespace-pre-wrap text-[0.7rem] text-muted-foreground">
+                                                <span className="font-semibold uppercase tracking-wide text-[0.65rem] text-muted-foreground">
+                                                  Observaciones:
+                                                </span>{" "}
                                                 {observations}
                                               </p>
                                             )}

@@ -3,6 +3,8 @@ package edu.ecep.base_app.gestionacademica.application;
 import edu.ecep.base_app.gestionacademica.domain.CalificacionTrimestral;
 import edu.ecep.base_app.gestionacademica.domain.Trimestre;
 import edu.ecep.base_app.gestionacademica.domain.TrimestreEstado;
+import edu.ecep.base_app.identidad.application.PersonaAccountService;
+import edu.ecep.base_app.identidad.domain.enums.UserRole;
 import edu.ecep.base_app.gestionacademica.infrastructure.mapper.CalificacionTrimestralMapper;
 import edu.ecep.base_app.gestionacademica.infrastructure.persistence.CalificacionTrimestralRepository;
 import edu.ecep.base_app.gestionacademica.infrastructure.persistence.TrimestreRepository;
@@ -12,6 +14,7 @@ import edu.ecep.base_app.shared.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +26,7 @@ public class CalificacionTrimestralService {
     private final CalificacionTrimestralMapper mapper;
     private final TrimestreRepository trimRepo;
     private final DocenteScopeService docenteScopeService;
+    private final PersonaAccountService personaAccountService;
 
     public List<CalificacionTrimestralDTO> findAll() {
         List<CalificacionTrimestral> entities = repo.findAll();

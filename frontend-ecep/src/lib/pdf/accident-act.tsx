@@ -1,13 +1,13 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 export type AccidentActPdfData = {
-  id: number | string;
-  alumno: string;
+  id: number | string | null | undefined;
+  alumno?: string | null;
   seccion?: string | null;
-  fecha: string;
+  fecha?: string | null;
   hora?: string | null;
   lugar?: string | null;
-  descripcion: string;
+  descripcion?: string | null;
   acciones?: string | null;
   creadoPor?: string | null;
   informante?: string | null;
@@ -229,6 +229,19 @@ const actaPdfStyles = StyleSheet.create({
   },
 });
 
+const textOrNull = (value: string | number | null | undefined): string | null => {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+};
+
+const textOrFallback = (
+  value: string | number | null | undefined,
+  fallback = "—",
+) => {
+  return textOrNull(value) ?? fallback;
+};
+
 const renderTextBox = (value: string | null | undefined, emptyMessage: string) => {
   if (!value || value.trim().length === 0) {
     return (
@@ -267,6 +280,7 @@ export const createAccidentActDocument = (
 ) => {
   const effectiveStatusLabel = statusLabel ?? "Borrador";
   const statusIsCerrada = effectiveStatusLabel.toLowerCase() === "cerrada";
+  const idLabel = textOrFallback(acta.id, "S/D");
   const generatedLabel =
     generatedAt ??
     new Intl.DateTimeFormat("es-AR", {
@@ -275,29 +289,30 @@ export const createAccidentActDocument = (
     }).format(new Date());
 
   const primaryDetails = [
-    { label: "Alumno", value: acta.alumno },
-    { label: "Sección", value: acta.seccion ?? "—" },
-    { label: "Fecha del suceso", value: acta.fecha },
-    { label: "Hora", value: acta.hora ?? "—" },
-    { label: "Lugar", value: acta.lugar ?? "—" },
-    { label: "Estado", value: effectiveStatusLabel },
+    {
+      label: "Alumno",
+      value: textOrFallback(acta.alumno, "Alumno sin registrar"),
+    },
+    { label: "Sección", value: textOrFallback(acta.seccion) },
+    { label: "Fecha del suceso", value: textOrFallback(acta.fecha) },
+    { label: "Hora", value: textOrFallback(acta.hora) },
+    { label: "Lugar", value: textOrFallback(acta.lugar) },
+    { label: "Estado", value: textOrFallback(effectiveStatusLabel) },
   ];
 
   const participantDetails = [
-    { label: "Creada por", value: acta.creadoPor },
-    { label: "Informante", value: acta.informante },
-    { label: "Firmante", value: acta.firmante },
-  ].filter((detail) => {
-    if (typeof detail.value !== "string") return false;
-    return detail.value.trim().length > 0;
+    { label: "Creada por", value: textOrNull(acta.creadoPor) },
+    { label: "Informante", value: textOrNull(acta.informante) },
+    { label: "Firmante", value: textOrNull(acta.firmante) },
+  ].filter((detail): detail is { label: string; value: string } => {
+    return detail.value != null;
   });
 
-  const assignedSigner = acta.firmante?.trim().length
-    ? acta.firmante
-    : "Pendiente de asignación";
+  const assignedSigner =
+    textOrNull(acta.firmante) ?? "Pendiente de asignación";
 
   return (
-    <Document title={`Acta de Accidente #${acta.id}`} author="Sistema escolar">
+    <Document title={`Acta de Accidente #${idLabel}`} author="Sistema escolar">
       <Page size="A4" style={actaPdfStyles.page}>
         <View style={actaPdfStyles.container}>
           <View style={actaPdfStyles.header}>
@@ -308,7 +323,7 @@ export const createAccidentActDocument = (
               <View>
                 <Text style={actaPdfStyles.subtitle}>Registro institucional</Text>
                 <Text style={actaPdfStyles.title}>
-                  {`Acta de Accidente #${acta.id}`}
+                  {`Acta de Accidente #${idLabel}`}
                 </Text>
               </View>
             </View>
@@ -325,7 +340,9 @@ export const createAccidentActDocument = (
 
           <View style={actaPdfStyles.highlight}>
             <Text style={actaPdfStyles.highlightLabel}>Alumno involucrado</Text>
-            <Text style={actaPdfStyles.highlightValue}>{acta.alumno}</Text>
+            <Text style={actaPdfStyles.highlightValue}>
+              {textOrFallback(acta.alumno, "Alumno sin registrar")}
+            </Text>
           </View>
 
           <View style={actaPdfStyles.section}>
@@ -358,12 +375,18 @@ export const createAccidentActDocument = (
 
           <View style={actaPdfStyles.section}>
             <Text style={actaPdfStyles.sectionTitle}>Descripción del suceso</Text>
-            {renderTextBox(acta.descripcion, "No se registró una descripción.")}
+            {renderTextBox(
+              textOrNull(acta.descripcion),
+              "No se registró una descripción.",
+            )}
           </View>
 
           <View style={actaPdfStyles.section}>
             <Text style={actaPdfStyles.sectionTitle}>Acciones realizadas</Text>
-            {renderTextBox(acta.acciones ?? null, "No se registraron acciones.")}
+            {renderTextBox(
+              textOrNull(acta.acciones),
+              "No se registraron acciones.",
+            )}
           </View>
 
           <View style={actaPdfStyles.section}>
@@ -386,7 +409,7 @@ export const createAccidentActDocument = (
 
           <View style={actaPdfStyles.footer}>
             <Text>Generado el {generatedLabel}</Text>
-            <Text>ID interno: {String(acta.id)}</Text>
+            <Text>ID interno: {idLabel}</Text>
           </View>
         </View>
       </Page>

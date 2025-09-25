@@ -36,6 +36,13 @@ public class SolicitudAdmisionController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/reprogramar")
+    public ResponseEntity<Void> solicitarReprogramacion(@PathVariable Long id,
+            @RequestBody @Valid SolicitudAdmisionReprogramacionDTO dto) {
+        service.solicitarReprogramacion(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/confirmar-fecha")
     public ResponseEntity<Void> confirmar(@PathVariable Long id, @RequestBody @Valid SolicitudAdmisionSeleccionDTO dto) {
         service.confirmarFecha(id, dto);

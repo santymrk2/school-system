@@ -782,6 +782,8 @@ export interface SolicitudAdmisionDTO {
   disponibilidadCurso?: string;
   cupoDisponible?: boolean;
   fechasPropuestas?: ISODate[];
+  rangosHorariosPropuestos?: string[];
+  aclaracionesPropuesta?: string;
   fechaLimiteRespuesta?: ISODate;
   fechaRespuestaFamilia?: ISODate;
   fechaEntrevistaConfirmada?: ISODate;
@@ -790,7 +792,12 @@ export interface SolicitudAdmisionDTO {
   documentosRequeridos?: string;
   adjuntosInformativos?: string[];
   notasDireccion?: string;
+  comentariosEntrevista?: string;
   motivoRechazo?: string;
+  puedeSolicitarReprogramacion?: boolean;
+  reprogramacionSolicitada?: boolean;
+  comentarioReprogramacion?: string;
+  cantidadPropuestasEnviadas?: number;
 }
 
 export interface SolicitudAdmisionProgramarDTO {
@@ -799,6 +806,8 @@ export interface SolicitudAdmisionProgramarDTO {
   adjuntosInformativos?: string[];
   cupoDisponible?: boolean;
   disponibilidadCurso?: string;
+  rangosHorarios: string[];
+  aclaracionesDireccion?: string;
 }
 
 export interface SolicitudAdmisionRechazoDTO {
@@ -810,7 +819,12 @@ export interface SolicitudAdmisionSeleccionDTO {
 }
 
 export interface SolicitudAdmisionEntrevistaDTO {
-  realizada: boolean;
+  realizada?: boolean;
+  comentarios?: string;
+}
+
+export interface SolicitudAdmisionReprogramacionDTO {
+  comentario: string;
 }
 
 export interface SolicitudAdmisionDecisionDTO {

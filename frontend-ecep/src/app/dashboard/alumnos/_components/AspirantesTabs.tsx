@@ -30,22 +30,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Calendar,
+  CalendarDays,
   CheckCircle,
   Clock,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Mail,
   Phone,
+  RefreshCw,
+  StickyNote,
   X,
 } from "lucide-react";
 import type * as DTO from "@/types/api-generated";
@@ -262,6 +259,24 @@ export default function AspirantesTab({ searchTerm }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<SolicitudAdmisionItem | null>(null);
   const [promptInterviewOpen, setPromptInterviewOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const pageSize = 6;
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (page * pageSize >= solicitudes.length && page > 0) {
+      const nextPage = Math.max(0, Math.ceil(solicitudes.length / pageSize) - 1);
+      setPage(nextPage);
+    }
+  }, [page, solicitudes.length, pageSize]);
+
+  const totalPages = Math.ceil(solicitudes.length / pageSize);
+  const startIndex = totalPages === 0 ? 0 : page * pageSize;
+  const endIndex = Math.min(solicitudes.length, startIndex + pageSize);
+  const currentSolicitudes = solicitudes.slice(startIndex, endIndex);
 
   const openDetail = (row: SolicitudAdmisionItem) => {
     setSelected(row);
@@ -321,36 +336,110 @@ export default function AspirantesTab({ searchTerm }: Props) {
             Gestioná las solicitudes recibidas: entrevistas, disponibilidad y decisiones finales.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Curso</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Disponibilidad</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {solicitudes.map((row) => {
-                const nombre = resolveAspiranteNombre(row);
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{nombre || "—"}</TableCell>
-                    <TableCell>{formatCurso(row.aspirante?.cursoSolicitado)}</TableCell>
-                    <TableCell>{estadoBadge(row.estado)}</TableCell>
-                    <TableCell>{availabilityLabel(row)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                        Gestionar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {currentSolicitudes.map((row) => {
+              const nombre = resolveAspiranteNombre(row);
+              const opciones = row.fechasPropuestas ?? [];
+              const cantidadPropuestas = row.cantidadPropuestasEnviadas ?? 0;
+              return (
+                <Card key={row.id} className="flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-base font-semibold">
+                          {nombre || "—"}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-2 text-xs">
+                          <CalendarDays className="h-3 w-3" />
+                          Solicitada el {formatDate(row.fechaSolicitud)}
+                        </CardDescription>
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {estadoBadge(row.estado)}
+                        {cantidadPropuestas > 1 && (
+                          <Badge variant="secondary">{cantidadPropuestas}ª propuesta</Badge>
+                        )}
+                        {row.reprogramacionSolicitada && (
+                          <Badge variant="outline" className="gap-1 border-dashed">
+                            <RefreshCw className="h-3 w-3" /> Reprogramación
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col gap-3 text-sm text-muted-foreground">
+                    <div>
+                      <span className="font-semibold text-foreground">Curso:</span> {formatCurso(row.aspirante?.cursoSolicitado)}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-foreground">Disponibilidad:</span> {availabilityLabel(row)}
+                    </div>
+                    {opciones.length > 0 && (
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground">Últimas propuestas:</span>
+                        <ul className="mt-1 space-y-1">
+                          {opciones.slice(0, 2).map((fecha, idx) => {
+                            const horario = row.rangosHorariosPropuestos?.[idx];
+                            return (
+                              <li key={`${row.id}-${fecha}-${idx}`}>
+                                {formatDate(fecha)}
+                                {horario ? ` · ${horario}` : ""}
+                              </li>
+                            );
+                          })}
+                          {opciones.length > 2 && <li>…</li>}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                  <div className="flex justify-end gap-2 border-t px-6 py-4">
+                    <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
+                      Gestionar
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+            {!currentSolicitudes.length && (
+              <div className="col-span-full text-sm text-muted-foreground">
+                No hay solicitudes para esta página.
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+            <div>
+              Mostrando {solicitudes.length === 0 ? 0 : startIndex + 1}-{endIndex} de {solicitudes.length} solicitud
+              {solicitudes.length === 1 ? "" : "es"}.
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+                disabled={page === 0}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
+              </Button>
+              <div>
+                Página {totalPages === 0 ? 0 : page + 1} de {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPage((prev) => {
+                    if (totalPages === 0) return prev;
+                    return Math.min(totalPages - 1, Math.max(0, prev + 1));
+                  })
+                }
+                disabled={totalPages === 0 || page >= totalPages - 1}
+              >
+                Siguiente <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -396,6 +485,9 @@ function SolicitudDetailDialog({
   const [confirmDateOpen, setConfirmDateOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState<"aceptar" | "rechazar" | null>(null);
   const [loading, setLoading] = useState(false);
+  const [comentariosEntrevista, setComentariosEntrevista] = useState(
+    solicitud.comentariosEntrevista ?? "",
+  );
 
   const estado = String(solicitud.estado ?? "").toUpperCase();
   const propuestas = solicitud.fechasPropuestas ?? [];
@@ -404,6 +496,12 @@ function SolicitudDetailDialog({
   const aspiranteEmail = resolveAspiranteEmail(solicitud);
   const aspiranteTelefono = resolveAspiranteTelefono(solicitud);
   const aspiranteDni = solicitud.aspirantePersona?.dni ?? null;
+  const propuestasDetalladas = propuestas.map((fecha, index) => ({
+    fecha,
+    horario: solicitud.rangosHorariosPropuestos?.[index] ?? "",
+  }));
+  const cantidadPropuestas = solicitud.cantidadPropuestasEnviadas ?? 0;
+  const puedeMostrarComentariosEntrevista = Boolean(fechaConfirmada);
 
   const reset = () => {
     setRejectOpen(false);
@@ -412,6 +510,12 @@ function SolicitudDetailDialog({
     setDecisionOpen(null);
     setPromptInterviewOpen(false);
   };
+
+  useEffect(() => {
+    if (open) {
+      setComentariosEntrevista(solicitud.comentariosEntrevista ?? "");
+    }
+  }, [open, solicitud]);
 
   const handleRechazo = async (motivo: string) => {
     if (!motivo.trim()) {
@@ -433,9 +537,22 @@ function SolicitudDetailDialog({
   };
 
   const handleProgramar = async (form: ScheduleFormState) => {
-    const fechas = form.fechas.filter(Boolean) as string[];
-    if (fechas.length === 0) {
+    const fechas: string[] = [];
+    const horarios: string[] = [];
+    form.fechas.forEach((fecha, idx) => {
+      const value = fecha?.trim();
+      if (value) {
+        fechas.push(value);
+        horarios.push(form.horarios[idx]?.trim() ?? "");
+      }
+    });
+
+    if (!fechas.length) {
       toast.error("Ingresá al menos una fecha propuesta");
+      return;
+    }
+    if (horarios.some((horario) => !horario)) {
+      toast.error("Completá el rango horario para cada fecha propuesta");
       return;
     }
     try {
@@ -447,6 +564,8 @@ function SolicitudDetailDialog({
         cupoDisponible:
           form.cupoDisponible === null ? undefined : form.cupoDisponible,
         disponibilidadCurso: form.disponibilidad.trim() || undefined,
+        rangosHorarios: horarios,
+        aclaracionesDireccion: form.aclaraciones.trim() || undefined,
       });
       toast.success("Se envió la propuesta de entrevista");
       onUpdated();
@@ -483,6 +602,7 @@ function SolicitudDetailDialog({
       setLoading(true);
       await admisiones.solicitudesAdmision.registrarEntrevista(solicitud.id, {
         realizada,
+        comentarios: comentariosEntrevista.trim() || undefined,
       });
       toast.success(
         realizada
@@ -500,6 +620,21 @@ function SolicitudDetailDialog({
     } finally {
       setLoading(false);
       setPromptInterviewOpen(false);
+    }
+  };
+
+  const handleGuardarComentarios = async () => {
+    try {
+      setLoading(true);
+      await admisiones.solicitudesAdmision.registrarEntrevista(solicitud.id, {
+        comentarios: comentariosEntrevista.trim() || undefined,
+      });
+      toast.success("Comentarios guardados");
+      onUpdated();
+    } catch (error: any) {
+      toast.error(error?.message ?? "No se pudieron guardar los comentarios");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -538,22 +673,30 @@ function SolicitudDetailDialog({
             </DialogTitle>
           </DialogHeader>
 
-          <section className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-semibold mb-2">Datos del aspirante</h4>
+          <section className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h4 className="font-semibold">Datos del aspirante</h4>
                 <p className="text-sm text-muted-foreground">
                   Curso solicitado: {formatCurso(solicitud.aspirante?.cursoSolicitado)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Disponibilidad: {availabilityLabel(solicitud)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Estado actual: {estadoBadge(solicitud.estado)}
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" /> Fecha de solicitud: {formatDate(solicitud.fechaSolicitud)}
                 </p>
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  Estado actual: {estadoBadge(solicitud.estado)}
+                </div>
+                {cantidadPropuestas > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Se enviaron {cantidadPropuestas} propuesta{cantidadPropuestas === 1 ? "" : "s"} a la familia.
+                  </p>
+                )}
               </div>
-              <div>
-                <h4 className="font-semibold mb-2">Contacto</h4>
+              <div className="space-y-2">
+                <h4 className="font-semibold">Contacto</h4>
                 <p className="text-sm flex items-center gap-2 text-muted-foreground">
                   <Mail className="h-4 w-4" />
                   {aspiranteEmail}
@@ -568,37 +711,91 @@ function SolicitudDetailDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-semibold mb-2">Entrevista</h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h4 className="font-semibold">Entrevista</h4>
                 <p className="text-sm text-muted-foreground">
-                  Fechas propuestas: {propuestas.length ? propuestas.map(formatDate).join(", ") : "—"}
+                  Respuesta límite: {formatDate(solicitud.fechaLimiteRespuesta)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Fecha confirmada: {formatDate(fechaConfirmada)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Respuesta límite: {formatDate(solicitud.fechaLimiteRespuesta)}
-                </p>
+                <div className="space-y-1 rounded-md border p-3">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Propuestas enviadas</p>
+                  {propuestasDetalladas.length ? (
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {propuestasDetalladas.map((item, index) => (
+                        <li key={`${item.fecha}-${index}`} className="flex items-start gap-2">
+                          <CalendarDays className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
+                          <span>
+                            {formatDate(item.fecha)}
+                            {item.horario ? ` · ${item.horario}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay fechas propuestas.</p>
+                  )}
+                  {solicitud.aclaracionesPropuesta && (
+                    <p className="text-xs text-muted-foreground flex items-start gap-2">
+                      <StickyNote className="mt-0.5 h-3 w-3" />
+                      {solicitud.aclaracionesPropuesta}
+                    </p>
+                  )}
+                  {solicitud.comentarioReprogramacion && (
+                    <p className="text-xs text-muted-foreground flex items-start gap-2">
+                      <RefreshCw className="mt-0.5 h-3 w-3" />
+                      {solicitud.comentarioReprogramacion}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div>
-                <h4 className="font-semibold mb-2">Documentación</h4>
+              <div className="space-y-2">
+                <h4 className="font-semibold">Documentación</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-line">
                   {solicitud.documentosRequeridos || "Sin documentación indicada"}
                 </p>
                 {solicitud.adjuntosInformativos && solicitud.adjuntosInformativos.length > 0 && (
-                  <ul className="text-sm text-blue-600 underline space-y-1">
+                  <div className="mt-2 space-y-1">
                     {solicitud.adjuntosInformativos.map((url) => (
-                      <li key={url}>
-                        <a href={url} target="_blank" rel="noreferrer" className="break-all">
-                          {url}
-                        </a>
-                      </li>
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <FileText className="h-4 w-4" /> {url}
+                      </a>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
+
+            {puedeMostrarComentariosEntrevista && (
+              <div className="space-y-2">
+                <h4 className="font-semibold">Comentarios de la entrevista</h4>
+                <Textarea
+                  value={comentariosEntrevista}
+                  onChange={(e) => setComentariosEntrevista(e.target.value)}
+                  rows={4}
+                  placeholder="Notas internas sobre la entrevista"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleGuardarComentarios}
+                    disabled={loading}
+                  >
+                    Guardar comentarios
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {solicitud.notasDireccion && (
               <div>
@@ -682,7 +879,7 @@ function SolicitudDetailDialog({
       <ConfirmDateModal
         open={confirmDateOpen}
         onOpenChange={setConfirmDateOpen}
-        fechas={propuestas}
+        options={propuestasDetalladas}
         loading={loading}
         onSubmit={handleConfirmarFecha}
       />
@@ -732,6 +929,8 @@ type ScheduleFormState = {
   adjuntos: string[];
   cupoDisponible: boolean | null;
   disponibilidad: string;
+  horarios: string[];
+  aclaraciones: string;
 };
 
 function ScheduleModal({
@@ -754,6 +953,10 @@ function ScheduleModal({
   const [disponibilidad, setDisponibilidad] = useState<string>(
     solicitud.disponibilidadCurso ?? "",
   );
+  const [horarios, setHorarios] = useState<string[]>(["", "", ""]);
+  const [aclaraciones, setAclaraciones] = useState<string>(
+    solicitud.aclaracionesPropuesta ?? "",
+  );
 
   useEffect(() => {
     if (open) {
@@ -762,13 +965,20 @@ function ScheduleModal({
         solicitud.fechasPropuestas?.[1] ?? "",
         solicitud.fechasPropuestas?.[2] ?? "",
       ]);
+      setHorarios([
+        solicitud.rangosHorariosPropuestos?.[0] ?? "",
+        solicitud.rangosHorariosPropuestos?.[1] ?? "",
+        solicitud.rangosHorariosPropuestos?.[2] ?? "",
+      ]);
     } else {
       setFechas(["", "", ""]);
+      setHorarios(["", "", ""]);
     }
     setDocumentos(solicitud.documentosRequeridos ?? "");
     setAdjuntos(solicitud.adjuntosInformativos ?? []);
     setCupo(solicitud.cupoDisponible ?? null);
     setDisponibilidad(solicitud.disponibilidadCurso ?? "");
+    setAclaraciones(solicitud.aclaracionesPropuesta ?? "");
   }, [open, solicitud]);
 
   const handleAdjuntosChange = (value: string) => {
@@ -779,6 +989,9 @@ function ScheduleModal({
     setAdjuntos(lines);
   };
 
+  const propuestaNumero = solicitud.cantidadPropuestasEnviadas ?? 0;
+  const reprogramacionSolicitada = solicitud.reprogramacionSolicitada;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -786,6 +999,14 @@ function ScheduleModal({
           <DialogTitle>Programar entrevista</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {(reprogramacionSolicitada || propuestaNumero >= 1) && (
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+              {reprogramacionSolicitada
+                ? "La familia pidió otras fechas. Esta propuesta reemplaza a la anterior."
+                : "Estás reenviando nuevas fechas a la familia."}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {fechas.map((value, idx) => (
               <div key={idx} className="space-y-1">
@@ -799,6 +1020,18 @@ function ScheduleModal({
                     const next = [...fechas];
                     next[idx] = e.target.value;
                     setFechas(next);
+                  }}
+                />
+                <label className="text-xs font-medium text-muted-foreground">
+                  Horario {idx + 1}
+                </label>
+                <Input
+                  placeholder="09:00 - 11:00"
+                  value={horarios[idx]}
+                  onChange={(e) => {
+                    const next = [...horarios];
+                    next[idx] = e.target.value;
+                    setHorarios(next);
                   }}
                 />
               </div>
@@ -838,6 +1071,18 @@ function ScheduleModal({
             />
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              Aclaraciones para la familia
+            </label>
+            <Textarea
+              value={aclaraciones}
+              onChange={(e) => setAclaraciones(e.target.value)}
+              rows={3}
+              placeholder="Ej: Traer libreta sanitaria, ingresar por secretaría, etc."
+            />
+          </div>
+
           <div className="flex items-center gap-2">
             <Checkbox
               id="cupo"
@@ -865,6 +1110,8 @@ function ScheduleModal({
                   adjuntos,
                   cupoDisponible: cupo,
                   disponibilidad,
+                  horarios,
+                  aclaraciones,
                 })
               }
               disabled={loading}
@@ -933,16 +1180,18 @@ function RejectModal({
   );
 }
 
+type ConfirmOption = { fecha: string; horario?: string };
+
 function ConfirmDateModal({
   open,
   onOpenChange,
-  fechas,
+  options,
   loading,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  fechas: string[];
+  options: ConfirmOption[];
   loading: boolean;
   onSubmit: (fecha: string) => void;
 }) {
@@ -950,9 +1199,9 @@ function ConfirmDateModal({
 
   useEffect(() => {
     if (open) {
-      setSeleccion(fechas?.[0] ?? "");
+      setSeleccion(options?.[0]?.fecha ?? "");
     }
-  }, [open, fechas]);
+  }, [open, options]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -965,19 +1214,22 @@ function ConfirmDateModal({
             Seleccioná cuál de las fechas propuestas eligió la familia.
           </p>
           <div className="space-y-2">
-            {(fechas ?? []).map((f) => (
-              <label key={f} className="flex items-center gap-2 text-sm">
+            {(options ?? []).map((option) => (
+              <label key={option.fecha} className="flex items-center gap-2 text-sm">
                 <input
                   type="radio"
                   name="fecha-confirmada"
-                  value={f}
-                  checked={seleccion === f}
+                  value={option.fecha}
+                  checked={seleccion === option.fecha}
                   onChange={(e) => setSeleccion(e.target.value)}
                 />
-                {formatDate(f)}
+                <span>
+                  {formatDate(option.fecha)}
+                  {option.horario ? ` · ${option.horario}` : ""}
+                </span>
               </label>
             ))}
-            {!fechas.length && (
+            {!options.length && (
               <p className="text-sm text-red-500">
                 No hay fechas propuestas. Volvé a programar antes de confirmar.
               </p>
@@ -1019,6 +1271,8 @@ function DecisionModal({
     if (!open) setMensaje("");
   }, [open]);
 
+  const actionLabel = aceptar ? "Marcar como aceptada" : "Rechazar";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -1030,14 +1284,16 @@ function DecisionModal({
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {aceptar
-              ? "Opcional: agregá un mensaje que recibirán en el correo de aceptación."
+              ? "Se marcará la solicitud como aceptada. No se enviará correo automático."
               : "Detalle el motivo (opcional) para incluir en el correo de rechazo."}
           </p>
-          <Textarea
-            value={mensaje}
-            onChange={(e) => setMensaje(e.target.value)}
-            rows={4}
-          />
+          {!aceptar && (
+            <Textarea
+              value={mensaje}
+              onChange={(e) => setMensaje(e.target.value)}
+              rows={4}
+            />
+          )}
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
@@ -1047,10 +1303,10 @@ function DecisionModal({
               Cancelar
             </Button>
             <Button
-              onClick={() => onSubmit(aceptar, mensaje)}
+              onClick={() => onSubmit(aceptar, aceptar ? "" : mensaje)}
               disabled={loading}
             >
-              {aceptar ? "Aceptar" : "Rechazar"}
+              {actionLabel}
             </Button>
           </div>
         </div>

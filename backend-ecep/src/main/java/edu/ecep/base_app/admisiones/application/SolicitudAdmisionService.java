@@ -1,6 +1,8 @@
 package edu.ecep.base_app.admisiones.application;
 
 import edu.ecep.base_app.admisiones.domain.Aspirante;
+import edu.ecep.base_app.admisiones.domain.AspiranteFamiliar;
+import edu.ecep.base_app.identidad.domain.Familiar;
 import edu.ecep.base_app.identidad.domain.Persona;
 import edu.ecep.base_app.admisiones.domain.SolicitudAdmision;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionDTO;
@@ -8,13 +10,18 @@ import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionDecisionDT
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionEntrevistaDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionProgramarDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionRechazoDTO;
+import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionReprogramacionDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionSeleccionDTO;
 import edu.ecep.base_app.admisiones.infrastructure.mapper.SolicitudAdmisionMapper;
 import edu.ecep.base_app.admisiones.infrastructure.persistence.SolicitudAdmisionRepository;
 import edu.ecep.base_app.shared.exception.NotFoundException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -37,7 +44,7 @@ public class SolicitudAdmisionService {
     private final SolicitudAdmisionMapper mapper;
 
     public List<SolicitudAdmisionDTO> findAll() {
-        return repository.findAll(Sort.by("id").descending())
+        return repository.findAll(Sort.by(Sort.Direction.DESC, "dateCreated"))
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -76,8 +83,16 @@ public class SolicitudAdmisionService {
         entity.setPropuestaFecha1(null);
         entity.setPropuestaFecha2(null);
         entity.setPropuestaFecha3(null);
+        entity.setPropuestaHorario1(null);
+        entity.setPropuestaHorario2(null);
+        entity.setPropuestaHorario3(null);
+        entity.setPropuestaNotas(null);
         entity.setFechaLimiteRespuesta(null);
         entity.setFechaRespuestaFamilia(null);
+        entity.setPuedeSolicitarReprogramacion(false);
+        entity.setReprogramacionSolicitada(false);
+        entity.setComentarioReprogramacion(null);
+        entity.setCantidadPropuestasEnviadas(0);
         repository.save(entity);
 
         enviarCorreo(entity, "Estado de tu solicitud",
@@ -92,9 +107,39 @@ public class SolicitudAdmisionService {
     @Transactional
     public void programar(Long id, SolicitudAdmisionProgramarDTO dto) {
         SolicitudAdmision entity = repository.findById(id).orElseThrow(NotFoundException::new);
+        List<LocalDate> fechas = dto.getFechasPropuestas() == null
+                ? List.of()
+                : dto.getFechasPropuestas().stream().filter(Objects::nonNull).toList();
+        if (fechas.isEmpty()) {
+            throw new IllegalArgumentException("Debe indicar al menos una fecha tentativa.");
+        }
+
+        LocalDate hoy = LocalDate.now();
+        boolean fechaInvalida = fechas.stream().anyMatch(fecha -> fecha.isBefore(hoy));
+        if (fechaInvalida) {
+            throw new IllegalArgumentException("Las fechas propuestas deben ser desde hoy en adelante.");
+        }
+
+        List<String> horarios = new ArrayList<>();
+        if (dto.getRangosHorarios() != null) {
+            dto.getRangosHorarios().forEach(horario ->
+                    horarios.add(horario == null ? null : horario.trim()));
+        }
+        if (horarios.size() < fechas.size()) {
+            throw new IllegalArgumentException("Completá un rango horario para cada fecha propuesta.");
+        }
+        boolean horarioVacio = horarios.stream()
+                .limit(fechas.size())
+                .anyMatch(horario -> horario == null || horario.isBlank());
+        if (horarioVacio) {
+            throw new IllegalArgumentException("Los rangos horarios no pueden quedar vacíos.");
+        }
+
         mapper.updateEntityFromDto(
                 SolicitudAdmisionDTO.builder()
-                        .fechasPropuestas(dto.getFechasPropuestas())
+                        .fechasPropuestas(fechas)
+                        .rangosHorariosPropuestos(horarios)
+                        .aclaracionesPropuesta(dto.getAclaracionesDireccion())
                         .documentosRequeridos(dto.getDocumentosRequeridos())
                         .adjuntosInformativos(dto.getAdjuntosInformativos())
                         .cupoDisponible(dto.getCupoDisponible())
@@ -102,14 +147,19 @@ public class SolicitudAdmisionService {
                         .build(),
                 entity);
         entity.setEstado(ESTADO_PROPUESTA);
-        entity.setFechaLimiteRespuesta(LocalDate.now().plusDays(15));
+        entity.setFechaLimiteRespuesta(hoy.plusDays(15));
         entity.setFechaEntrevista(null);
         entity.setFechaRespuestaFamilia(null);
+        entity.setReprogramacionSolicitada(false);
+        if (entity.getCantidadPropuestasEnviadas() == null) {
+            entity.setCantidadPropuestasEnviadas(0);
+        }
+        entity.setCantidadPropuestasEnviadas(entity.getCantidadPropuestasEnviadas() + 1);
+        entity.setPuedeSolicitarReprogramacion(entity.getCantidadPropuestasEnviadas() <= 1);
         repository.save(entity);
 
         enviarCorreo(entity, "Propuesta de entrevista",
-                "Te proponemos las siguientes fechas: " + formatoFechas(entity) +
-                        ". Por favor confirmá dentro de los próximos 15 días.");
+                construirMensajePropuesta(entity));
     }
 
     @Transactional
@@ -118,6 +168,8 @@ public class SolicitudAdmisionService {
         entity.setFechaEntrevista(dto.getFechaSeleccionada());
         entity.setFechaRespuestaFamilia(LocalDate.now());
         entity.setEstado(ESTADO_PROGRAMADA);
+        entity.setPuedeSolicitarReprogramacion(false);
+        entity.setReprogramacionSolicitada(false);
         repository.save(entity);
 
         enviarCorreo(entity, "Entrevista confirmada",
@@ -126,13 +178,32 @@ public class SolicitudAdmisionService {
     }
 
     @Transactional
+    public void solicitarReprogramacion(Long id, SolicitudAdmisionReprogramacionDTO dto) {
+        SolicitudAdmision entity = repository.findById(id).orElseThrow(NotFoundException::new);
+        entity.setReprogramacionSolicitada(true);
+        entity.setPuedeSolicitarReprogramacion(false);
+        entity.setComentarioReprogramacion(dto.getComentario());
+        entity.setEstado(ESTADO_PROPUESTA);
+        repository.save(entity);
+        log.info("Solicitud {} pidió nuevas fechas", id);
+    }
+
+    @Transactional
     public void registrarEntrevista(Long id, SolicitudAdmisionEntrevistaDTO dto) {
         SolicitudAdmision entity = repository.findById(id).orElseThrow(NotFoundException::new);
-        entity.setEntrevistaRealizada(dto.isRealizada());
-        if (dto.isRealizada()) {
-            entity.setEstado(ESTADO_ENTREVISTA_REALIZADA);
-        } else {
-            entity.setEstado(ESTADO_PROPUESTA);
+        if (dto.getComentarios() != null) {
+            entity.setComentariosEntrevista(dto.getComentarios());
+        }
+        if (dto.getRealizada() != null) {
+            entity.setEntrevistaRealizada(dto.getRealizada());
+            if (Boolean.TRUE.equals(dto.getRealizada())) {
+                entity.setEstado(ESTADO_ENTREVISTA_REALIZADA);
+            } else {
+                entity.setEstado(ESTADO_PROPUESTA);
+                entity.setPuedeSolicitarReprogramacion(true);
+                entity.setReprogramacionSolicitada(false);
+                entity.setFechaEntrevista(null);
+            }
         }
         repository.save(entity);
     }
@@ -142,9 +213,11 @@ public class SolicitudAdmisionService {
         SolicitudAdmision entity = repository.findById(id).orElseThrow(NotFoundException::new);
         if (dto.isAceptar()) {
             entity.setEstado(ESTADO_ACEPTADA);
-            enviarCorreo(entity, "Solicitud aceptada",
-                    "Felicitaciones, tu solicitud de admisión fue aceptada." +
-                            (dto.getMensaje() != null ? " " + dto.getMensaje() : ""));
+            entity.setMotivoRechazo(null);
+            if (dto.getMensaje() != null && !dto.getMensaje().isBlank()) {
+                entity.setNotasDireccion(dto.getMensaje());
+            }
+            log.info("Solicitud {} marcada como aceptada", id);
         } else {
             entity.setEstado(ESTADO_RECHAZADA);
             entity.setMotivoRechazo(dto.getMensaje());
@@ -174,7 +247,33 @@ public class SolicitudAdmisionService {
         if (dto.getFechasPropuestas() == null || dto.getFechasPropuestas().isEmpty()) {
             dto.setFechasPropuestas(mapper.toFechaList(entity));
         }
+        if (dto.getRangosHorariosPropuestos() == null || dto.getRangosHorariosPropuestos().isEmpty()) {
+            dto.setRangosHorariosPropuestos(mapper.toHorarioList(entity));
+        }
+        if (dto.getAclaracionesPropuesta() == null) {
+            dto.setAclaracionesPropuesta(entity.getPropuestaNotas());
+        }
         dto.setAdjuntosInformativos(mapper.splitAdjuntos(entity.getAdjuntosInformativos()));
+        if (dto.getComentariosEntrevista() == null) {
+            dto.setComentariosEntrevista(entity.getComentariosEntrevista());
+        }
+        if (dto.getPuedeSolicitarReprogramacion() == null) {
+            dto.setPuedeSolicitarReprogramacion(entity.getPuedeSolicitarReprogramacion());
+        }
+        if (dto.getReprogramacionSolicitada() == null) {
+            dto.setReprogramacionSolicitada(entity.getReprogramacionSolicitada());
+        }
+        if (dto.getComentarioReprogramacion() == null) {
+            dto.setComentarioReprogramacion(entity.getComentarioReprogramacion());
+        }
+        if (dto.getCantidadPropuestasEnviadas() == null) {
+            dto.setCantidadPropuestasEnviadas(entity.getCantidadPropuestasEnviadas() == null
+                    ? 0
+                    : entity.getCantidadPropuestasEnviadas());
+        }
+        if (dto.getFechaSolicitud() == null) {
+            dto.setFechaSolicitud(entity.getDateCreated());
+        }
     }
 
     private String resolveDisponibilidad(SolicitudAdmision entity) {
@@ -188,22 +287,100 @@ public class SolicitudAdmisionService {
     }
 
     private void enviarCorreo(SolicitudAdmision entity, String subject, String body) {
-        Aspirante aspirante = entity.getAspirante();
-        if (aspirante == null) return;
-        Persona persona = aspirante.getPersona();
-        String correo = persona != null ? persona.getEmail() : null;
-        if (correo == null || correo.isBlank()) {
-            log.info("[ADMISION] {} - {}", subject, body);
+        Optional<String> correo = obtenerCorreoContacto(entity);
+        if (correo.isEmpty()) {
+            log.info("[ADMISION][EMAIL-MISSING] subject={} body={} ", subject, body);
             return;
         }
-        log.info("[ADMISION][EMAIL] to={} subject={} body={} ", correo, subject, body);
+        log.info("[ADMISION][EMAIL] to={} subject={} body={} ", correo.get(), subject, body);
     }
 
-    private String formatoFechas(SolicitudAdmision entity) {
-        List<String> fechas = mapper.toFechaList(entity).stream()
-                .map(this::formatDate)
-                .toList();
-        return String.join(", ", fechas);
+    private Optional<String> obtenerCorreoContacto(SolicitudAdmision entity) {
+        if (entity == null) {
+            return Optional.empty();
+        }
+        Aspirante aspirante = entity.getAspirante();
+        if (aspirante == null) {
+            return Optional.empty();
+        }
+
+        Optional<String> correoFamiliar = aspirante.getFamiliares().stream()
+                .filter(Objects::nonNull)
+                .filter(AspiranteFamiliar::isActivo)
+                .sorted(Comparator.comparing(AspiranteFamiliar::getDateCreated,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(AspiranteFamiliar::getFamiliar)
+                .filter(Objects::nonNull)
+                .map(Familiar::getPersona)
+                .map(this::correoPrincipal)
+                .filter(correo -> correo != null && !correo.isBlank())
+                .findFirst();
+
+        if (correoFamiliar.isPresent()) {
+            return correoFamiliar;
+        }
+
+        return Optional.ofNullable(correoPrincipal(aspirante.getPersona()));
+    }
+
+    private String correoPrincipal(Persona persona) {
+        if (persona == null) {
+            return null;
+        }
+        if (persona.getEmailContacto() != null && !persona.getEmailContacto().isBlank()) {
+            return persona.getEmailContacto();
+        }
+        if (persona.getEmail() != null && !persona.getEmail().isBlank()) {
+            return persona.getEmail();
+        }
+        return null;
+    }
+
+    private String construirMensajePropuesta(SolicitudAdmision entity) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Hola, te proponemos las siguientes opciones de entrevista:\n");
+        List<String> opciones = formatoOpcionesEntrevista(entity);
+        for (int i = 0; i < opciones.size(); i++) {
+            sb.append(" - Opción ").append(i + 1).append(": ").append(opciones.get(i)).append("\n");
+        }
+        if (Boolean.TRUE.equals(entity.getPuedeSolicitarReprogramacion())) {
+            sb.append("Si ninguna fecha se ajusta podés elegir 'Pedir otras fechas' y dejarnos un comentario.\n");
+        }
+        if (entity.getDocumentosRequeridos() != null && !entity.getDocumentosRequeridos().isBlank()) {
+            sb.append("Documentación para revisar: ").append(entity.getDocumentosRequeridos()).append("\n");
+        }
+        List<String> adjuntos = mapper.splitAdjuntos(entity.getAdjuntosInformativos());
+        if (!adjuntos.isEmpty()) {
+            sb.append("Material adicional:\n");
+            adjuntos.forEach(link -> sb.append("   • ").append(link).append("\n"));
+        }
+        if (entity.getPropuestaNotas() != null && !entity.getPropuestaNotas().isBlank()) {
+            sb.append("Notas de la dirección: ").append(entity.getPropuestaNotas()).append("\n");
+        }
+        if (entity.getFechaLimiteRespuesta() != null) {
+            sb.append("Respondé antes del ")
+                    .append(formatDate(entity.getFechaLimiteRespuesta()))
+                    .append(".\n");
+        }
+        sb.append("Podés confirmar la opción elegida desde los botones del correo.");
+        return sb.toString();
+    }
+
+    private List<String> formatoOpcionesEntrevista(SolicitudAdmision entity) {
+        List<LocalDate> fechas = mapper.toFechaList(entity);
+        List<String> horarios = mapper.toHorarioList(entity);
+        List<String> opciones = new ArrayList<>();
+        for (int i = 0; i < fechas.size(); i++) {
+            LocalDate fecha = fechas.get(i);
+            String base = formatDate(fecha);
+            String horario = i < horarios.size() ? horarios.get(i) : null;
+            if (horario != null && !horario.isBlank()) {
+                opciones.add(base + " (" + horario + ")");
+            } else {
+                opciones.add(base);
+            }
+        }
+        return opciones;
     }
 
     private String formatDate(LocalDate date) {

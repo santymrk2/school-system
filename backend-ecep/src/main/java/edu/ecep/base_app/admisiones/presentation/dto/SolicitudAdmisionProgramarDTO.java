@@ -18,4 +18,7 @@ public class SolicitudAdmisionProgramarDTO {
     private List<String> adjuntosInformativos;
     private Boolean cupoDisponible;
     private String disponibilidadCurso;
+    @NotEmpty
+    private List<String> rangosHorarios;
+    private String aclaracionesDireccion;
 }

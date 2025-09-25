@@ -32,6 +32,7 @@ import AsignarDocenteSeccionDialog from "@/app/dashboard/materias/_components/As
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 type Seccion = SeccionDTO;
 type SM = SeccionMateriaDTO;
@@ -111,6 +112,7 @@ export default function MateriasSeccionPage() {
   const { id } = useParams<{ id: string }>();
   const seccionId = Number(id);
   const router = useRouter();
+  const { getPeriodoNombre } = useActivePeriod();
   const { type, activeRole } = useViewerScope();
   const {
     loading: scopedLoading,
@@ -229,6 +231,7 @@ export default function MateriasSeccionPage() {
   const esInicial = seccion ? isInicial(seccion) : false;
   const esPrimario = seccion ? isPrimario(seccion) : false;
   const seccionLabel = seccion ? fmtSeccion(seccion) : `Sección #${seccionId}`;
+  const periodoLabel = getPeriodoNombre(seccion?.periodoEscolarId ?? null);
   const nivelBadge = seccion
     ? esInicial
       ? "Inicial"
@@ -439,10 +442,8 @@ export default function MateriasSeccionPage() {
               {turnoBadgeLabel && (
                 <Badge variant="outline">{turnoBadgeLabel}</Badge>
               )}
-              {seccion?.periodoEscolarId && (
-                <Badge variant="outline">
-                  Período {seccion.periodoEscolarId}
-                </Badge>
+              {periodoLabel && (
+                <Badge variant="outline">Período {periodoLabel}</Badge>
               )}
             </div>
             <p className="mt-2 text-sm text-muted-foreground">

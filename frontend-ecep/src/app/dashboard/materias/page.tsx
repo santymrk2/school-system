@@ -49,6 +49,7 @@ export default function MateriasPage() {
     hijos,
     periodoEscolarId,
     titularBySeccionId,
+    getPeriodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
 
   const [q, setQ] = useState("");
@@ -113,6 +114,8 @@ export default function MateriasPage() {
     );
   }, [q, seccionesPrimario]);
 
+  const periodoLabel = getPeriodoNombre(periodoEscolarId ?? null);
+
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
@@ -121,8 +124,8 @@ export default function MateriasPage() {
             <h2 className="text-3xl font-bold tracking-tight">Materias</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline">Primario</Badge>
-              {periodoEscolarId && (
-                <Badge variant="outline">Período {periodoEscolarId}</Badge>
+              {periodoLabel && (
+                <Badge variant="outline">Período {periodoLabel}</Badge>
               )}
             </div>
           </div>

@@ -20,6 +20,8 @@ export function useScopedIndex(opts?: {
   const {
     loading: loadingPeriodo,
     periodoEscolarId,
+    periodoEscolar,
+    getPeriodoNombre,
     hoyISO,
   } = useActivePeriod();
 
@@ -58,6 +60,8 @@ export function useScopedIndex(opts?: {
         secciones: [] as any[], // vacío en family
         titularBySeccionId: new Map<number, string>(),
         periodoEscolarId,
+        periodoEscolar,
+        getPeriodoNombre,
         hoyISO,
       };
     }
@@ -70,6 +74,8 @@ export function useScopedIndex(opts?: {
       secciones, // array de SeccionDTO
       titularBySeccionId,
       periodoEscolarId,
+      periodoEscolar,
+      getPeriodoNombre,
       hoyISO,
     };
   }, [
@@ -80,6 +86,8 @@ export function useScopedIndex(opts?: {
     secciones,
     titularBySeccionId,
     periodoEscolarId,
+    periodoEscolar,
+    getPeriodoNombre,
     hoyISO,
   ]);
 }

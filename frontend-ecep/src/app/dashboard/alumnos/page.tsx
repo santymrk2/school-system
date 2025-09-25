@@ -126,11 +126,14 @@ export default function AlumnosIndexPage() {
     secciones,
     hijos,
     periodoEscolarId,
+    getPeriodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
   const { hasRole } = useAuth();
 
   // Mostramos período activo con el hook (evita UTC vs local)
   const { hoyISO } = useActivePeriod();
+
+  const periodoLabel = getPeriodoNombre(periodoEscolarId ?? null);
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchTerm), 350);
@@ -297,7 +300,7 @@ export default function AlumnosIndexPage() {
             <h2 className="text-3xl font-bold tracking-tight">Alumnos</h2>
             <div className="text-muted-foreground">
               {scope === "staff"
-                ? `Período escolar activo: #${periodoEscolarId ?? "—"} • Hoy: ${hoyISO}`
+                ? `Período escolar activo: ${periodoLabel ?? "—"} • Hoy: ${hoyISO}`
                 : scope === "teacher"
                   ? "Gestión de alumnos por sección"
                   : scope === "student"

@@ -58,7 +58,7 @@ export function Step5({
         <h3 className="text-lg font-medium">Confirmación de Datos</h3>
       </div>
 
-      <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-1">
+      <div className="rounded-lg bg-muted p-4 text-sm space-y-1">
         <p>
           <strong>Aspirante:</strong> {nombre} {apellido}
         </p>
@@ -92,7 +92,7 @@ export function Step5({
         </Label>
       </div>
 
-      <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800">
+      <div className="rounded-lg bg-primary/10 p-4 text-sm text-primary">
         Una vez enviada la postulación, recibirá un correo electrónico con un
         resumen de la información proporcionada. El resultado de la postulación
         será comunicado en los próximos días.

@@ -26,6 +26,7 @@ import { ConfiguracionDialog } from "./_components/ConfiguracionDialog";
 import { isItemActive } from "@/lib/nav";
 
 import { useVisibleMenu } from "@/hooks/useVisibleMenu";
+import { cn } from "@/lib/utils";
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -103,10 +104,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [visibleMenu]);
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-muted dark:bg-background">
       {/* Sidebar */}
       <div
-        className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-64 bg-gray-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+        className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
       >
         <div className="flex flex-col h-full">
           {/* LOGO ARRIBA */}
@@ -117,7 +118,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div>
                 <h1 className="text-lg font-bold">ECEP</h1>
-                <p className="text-xs text-gray-600">Sistema Escolar</p>
+                <p className="text-xs text-muted-foreground">Sistema Escolar</p>
               </div>
             </div>
             <Button
@@ -142,9 +143,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         <Button
                           aria-current={active ? "page" : undefined}
                           variant="ghost"
-                          className={`w-full justify-start rounded-md transition-colors
-                            ${active ? "bg-gray-200 hover:bg-gray-200 font-medium" : "hover:bg-gray-200 hover:text-gray-900"}
-                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5`}
+                          className={cn(
+                            "w-full justify-start rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5",
+                            active
+                              ? "bg-muted text-foreground hover:bg-muted font-medium"
+                              : "hover:bg-muted hover:text-foreground",
+                          )}
                           onClick={() => setSidebarOpen(false)}
                         >
                           <item.icon className="h-5 w-5 mr-3" />
@@ -154,7 +158,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     );
                   })}
                   {groupIndex < groupedMenu.length - 1 && (
-                    <div className="m-2 border-t border-gray-300/70" />
+                    <div className="m-2 border-t border-border/60 dark:border-border/40" />
                   )}
                 </div>
               ))}
@@ -165,7 +169,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-4 lg:pr-0 mt-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-full inline-flex items-center justify-between gap-3 rounded-md p-2 hover:bg-gray-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <button className="w-full inline-flex items-center justify-between gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {getInitials(displayName)}
@@ -174,12 +178,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       <p className="font-medium truncate max-w-[9rem]">
                         {displayName}
                       </p>
-                      <p className="text-gray-600 text-xs">
+                      <p className="text-xs text-muted-foreground">
                         {currentRole ? displayRole(currentRole) : "Sin rol"}
                       </p>
                     </div>
                   </div>
-                  <ChevronsUpDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                  <ChevronsUpDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </button>
               </DropdownMenuTrigger>
 
@@ -188,7 +192,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   {displayName}
                 </DropdownMenuLabel>
 
-                <DropdownMenuSeparator className="bg-gray-200 mx-1" />
+                <DropdownMenuSeparator className="mx-1 bg-border" />
 
                 {rolesNormalized.length === 0 && (
                   <DropdownMenuItem disabled>
@@ -204,7 +208,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       onClick={() => !isActive && handleChangeRole(r)}
                       className={
                         isActive
-                          ? "bg-gray-100 hover:bg-gray-100 font-medium"
+                          ? "bg-muted text-foreground hover:bg-muted font-medium"
                           : ""
                       }
                     >
@@ -213,18 +217,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   );
                 })}
 
-                <DropdownMenuSeparator className="bg-gray-200 mx-1" />
+                <DropdownMenuSeparator className="mx-1 bg-border" />
 
                 <DropdownMenuItem onClick={() => setConfigOpen(true)}>
                   <Settings className="h-4 w-4 mr-2" />
                   Configuración
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator className="bg-gray-200 mx-1" />
+                <DropdownMenuSeparator className="mx-1 bg-border" />
 
                 <DropdownMenuItem
                   onClick={() => handleLogout()}
-                  className="text-red-600 focus:text-red-700"
+                  className="text-destructive focus:text-destructive dark:text-destructive dark:focus:text-destructive"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Cerrar sesión
@@ -251,7 +255,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </div>
         <div className="flex-1 p-4">
-          <div className="rounded-xl bg-white ring ring-1 ring-gray-200 overflow-hidden">
+          <div className="rounded-xl bg-card text-card-foreground ring-1 ring-border overflow-hidden">
             <main className="scrollarea  h-[calc(100vh-6rem)] lg:h-[calc(107vh-6rem)] overflow-y-auto">
               {children}
             </main>
@@ -262,7 +266,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Overlay mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={toggleSidebar}
         />
       )}

@@ -13,13 +13,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export default function SelectRolPage() {
   const { user, loading, selectedRole, setSelectedRole } = useAuth();
@@ -78,7 +72,7 @@ export default function SelectRolPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="block text-sm mb-2">Rol</label>
+            <label className="block text-sm mb-2 text-muted-foreground">Rol</label>
 
             <div className="flex flex-wrap gap-2 items-start content-start max-w-full">
               {roles.map((r) => (
@@ -86,11 +80,12 @@ export default function SelectRolPage() {
                   key={r}
                   type="button"
                   onClick={() => setLocalRole(r as UserRole)}
-                  className={`rounded-full px-4 h-9 text-sm whitespace-nowrap shrink-0 transition-all ${
+                  className={cn(
+                    "rounded-full px-4 h-9 text-sm whitespace-nowrap shrink-0 transition-all",
                     localRole === r
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
-                  }`}
+                      : "border border-border bg-muted text-foreground/80 hover:bg-muted/80",
+                  )}
                 >
                   {displayRole(r)}
                 </Button>

@@ -5,6 +5,7 @@ import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import type * as DTO from "@/types/api-generated";
+import { UserRole } from "@/types/api-generated";
 import {
   Card,
   CardHeader,
@@ -29,6 +30,7 @@ import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
 import { identidad } from "@/services/api/modules";
+import { useAuth } from "@/hooks/useAuth";
 
 const TURNO_LABELS: Record<string, string> = {
   MANANA: "Mañana",
@@ -125,6 +127,7 @@ export default function AlumnosIndexPage() {
     hijos,
     periodoEscolarId,
   } = useScopedIndex({ includeTitularSec: true });
+  const { hasRole } = useAuth();
 
   // Mostramos período activo con el hook (evita UTC vs local)
   const { hoyISO } = useActivePeriod();
@@ -152,6 +155,18 @@ export default function AlumnosIndexPage() {
   useEffect(() => {
     setPage(0);
   }, [debouncedSearch, seccionFiltro, scope]);
+
+  const canViewAspirantesHistorial =
+    scope === "staff" &&
+    (hasRole(UserRole.DIRECTOR) ||
+      hasRole(UserRole.SECRETARY) ||
+      hasRole(UserRole.ADMIN));
+
+  useEffect(() => {
+    if (!canViewAspirantesHistorial && selectedTab !== "alumnos") {
+      setSelectedTab("alumnos");
+    }
+  }, [canViewAspirantesHistorial, selectedTab]);
 
   useEffect(() => {
     if (scope === "family" || scope === "student") return;
@@ -301,7 +316,7 @@ export default function AlumnosIndexPage() {
         </div>
 
         {/* Search global (para Aspirantes / Historial) */}
-        {(scope === "staff" || scope === "teacher") && (
+        {canViewAspirantesHistorial && (
           <div className="flex items-center space-x-2">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -332,13 +347,26 @@ export default function AlumnosIndexPage() {
           (scope === "staff" || scope === "teacher") && (
           <Tabs
             value={selectedTab}
-            onValueChange={(v) => setSelectedTab(v as any)}
+            onValueChange={(v) => {
+              if (
+                (v === "aspirantes" || v === "historial") &&
+                !canViewAspirantesHistorial
+              ) {
+                setSelectedTab("alumnos");
+                return;
+              }
+              setSelectedTab(v as any);
+            }}
             className="space-y-4"
           >
             <TabsList>
               <TabsTrigger value="alumnos">Alumnos</TabsTrigger>
-              <TabsTrigger value="aspirantes">Aspirantes</TabsTrigger>
-              <TabsTrigger value="historial">Historial</TabsTrigger>
+              {canViewAspirantesHistorial && (
+                <>
+                  <TabsTrigger value="aspirantes">Aspirantes</TabsTrigger>
+                  <TabsTrigger value="historial">Historial</TabsTrigger>
+                </>
+              )}
             </TabsList>
 
             <TabsContent value="alumnos" className="space-y-4">
@@ -509,24 +537,28 @@ export default function AlumnosIndexPage() {
             </TabsContent>
 
             {/* Aspirantes (placeholder / mock) */}
-            <TabsContent value="aspirantes" className="space-y-4">
-              <AspirantesTab searchTerm={searchTerm} />
-            </TabsContent>
+            {canViewAspirantesHistorial && (
+              <TabsContent value="aspirantes" className="space-y-4">
+                <AspirantesTab searchTerm={searchTerm} />
+              </TabsContent>
+            )}
 
             {/* Historial (placeholder) */}
-            <TabsContent value="historial" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Historial de Alumnos</CardTitle>
-                  <CardDescription>Registro de egresos y bajas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-gray-500">
-                    No hay registros por ahora.
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {canViewAspirantesHistorial && (
+              <TabsContent value="historial" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Historial de Alumnos</CardTitle>
+                    <CardDescription>Registro de egresos y bajas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-gray-500">
+                      No hay registros por ahora.
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </div>

@@ -27,4 +27,5 @@ public class AlumnoDTO {
 
     Long seccionActualId;
     String seccionActualNombre;
+    String seccionActualTurno;
 }

@@ -20,6 +20,7 @@ public interface AlumnoMapper {
     @Mapping(target = "dni", source = "persona.dni")
     @Mapping(target = "seccionActualId", ignore = true)
     @Mapping(target = "seccionActualNombre", ignore = true)
+    @Mapping(target = "seccionActualTurno", ignore = true)
     AlumnoDTO toDto(Alumno e);
 
     // DTO -> Entity

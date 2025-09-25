@@ -22,7 +22,7 @@ export type PdfDownloadParams = {
 };
 
 export const downloadPdfDocument = async ({
-  document,
+  document: pdfDocument,
   fileName,
 }: PdfDownloadParams) => {
   if (typeof window === "undefined") {
@@ -30,15 +30,15 @@ export const downloadPdfDocument = async ({
   }
 
   const effectiveFileName = fileName ?? suggestPdfFileName("documento");
-  const instance = pdf(document);
+  const instance = pdf(pdfDocument);
   const blob = await instance.toBlob();
 
   const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const link = window.document.createElement("a");
   link.href = url;
   link.download = effectiveFileName;
-  document.body.appendChild(link);
+  window.document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  window.document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 };

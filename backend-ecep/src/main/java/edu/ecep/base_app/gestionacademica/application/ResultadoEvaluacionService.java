@@ -1,5 +1,7 @@
 package edu.ecep.base_app.gestionacademica.application;
 
+import edu.ecep.base_app.gestionacademica.application.DocenteScopeService;
+import edu.ecep.base_app.gestionacademica.application.DocenteScopeService.DocenteScope;
 import edu.ecep.base_app.gestionacademica.domain.Evaluacion;
 import edu.ecep.base_app.vidaescolar.domain.MatriculaSeccionHistorial;
 import edu.ecep.base_app.gestionacademica.presentation.dto.ResultadoEvaluacionCreateDTO;
@@ -16,21 +18,42 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ResultadoEvaluacionService {
-    private final ResultadoEvaluacionRepository repo; private final ResultadoEvaluacionMapper mapper; private final EvaluacionRepository evalRepo; private final MatriculaSeccionHistorialRepository histRepo;
-    public List<ResultadoEvaluacionDTO> findAll(){ return repo.findAll().stream().map(mapper::toDto).toList(); }
+    private final ResultadoEvaluacionRepository repo; private final ResultadoEvaluacionMapper mapper; private final EvaluacionRepository evalRepo; private final MatriculaSeccionHistorialRepository histRepo; private final DocenteScopeService docenteScopeService;
+    public List<ResultadoEvaluacionDTO> findAll(){
+        List<ResultadoEvaluacionDTO> dtos = repo.findAll().stream().map(mapper::toDto).toList();
+        Optional<DocenteScope> scopeOpt = docenteScopeService.getScope();
+        if (scopeOpt.isPresent()) {
+            Set<Long> evaluacionesPermitidas = allowedEvaluaciones(scopeOpt.get());
+            if (evaluacionesPermitidas.isEmpty()) {
+                return List.of();
+            }
+            return dtos.stream()
+                    .filter(dto -> evaluacionesPermitidas.contains(dto.getEvaluacionId()))
+                    .toList();
+        } else if (docenteScopeService.isTeacher()) {
+            return List.of();
+        }
+        return dtos;
+    }
 
     public List<ResultadoEvaluacionDTO> findByEvaluacion(Long evaluacionId){
+        Evaluacion evaluacion = evalRepo.findById(evaluacionId)
+                .orElseThrow(() -> new NotFoundException("No encontrado"));
+        docenteScopeService.ensurePuedeGestionarEvaluacion(evaluacion);
         return repo.findByEvaluacionId(evaluacionId).stream().map(mapper::toDto).toList();
     }
 
     @Transactional
     public Long create(ResultadoEvaluacionCreateDTO dto){
         Evaluacion e = evalRepo.findById(dto.getEvaluacionId()).orElseThrow(() -> new NotFoundException("No encontrado"));
+        docenteScopeService.ensurePuedeGestionarEvaluacion(e);
         validateNota(dto.getNotaNumerica());
 
         var existing = repo.findByEvaluacionIdAndMatriculaId(dto.getEvaluacionId(), dto.getMatriculaId());
@@ -50,6 +73,7 @@ public class ResultadoEvaluacionService {
     @Transactional
     public void update(Long id, ResultadoEvaluacionUpdateDTO dto){
         var entity = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
+        docenteScopeService.ensurePuedeGestionarEvaluacion(entity.getEvaluacion());
         validateNota(dto.getNotaNumerica());
         mapper.update(entity, dto);
         repo.save(entity);
@@ -57,12 +81,23 @@ public class ResultadoEvaluacionService {
 
     @Transactional
     public void delete(Long id){
-        if(!repo.existsById(id)) throw new NotFoundException("No encontrado");
-        repo.deleteById(id);
+        var entity = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
+        docenteScopeService.ensurePuedeGestionarEvaluacion(entity.getEvaluacion());
+        repo.delete(entity);
     }
 
     private void validateNota(Double nota){
         if(nota == null) return;
         if(nota < 1 || nota > 10) throw new IllegalArgumentException("La nota debe estar entre 1 y 10");
+    }
+
+    private Set<Long> allowedEvaluaciones(DocenteScope scope) {
+        Set<Long> seccionMateriaIds = scope.seccionMateriasGestionables();
+        if (seccionMateriaIds.isEmpty()) {
+            return Set.of();
+        }
+        return evalRepo.findBySeccionMateria_IdIn(seccionMateriaIds).stream()
+                .map(Evaluacion::getId)
+                .collect(java.util.stream.Collectors.toSet());
     }
 }

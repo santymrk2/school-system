@@ -1,18 +1,21 @@
 package edu.ecep.base_app.gestionacademica.application;
 
 
+import edu.ecep.base_app.gestionacademica.application.DocenteScopeService.DocenteScope;
 import edu.ecep.base_app.gestionacademica.domain.AsignacionDocenteMateria;
 import edu.ecep.base_app.gestionacademica.domain.enums.RolMateria;
 import edu.ecep.base_app.gestionacademica.presentation.dto.AsignacionDocenteMateriaCreateDTO;
 import edu.ecep.base_app.gestionacademica.presentation.dto.AsignacionDocenteMateriaDTO;
 import edu.ecep.base_app.gestionacademica.infrastructure.mapper.AsignacionDocenteMateriaMapper;
 import edu.ecep.base_app.gestionacademica.infrastructure.persistence.AsignacionDocenteMateriaRepository;
+import edu.ecep.base_app.shared.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,16 +23,31 @@ public class AsignacionDocenteMateriaService {
 
     private final AsignacionDocenteMateriaRepository repo;
     private final AsignacionDocenteMateriaMapper mapper;
+    private final DocenteScopeService docenteScopeService;
 
     @Transactional(readOnly = true)
     public List<AsignacionDocenteMateriaDTO> findAll() {
-        return repo.findAll().stream()
+        List<AsignacionDocenteMateriaDTO> asignaciones = repo.findAll().stream()
                 .map(mapper::toDto)
                 .toList();
+
+        Optional<DocenteScope> scopeOpt = docenteScopeService.getScope();
+        if (scopeOpt.isPresent()) {
+            DocenteScope scope = scopeOpt.get();
+            asignaciones = asignaciones.stream()
+                    .filter(dto -> scope.puedeGestionarSeccionMateria(dto.getSeccionMateriaId()))
+                    .toList();
+        } else if (docenteScopeService.isTeacher()) {
+            return List.of();
+        }
+
+        return asignaciones;
     }
 
     @Transactional
     public Long create(AsignacionDocenteMateriaCreateDTO dto) {
+        ensureTeacherCannotAssign();
+
         LocalDate desde = dto.getVigenciaDesde();
         if (desde == null) {
             desde = LocalDate.now();
@@ -65,5 +83,11 @@ public class AsignacionDocenteMateriaService {
         entity.setVigenciaHasta(hasta);
         entity.setVigenciaDesde(desde);
         return repo.save(entity).getId();
+    }
+
+    private void ensureTeacherCannotAssign() {
+        if (docenteScopeService.isTeacher()) {
+            throw new UnauthorizedException("No tiene permisos para asignar docentes a materias.");
+        }
     }
 }

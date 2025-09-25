@@ -73,6 +73,16 @@ public class DocenteScopeService {
         }
     }
 
+    public void ensurePuedeGestionarSeccion(Long seccionId) {
+        if (seccionId == null || !isTeacher()) {
+            return;
+        }
+        DocenteScope scope = requireScope();
+        if (!scope.esTitularDeSeccion(seccionId)) {
+            throw new UnauthorizedException("No tiene permisos para gestionar la sección solicitada.");
+        }
+    }
+
     public void ensurePuedeGestionarSeccionMateria(Long seccionMateriaId) {
         if (seccionMateriaId == null || !isTeacher()) {
             return;
@@ -169,6 +179,10 @@ public class DocenteScopeService {
 
         public boolean puedeGestionarSeccionMateria(Long seccionMateriaId) {
             return seccionMateriasGestionables.contains(seccionMateriaId);
+        }
+
+        public boolean esTitularDeSeccion(Long seccionId) {
+            return seccionesTitular.contains(seccionId);
         }
 
         public Long seccionDeSeccionMateria(Long seccionMateriaId) {

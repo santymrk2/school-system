@@ -1,5 +1,6 @@
 package edu.ecep.base_app.gestionacademica.presentation.rest;
 
+import edu.ecep.base_app.gestionacademica.application.DocenteScopeService;
 import edu.ecep.base_app.gestionacademica.domain.Seccion;
 import edu.ecep.base_app.identidad.presentation.dto.AlumnoLiteDTO;
 import edu.ecep.base_app.gestionacademica.presentation.dto.SeccionCreateDTO;
@@ -28,6 +29,7 @@ import org.springframework.validation.annotation.Validated;
 @RequiredArgsConstructor @Validated
 public class SeccionController {
     private final SeccionService service;
+    private final DocenteScopeService docenteScopeService;
     private final MatriculaRepository matriculaRepository;
     private final AlumnoRepository alumnoRepository;
     private final MatriculaSeccionHistorialRepository mshRepo;
@@ -42,6 +44,8 @@ public class SeccionController {
     public List<AlumnoLiteDTO> alumnosActivos(
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+
+        docenteScopeService.ensurePuedeAccederSeccion(id);
 
         LocalDate f = (fecha != null) ? fecha : LocalDate.now();
         var activos = mshRepo.findActivosBySeccionOnDate(id, f);

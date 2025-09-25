@@ -73,17 +73,23 @@ export function ConfiguracionDialog({
   roles,
 }: ConfiguracionDialogProps) {
   const tieneDireccion = roles.includes(UserRole.DIRECTOR);
-  const availableTabs = useMemo(
-    () =>
-      [
-        { value: "general", label: "General" as const },
-        ...(tieneDireccion
-          ? ([{ value: "institucional", label: "Institucional" as const }] as const)
-          : []),
-      ],
-    [tieneDireccion],
-  );
-  type ConfigTabValue = (typeof availableTabs)[number]["value"];
+  type ConfigTabValue = "general" | "trimestres" | "periodo";
+  interface ConfigTab {
+    value: ConfigTabValue;
+    label: string;
+  }
+
+  const availableTabs = useMemo<ConfigTab[]>(() => {
+    const tabs: ConfigTab[] = [{ value: "general", label: "General" }];
+    if (tieneDireccion) {
+      tabs.push(
+        { value: "trimestres", label: "Trimestres" },
+        { value: "periodo", label: "Período escolar" },
+      );
+    }
+    return tabs;
+  }, [tieneDireccion]);
+
   const [activeTab, setActiveTab] = useState<ConfigTabValue>("general");
 
   useEffect(() => {
@@ -91,6 +97,12 @@ export function ConfiguracionDialog({
       setActiveTab(availableTabs[0]?.value ?? "general");
     }
   }, [availableTabs, activeTab]);
+
+  const renderDireccionRoleMessage = (feature: string) => (
+    <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+      Seleccioná el rol <strong>Dirección</strong> para acceder a la gestión de {feature}.
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,14 +140,29 @@ export function ConfiguracionDialog({
                 </TabsContent>
 
                 {tieneDireccion && (
-                  <TabsContent value="institucional" className="space-y-6">
+                  <TabsContent value="trimestres" className="space-y-6">
                     {currentRole === UserRole.DIRECTOR ? (
-                      <DireccionConfig open={open} />
+                      <DireccionConfig
+                        open={open && activeTab === "trimestres"}
+                        section="trimestres"
+                        hideNavigation
+                      />
                     ) : (
-                      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-                        Seleccioná el rol <strong>Dirección</strong> para acceder a la
-                        configuración institucional.
-                      </div>
+                      renderDireccionRoleMessage("trimestres")
+                    )}
+                  </TabsContent>
+                )}
+
+                {tieneDireccion && (
+                  <TabsContent value="periodo" className="space-y-6">
+                    {currentRole === UserRole.DIRECTOR ? (
+                      <DireccionConfig
+                        open={open && activeTab === "periodo"}
+                        section="periodo"
+                        hideNavigation
+                      />
+                    ) : (
+                      renderDireccionRoleMessage("períodos escolares")
                     )}
                   </TabsContent>
                 )}
@@ -188,6 +215,8 @@ function AparienciaConfig() {
 
 interface DireccionConfigProps {
   open: boolean;
+  section?: DireccionSectionId;
+  hideNavigation?: boolean;
 }
 
 type TrimestreDraft = {
@@ -202,7 +231,7 @@ const DIRECCION_SECTIONS = [
 
 type DireccionSectionId = (typeof DIRECCION_SECTIONS)[number]["id"];
 
-function DireccionConfig({ open }: DireccionConfigProps) {
+function DireccionConfig({ open, section, hideNavigation = false }: DireccionConfigProps) {
   const [loading, setLoading] = useState(false);
   const [periodos, setPeriodos] = useState<PeriodoEscolarDTO[]>([]);
   const [trimestres, setTrimestres] = useState<TrimestreDTO[]>([]);
@@ -214,9 +243,12 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     Extract<TrimestreEstado, "activo" | "cerrado">
     | null
   >(null);
-  const [activeSection, setActiveSection] =
-    useState<DireccionSectionId>("trimestres");
-  const [mobileView, setMobileView] = useState<"menu" | "content">("menu");
+  const [activeSection, setActiveSection] = useState<DireccionSectionId>(
+    section ?? "trimestres",
+  );
+  const [mobileView, setMobileView] = useState<"menu" | "content">(
+    hideNavigation ? "content" : "menu",
+  );
   const [updatingPeriodoId, setUpdatingPeriodoId] = useState<number | null>(null);
   const [updatingPeriodoAccion, setUpdatingPeriodoAccion] = useState<
     "abrir" | "cerrar" | null
@@ -269,10 +301,18 @@ function DireccionConfig({ open }: DireccionConfigProps) {
   }, [open, loadData]);
 
   useEffect(() => {
-    if (open) {
-      setMobileView("menu");
+    if (section) {
+      setActiveSection(section);
     }
-  }, [open]);
+  }, [section]);
+
+  useEffect(() => {
+    if (open) {
+      setMobileView(hideNavigation ? "content" : "menu");
+    }
+  }, [open, hideNavigation]);
+
+  const showNavigation = !hideNavigation;
 
   const periodosOrdenados = useMemo(
     () => [...periodos].sort((a, b) => (b.anio ?? 0) - (a.anio ?? 0)),
@@ -534,8 +574,9 @@ function DireccionConfig({ open }: DireccionConfigProps) {
     (section) => section.id === activeSection,
   );
 
-  const handleSectionSelect = (section: DireccionSectionId) => {
-    setActiveSection(section);
+  const handleSectionSelect = (sectionId: DireccionSectionId) => {
+    if (hideNavigation) return;
+    setActiveSection(sectionId);
     setMobileView("content");
   };
 
@@ -823,6 +864,19 @@ function DireccionConfig({ open }: DireccionConfigProps) {
       </CardContent>
     </Card>
   );
+
+  if (!showNavigation) {
+    return (
+      <div className="flex min-h-[24rem] flex-1 flex-col">
+        <ScrollArea className="flex-1">
+          <div className="space-y-6 px-4 py-4 md:px-6 md:py-6">
+            {activeSection === "trimestres" ? trimestresContent : null}
+            {activeSection === "periodo" ? periodoContent : null}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[24rem] flex-1 flex-col md:flex-row">

@@ -45,11 +45,19 @@ import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { toast } from "sonner";
 import EditActaDialog from "../../_components/EditActaDialog";
 import { UserRole } from "@/types/api-generated";
+import {
+  fetchAlumnoExtendedInfo,
+  type AlumnoExtendedInfo,
+} from "../_utils/alumno-info";
 
 type ActaVM = {
   id: number;
   alumnoId: number;
   alumno: string;
+  alumnoDni?: string | null;
+  familiar?: string | null;
+  familiarDni?: string | null;
+  seccion?: string | null;
   seccionId?: number | null;
   docente?: string | null;
   fecha: string;
@@ -105,6 +113,9 @@ export default function AccidentesSeccionPage() {
     AsignacionDocenteSeccionDTO[]
   >([]);
   const [personal, setPersonal] = useState<PersonalDTO[]>([]);
+  const [alumnoInfo, setAlumnoInfo] = useState<
+    Map<number, AlumnoExtendedInfo>
+  >(new Map());
 
   // Filtros
   const [q, setQ] = useState("");
@@ -167,6 +178,41 @@ export default function AccidentesSeccionPage() {
     };
   }, [seccionId, fecha]);
 
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const ids = Array.from(
+        new Set((actas ?? []).map((a) => a.alumnoId ?? null)),
+      ).filter((id): id is number => Number.isFinite(id));
+      if (!ids.length) {
+        if (alive) setAlumnoInfo(new Map());
+        return;
+      }
+
+      try {
+        const info = await fetchAlumnoExtendedInfo(ids);
+        if (alive) setAlumnoInfo(info);
+      } catch {
+        if (!alive) return;
+        const fallback = new Map<number, AlumnoExtendedInfo>();
+        ids.forEach((id) => {
+          fallback.set(id, {
+            name: `Alumno #${id}`,
+            dni: null,
+            familiarName: null,
+            familiarDni: null,
+            section: null,
+            level: null,
+          });
+        });
+        setAlumnoInfo(fallback);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [actas]);
+
   // Índice alumnoId -> displayName + seccionId actual
   const alumnoNameById = useMemo(() => {
     const m = new Map<number, { name: string; seccionId: number | null }>();
@@ -197,6 +243,14 @@ export default function AccidentesSeccionPage() {
     return p ? `${p.apellido ?? ""} ${p.nombre ?? ""}`.trim() : null;
   }, [asignaciones, personal, seccionId, hoyISO]);
 
+  const seccionDisplayName = useMemo(() => {
+    if (!seccion) return null;
+    const base = `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim();
+    const turno = String(seccion.turno ?? "").trim();
+    if (base && turno) return `${base} (${turno})`;
+    return base || null;
+  }, [seccion]);
+
   const personalDisplayById = useMemo(() => {
     const map = new Map<number, string>();
     for (const p of personal as any[]) {
@@ -217,10 +271,17 @@ export default function AccidentesSeccionPage() {
       // si no está en roster activo, igual mostramos si el acta pertenece a esta sección por el seccionId guardado (si lo tuvieras);
       // como fallback, solo mostramos si está en alumnos activos (fecha seleccionada)
       if (!idx) continue;
+      const info = alumnoInfo.get(a.alumnoId) ?? null;
+      const displayName = info?.name ?? idx.name;
+      const seccionLabel = info?.section ?? seccionDisplayName ?? null;
       list.push({
         id: a.id,
         alumnoId: a.alumnoId,
-        alumno: idx.name,
+        alumno: displayName,
+        alumnoDni: info?.dni ?? null,
+        familiar: info?.familiarName ?? null,
+        familiarDni: info?.familiarDni ?? null,
+        seccion: seccionLabel,
         seccionId: idx.seccionId,
         docente:
           personalDisplayById.get(a.firmanteId ?? a.informanteId ?? 0) ??
@@ -250,7 +311,14 @@ export default function AccidentesSeccionPage() {
           (x.docente ?? "").toLowerCase().includes(term),
       )
       .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
-  }, [actas, alumnoNameById, q]);
+  }, [
+    actas,
+    alumnoNameById,
+    alumnoInfo,
+    seccionDisplayName,
+    personalDisplayById,
+    q,
+  ]);
 
   const refreshActas = async () => {
     const all = (await vidaEscolar.actasAccidente.list()).data ?? [];

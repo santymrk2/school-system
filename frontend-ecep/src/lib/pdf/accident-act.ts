@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 export type AccidentActPdfData = {
   id: number | string | null | undefined;
   alumno?: string | null;
+  alumnoDni?: string | null;
   seccion?: string | null;
   fecha?: string | null;
   hora?: string | null;
@@ -13,6 +14,8 @@ export type AccidentActPdfData = {
   creadoPor?: string | null;
   informante?: string | null;
   firmante?: string | null;
+  familiar?: string | null;
+  familiarDni?: string | null;
 };
 
 export type AccidentActPdfOptions = {
@@ -276,7 +279,11 @@ export const renderAccidentActPdf = (
   cursorY = drawHighlightedBox(
     doc,
     "Alumno involucrado",
-    fallback(acta.alumno, "Alumno sin registrar"),
+    (() => {
+      const nombre = fallback(acta.alumno, "Alumno sin registrar");
+      const dni = formatText(acta.alumnoDni);
+      return dni ? `${nombre} • DNI ${dni}` : nombre;
+    })(),
     marginX,
     cursorY + 30,
     contentWidth,
@@ -284,6 +291,7 @@ export const renderAccidentActPdf = (
 
   const primaryDetails = [
     { label: "Alumno", value: fallback(acta.alumno, "Alumno sin registrar") },
+    { label: "DNI del alumno", value: fallback(acta.alumnoDni) },
     { label: "Sección", value: fallback(acta.seccion) },
     { label: "Fecha del suceso", value: fallback(acta.fecha) },
     { label: "Hora", value: fallback(acta.hora) },
@@ -305,6 +313,21 @@ export const renderAccidentActPdf = (
       participantDetails,
       cursorY,
       "Referentes del acta",
+      marginX,
+      contentWidth,
+    );
+  }
+
+  const familyDetails = [
+    { label: "Familiar responsable", value: fallback(acta.familiar) },
+    { label: "DNI del familiar", value: fallback(acta.familiarDni) },
+  ];
+  if (familyDetails.some((entry) => entry.value !== "—")) {
+    cursorY = autoTableFromEntries(
+      doc,
+      familyDetails,
+      cursorY,
+      "Información del familiar",
       marginX,
       contentWidth,
     );

@@ -46,11 +46,13 @@ import FamilyActasView from "@/app/dashboard/actas/_components/FamilyActasView";
 import NewActaDialog from "./_components/NewActaDialog";
 import ViewActaDialog from "./_components/ViewActaDialog";
 import EditActaDialog from "./_components/EditActaDialog";
+import {
+  fetchAlumnoExtendedInfo,
+  type AlumnoExtendedInfo,
+} from "./_utils/alumno-info";
 
 import type {
   ActaAccidenteDTO,
-  AlumnoDTO,
-  PersonaDTO,
   SeccionDTO,
   EstadoActaAccidente,
   EmpleadoDTO,
@@ -63,6 +65,9 @@ type ActaVM = {
   id: number;
   alumnoId: number;
   alumno: string; // "Apellido, Nombre"
+  alumnoDni?: string | null;
+  familiar?: string | null;
+  familiarDni?: string | null;
   seccion?: string | null;
   fecha: string; // fechaSuceso
   hora?: string | null;
@@ -114,7 +119,7 @@ export default function AccidentesIndexPage() {
   const [personal, setPersonal] = useState<EmpleadoDTO[]>([]);
 
   // maps auxiliares
-  const [alumnoNombre, setAlumnoNombre] = useState<Map<number, string>>(
+  const [alumnoInfo, setAlumnoInfo] = useState<Map<number, AlumnoExtendedInfo>>(
     new Map(),
   );
   const [alumnoSeccion, setAlumnoSeccion] = useState<
@@ -193,33 +198,31 @@ export default function AccidentesIndexPage() {
     let alive = true;
     (async () => {
       const ids = Array.from(
-        new Set((actas ?? []).map((a) => a.alumnoId)),
-      ).filter(Boolean) as number[];
-      if (!ids.length) return;
-      const map = new Map<number, string>();
-      await Promise.all(
-        ids.map(async (aid) => {
-          try {
-            const a = await identidad.alumnos
-              .getById(aid)
-              .then((r) => r.data as AlumnoDTO);
-            if (!a?.personaId) {
-              map.set(aid, `Alumno #${aid}`);
-              return;
-            }
-            const p = await identidad.personasCore
-              .getById(a.personaId)
-              .then((r) => r.data as PersonaDTO);
-            const nombre = `${p.apellido ?? ""}, ${p.nombre ?? ""}`
-              .replace(/,\s*$/, ",")
-              .trim();
-            map.set(aid, nombre || `Alumno #${aid}`);
-          } catch {
-            map.set(aid, `Alumno #${aid}`);
-          }
-        }),
-      );
-      if (alive) setAlumnoNombre(map);
+        new Set((actas ?? []).map((a) => a.alumnoId ?? null)),
+      ).filter((id): id is number => Number.isFinite(id));
+      if (!ids.length) {
+        if (alive) setAlumnoInfo(new Map());
+        return;
+      }
+
+      try {
+        const info = await fetchAlumnoExtendedInfo(ids);
+        if (alive) setAlumnoInfo(info);
+      } catch {
+        if (!alive) return;
+        const fallback = new Map<number, AlumnoExtendedInfo>();
+        ids.forEach((id) => {
+          fallback.set(id, {
+            name: `Alumno #${id}`,
+            dni: null,
+            familiarName: null,
+            familiarDni: null,
+            section: null,
+            level: null,
+          });
+        });
+        setAlumnoInfo(fallback);
+      }
     })();
     return () => {
       alive = false;
@@ -288,24 +291,32 @@ export default function AccidentesIndexPage() {
 
   // VM
   const actasVM: ActaVM[] = useMemo(() => {
-    return (actas ?? []).map((a) => ({
-      id: a.id,
-      alumnoId: a.alumnoId,
-      alumno: alumnoNombre.get(a.alumnoId) ?? `Alumno #${a.alumnoId}`,
-      seccion: alumnoSeccion.get(a.alumnoId) ?? null,
-      fecha: a.fechaSuceso,
-      hora: (a as any).horaSuceso ?? null,
-      lugar: (a as any).lugar ?? null,
-      descripcion: a.descripcion ?? "",
-      acciones: (a as any).acciones ?? null,
-      estado: String((a as any).estado ?? ""),
-      creadoPor: (a as any).creadoPor ?? null,
-      informante: personalDisplayById.get(a.informanteId ?? 0) ?? undefined,
-      firmante: personalDisplayById.get((a as any).firmanteId ?? 0) ?? undefined,
-      informanteId: a.informanteId ?? null,
-      firmanteId: (a as any).firmanteId ?? null,
-    }));
-  }, [actas, alumnoNombre, alumnoSeccion, personalDisplayById]);
+    return (actas ?? []).map((a) => {
+      const info = alumnoInfo.get(a.alumnoId) ?? null;
+      const alumnoLabel = info?.name ?? `Alumno #${a.alumnoId}`;
+      const seccion = alumnoSeccion.get(a.alumnoId) ?? info?.section ?? null;
+      return {
+        id: a.id,
+        alumnoId: a.alumnoId,
+        alumno: alumnoLabel,
+        alumnoDni: info?.dni ?? null,
+        familiar: info?.familiarName ?? null,
+        familiarDni: info?.familiarDni ?? null,
+        seccion,
+        fecha: a.fechaSuceso,
+        hora: (a as any).horaSuceso ?? null,
+        lugar: (a as any).lugar ?? null,
+        descripcion: a.descripcion ?? "",
+        acciones: (a as any).acciones ?? null,
+        estado: String((a as any).estado ?? ""),
+        creadoPor: (a as any).creadoPor ?? null,
+        informante: personalDisplayById.get(a.informanteId ?? 0) ?? undefined,
+        firmante: personalDisplayById.get((a as any).firmanteId ?? 0) ?? undefined,
+        informanteId: a.informanteId ?? null,
+        firmanteId: (a as any).firmanteId ?? null,
+      } satisfies ActaVM;
+    });
+  }, [actas, alumnoInfo, alumnoSeccion, personalDisplayById]);
 
   // opciones de filtro por alumno
   const alumnoOptions = useMemo(() => {
@@ -341,11 +352,11 @@ export default function AccidentesIndexPage() {
         if (toDate && a.fecha > toDate) return false;
         if (!term) return true;
         const blob =
-          `${a.alumno} ${a.seccion ?? ""} ${a.creadoPor ?? ""} ${
-            a.descripcion ?? ""
-          } ${a.informante ?? ""} ${a.firmante ?? ""} ${a.lugar ?? ""} ${
-            a.acciones ?? ""
-          }`.toLowerCase();
+          `${a.alumno} ${a.alumnoDni ?? ""} ${a.familiar ?? ""} ${
+            a.familiarDni ?? ""
+          } ${a.seccion ?? ""} ${a.creadoPor ?? ""} ${a.descripcion ?? ""} ${
+            a.informante ?? ""
+          } ${a.firmante ?? ""} ${a.lugar ?? ""} ${a.acciones ?? ""}`.toLowerCase();
         return blob.includes(term);
       })
       .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));

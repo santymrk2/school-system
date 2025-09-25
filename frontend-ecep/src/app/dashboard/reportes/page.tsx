@@ -99,6 +99,7 @@ import { toast } from "sonner";
 import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
 import type { PdfCreateCallback } from "@/lib/pdf";
 import { renderAccidentActPdf } from "@/lib/pdf/accident-act";
+import { fetchAlumnoExtendedInfo } from "../actas/_utils/alumno-info";
 import {
   renderInstitutionalReport,
   type KeyValuePair,
@@ -234,6 +235,7 @@ type LicenseReportRow = {
 type ActaRegistro = {
   id: string;
   student: string;
+  studentDni?: string | null;
   section: string;
   level: "Inicial" | "Primario";
   teacher: string;
@@ -245,6 +247,17 @@ type ActaRegistro = {
   informant: string;
   signer?: string;
   signed: boolean;
+  familyName?: string | null;
+  familyDni?: string | null;
+};
+
+type CachedAlumnoInfo = {
+  name: string;
+  section: string;
+  level: "Inicial" | "Primario";
+  dni?: string | null;
+  familyName?: string | null;
+  familyDni?: string | null;
 };
 
 const APPROVAL_DATA = {
@@ -405,9 +418,7 @@ export default function ReportesPage() {
   const [loadingActasRegistro, setLoadingActasRegistro] = useState(false);
   const [actaErrorMsg, setActaErrorMsg] = useState<string | null>(null);
   const actasCacheRef = useRef<ActaAccidenteDTO[] | null>(null);
-  const alumnoCacheRef = useRef<
-    Map<number, { name: string; section: string; level: "Inicial" | "Primario" }>
-  >(new Map());
+  const alumnoCacheRef = useRef<Map<number, CachedAlumnoInfo>>(new Map());
   const lastActaPeriodoRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -918,10 +929,14 @@ export default function ReportesPage() {
     boletinSections.forEach((section) => {
       section.students.forEach((student) => {
         if (student.alumnoId != null) {
+          const prev = alumnoCacheRef.current.get(student.alumnoId);
           alumnoCacheRef.current.set(student.alumnoId, {
             name: student.name,
             section: student.section,
             level: student.level,
+            dni: prev?.dni ?? null,
+            familyName: prev?.familyName ?? null,
+            familyDni: prev?.familyDni ?? null,
           });
         }
       });
@@ -1394,30 +1409,22 @@ export default function ReportesPage() {
 
         if (missingAlumnoIds.length) {
           const uniqueIds = Array.from(new Set(missingAlumnoIds));
-          const fetched = await Promise.all(
-            uniqueIds.map(async (alumnoId) => {
-              try {
-                const { data } = await identidad.alumnos.byId(alumnoId);
-                return [alumnoId, data] as const;
-              } catch {
-                return [alumnoId, null] as const;
-              }
-            }),
-          );
-          fetched.forEach(([alumnoId, data]) => {
-            if (!data) return;
-            const name = `${data.apellido ?? ""} ${data.nombre ?? ""}`.trim() ||
-              `Alumno #${alumnoId}`;
-            const section = (data.seccionActualNombre ?? "").trim();
-            const normalized = section.toLowerCase();
-            const level: "Inicial" | "Primario" =
-              normalized.includes("inicial") || normalized.includes("sala")
-                ? "Inicial"
-                : "Primario";
+          const infoMap = await fetchAlumnoExtendedInfo(uniqueIds);
+          uniqueIds.forEach((alumnoId) => {
+            const info = infoMap.get(alumnoId) ?? null;
+            const prev = alumnoCacheRef.current.get(alumnoId) ?? null;
+            const name = info?.name ?? prev?.name ?? `Alumno #${alumnoId}`;
+            const section =
+              (info?.section ?? prev?.section ?? "").trim() ||
+              "Sin sección asignada";
+            const level = info?.level ?? prev?.level ?? "Primario";
             alumnoCacheRef.current.set(alumnoId, {
               name,
-              section: section || "Sin sección asignada",
+              section,
               level,
+              dni: info?.dni ?? prev?.dni ?? null,
+              familyName: info?.familiarName ?? prev?.familyName ?? null,
+              familyDni: info?.familiarDni ?? prev?.familyDni ?? null,
             });
           });
         }
@@ -1432,6 +1439,7 @@ export default function ReportesPage() {
           return {
             id: String(acta.id),
             student: alumnoInfo?.name ?? `Alumno #${acta.alumnoId ?? "S/D"}`,
+            studentDni: alumnoInfo?.dni ?? null,
             section: alumnoInfo?.section ?? "Sin sección asignada",
             level: alumnoInfo?.level ?? "Primario",
             teacher: signer?.name ?? informant?.name ?? "Sin docente asignado",
@@ -1443,6 +1451,8 @@ export default function ReportesPage() {
             informant: informant?.name ?? "Sin informante",
             signer: signer?.name,
             signed: acta.estado === EstadoActaAccidente.CERRADA,
+            familyName: alumnoInfo?.familyName ?? null,
+            familyDni: alumnoInfo?.familyDni ?? null,
           } satisfies ActaRegistro;
         });
 
@@ -3189,6 +3199,24 @@ const handleExportCurrent = async () => {
               <div className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
+                    <span className="text-muted-foreground">Alumno</span>
+                    <p className="font-medium">{activeActa.student}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">DNI del alumno</span>
+                    <p className="font-medium">{activeActa.studentDni ?? "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Familiar responsable</span>
+                    <p className="font-medium">{activeActa.familyName ?? "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">DNI del familiar</span>
+                    <p className="font-medium">{activeActa.familyDni ?? "—"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
                     <span className="text-muted-foreground">Fecha</span>
                     <p className="font-medium">{activeActa.date}</p>
                   </div>
@@ -3239,6 +3267,7 @@ const handleExportCurrent = async () => {
                               {
                                 id: activeActa.id ?? title,
                                 alumno: activeActa.student,
+                                alumnoDni: activeActa.studentDni,
                                 seccion: activeActa.section,
                                 fecha: activeActa.date,
                                 hora: activeActa.time,
@@ -3248,6 +3277,8 @@ const handleExportCurrent = async () => {
                                 creadoPor: activeActa.teacher,
                                 informante: activeActa.informant,
                                 firmante: activeActa.signer ?? undefined,
+                                familiar: activeActa.familyName,
+                                familiarDni: activeActa.familyDni,
                               },
                               {
                                 statusLabel: activeActa.signed ? "Firmada" : "No firmada",

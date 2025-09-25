@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
-import { UserRole, SeccionDTO, Turno } from "@/types/api-generated";
+import { UserRole, SeccionDTO, Turno, NivelAcademico } from "@/types/api-generated";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { gestionAcademica } from "@/services/api/modules";
@@ -21,6 +21,7 @@ import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJorn
 import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 import FamilyAttendanceView from "@/app/dashboard/asistencia/_components/FamilyAttendanceView";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /* =========================
    PAGE
@@ -143,6 +144,20 @@ function formatTurnoLabel(turno?: string | null) {
   return map[turno] ?? turno;
 }
 
+function isPrimario(seccion: SeccionDTO) {
+  const nivel = (seccion.nivel as NivelAcademico | undefined) ?? (seccion as any).nivel;
+  if (nivel) return String(nivel).toUpperCase() === "PRIMARIO";
+  const nombre = `${seccion.gradoSala ?? ""}`.toLowerCase();
+  return !nombre.includes("sala");
+}
+
+function isInicial(seccion: SeccionDTO) {
+  const nivel = (seccion.nivel as NivelAcademico | undefined) ?? (seccion as any).nivel;
+  if (nivel) return String(nivel).toUpperCase() === "INICIAL";
+  const nombre = `${seccion.gradoSala ?? ""}`.toLowerCase();
+  return nombre.includes("sala");
+}
+
 /* =========================
    DOCENTE
 ========================= */
@@ -155,19 +170,34 @@ function TeacherView() {
     error: countsError,
   } = useSectionStudentCounts(secciones);
 
+  const primario = useMemo(
+    () => (secciones ?? []).filter(isPrimario),
+    [secciones],
+  );
+  const inicial = useMemo(
+    () => (secciones ?? []).filter(isInicial),
+    [secciones],
+  );
+
+  const [tab, setTab] = useState<"primario" | "inicial">("primario");
+
+  useEffect(() => {
+    if (loading) return;
+    if (!primario.length && inicial.length) {
+      setTab("inicial");
+    } else if (!inicial.length && primario.length) {
+      setTab("primario");
+    }
+  }, [loading, primario.length, inicial.length]);
+
   if (loading) return <LoadingState label="Cargando secciones…" />;
   if (error) return <div className="text-sm text-red-600">{String(error)}</div>;
   if (!secciones.length)
     return <div className="text-sm">No tenés secciones asignadas.</div>;
 
-  return (
+  const renderCards = (lista: SeccionDTO[]) => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {countsError && (
-        <div className="md:col-span-2 lg:col-span-3 text-sm text-red-600">
-          {countsError}
-        </div>
-      )}
-      {secciones.map((seccion) => {
+      {lista.map((seccion) => {
         const count = counts[seccion.id];
         const countLabel =
           count != null
@@ -207,6 +237,44 @@ function TeacherView() {
           </Card>
         );
       })}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {countsError && (
+        <div className="text-sm text-red-600">{countsError}</div>
+      )}
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as "primario" | "inicial")}
+        className="space-y-4"
+      >
+        <TabsList className="justify-start overflow-x-auto">
+          <TabsTrigger value="primario">Primario</TabsTrigger>
+          <TabsTrigger value="inicial">Inicial</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="primario" className="space-y-4">
+          {primario.length ? (
+            renderCards(primario)
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              No hay secciones de Primario disponibles.
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="inicial" className="space-y-4">
+          {inicial.length ? (
+            renderCards(inicial)
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              No hay secciones de Inicial disponibles.
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -274,6 +342,61 @@ function DirectivoView() {
     });
   }, [secciones]);
 
+  const primario = useMemo(
+    () => seccionesOrdenadas.filter(isPrimario),
+    [seccionesOrdenadas],
+  );
+  const inicial = useMemo(
+    () => seccionesOrdenadas.filter(isInicial),
+    [seccionesOrdenadas],
+  );
+
+  const [tab, setTab] = useState<"primario" | "inicial">("primario");
+
+  useEffect(() => {
+    if (loading) return;
+    if (!primario.length && inicial.length) {
+      setTab("inicial");
+    } else if (!inicial.length && primario.length) {
+      setTab("primario");
+    }
+  }, [loading, primario.length, inicial.length]);
+
+  const renderCards = (lista: SeccionDTO[]) => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {lista.map((s) => {
+        const nombre = `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim();
+        const turnoLabel = formatTurnoLabel(s.turno);
+        const count = counts[s.id];
+        const label =
+          count != null
+            ? `${count} alumno${count === 1 ? "" : "s"}`
+            : countsLoading
+              ? "Cargando alumnos…"
+              : "Sin datos";
+
+        return (
+          <Card
+            key={s.id}
+            className="transition-shadow cursor-pointer hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary"
+            onClick={() =>
+              router.push(`/dashboard/asistencia/seccion/${s.id}`)
+            }
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center justify-between">
+                {nombre || `Sección #${s.id}`}
+                <Badge variant="secondary">{turnoLabel}</Badge>
+              </CardTitle>
+              <CardDescription>{label}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex gap-2" />
+          </Card>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {loading && <LoadingState label="Cargando secciones…" />}
@@ -286,59 +409,37 @@ function DirectivoView() {
         </div>
       )}
 
-      {!!seccionesOrdenadas.length && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {seccionesOrdenadas.map((s) => {
-            const nombre = `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim();
-            const turnoLabel = formatTurnoLabel(s.turno);
-            const count = counts[s.id];
-            const label =
-              count != null
-                ? `${count} alumno${count === 1 ? "" : "s"}`
-                : countsLoading
-                  ? "Cargando alumnos…"
-                  : "Sin datos";
+      {!loading && !!seccionesOrdenadas.length && (
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(value as "primario" | "inicial")}
+          className="space-y-4"
+        >
+          <TabsList className="justify-start overflow-x-auto">
+            <TabsTrigger value="primario">Primario</TabsTrigger>
+            <TabsTrigger value="inicial">Inicial</TabsTrigger>
+          </TabsList>
 
-            return (
-              <Card
-                key={s.id}
-                className="transition-shadow cursor-pointer hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary"
-                onClick={() =>
-                  router.push(`/dashboard/asistencia/seccion/${s.id}`)
-                }
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    {nombre || `Sección #${s.id}`}
-                    <Badge variant="secondary">{turnoLabel}</Badge>
-                  </CardTitle>
-                  <CardDescription>{label}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex gap-2">
-                  {/*
-                  <NewJornadaDialog
-                    seccion={s}
-                    onCreated={(jornadaId) =>
-                      router.push(`/dashboard/asistencia/jornada/${jornadaId}`)
-                    }
-                  />
+          <TabsContent value="primario" className="space-y-4">
+            {primario.length ? (
+              renderCards(primario)
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No hay secciones de Primario disponibles.
+              </div>
+            )}
+          </TabsContent>
 
-                  */}
-                  {/*
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      router.push(`/dashboard/asistencia/seccion/${s.id}`)
-                    }
-                  >
-                    Ver sección
-                  </Button>
-                  */}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+          <TabsContent value="inicial" className="space-y-4">
+            {inicial.length ? (
+              renderCards(inicial)
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No hay secciones de Inicial disponibles.
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

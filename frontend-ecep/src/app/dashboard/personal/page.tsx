@@ -60,6 +60,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -70,6 +80,7 @@ import {
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { formatDni } from "@/lib/form-utils";
 import { gestionAcademica, identidad } from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
@@ -687,6 +698,15 @@ function SectionMateriaSelector({
 }: SectionMateriaSelectorProps) {
   const [open, setOpen] = useState(false);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const [pendingReplace, setPendingReplace] = useState<
+    | {
+        materiaId: number;
+        materiaNombre: string;
+        seccionLabel: string;
+        titular: TitularInfo;
+      }
+    | null
+  >(null);
 
   const optionDetails = useMemo(() => {
     const map = new Map<
@@ -756,17 +776,28 @@ function SectionMateriaSelector({
         currentTitular &&
         (empleadoId == null || currentTitular.empleadoId !== empleadoId)
       ) {
-        const message = `La materia ${materiaNombre} de ${seccionLabel} ya tiene un titular asignado (${currentTitular.nombre}). ¿Querés reemplazarlo?`;
-        const confirmed =
-          typeof window === "undefined" ? true : window.confirm(message);
-        if (!confirmed) {
-          return;
-        }
+        setPendingReplace({
+          materiaId,
+          materiaNombre,
+          seccionLabel,
+          titular: currentTitular,
+        });
+        return;
       }
       onChange(Array.from(new Set([...selectedIds, materiaId])));
     },
     [empleadoId, onChange, selectedIds],
   );
+
+  const handleConfirmReplace = useCallback(() => {
+    if (!pendingReplace) {
+      return;
+    }
+    onChange(
+      Array.from(new Set([...selectedIds, pendingReplace.materiaId])),
+    );
+    setPendingReplace(null);
+  }, [onChange, pendingReplace, selectedIds]);
 
   return (
     <div className="space-y-2">
@@ -921,6 +952,33 @@ function SectionMateriaSelector({
       ) : (
         <p className="text-xs text-muted-foreground">{resolvedSummaryEmpty}</p>
       )}
+      <AlertDialog
+        open={pendingReplace !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setPendingReplace(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Reemplazar titular?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingReplace
+                ? `La materia ${pendingReplace.materiaNombre} de ${pendingReplace.seccionLabel} ya tiene un titular asignado (${pendingReplace.titular.nombre}). ¿Querés reemplazarlo?`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingReplace(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReplace}>
+              Reemplazar titular
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -954,6 +1012,7 @@ function isAssignmentActiveOn(
 }
 export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
+  const { periodoEscolarId: activePeriodoId } = useActivePeriod();
   const router = useRouter();
   const mountedRef = useRef(false);
   const searchRef = useRef<string>("");
@@ -1267,8 +1326,8 @@ export default function PersonalPage() {
       const [
         licencias,
         formaciones,
-        secciones,
-        seccionMaterias,
+        fetchedSecciones,
+        fetchedSeccionMaterias,
         materias,
         asignacionesSeccion,
         asignacionesMateria,
@@ -1309,6 +1368,46 @@ export default function PersonalPage() {
           "No se pudieron obtener las asignaciones de materia",
         ),
       ]);
+
+      const resolvedPeriodoId =
+        typeof activePeriodoId === "number" ? activePeriodoId : null;
+
+      const secciones =
+        resolvedPeriodoId != null
+          ? fetchedSecciones.filter((seccion: any) => {
+              const periodoId =
+                seccion.periodoEscolarId ??
+                seccion.periodoId ??
+                seccion.periodoEscolar?.id ??
+                seccion.periodo?.id ??
+                null;
+              return periodoId === resolvedPeriodoId;
+            })
+          : fetchedSecciones;
+
+      const seccionIdsForPeriod = new Set(
+        secciones
+          .map((seccion) => seccion.id)
+          .filter((id): id is number => typeof id === "number"),
+      );
+
+      const seccionMaterias =
+        resolvedPeriodoId != null
+          ? fetchedSeccionMaterias.filter((sm: any) => {
+              const seccionId =
+                sm.seccionId ??
+                sm.seccion?.id ??
+                (sm as any).seccion_id ??
+                null;
+              if (typeof seccionId !== "number") {
+                return false;
+              }
+              if (seccionIdsForPeriod.size === 0) {
+                return false;
+              }
+              return seccionIdsForPeriod.has(seccionId);
+            })
+          : fetchedSeccionMaterias;
 
       const personaIds = Array.from(
         new Set(
@@ -1609,7 +1708,7 @@ export default function PersonalPage() {
         materias,
       };
     },
-    [pageSize],
+    [activePeriodoId, pageSize],
   );
 
   const refreshData = useCallback(
@@ -2040,6 +2139,15 @@ export default function PersonalPage() {
       materias.map((materia) => materia.seccionMateriaId),
     );
     const [saving, setSaving] = useState(false);
+    const [pendingSeccionReplace, setPendingSeccionReplace] = useState<
+      | {
+          seccionId: number;
+          seccionLabel: string;
+          titular: TitularInfo;
+          targetIds: number[];
+        }
+      | null
+    >(null);
 
     useEffect(() => {
       setSelectedSecciones(secciones.map((seccion) => seccion.seccionId));
@@ -2053,14 +2161,24 @@ export default function PersonalPage() {
 
     const handleSeccionesChange = useCallback(
       (ids: number[]) => {
-        const trimmed = ids.slice(0, 2);
         if (ids.length > 2) {
           toast.error(
             "Solo se pueden asignar hasta dos secciones como titulares.",
           );
         }
-        const next: number[] = [];
-        trimmed.forEach((seccionId) => {
+        const trimmed = ids.slice(0, 2);
+        const normalized = Array.from(new Set(trimmed));
+
+        let replaceRequest:
+          | {
+              seccionId: number;
+              seccionLabel: string;
+              titular: TitularInfo;
+              targetIds: number[];
+            }
+          | null = null;
+
+        for (const seccionId of normalized) {
           const alreadySelected = selectedSecciones.includes(seccionId);
           if (!alreadySelected) {
             const titular = titularSeccionMap.get(seccionId);
@@ -2071,20 +2189,40 @@ export default function PersonalPage() {
               const seccionLabel =
                 seccionMetadataById.get(seccionId)?.label ??
                 `Sección #${seccionId}`;
-              const message = `La sección ${seccionLabel} ya tiene un titular asignado (${titular.nombre}). ¿Querés reemplazarlo?`;
-              const confirmed =
-                typeof window === "undefined" ? true : window.confirm(message);
-              if (!confirmed) {
-                return;
-              }
+              replaceRequest = {
+                seccionId,
+                seccionLabel,
+                titular,
+                targetIds: normalized,
+              };
+              break;
             }
           }
-          next.push(seccionId);
-        });
-        setSelectedSecciones(next);
+        }
+
+        if (replaceRequest) {
+          setPendingSeccionReplace(replaceRequest);
+          return;
+        }
+
+        setSelectedSecciones(normalized);
       },
-      [empleadoId, seccionMetadataById, selectedSecciones, titularSeccionMap],
+      [
+        empleadoId,
+        seccionMetadataById,
+        selectedSecciones,
+        setPendingSeccionReplace,
+        titularSeccionMap,
+      ],
     );
+
+    const handleConfirmSeccionReplace = useCallback(() => {
+      if (!pendingSeccionReplace) {
+        return;
+      }
+      setSelectedSecciones(pendingSeccionReplace.targetIds);
+      setPendingSeccionReplace(null);
+    }, [pendingSeccionReplace, setPendingSeccionReplace, setSelectedSecciones]);
 
     const handleSave = useCallback(async () => {
       if (!empleadoId) {
@@ -2124,63 +2262,93 @@ export default function PersonalPage() {
     const isDisabled = disabled || !empleadoId || saving;
 
     return (
-      <div className="rounded-lg border bg-muted/40 p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          Gestión de asignaciones
-        </div>
-        <div className="mt-3 space-y-3">
-          <MultiSelectControl
-            label="Secciones asignadas"
-            placeholder="Seleccioná las secciones"
-            options={seccionMultiOptions}
-            selectedIds={selectedSecciones}
-            onChange={handleSeccionesChange}
-            disabled={isDisabled}
-            summaryEmptyText={
-              isDisabled
-                ? "Sin secciones asignadas."
-                : "Seleccioná hasta dos secciones o dejalo vacío para no asignar ninguna."
-            }
-          />
-          <SectionMateriaSelector
-            label="Materias asignadas"
-            placeholder="Seleccioná las materias"
-            sections={materiaSelectionGroups}
-            selectedIds={selectedMaterias}
-            onChange={setSelectedMaterias}
-            disabled={isDisabled}
-            empleadoId={empleadoId}
-            summaryEmptyText={
-              isDisabled
-                ? "Sin materias asignadas."
-                : "Seleccioná las materias por sección o dejalo vacío para removerlas."
-            }
-          />
-          <div className="flex flex-col gap-2 pt-1 text-xs text-muted-foreground">
-            <p>
-              Los cambios aplican inmediatamente sobre la planificación y las
-              vistas académicas.
-            </p>
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSave}
-                disabled={isDisabled}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando…
-                  </>
-                ) : (
-                  "Guardar asignaciones"
-                )}
-              </Button>
+      <>
+        <div className="rounded-lg border bg-muted/40 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            Gestión de asignaciones
+          </div>
+          <div className="mt-3 space-y-3">
+            <MultiSelectControl
+              label="Secciones asignadas"
+              placeholder="Seleccioná las secciones"
+              options={seccionMultiOptions}
+              selectedIds={selectedSecciones}
+              onChange={handleSeccionesChange}
+              disabled={isDisabled}
+              summaryEmptyText={
+                isDisabled
+                  ? "Sin secciones asignadas."
+                  : "Seleccioná hasta dos secciones o dejalo vacío para no asignar ninguna."
+              }
+            />
+            <SectionMateriaSelector
+              label="Materias asignadas"
+              placeholder="Seleccioná las materias"
+              sections={materiaSelectionGroups}
+              selectedIds={selectedMaterias}
+              onChange={setSelectedMaterias}
+              disabled={isDisabled}
+              empleadoId={empleadoId}
+              summaryEmptyText={
+                isDisabled
+                  ? "Sin materias asignadas."
+                  : "Seleccioná las materias por sección o dejalo vacío para removerlas."
+              }
+            />
+            <div className="flex flex-col gap-2 pt-1 text-xs text-muted-foreground">
+              <p>
+                Los cambios aplican inmediatamente sobre la planificación y
+                las vistas académicas.
+              </p>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isDisabled}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando…
+                    </>
+                  ) : (
+                    "Guardar asignaciones"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        <AlertDialog
+          open={pendingSeccionReplace !== null}
+          onOpenChange={(next) => {
+            if (!next) {
+              setPendingSeccionReplace(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Reemplazar titular?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {pendingSeccionReplace
+                  ? `La sección ${pendingSeccionReplace.seccionLabel} ya tiene un titular asignado (${pendingSeccionReplace.titular.nombre}). ¿Querés reemplazarlo?`
+                  : null}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPendingSeccionReplace(null)}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmSeccionReplace}>
+                Reemplazar titular
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   };
 

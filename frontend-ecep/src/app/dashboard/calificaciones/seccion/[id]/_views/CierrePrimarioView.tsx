@@ -648,7 +648,7 @@ export default function CierrePrimarioView({
                         </p>
                       )}
                       {triSoloLectura && (
-                        <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                        <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
                           <AlertTitle>
                             {activeTrimestreLabel || "Estado del trimestre"}
                           </AlertTitle>

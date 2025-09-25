@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,14 @@ public class AspiranteService {
         return aspiranteRepository.findById(id)
                 .map(mapper::toDto)
                 .orElseThrow(() -> new NotFoundException("Aspirante no encontrado"));
+    }
+
+    public Optional<AspiranteDTO> findByPersonaId(Long personaId) {
+        if (personaId == null) {
+            return Optional.empty();
+        }
+        return aspiranteRepository.findByPersonaId(personaId)
+                .map(mapper::toDto);
     }
 
     @Transactional

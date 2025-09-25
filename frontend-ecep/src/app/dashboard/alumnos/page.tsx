@@ -30,6 +30,44 @@ import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
 import { identidad } from "@/services/api/modules";
 
+const TURNO_LABELS: Record<string, string> = {
+  MANANA: "Mañana",
+  TARDE: "Tarde",
+};
+
+function formatTurnoLabel(turno?: string | null) {
+  if (!turno) return null;
+  const normalized = turno.trim().toUpperCase();
+  return TURNO_LABELS[normalized] ?? turno.trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cleanSeccionNombre(
+  nombre?: string | null,
+  turnoRaw?: string | null,
+  turnoLabel?: string | null,
+) {
+  const base = nombre?.trim();
+  if (!base) return undefined;
+
+  const variants = [turnoRaw, turnoLabel]
+    .map((variant) => variant?.trim())
+    .filter((variant): variant is string => Boolean(variant));
+
+  for (const variant of variants) {
+    const pattern = new RegExp(`\\s*\\(\\s*${escapeRegExp(variant)}\\s*\\)$`, "i");
+    const cleaned = base.replace(pattern, "").trim();
+    if (cleaned !== base) {
+      return cleaned || base;
+    }
+  }
+
+  return base;
+}
+
 export default function AlumnosIndexPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -332,9 +370,15 @@ export default function AlumnosIndexPage() {
                           const nombre = alumno.nombre?.trim() || "—";
                           const apellido = alumno.apellido?.trim() || "—";
                           const dni = alumno.dni?.trim() || "—";
+                          const turnoRaw = alumno.seccionActualTurno?.trim();
+                          const turnoLabel = formatTurnoLabel(turnoRaw);
                           const seccionNombre =
-                            alumno.seccionActualNombre?.trim() || "Sin asignar";
-                          const turno = alumno.seccionActualTurno?.trim() || "—";
+                            cleanSeccionNombre(
+                              alumno.seccionActualNombre,
+                              turnoRaw,
+                              turnoLabel,
+                            ) || "Sin asignar";
+                          const turno = turnoLabel ?? turnoRaw ?? "—";
 
                           return (
                             <button

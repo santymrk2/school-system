@@ -23,14 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Search, UserPlus } from "lucide-react";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -334,36 +326,73 @@ export default function AlumnosIndexPage() {
                     </div>
                   ) : (
                     <>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Apellido</TableHead>
-                            <TableHead>DNI</TableHead>
-                            <TableHead>Sección actual</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {alumnos.map((alumno) => (
-                            <TableRow
-                              key={alumno.id}
-                              className="cursor-pointer hover:bg-muted/50"
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {alumnos.map((alumno) => {
+                          const alumnoId = alumno.id;
+                          const nombre = alumno.nombre?.trim() || "—";
+                          const apellido = alumno.apellido?.trim() || "—";
+                          const dni = alumno.dni?.trim() || "—";
+                          const seccionNombre =
+                            alumno.seccionActualNombre?.trim() || "Sin asignar";
+                          const turno = alumno.seccionActualTurno?.trim() || "—";
+
+                          return (
+                            <button
+                              key={alumnoId ?? `${nombre}-${apellido}-${dni}`}
+                              type="button"
                               onClick={() =>
-                                alumno.id && router.push(`/dashboard/alumnos/${alumno.id}`)
+                                alumnoId && router.push(`/dashboard/alumnos/${alumnoId}`)
                               }
+                              className="h-full w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             >
-                              <TableCell className="font-medium">
-                                {alumno.nombre ?? "—"}
-                              </TableCell>
-                              <TableCell>{alumno.apellido ?? "—"}</TableCell>
-                              <TableCell>{alumno.dni ?? "—"}</TableCell>
-                              <TableCell>
-                                {alumno.seccionActualNombre ?? "Sin asignar"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                              <Card className="h-full transition hover:shadow-md">
+                                <CardContent className="space-y-4 pt-6 text-sm">
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Nombre
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {nombre}
+                                    </dd>
+                                  </dl>
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Apellido
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {apellido}
+                                    </dd>
+                                  </dl>
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      DNI
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {dni}
+                                    </dd>
+                                  </dl>
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Sección actual
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {seccionNombre}
+                                    </dd>
+                                  </dl>
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Turno
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {turno}
+                                    </dd>
+                                  </dl>
+                                </CardContent>
+                              </Card>
+                            </button>
+                          );
+                        })}
+                      </div>
                       <div className="mt-4 flex flex-col gap-2 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                         <div>
                           Mostrando {showingFrom}-{showingTo} de {totalItems} alumno

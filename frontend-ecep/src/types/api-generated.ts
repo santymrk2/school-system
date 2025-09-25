@@ -182,6 +182,7 @@ export interface AlumnoDTO {
   dni?: string;
   seccionActualId?: number;
   seccionActualNombre?: string;
+  seccionActualTurno?: string;
 }
 
 export interface AlumnoFamiliarCreateDTO {

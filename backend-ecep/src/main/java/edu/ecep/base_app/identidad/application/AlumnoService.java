@@ -150,6 +150,9 @@ public class AlumnoService {
     }
 
     private void applySeccionActual(AlumnoDTO dto, Long alumnoId) {
+        dto.setSeccionActualId(null);
+        dto.setSeccionActualNombre(null);
+        dto.setSeccionActualTurno(null);
         if (alumnoId == null) {
             return;
         }
@@ -163,6 +166,7 @@ public class AlumnoService {
                 if (seccion != null) {
                     dto.setSeccionActualId(seccion.getId());
                     dto.setSeccionActualNombre(buildNombreSeccion(seccion));
+                    dto.setSeccionActualTurno(seccion.getTurno() != null ? seccion.getTurno().name() : null);
                 }
                 return;
             }
@@ -177,9 +181,6 @@ public class AlumnoService {
         if (seccion.getDivision() != null) {
             if (sb.length() > 0) sb.append(" ");
             sb.append(seccion.getDivision());
-        }
-        if (seccion.getTurno() != null) {
-            sb.append(" (" + seccion.getTurno() + ")");
         }
         return sb.length() > 0 ? sb.toString() : "";
     }

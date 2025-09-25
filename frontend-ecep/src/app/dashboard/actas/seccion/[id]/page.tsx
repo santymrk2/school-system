@@ -363,9 +363,15 @@ export default function AccidentesSeccionPage() {
       );
       return;
     }
+    if (target.alumnoId == null || target.informanteId == null) {
+      toast.error("El acta no tiene asignado un alumno o docente responsable.");
+      return;
+    }
     try {
       setMarkingId(id);
       await vidaEscolar.actasAccidente.update(id, {
+        alumnoId: target.alumnoId,
+        informanteId: target.informanteId,
         fechaSuceso: target.fechaSuceso ?? new Date().toISOString().slice(0, 10),
         horaSuceso: target.horaSuceso ?? "00:00",
         lugar: target.lugar ?? "",

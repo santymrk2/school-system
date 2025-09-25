@@ -45,6 +45,8 @@ public class ActaAccidenteService {
                 .orElseThrow(() -> new EntityNotFoundException("Acta no encontrada: " + id));
 
         boolean onlyMarkSigned =
+                java.util.Objects.equals(acta.getAlumno().getId(), dto.alumnoId()) &&
+                java.util.Objects.equals(acta.getInformante().getId(), dto.informanteId()) &&
                 java.util.Objects.equals(acta.getFechaSuceso(), dto.fechaSuceso()) &&
                 java.util.Objects.equals(acta.getHoraSuceso(), dto.horaSuceso()) &&
                 java.util.Objects.equals(acta.getLugar(), dto.lugar()) &&

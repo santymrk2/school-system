@@ -161,6 +161,8 @@ export interface ActaAccidenteDTO {
 }
 
 export interface ActaAccidenteUpdateDTO {
+  alumnoId: number;
+  informanteId: number;
   fechaSuceso: ISODate;
   horaSuceso: ISOTime;
   lugar: string;

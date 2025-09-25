@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardContent,
@@ -337,8 +336,7 @@ export default function FamiliarPerfilPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button variant="outline" onClick={() => router.back()}>
           Volver
         </Button>
@@ -739,6 +737,6 @@ export default function FamiliarPerfilPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

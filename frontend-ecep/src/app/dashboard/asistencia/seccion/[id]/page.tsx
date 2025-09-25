@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJornadaDialog";
 import {
@@ -239,45 +238,44 @@ export default function SeccionHistorialPage() {
 
   if (accessStatus === "admin") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Asistencia.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "forbidden") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "checking") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6">
           <LoadingState label="Verificando acceso a la sección…" />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "notAssigned") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — Esta sección no pertenece a tus asignaciones.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button
           variant="outline"
           onClick={() => router.push("/dashboard/asistencia")}
@@ -530,6 +528,6 @@ export default function SeccionHistorialPage() {
           </Tabs>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

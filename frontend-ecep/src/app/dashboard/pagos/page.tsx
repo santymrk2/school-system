@@ -8,7 +8,6 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import {
@@ -840,7 +839,7 @@ export default function PagosPage() {
       }
 
       return (
-        <div className="space-y-6">
+    <div className="space-y-6">
           {cuotasError && (
             <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
@@ -992,7 +991,7 @@ export default function PagosPage() {
 
     if (isAdmin) {
       return (
-        <div className="space-y-6">
+    <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Gestión de cuotas</h2>
@@ -1152,7 +1151,7 @@ export default function PagosPage() {
     }
 
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
         No tenés permisos para visualizar cuotas en este momento.
       </div>
     );
@@ -1161,14 +1160,14 @@ export default function PagosPage() {
   const renderPagosTab = () => {
     if (!shouldLoadPagos) {
       return (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
           No tenés acceso al registro de pagos.
         </div>
       );
     }
 
     return (
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Pagos registrados</h2>
@@ -1300,7 +1299,7 @@ export default function PagosPage() {
   const renderRecibosTab = () => {
     if (!shouldLoadRecibos) {
       return (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
           No tenés acceso a los recibos de sueldo.
         </div>
       );
@@ -1309,7 +1308,7 @@ export default function PagosPage() {
     const listado = isAdmin ? recibosOrdenados : misRecibos;
 
     return (
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">
@@ -1500,8 +1499,7 @@ export default function PagosPage() {
         : "Registrá un pago asociado a la cuota seleccionada.";
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
+    <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">
@@ -2270,7 +2268,7 @@ export default function PagosPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    
   );
 }
 

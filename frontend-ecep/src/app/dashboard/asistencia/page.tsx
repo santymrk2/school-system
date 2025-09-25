@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { UserRole, SeccionDTO, Turno, NivelAcademico } from "@/types/api-generated";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
@@ -35,8 +34,7 @@ export default function AsistenciaPage() {
   const isStudent = type === "student";
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <header className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Asistencia</h2>
@@ -65,7 +63,7 @@ export default function AsistenciaPage() {
           <FamilyAttendanceView />
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }
 

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardHeader,
@@ -59,7 +58,7 @@ export default function MateriasPage() {
   if (scope === "family" || scope === "student") {
 
     return (
-      <DashboardLayout>
+      
         <div className="p-4 md:p-8 space-y-6">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">
@@ -79,27 +78,27 @@ export default function MateriasPage() {
             getPeriodoNombre={getPeriodoNombre}
           />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (isAdmin) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Materias.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (scope !== "staff" && scope !== "teacher") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — No tenés acceso a la gestión de materias.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -116,8 +115,7 @@ export default function MateriasPage() {
   }, [q, seccionesPrimario]);
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Materias</h2>
@@ -173,6 +171,6 @@ export default function MateriasPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

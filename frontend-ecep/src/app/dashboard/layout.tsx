@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/layout.ts
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -16,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { normalizeRole, normalizeRoles, displayRole } from "@/lib/auth-roles";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { MENU, type MenuItem } from "@/lib/menu";
@@ -36,7 +33,7 @@ const getInitials = (name: string | undefined | null) => {
   return matches ? matches.join("") : "??";
 };
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const { logout, user, selectedRole, setSelectedRole, loading } = useAuth();

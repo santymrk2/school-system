@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type React from "react";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -446,7 +445,7 @@ export default function ChatComponent() {
     }
 
     return (
-      <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-3`}>
+    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-3`}>
         <div
           className={`
             max-w-xs lg:max-w-md px-4 py-2 rounded-lg
@@ -505,8 +504,7 @@ export default function ChatComponent() {
     : "";
 
   return (
-    <DashboardLayout>
-      <div className="flex h-full flex-col p-4 md:p-8 pt-6">
+    <div className="flex h-full flex-col p-4 md:p-8 pt-6">
         <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl bg-background">
           {showChatList && (
             <div className="flex w-full min-h-0 flex-col bg-background md:w-1/3 md:flex-none md:border-r md:border-border">
@@ -694,6 +692,6 @@ export default function ChatComponent() {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    
   );
 }

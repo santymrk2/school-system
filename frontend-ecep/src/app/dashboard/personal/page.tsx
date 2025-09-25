@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -484,21 +483,21 @@ function getSituacionBadge(situacion?: string | null) {
   const normalized = (situacion ?? "").toLowerCase();
   if (normalized === "activo") {
     return (
-      <Badge variant="default">
+    <Badge variant="default">
         <CheckCircle className="mr-1 h-3 w-3" /> Activo
       </Badge>
     );
   }
   if (normalized.includes("licencia")) {
     return (
-      <Badge variant="secondary">
+    <Badge variant="secondary">
         <Clock className="mr-1 h-3 w-3" /> En licencia
       </Badge>
     );
   }
   if (normalized.includes("baja")) {
     return (
-      <Badge variant="destructive">
+    <Badge variant="destructive">
         <AlertCircle className="mr-1 h-3 w-3" /> Baja
       </Badge>
     );
@@ -2263,7 +2262,7 @@ export default function PersonalPage() {
     const isDisabled = disabled || !empleadoId || saving;
 
     return (
-      <>
+    <>
         <div className="rounded-lg border bg-muted/40 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -3968,9 +3967,9 @@ export default function PersonalPage() {
 
   if (loading || !user) {
     return (
-      <DashboardLayout>
+      
         <div className="flex-1 p-4 pt-6 md:p-8">{renderLoadingState()}</div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -3984,8 +3983,7 @@ export default function PersonalPage() {
   const canManageAccess = canCreatePersonal;
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
+    <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">
             Gestión de personal
@@ -6663,6 +6661,6 @@ export default function PersonalPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    
   );
 }

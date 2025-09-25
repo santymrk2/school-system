@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { gestionAcademica } from "@/services/api/modules";
 import { Badge } from "@/components/ui/badge";
@@ -76,39 +75,39 @@ export default function CalificacionesSeccionPage() {
 
   if (accessStatus === "admin") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Calificaciones.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "forbidden") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "checking") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6">
           <LoadingState label="Verificando acceso a la sección…" />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "notAssigned") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — Esta sección no pertenece a tus asignaciones.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -131,8 +130,7 @@ export default function CalificacionesSeccionPage() {
   const turnoLabel = formatTurnoLabel(seccion?.turno);
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-4">
+    <div className="p-4 md:p-8 space-y-4">
         <div>
           <h2 className="text-2xl font-semibold">{heading}</h2>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -165,6 +163,6 @@ export default function CalificacionesSeccionPage() {
           </>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

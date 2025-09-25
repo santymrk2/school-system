@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { gestionAcademica } from "@/services/api/modules";
 import type {
   EvaluacionDTO,
@@ -179,11 +178,11 @@ export default function ExamenDetailPage() {
 
   if (isAdmin) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Exámenes.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -385,15 +384,15 @@ export default function ExamenDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      
         <LoadingState label="Cargando examen…" />
-      </DashboardLayout>
+      
     );
   }
 
   if (error) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 space-y-4">
           <Button variant="outline" onClick={() => router.back()}>
             Volver
@@ -402,13 +401,13 @@ export default function ExamenDetailPage() {
             {error}
           </div>
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (!evaluacion) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 space-y-4">
           <Button variant="outline" onClick={() => router.back()}>
             Volver
@@ -417,13 +416,12 @@ export default function ExamenDetailPage() {
             No encontramos datos para el examen solicitado.
           </div>
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button variant="outline" onClick={() => router.back()}>
           Volver
         </Button>
@@ -601,6 +599,6 @@ export default function ExamenDetailPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    
   );
 }

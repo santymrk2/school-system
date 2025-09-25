@@ -132,7 +132,7 @@ export function BoletinesReport({
       >
         <SheetContent
           size="xl"
-          className="flex h-full w-full flex-col overflow-y-auto md:overflow-y-visible lg:w-[85vw] xl:w-[90vw] 2xl:w-[92vw]"
+          className="flex h-full w-full flex-col overflow-y-auto md:overflow-y-visible lg:w-[85vw] lg:max-w-none xl:w-[90vw] xl:max-w-none 2xl:w-[92vw] 2xl:max-w-none"
         >
           {activeStudent && (
             <>

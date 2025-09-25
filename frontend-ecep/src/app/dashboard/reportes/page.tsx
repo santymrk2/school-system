@@ -26,12 +26,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -2076,41 +2070,6 @@ const handleExportCurrent = async () => {
                           </Badge>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Promedio general</span>
-                            <span className="font-semibold">
-                              {typeof student.average === "number"
-                                ? student.average.toFixed(1)
-                                : "—"}
-                            </span>
-                          </div>
-                          {student.attendanceDetail ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Asistencia</span>
-                                    <span className="font-semibold">
-                                      {typeof student.attendancePercentage === "number"
-                                        ? formatPercent(student.attendancePercentage, 0)
-                                        : "—"}
-                                    </span>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent className="space-y-1 text-xs">
-                                  <p>Días hábiles: {student.attendanceDetail.workingDays}</p>
-                                  <p>Asistidos: {student.attendanceDetail.attended}</p>
-                                  <p>Justificadas: {student.attendanceDetail.justified}</p>
-                                  <p>Injustificadas: {student.attendanceDetail.unjustified}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>Asistencia</span>
-                              <span>—</span>
-                            </div>
-                          )}
                           <div className="flex items-center gap-2">
                             <Badge
                               variant={
@@ -3080,7 +3039,7 @@ const handleExportCurrent = async () => {
 
       {/* Lateral Boletín */}
       <Sheet open={!!activeBoletin} onOpenChange={(open) => !open && setActiveBoletin(null)}>
-      <SheetContent className="flex h-full w-full max-w-full flex-col overflow-y-auto sm:max-w-3xl lg:w-[80vw] lg:max-w-5xl">
+        <SheetContent className="flex h-full w-full max-w-full flex-col overflow-y-auto sm:max-w-3xl md:overflow-y-visible lg:w-[80vw] lg:max-w-5xl">
           {activeBoletin && (
             <>
               <SheetHeader className="space-y-4 text-left">
@@ -3092,11 +3051,6 @@ const handleExportCurrent = async () => {
                       <span className="text-muted-foreground">
                         Legajo: {activeBoletin.matriculaId ?? activeBoletin.alumnoId ?? "—"}
                       </span>
-                      {typeof activeBoletin.attendancePercentage === "number" && (
-                        <span className="text-muted-foreground">
-                          Asistencia: {formatPercent(activeBoletin.attendancePercentage, 0)}
-                        </span>
-                      )}
                     </SheetDescription>
                   </div>
                   <Button
@@ -3110,6 +3064,29 @@ const handleExportCurrent = async () => {
                   </Button>
                 </div>
               </SheetHeader>
+              <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Promedio general
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">
+                    {typeof activeBoletin.average === "number"
+                      ? activeBoletin.average.toFixed(1)
+                      : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Asistencia
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">
+                    {typeof activeBoletin.attendancePercentage === "number"
+                      ? formatPercent(activeBoletin.attendancePercentage, 1)
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
               <div
                 className={`mt-6 flex-1 space-y-4 pb-8 text-sm ${
                   isActiveBoletinPrimario

@@ -11,9 +11,6 @@ export type AccidentActPdfData = {
   lugar?: string | null;
   descripcion?: string | null;
   acciones?: string | null;
-  creadoPor?: string | null;
-  informante?: string | null;
-  informanteDni?: string | null;
   firmante?: string | null;
   firmanteDni?: string | null;
   familiar?: string | null;
@@ -157,63 +154,52 @@ const drawTextBox = (
   return y + height + 12;
 };
 
-const drawDualSignatureRow = (
+const drawSignatureBox = (
   doc: jsPDF,
-  left: { title: string; name: string; dni?: string | null; note?: string },
-  right: { title: string; name: string; dni?: string | null; note?: string },
+  data: { title: string; name: string; dni?: string | null; note?: string },
   x: number,
   y: number,
   width: number,
 ) => {
-  const gap = 24;
-  const boxWidth = (width - gap) / 2;
   const height = 96;
   const padding = 12;
   const lineYOffset = 26;
 
-  const drawBox = (
-    baseX: number,
-    data: { title: string; name: string; dni?: string | null; note?: string },
-  ) => {
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(baseX, y, boxWidth, height, 10, 10, "D");
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(x, y, width, height, 10, 10, "D");
 
-    doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(data.title.toUpperCase(), x + padding, y + padding);
+
+  const lineY = y + height - lineYOffset;
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(1);
+  doc.line(x + padding, lineY, x + width - padding, lineY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text(data.name, x + width / 2, lineY + 14, { align: "center" });
+
+  if (data.dni) {
     doc.setFontSize(9);
     doc.setTextColor(71, 85, 105);
-    doc.text(data.title.toUpperCase(), baseX + padding, y + padding);
+    doc.text(`DNI ${data.dni}`, x + width / 2, lineY + 26, {
+      align: "center",
+    });
+  }
 
-    const lineY = y + height - lineYOffset;
-    doc.setDrawColor(148, 163, 184);
-    doc.setLineWidth(1);
-    doc.line(baseX + padding, lineY, baseX + boxWidth - padding, lineY);
+  if (data.note) {
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(data.note, x + width / 2, lineY + 38, {
+      align: "center",
+    });
+  }
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(15, 23, 42);
-    doc.text(data.name, baseX + boxWidth / 2, lineY + 14, { align: "center" });
-
-    if (data.dni) {
-      doc.setFontSize(9);
-      doc.setTextColor(71, 85, 105);
-      doc.text(`DNI ${data.dni}`, baseX + boxWidth / 2, lineY + 26, {
-        align: "center",
-      });
-    }
-
-    if (data.note) {
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text(data.note, baseX + boxWidth / 2, lineY + 38, {
-        align: "center",
-      });
-    }
-
-    doc.setTextColor(15, 23, 42);
-  };
-
-  drawBox(x, left);
-  drawBox(x + boxWidth + gap, right);
+  doc.setTextColor(15, 23, 42);
 
   return y + height + 12;
 };
@@ -347,11 +333,7 @@ export const renderAccidentActPdf = (
 
   const participantDetails = [
     {
-      label: "Docente responsable",
-      value: formatPersonWithDni(acta.informante, acta.informanteDni),
-    },
-    {
-      label: "Dirección / Firmante",
+      label: "Dirección firmante",
       value: formatPersonWithDni(
         acta.firmante,
         acta.firmanteDni,
@@ -406,17 +388,11 @@ export const renderAccidentActPdf = (
     contentWidth,
   );
 
-  cursorY = drawSectionTitle(doc, "Firmas", marginX, cursorY);
-  cursorY = drawDualSignatureRow(
+  cursorY = drawSectionTitle(doc, "Firma", marginX, cursorY);
+  cursorY = drawSignatureBox(
     doc,
     {
-      title: "Docente responsable",
-      name: formatText(acta.informante) || "Pendiente de asignación",
-      dni: formatText(acta.informanteDni) || undefined,
-      note: "Firma y aclaración",
-    },
-    {
-      title: "Dirección",
+      title: "Dirección firmante",
       name: formatText(acta.firmante) || "Pendiente de asignación",
       dni: formatText(acta.firmanteDni) || undefined,
       note: "Dirección del establecimiento",

@@ -244,8 +244,6 @@ type ActaRegistro = {
   location: string;
   description: string;
   actions: string;
-  informant: string;
-  informantDni?: string | null;
   signer?: string;
   signerDni?: string | null;
   signed: boolean;
@@ -1442,7 +1440,6 @@ export default function ReportesPage() {
           const alumnoInfo = acta.alumnoId
             ? alumnoCacheRef.current.get(acta.alumnoId)
             : undefined;
-          const informant = acta.informanteId ? empleadoMap[acta.informanteId] : undefined;
           const signer = acta.firmanteId ? empleadoMap[acta.firmanteId] : undefined;
 
           return {
@@ -1451,14 +1448,12 @@ export default function ReportesPage() {
             studentDni: alumnoInfo?.dni ?? null,
             section: alumnoInfo?.section ?? "Sin sección asignada",
             level: alumnoInfo?.level ?? "Primario",
-            teacher: signer?.name ?? informant?.name ?? "Sin docente asignado",
+            teacher: signer?.name ?? "Pendiente de asignación",
             date: acta.fechaSuceso ?? "—",
             time: acta.horaSuceso ?? "—",
             location: acta.lugar ?? "—",
             description: acta.descripcion ?? "Sin descripción registrada.",
             actions: acta.acciones ?? "Sin acciones registradas.",
-            informant: informant?.name ?? "Sin informante",
-            informantDni: informant?.dni ?? null,
             signer: signer?.name,
             signerDni: signer?.dni ?? null,
             signed: acta.estado === EstadoActaAccidente.CERRADA,
@@ -1852,7 +1847,7 @@ const buildCurrentReportRenderer = (title: string): PdfCreateCallback | null => 
       acta.section,
       acta.date,
       acta.signed ? "Firmada" : "No firmada",
-      acta.informant,
+      acta.signer ?? "Pendiente de asignación",
     ]);
 
     const sections: ReportSection[] = [
@@ -1860,18 +1855,18 @@ const buildCurrentReportRenderer = (title: string): PdfCreateCallback | null => 
     ];
 
     if (actaRows.length > 0) {
-      sections.push({
-        type: "table",
-        title: "Primeras actas",
-        columns: [
-          { label: "Alumno", width: "wide" },
-          { label: "Sección" },
-          { label: "Fecha" },
-          { label: "Estado" },
-          { label: "Informante" },
-        ],
-        rows: actaRows,
-      });
+        sections.push({
+          type: "table",
+          title: "Primeras actas",
+          columns: [
+            { label: "Alumno", width: "wide" },
+            { label: "Sección" },
+            { label: "Fecha" },
+            { label: "Estado" },
+            { label: "Dirección firmante" },
+          ],
+          rows: actaRows,
+        });
     }
 
     return (doc) =>
@@ -3244,16 +3239,7 @@ const handleExportCurrent = async () => {
                     </Badge>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-muted-foreground">Docente responsable</span>
-                    <p className="font-medium">
-                      {activeActa.informant}
-                      {activeActa.informantDni
-                        ? ` (DNI ${activeActa.informantDni})`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Dirección / Firmante</span>
+                    <span className="text-muted-foreground">Dirección firmante</span>
                     <p className="font-medium">
                       {activeActa.signer ?? "Pendiente de asignación"}
                       {activeActa.signerDni
@@ -3293,8 +3279,6 @@ const handleExportCurrent = async () => {
                                 lugar: activeActa.location,
                                 descripcion: activeActa.description,
                                 acciones: activeActa.actions,
-                                informante: activeActa.informant,
-                                informanteDni: activeActa.informantDni,
                                 firmante: activeActa.signer ?? undefined,
                                 firmanteDni: activeActa.signerDni,
                                 familiar: activeActa.familyName,

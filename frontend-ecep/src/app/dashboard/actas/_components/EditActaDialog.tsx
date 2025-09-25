@@ -11,6 +11,7 @@ import type {
   PersonaDTO,
   AlumnoDTO,
 } from "@/types/api-generated";
+import { RolEmpleado } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,10 +73,12 @@ export default function EditActaDialog({
       try {
         setLoading(true);
         const [persRes, alumnosRes] = await Promise.all([
-          identidad.empleados.list(),
+          identidad.empleados.list({ rolEmpleado: RolEmpleado.DIRECCION }),
           identidad.alumnos.list().catch(() => ({ data: [] })),
         ]);
-        const pers = pageContent<EmpleadoDTO>(persRes.data);
+        const pers = pageContent<EmpleadoDTO>(persRes.data).filter(
+          (p) => (p.rolEmpleado ?? null) === RolEmpleado.DIRECCION,
+        );
         if (!alive) return;
 
         // Prefetch de personas para mostrar nombres correctos
@@ -324,14 +327,14 @@ export default function EditActaDialog({
             {allowFirmanteSelection && (
               <div>
                 <label className="text-sm mb-1 block">
-                  Firmante (personal/docente)
+                  Dirección firmante (opcional)
                 </label>
                 <Select
                   value={firmanteId}
                   onValueChange={(v) => setFirmanteId(v)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccioná firmante (opcional)" />
+                    <SelectValue placeholder="Seleccioná directivo" />
                   </SelectTrigger>
                   <SelectContent>
                     {personal.map((p) => (

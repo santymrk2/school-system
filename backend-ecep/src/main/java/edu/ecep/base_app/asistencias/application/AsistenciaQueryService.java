@@ -1,10 +1,13 @@
 package edu.ecep.base_app.asistencias.application;
 
 
+import edu.ecep.base_app.asistencias.presentation.dto.AsistenciaAcumuladoDTO;
+import edu.ecep.base_app.asistencias.presentation.dto.AsistenciaAlumnoResumenDTO;
+import edu.ecep.base_app.asistencias.presentation.dto.AsistenciaDiaDTO;
+import edu.ecep.base_app.gestionacademica.application.DocenteScopeService;
 import edu.ecep.base_app.gestionacademica.domain.Seccion;
 import edu.ecep.base_app.gestionacademica.presentation.dto.SeccionDTO;
-import edu.ecep.base_app.asistencias.presentation.dto.*;
-import edu.ecep.base_app.gestionacademica.infrastructure.mapper.SeccionMapper; // si lo tenés; si no, mapeamos a mano
+import edu.ecep.base_app.gestionacademica.infrastructure.mapper.SeccionMapper;
 import edu.ecep.base_app.gestionacademica.infrastructure.persistence.AsignacionDocenteSeccionRepository;
 import edu.ecep.base_app.asistencias.infrastructure.persistence.DetalleAsistenciaRepository;
 import edu.ecep.base_app.asistencias.infrastructure.persistence.JornadaAsistenciaRepository;
@@ -26,6 +29,7 @@ public class AsistenciaQueryService {
     private final DetalleAsistenciaRepository detalleRepo;
     private final AsignacionDocenteSeccionRepository asigSecRepo;
     private final SeccionMapper seccionMapper;
+    private final DocenteScopeService docenteScopeService;
 
     public List<SeccionDTO> seccionesVigentesDocente(Long empleadoId, LocalDate fecha) {
         List<Seccion> secciones = asigSecRepo.findSeccionesVigentesByEmpleado(empleadoId, fecha);
@@ -33,6 +37,7 @@ public class AsistenciaQueryService {
     }
 
     public List<AsistenciaDiaDTO> historialSeccion(Long seccionId, LocalDate from, LocalDate to) {
+        docenteScopeService.ensurePuedeAccederSeccion(seccionId);
         List<AsistenciaDiaDTO> lista = jornadaRepo.resumenDiario(seccionId, from, to);
         // completar porcentaje y ordenar
         lista.forEach(d -> d.setPorcentaje(pct(d.getPresentes(), d.getTotal())));
@@ -42,6 +47,7 @@ public class AsistenciaQueryService {
     }
 
     public AsistenciaAcumuladoDTO acumuladoSeccion(Long seccionId, LocalDate from, LocalDate to) {
+        docenteScopeService.ensurePuedeAccederSeccion(seccionId);
         AsistenciaAcumuladoDTO dto = detalleRepo.acumuladoSeccion(seccionId, from, to);
         if (dto == null) dto = new AsistenciaAcumuladoDTO();
         dto.setDesde(from);
@@ -51,6 +57,7 @@ public class AsistenciaQueryService {
     }
 
     public List<AsistenciaAlumnoResumenDTO> resumenPorAlumno(Long seccionId, LocalDate from, LocalDate to) {
+        docenteScopeService.ensurePuedeAccederSeccion(seccionId);
         List<AsistenciaAlumnoResumenDTO> lista = detalleRepo.resumenPorAlumno(seccionId, from, to);
         lista.forEach(d -> d.setPorcentaje(pct(d.getPresentes(), d.getTotal())));
         return lista;

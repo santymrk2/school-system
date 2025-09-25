@@ -132,37 +132,39 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* MENÚ por grupos + separador entre grupos */}
-          <div className="flex-1 px-4 lg:pr-0 lg:pl-4 py-4 overflow-y-auto">
-            <nav className="space-y-1">
-              {groupedMenu.map(([groupKey, items], groupIndex) => (
-                <div key={groupKey} className="space-y-1">
-                  {items.map((item, index) => {
-                    const active = isItemActive(pathname, item.href);
-                    return (
-                      <Link key={`${groupKey}-${index}`} href={item.href}>
-                        <Button
-                          aria-current={active ? "page" : undefined}
-                          variant="ghost"
-                          className={cn(
-                            "w-full justify-start rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5",
-                            active
-                              ? "bg-muted text-foreground hover:bg-muted font-medium"
-                              : "hover:bg-muted hover:text-foreground",
-                          )}
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <item.icon className="h-5 w-5 mr-3" />
-                          {item.label}
-                        </Button>
-                      </Link>
-                    );
-                  })}
-                  {groupIndex < groupedMenu.length - 1 && (
-                    <div className="m-2 border-t border-border/60 dark:border-border/40" />
-                  )}
-                </div>
-              ))}
-            </nav>
+          <div className="flex-1 px-4 lg:pr-0 lg:pl-4 py-4">
+            <div className="flex h-full flex-col justify-center overflow-y-auto">
+              <nav className="space-y-1 py-2">
+                {groupedMenu.map(([groupKey, items], groupIndex) => (
+                  <div key={groupKey} className="space-y-1">
+                    {items.map((item, index) => {
+                      const active = isItemActive(pathname, item.href);
+                      return (
+                        <Link key={`${groupKey}-${index}`} href={item.href}>
+                          <Button
+                            aria-current={active ? "page" : undefined}
+                            variant="ghost"
+                            className={cn(
+                              "w-full justify-start rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5",
+                              active
+                                ? "bg-muted text-foreground hover:bg-muted font-medium"
+                                : "hover:bg-muted hover:text-foreground",
+                            )}
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            <item.icon className="h-5 w-5 mr-3" />
+                            {item.label}
+                          </Button>
+                        </Link>
+                      );
+                    })}
+                    {groupIndex < groupedMenu.length - 1 && (
+                      <div className="m-2 border-t border-border/60 dark:border-border/40" />
+                    )}
+                  </div>
+                ))}
+              </nav>
+            </div>
           </div>
 
           {/* PERFIL ABAJO + dropdown hacia arriba */}

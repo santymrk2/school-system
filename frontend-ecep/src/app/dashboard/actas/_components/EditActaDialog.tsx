@@ -168,7 +168,10 @@ export default function EditActaDialog({
     if (selected) setAlumnoQuery(selected.display);
   };
 
-  const allowFirmanteSelection = Boolean(canManageFirmante);
+  const normalizedEstado = String(estado ?? "").toUpperCase();
+  const allowFirmanteSelection = Boolean(
+    canManageFirmante && normalizedEstado !== "BORRADOR",
+  );
 
   const save = async () => {
     try {
@@ -318,32 +321,47 @@ export default function EditActaDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="BORRADOR">Borrador</SelectItem>
-                    <SelectItem value="CERRADA">Cerrada (firmada)</SelectItem>
+                    <SelectItem value="CERRADA">Cerrada</SelectItem>
+                    <SelectItem value="FIRMADA">Firmada</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {allowFirmanteSelection && (
+            {canManageFirmante && (
               <div>
                 <label className="text-sm mb-1 block">
                   Dirección firmante (opcional)
                 </label>
-                <Select
-                  value={firmanteId}
-                  onValueChange={(v) => setFirmanteId(v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccioná directivo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {personal.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {displayPersonal.get(p.id) ?? `Empleado #${p.id}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {allowFirmanteSelection ? (
+                  <Select
+                    value={firmanteId}
+                    onValueChange={(v) => setFirmanteId(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccioná directivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personal.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {displayPersonal.get(p.id) ?? `Empleado #${p.id}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <span>
+                      {firmanteId
+                        ? displayPersonal.get(Number(firmanteId)) ??
+                          `Empleado #${firmanteId}`
+                        : "Aún sin dirección firmante asignada."}
+                    </span>
+                    <span className="block text-xs">
+                      Cerrá el acta para habilitar la selección de dirección firmante.
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

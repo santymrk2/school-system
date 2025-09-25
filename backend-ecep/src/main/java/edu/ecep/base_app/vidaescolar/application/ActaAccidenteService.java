@@ -14,6 +14,7 @@ import edu.ecep.base_app.vidaescolar.infrastructure.persistence.ActaAccidenteRep
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -49,26 +50,33 @@ public class ActaAccidenteService {
         ActaAccidente acta = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Acta no encontrada: " + id));
 
-        boolean onlyMarkSigned =
-                java.util.Objects.equals(acta.getAlumno().getId(), dto.alumnoId()) &&
-                java.util.Objects.equals(acta.getInformante().getId(), dto.informanteId()) &&
-                java.util.Objects.equals(acta.getFechaSuceso(), dto.fechaSuceso()) &&
-                java.util.Objects.equals(acta.getHoraSuceso(), dto.horaSuceso()) &&
-                java.util.Objects.equals(acta.getLugar(), dto.lugar()) &&
-                java.util.Objects.equals(acta.getAcciones(), dto.acciones()) &&
-                java.util.Objects.equals(acta.getDescripcion(), dto.descripcion()) &&
-                dto.estado() == EstadoActaAccidente.CERRADA &&
-                acta.getEstado() != EstadoActaAccidente.CERRADA;
+        boolean coreDataChanged =
+                !Objects.equals(acta.getAlumno().getId(), dto.alumnoId()) ||
+                !Objects.equals(acta.getInformante().getId(), dto.informanteId()) ||
+                !Objects.equals(acta.getFechaSuceso(), dto.fechaSuceso()) ||
+                !Objects.equals(acta.getHoraSuceso(), dto.horaSuceso()) ||
+                !Objects.equals(acta.getLugar(), dto.lugar()) ||
+                !Objects.equals(acta.getAcciones(), dto.acciones()) ||
+                !Objects.equals(acta.getDescripcion(), dto.descripcion());
 
-        if (!onlyMarkSigned) {
+        if (coreDataChanged) {
             long diffOriginal = ChronoUnit.DAYS.between(acta.getFechaSuceso(), LocalDate.now());
-            long diffNueva    = ChronoUnit.DAYS.between(dto.fechaSuceso(), LocalDate.now());
+            long diffNueva = ChronoUnit.DAYS.between(dto.fechaSuceso(), LocalDate.now());
             if (diffOriginal > 2 || diffNueva > 2) {
                 throw new IllegalArgumentException("Fuera de ventana de edición");
             }
         }
 
         validateFirmante(dto.firmanteId());
+
+        Long resolvedFirmanteId = dto.firmanteId() != null
+                ? dto.firmanteId()
+                : acta.getFirmante() != null ? acta.getFirmante().getId() : null;
+
+        if (dto.estado() == EstadoActaAccidente.FIRMADA && resolvedFirmanteId == null) {
+            throw new IllegalArgumentException("El acta firmada debe tener una dirección asignada como firmante");
+        }
+
         mapper.applyUpdate(acta, dto);
         repo.save(acta);
     }

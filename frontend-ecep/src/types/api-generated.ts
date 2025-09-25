@@ -88,6 +88,7 @@ export enum EstadoPago {
 export enum EstadoActaAccidente {
   BORRADOR = "BORRADOR",
   CERRADA = "CERRADA",
+  FIRMADA = "FIRMADA",
 }
 
 export enum EstadoSolicitudBaja {

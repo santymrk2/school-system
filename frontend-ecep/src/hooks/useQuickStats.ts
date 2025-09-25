@@ -123,7 +123,7 @@ export function useQuickStats() {
           .catch(() => ({ data: [] as any[] }));
         const actas = actasRes.data ?? [];
         const sinFirmar = actas.filter(
-          (a: any) => String(a.estado ?? "").toUpperCase() === "BORRADOR",
+          (a: any) => String(a.estado ?? "").toUpperCase() !== "FIRMADA",
         ).length;
 
         if (!alive) return;

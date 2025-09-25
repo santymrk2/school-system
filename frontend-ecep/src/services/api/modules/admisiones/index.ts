@@ -4,6 +4,8 @@ import type * as DTO from "@/types/api-generated";
 const aspirantes = {
   list: () => http.get<DTO.AspiranteDTO[]>("/api/aspirantes"),
   byId: (id: number) => http.get<DTO.AspiranteDTO>("/api/aspirantes/" + id),
+  byPersonaId: (personaId: number) =>
+    http.get<DTO.AspiranteDTO>("/api/aspirantes/persona/" + personaId),
   create: (body: Omit<DTO.AspiranteDTO, "id">) =>
     http.post<DTO.AspiranteDTO>("/api/aspirantes", body),
   update: (id: number, body: Partial<DTO.AspiranteDTO>) =>

@@ -518,16 +518,21 @@ export default function PostulacionPage() {
     };
 
     try {
-      const { data } = await admisiones.aspirantes.byId(personaId);
-      await admisiones.aspirantes.update(personaId, payload);
-      return data?.id ?? personaId;
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
-        const { data } = await admisiones.aspirantes.create(payload);
-        return data?.id ?? personaId;
+      const { data } = await admisiones.aspirantes.byPersonaId(personaId);
+      const aspiranteId = data?.id;
+      if (aspiranteId == null) {
+        throw new Error("No se pudo determinar el ID del aspirante.");
       }
-      throw error;
+      await admisiones.aspirantes.update(aspiranteId, payload);
+      return aspiranteId;
+    } catch (error: any) {
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
     }
+
+    const { data } = await admisiones.aspirantes.create(payload);
+    return data?.id ?? personaId;
   };
 
   const ensureFamiliarRecord = async (

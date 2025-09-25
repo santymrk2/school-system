@@ -17,8 +17,16 @@ public interface SolicitudAdmisionMapper {
 
     @Mapping(target = "aspiranteId", source = "aspirante.id")
     @Mapping(target = "aspirante", source = "aspirante")
+    @Mapping(target = "fechaSolicitud", source = "dateCreated")
     @Mapping(target = "fechasPropuestas", expression = "java(toFechaList(entity))")
+    @Mapping(target = "rangosHorariosPropuestos", expression = "java(toHorarioList(entity))")
+    @Mapping(target = "aclaracionesPropuesta", source = "propuestaNotas")
     @Mapping(target = "fechaEntrevistaConfirmada", source = "fechaEntrevista")
+    @Mapping(target = "comentariosEntrevista", source = "comentariosEntrevista")
+    @Mapping(target = "puedeSolicitarReprogramacion", source = "puedeSolicitarReprogramacion")
+    @Mapping(target = "reprogramacionSolicitada", source = "reprogramacionSolicitada")
+    @Mapping(target = "comentarioReprogramacion", source = "comentarioReprogramacion")
+    @Mapping(target = "cantidadPropuestasEnviadas", source = "cantidadPropuestasEnviadas")
     @Mapping(target = "adjuntosInformativos", expression = "java(splitAdjuntos(entity.getAdjuntosInformativos()))")
     SolicitudAdmisionDTO toDto(SolicitudAdmision entity);
 
@@ -37,6 +45,10 @@ public interface SolicitudAdmisionMapper {
     @Mapping(target = "propuestaFecha1", ignore = true)
     @Mapping(target = "propuestaFecha2", ignore = true)
     @Mapping(target = "propuestaFecha3", ignore = true)
+    @Mapping(target = "propuestaHorario1", ignore = true)
+    @Mapping(target = "propuestaHorario2", ignore = true)
+    @Mapping(target = "propuestaHorario3", ignore = true)
+    @Mapping(target = "propuestaNotas", ignore = true)
     @Mapping(target = "adjuntosInformativos", ignore = true)
     void updateEntityFromDto(SolicitudAdmisionDTO dto, @MappingTarget SolicitudAdmision entity);
 
@@ -47,6 +59,14 @@ public interface SolicitudAdmisionMapper {
         if (entity.getPropuestaFecha2() != null) fechas.add(entity.getPropuestaFecha2());
         if (entity.getPropuestaFecha3() != null) fechas.add(entity.getPropuestaFecha3());
         return fechas;
+    }
+
+    default java.util.List<String> toHorarioList(SolicitudAdmision entity) {
+        java.util.List<String> horarios = new java.util.ArrayList<>();
+        if (entity.getPropuestaHorario1() != null) horarios.add(entity.getPropuestaHorario1());
+        if (entity.getPropuestaHorario2() != null) horarios.add(entity.getPropuestaHorario2());
+        if (entity.getPropuestaHorario3() != null) horarios.add(entity.getPropuestaHorario3());
+        return horarios;
     }
 
     default java.util.List<String> splitAdjuntos(String raw) {
@@ -69,6 +89,17 @@ public interface SolicitudAdmisionMapper {
             entity.setPropuestaFecha1(fechas.size() > 0 ? fechas.get(0) : null);
             entity.setPropuestaFecha2(fechas.size() > 1 ? fechas.get(1) : null);
             entity.setPropuestaFecha3(fechas.size() > 2 ? fechas.get(2) : null);
+        }
+
+        java.util.List<String> horarios = dto.getRangosHorariosPropuestos();
+        if (horarios != null) {
+            entity.setPropuestaHorario1(horarios.size() > 0 ? horarios.get(0) : null);
+            entity.setPropuestaHorario2(horarios.size() > 1 ? horarios.get(1) : null);
+            entity.setPropuestaHorario3(horarios.size() > 2 ? horarios.get(2) : null);
+        }
+
+        if (dto.getAclaracionesPropuesta() != null) {
+            entity.setPropuestaNotas(dto.getAclaracionesPropuesta());
         }
 
         if (dto.getAdjuntosInformativos() != null) {

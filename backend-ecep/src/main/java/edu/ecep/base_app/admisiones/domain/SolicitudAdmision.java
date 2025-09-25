@@ -58,6 +58,18 @@ public class SolicitudAdmision extends BaseEntity{
     @Column
     private LocalDate propuestaFecha3;
 
+    @Column(length = 100)
+    private String propuestaHorario1;
+
+    @Column(length = 100)
+    private String propuestaHorario2;
+
+    @Column(length = 100)
+    private String propuestaHorario3;
+
+    @Column(length = 2000)
+    private String propuestaNotas;
+
     @Column
     private LocalDate fechaLimiteRespuesta;
 
@@ -79,8 +91,23 @@ public class SolicitudAdmision extends BaseEntity{
     @Column(length = 1000)
     private String notasDireccion;
 
+    @Column(length = 2000)
+    private String comentariosEntrevista;
+
     @Column
     private Boolean autorizadoComunicacionesEmail;
+
+    @Column
+    private Boolean puedeSolicitarReprogramacion;
+
+    @Column
+    private Boolean reprogramacionSolicitada;
+
+    @Column(length = 2000)
+    private String comentarioReprogramacion;
+
+    @Column
+    private Integer cantidadPropuestasEnviadas;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "aspirante_id", nullable = false)

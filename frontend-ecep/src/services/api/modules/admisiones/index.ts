@@ -37,6 +37,10 @@ const solicitudesAdmision = {
     http.post<void>(`/api/solicitudes-admision/${id}/rechazar`, body),
   programar: (id: number, body: DTO.SolicitudAdmisionProgramarDTO) =>
     http.post<void>(`/api/solicitudes-admision/${id}/programar`, body),
+  solicitarReprogramacion: (
+    id: number,
+    body: DTO.SolicitudAdmisionReprogramacionDTO,
+  ) => http.post<void>(`/api/solicitudes-admision/${id}/reprogramar`, body),
   confirmarFecha: (id: number, body: DTO.SolicitudAdmisionSeleccionDTO) =>
     http.post<void>(`/api/solicitudes-admision/${id}/confirmar-fecha`, body),
   registrarEntrevista: (id: number, body: DTO.SolicitudAdmisionEntrevistaDTO) =>

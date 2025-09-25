@@ -47,7 +47,8 @@ export default function MateriasPage() {
     error,
     secciones,
     hijos,
-    periodoEscolarId,
+    periodoNombre,
+    getPeriodoNombre,
     titularBySeccionId,
   } = useScopedIndex({ includeTitularSec: true });
 
@@ -75,6 +76,7 @@ export default function MateriasPage() {
             alumnos={hijos}
             initialLoading={loading}
             initialError={error ? String(error) : null}
+            getPeriodoNombre={getPeriodoNombre}
           />
         </div>
       </DashboardLayout>
@@ -121,8 +123,8 @@ export default function MateriasPage() {
             <h2 className="text-3xl font-bold tracking-tight">Materias</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline">Primario</Badge>
-              {periodoEscolarId && (
-                <Badge variant="outline">Período {periodoEscolarId}</Badge>
+              {periodoNombre && (
+                <Badge variant="outline">Período {periodoNombre}</Badge>
               )}
             </div>
           </div>

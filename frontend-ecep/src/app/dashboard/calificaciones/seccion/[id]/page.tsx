@@ -10,6 +10,7 @@ import CierrePrimarioView from "./_views/CierrePrimarioView";
 import InformeInicialView from "./_views/InformeInicialView";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { UserRole } from "@/types/api-generated";
 
 export default function CalificacionesSeccionPage() {
@@ -17,6 +18,7 @@ export default function CalificacionesSeccionPage() {
   const seccionId = Number(id);
   const { type, activeRole } = useViewerScope();
   const { loading: scopedLoading, secciones: accesibles } = useScopedSecciones();
+  const { getPeriodoNombre } = useActivePeriod();
   const isAdmin = activeRole === UserRole.ADMIN;
   const isTeacher = type === "teacher";
   const isStaff = type === "staff";
@@ -115,6 +117,10 @@ export default function CalificacionesSeccionPage() {
   const sectionLabel = seccion
     ? `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim()
     : `Sección #${seccionId}`;
+  const periodoNombre = getPeriodoNombre(
+    seccion?.periodoEscolarId,
+    ((seccion as any)?.periodoEscolar ?? null) as { anio?: number } | null,
+  );
 
   const formatTurnoLabel = (turno?: string | null) => {
     if (!turno) return null;
@@ -134,7 +140,7 @@ export default function CalificacionesSeccionPage() {
             {turnoLabel && <Badge variant="outline">{turnoLabel}</Badge>}
             {seccion?.periodoEscolarId && (
               <Badge variant="outline">
-                Período {seccion.periodoEscolarId}
+                Período {periodoNombre ?? "—"}
               </Badge>
             )}
           </div>

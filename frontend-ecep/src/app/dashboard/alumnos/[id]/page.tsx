@@ -109,7 +109,7 @@ export default function AlumnoPerfilPage() {
 
   const [familiares, setFamiliares] = useState<FamiliarConVinculo[]>([]);
 
-  const { periodoEscolarId: activePeriodId } = useActivePeriod();
+  const { periodoEscolarId: activePeriodId, getPeriodoNombre } = useActivePeriod();
   const { hasRole } = useAuth();
   const { type: viewerScope } = useViewerScope();
   const canManageProfile = viewerScope === "staff";
@@ -1312,7 +1312,12 @@ export default function AlumnoPerfilPage() {
                         <div>
                           <div className="font-medium">Matrícula #{m.id}</div>
                           <div className="text-muted-foreground">
-                            Período: {m.periodoEscolarId ?? "—"}
+                            Período: {getPeriodoNombre(
+                              m.periodoEscolarId,
+                              ((m as any)?.periodoEscolar ?? null) as
+                                | { anio?: number }
+                                | null,
+                            )}
                             {abierta ? (
                               <>
                                 {" "}

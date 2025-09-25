@@ -97,6 +97,12 @@ import {
 } from "@/types/api-generated";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  buildPdfHtml,
+  downloadPdfWithHtmlDocs,
+  escapeHtml,
+  suggestPdfFileName,
+} from "@/lib/pdf";
 
 // -----------------------------------------------------------------------------
 // Mock data (mantener hasta integrar API real en los demás reportes)
@@ -313,41 +319,33 @@ const startOfDay = (date: Date) => {
   return copy;
 };
 
-const exportSectionAsPdf = (node: HTMLElement | null, title: string) => {
-  if (!node) {
-    toast.error("No encontramos contenido para exportar.");
-    return;
-  }
-  exportHtmlAsPdf(node.innerHTML, title);
+const REPORT_PDF_STYLES = `
+  p { margin: 0 0 8px; }
+  ul { padding-left: 20px; }
+  ol { padding-left: 24px; }
+  table thead th { font-weight: 600; }
+`;
+
+const exportHtmlAsPdf = async (html: string, title: string) => {
+  const documentHtml = buildPdfHtml({
+    title,
+    body: html,
+    styles: REPORT_PDF_STYLES,
+  });
+
+  await downloadPdfWithHtmlDocs({
+    html: documentHtml,
+    title,
+    fileName: suggestPdfFileName(title),
+  });
 };
 
-const exportHtmlAsPdf = (html: string, title: string) => {
-  const printWindow = window.open("", "_blank", "width=900,height=700");
-  if (!printWindow) {
-    toast.error("No se pudo abrir la ventana de impresión.");
-    return;
+const exportSectionAsPdf = async (node: HTMLElement | null, title: string) => {
+  if (!node) {
+    throw new Error("No encontramos contenido para exportar.");
   }
-  printWindow.document.write(`<!DOCTYPE html>
-    <html>
-      <head>
-        <title>${title}</title>
-        <style>
-          body { font-family: sans-serif; margin: 24px; color: #0f172a; }
-          h1 { font-size: 24px; margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-          th, td { border: 1px solid #cbd5f5; padding: 8px; font-size: 13px; text-align: left; }
-          th { background: #e0e7ff; }
-          .card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 12px; }
-        </style>
-      </head>
-      <body>
-        <h1>${title}</h1>
-        ${html}
-      </body>
-    </html>`);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
+
+  await exportHtmlAsPdf(node.innerHTML, title);
 };
 
 const formatPercent = (value: number, digits = 0) =>
@@ -404,6 +402,7 @@ export default function ReportesPage() {
   }, [loading, user, hasRole, router]);
 
   const [tab, setTab] = useState<string>("boletines");
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [boletinSections, setBoletinSections] = useState<BoletinSection[]>([]);
   const [loadingBoletines, setLoadingBoletines] = useState<boolean>(true);
   const [boletinError, setBoletinError] = useState<string | null>(null);
@@ -1415,6 +1414,7 @@ export default function ReportesPage() {
   const [actaSection, setActaSection] = useState<"all" | string>("all");
   const [actaStudentQuery, setActaStudentQuery] = useState<string>("");
   const [activeActa, setActiveActa] = useState<ActaRegistro | null>(null);
+  const [exportingActaId, setExportingActaId] = useState<number | null>(null);
 
   const filteredActas = useMemo(() => {
     const filtered = actaRegistros.filter((acta) => {
@@ -1454,7 +1454,7 @@ export default function ReportesPage() {
     actas: useRef<HTMLDivElement>(null),
   } as const;
 
-  const handleExportCurrent = () => {
+  const handleExportCurrent = async () => {
     const titleMap: Record<string, string> = {
       boletines: "Reporte de Boletines",
       aprobacion: "Reporte de Aprobación",
@@ -1463,7 +1463,19 @@ export default function ReportesPage() {
       actas: "Reporte de Actas",
     };
     const key = tab as keyof typeof reportRefs;
-    exportSectionAsPdf(reportRefs[key].current, titleMap[key]);
+    try {
+      setExportingPdf(true);
+      await exportSectionAsPdf(reportRefs[key].current, titleMap[key]);
+      toast.success("PDF generado correctamente.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo generar el documento PDF.";
+      toast.error(message);
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   if (!user) {
@@ -1480,8 +1492,9 @@ export default function ReportesPage() {
               Centro de análisis académico y administrativo • Exportable a PDF
             </p>
           </div>
-          <Button onClick={handleExportCurrent}>
-            <Download className="mr-2 h-4 w-4" /> Exportar PDF
+          <Button onClick={() => void handleExportCurrent()} disabled={exportingPdf}>
+            <Download className="mr-2 h-4 w-4" />
+            {exportingPdf ? "Generando…" : "Exportar PDF"}
           </Button>
         </div>
 
@@ -2776,25 +2789,49 @@ export default function ReportesPage() {
                 </div>
                 <Button
                   variant="outline"
+                  disabled={exportingActaId === activeActa.id}
                   onClick={() => {
-                    const html = `<div class="card">
-                      <p><strong>Alumno:</strong> ${activeActa.student}</p>
-                      <p><strong>Sección:</strong> ${activeActa.section}</p>
-                      <p><strong>Docente responsable:</strong> ${activeActa.teacher}</p>
-                      <p><strong>Fecha:</strong> ${activeActa.date}</p>
-                      <p><strong>Horario:</strong> ${activeActa.time}</p>
-                      <p><strong>Lugar:</strong> ${activeActa.location}</p>
-                      <p><strong>Estado:</strong> ${activeActa.signed ? 'Firmada' : 'No firmada'}</p>
-                      <p><strong>Informante:</strong> ${activeActa.informant}</p>
-                      <p><strong>Firmante:</strong> ${activeActa.signer ?? '—'}</p>
-                      <hr style="margin: 16px 0; border: none; border-top: 1px solid #cbd5f5;" />
-                      <p><strong>Descripción:</strong><br/>${activeActa.description}</p>
-                      <p><strong>Acciones:</strong><br/>${activeActa.actions}</p>
-                    </div>`;
-                    exportHtmlAsPdf(html, `Acta #${activeActa.id}`);
+                    if (!activeActa) return;
+                    void (async () => {
+                      const title = `Acta #${activeActa.id}`;
+                      const descriptionHtml = escapeHtml(activeActa.description)
+                        .split("\n")
+                        .join("<br/>");
+                      const actionsHtml = escapeHtml(activeActa.actions)
+                        .split("\n")
+                        .join("<br/>");
+                      const html = `<div class="card">
+                        <p><strong>Alumno:</strong> ${escapeHtml(activeActa.student)}</p>
+                        <p><strong>Sección:</strong> ${escapeHtml(activeActa.section)}</p>
+                        <p><strong>Docente responsable:</strong> ${escapeHtml(activeActa.teacher)}</p>
+                        <p><strong>Fecha:</strong> ${escapeHtml(activeActa.date)}</p>
+                        <p><strong>Horario:</strong> ${escapeHtml(activeActa.time ?? "—")}</p>
+                        <p><strong>Lugar:</strong> ${escapeHtml(activeActa.location ?? "—")}</p>
+                        <p><strong>Estado:</strong> ${escapeHtml(activeActa.signed ? "Firmada" : "No firmada")}</p>
+                        <p><strong>Informante:</strong> ${escapeHtml(activeActa.informant)}</p>
+                        <p><strong>Firmante:</strong> ${escapeHtml(activeActa.signer ?? "—")}</p>
+                        <hr style="margin: 16px 0; border: none; border-top: 1px solid #cbd5f5;" />
+                        <p><strong>Descripción:</strong><br/>${descriptionHtml}</p>
+                        <p><strong>Acciones:</strong><br/>${actionsHtml}</p>
+                      </div>`;
+                      try {
+                        setExportingActaId(activeActa.id ?? null);
+                        await exportHtmlAsPdf(html, title);
+                        toast.success("Acta exportada en PDF.");
+                      } catch (error) {
+                        const message =
+                          error instanceof Error
+                            ? error.message
+                            : "No se pudo generar el PDF del acta.";
+                        toast.error(message);
+                      } finally {
+                        setExportingActaId(null);
+                      }
+                    })();
                   }}
                 >
-                  <Printer className="mr-2 h-4 w-4" /> Imprimir Acta
+                  <Printer className="mr-2 h-4 w-4" />
+                  {exportingActaId === activeActa.id ? "Generando…" : "Imprimir Acta"}
                 </Button>
               </div>
             </>

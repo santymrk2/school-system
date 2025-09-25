@@ -22,6 +22,10 @@ import type {
   TrimestreDTO,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
+import {
+  formatPeriodoLabel,
+  type PeriodoLabelResolver,
+} from "@/lib/periodos";
 import { getTrimestreEstado, resolveTrimestrePeriodoId } from "@/lib/trimestres";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
@@ -30,6 +34,7 @@ interface FamilyCalificacionesViewProps {
   initialLoading?: boolean;
   initialError?: string | null;
   periodoEscolarId?: number | null;
+  getPeriodoNombre?: PeriodoLabelResolver;
 }
 
 interface MateriaResumen {
@@ -81,6 +86,7 @@ export default function FamilyCalificacionesView({
   initialLoading,
   initialError,
   periodoEscolarId,
+  getPeriodoNombre,
 }: FamilyCalificacionesViewProps) {
   const [selectedMatriculaId, setSelectedMatriculaId] = useState<number | null>(
     null,
@@ -100,6 +106,13 @@ export default function FamilyCalificacionesView({
 
   const activePeriodId =
     typeof periodoEscolarId === "number" ? periodoEscolarId : null;
+
+  const resolvePeriodoNombre = (
+    periodoId?: number | null,
+    periodo?: { anio?: number } | null,
+  ) =>
+    getPeriodoNombre?.(periodoId, periodo ?? null) ??
+    formatPeriodoLabel(periodo ?? null, periodoId);
 
   useEffect(() => {
     if (!alumnos.length) {
@@ -431,7 +444,14 @@ export default function FamilyCalificacionesView({
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
                       {seccion?.periodoEscolarId && (
                         <Badge variant="outline">
-                          Período {seccion.periodoEscolarId}
+                          Período
+                          {" "}
+                          {resolvePeriodoNombre(
+                            seccion.periodoEscolarId,
+                            ((seccion as any)?.periodoEscolar ?? null) as
+                              | { anio?: number }
+                              | null,
+                          )}
                         </Badge>
                       )}
                     </div>
@@ -559,3 +579,4 @@ export default function FamilyCalificacionesView({
     </Tabs>
   );
 }
+

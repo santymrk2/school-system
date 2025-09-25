@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { calendario } from "@/services/api/modules";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { getTrimestreEstado } from "@/lib/trimestres";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
+import {
+  formatPeriodoLabel,
+  type PeriodoLabelResolver,
+} from "@/lib/periodos";
 
 type UseActivePeriodOpts = {
   today?: string; // YYYY-MM-DD
@@ -81,6 +85,28 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
       alive = false;
     };
   }, [calendarVersion]);
+
+  const periodosById = useMemo(() => {
+    const map = new Map<number, PeriodoEscolarDTO>();
+    for (const periodo of periodos) {
+      if (typeof periodo.id === "number") {
+        map.set(periodo.id, periodo);
+      }
+    }
+    return map;
+  }, [periodos]);
+
+  const resolvePeriodoById = useCallback(
+    (periodoId?: number | null) =>
+      typeof periodoId === "number" ? periodosById.get(periodoId) : undefined,
+    [periodosById],
+  );
+
+  const getPeriodoNombre = useCallback<PeriodoLabelResolver>(
+    (periodoId, periodo) =>
+      formatPeriodoLabel(periodo ?? resolvePeriodoById(periodoId), periodoId),
+    [resolvePeriodoById],
+  );
 
   const computed = useMemo(() => {
     if (!periodos.length) {
@@ -162,8 +188,11 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
   return {
     loading,
     error,
+    periodos,
     periodoEscolarId: computed.periodo?.id,
     periodoEscolar: computed.periodo,
+    getPeriodoById: resolvePeriodoById,
+    getPeriodoNombre,
     trimestres, // crudo
     trimestresDelPeriodo: computed.trimestresDelPeriodo,
     trimestreActivo: computed.trimestreActivo,

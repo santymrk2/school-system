@@ -8,6 +8,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
 import { renderAccidentActPdf } from "@/lib/pdf/accident-act";
 import { Printer, Pencil, Trash2, Check } from "lucide-react";
@@ -30,6 +37,10 @@ type ActaVM = {
   creadoPor?: string | null;
   firmante?: string | null;
   firmanteDni?: string | null;
+  firmanteId?: number | null;
+  informante?: string | null;
+  informanteDni?: string | null;
+  informanteId?: number | null;
 };
 
 export default function ViewActaDialog({
@@ -37,29 +48,62 @@ export default function ViewActaDialog({
   onClose,
   canEdit = false,
   canDelete = false,
-  canMarkSigned = false,
+  canCloseActa = false,
+  canMarkFirmada = false,
+  canManageFirmante = false,
   onEdit,
   onDelete,
-  onMarkSigned,
+  onCloseActa,
+  onMarkFirmada,
+  onFirmanteChange,
   deleting = false,
-  marking = false,
+  closing = false,
+  markingFirmada = false,
+  firmanteOptions,
+  firmanteUpdating = false,
 }: {
   acta: ActaVM;
   onClose: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
-  canMarkSigned?: boolean;
+  canCloseActa?: boolean;
+  canMarkFirmada?: boolean;
+  canManageFirmante?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
-  onMarkSigned?: () => void;
+  onCloseActa?: () => void;
+  onMarkFirmada?: () => void;
+  onFirmanteChange?: (value: number | null) => void;
   deleting?: boolean;
-  marking?: boolean;
+  closing?: boolean;
+  markingFirmada?: boolean;
+  firmanteOptions?: { value: string; label: string }[];
+  firmanteUpdating?: boolean;
 }) {
   const [downloading, setDownloading] = useState(false);
-  const isCerrada = String(acta.estado).toUpperCase() === "CERRADA";
+  const estado = String(acta.estado ?? "").toUpperCase();
+  const isBorrador = estado === "BORRADOR";
+  const isCerrada = estado === "CERRADA";
+  const isFirmada = estado === "FIRMADA";
+  const estadoLabel = (() => {
+    if (isFirmada) return "Firmada";
+    if (isCerrada) return "Cerrada";
+    if (isBorrador) return "Borrador";
+    return acta.estado || "Sin estado";
+  })();
+  const badgeVariant = (() => {
+    if (isFirmada) return "default" as const;
+    if (isCerrada) return "secondary" as const;
+    if (isBorrador) return "destructive" as const;
+    return "outline" as const;
+  })();
   const direccionFirmante = acta.firmante
     ? `${acta.firmante}${acta.firmanteDni ? ` (DNI ${acta.firmanteDni})` : ""}`
     : "Pendiente de asignación";
+  const informanteLabel = acta.informante
+    ? `${acta.informante}${acta.informanteDni ? ` (DNI ${acta.informanteDni})` : ""}`
+    : "Pendiente de asignación";
+  const firmanteSelectEnabled = Boolean(canManageFirmante && !isBorrador);
 
   const handleDownload = async () => {
     if (downloading) return;
@@ -70,13 +114,13 @@ export default function ViewActaDialog({
         `acta-accidente-${acta.id}-${acta.alumno}`,
         `acta-accidente-${acta.id}`,
       );
-          await downloadPdfDocument({
-            create: (doc) =>
-              renderAccidentActPdf(
-                doc,
-                acta,
+      await downloadPdfDocument({
+        create: (doc) =>
+          renderAccidentActPdf(
+            doc,
+            acta,
             {
-              statusLabel: isCerrada ? "Cerrada" : "Borrador",
+              statusLabel: estadoLabel,
             },
           ),
         fileName,
@@ -101,9 +145,7 @@ export default function ViewActaDialog({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={isCerrada ? "default" : "destructive"}>
-              {isCerrada ? "Cerrada" : "Borrador"}
-            </Badge>
+            <Badge variant={badgeVariant}>{estadoLabel}</Badge>
           </div>
 
           <div className="grid gap-3 text-sm sm:grid-cols-2">
@@ -132,7 +174,46 @@ export default function ViewActaDialog({
               <b>Estado:</b> {String(acta.estado)}
             </div>
             <div className="sm:col-span-2">
-              <b>Dirección firmante:</b> {direccionFirmante}
+              <b>Docente informante:</b> {informanteLabel}
+            </div>
+            <div className="sm:col-span-2">
+              <b>Dirección firmante:</b>
+              {firmanteSelectEnabled ? (
+                <div className="mt-1 max-w-sm">
+                  <Select
+                    value={
+                      acta.firmanteId != null
+                        ? String(acta.firmanteId)
+                        : ""
+                    }
+                    onValueChange={(value) =>
+                      onFirmanteChange?.(value ? Number(value) : null)
+                    }
+                    disabled={firmanteUpdating}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccioná directivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin asignar</SelectItem>
+                      {(firmanteOptions ?? []).map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="ml-1 flex flex-col">
+                  <span>{direccionFirmante}</span>
+                  {canManageFirmante && isBorrador && (
+                    <span className="text-xs text-muted-foreground">
+                      Cerrá el acta para asignar una dirección firmante.
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -153,10 +234,19 @@ export default function ViewActaDialog({
           )}
 
           <div className="flex flex-wrap justify-end gap-2">
-            {canMarkSigned && !isCerrada && (
-              <Button onClick={() => onMarkSigned?.()} disabled={marking}>
+            {canCloseActa && isBorrador && (
+              <Button onClick={() => onCloseActa?.()} disabled={closing}>
                 <Check className="h-4 w-4 mr-2" />
-                {marking ? "Marcando…" : "Marcar como firmada"}
+                {closing ? "Cerrando…" : "Cerrar acta"}
+              </Button>
+            )}
+            {canMarkFirmada && isCerrada && (
+              <Button
+                onClick={() => onMarkFirmada?.()}
+                disabled={markingFirmada || !acta.firmanteId}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                {markingFirmada ? "Actualizando…" : "Firmado"}
               </Button>
             )}
             {canEdit && (

@@ -58,7 +58,7 @@ import type {
   EmpleadoDTO,
   PersonaDTO,
 } from "@/types/api-generated";
-import { UserRole } from "@/types/api-generated";
+import { UserRole, RolEmpleado } from "@/types/api-generated";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -79,6 +79,8 @@ type ActaVM = {
   acciones?: string | null;
   firmante?: string | null;
   firmanteDni?: string | null;
+  informante?: string | null;
+  informanteDni?: string | null;
   informanteId?: number | null;
   firmanteId?: number | null;
 };
@@ -109,7 +111,9 @@ export default function AccidentesIndexPage() {
   const canManageActas = isDirector || isSecret;
   const canEditActas = canManageActas;
   const canDeleteActas = canManageActas;
-  const canMarkSigned = canManageActas;
+  const canCloseActas = canManageActas;
+  const canMarkFirmada = canManageActas;
+  const canManageFirmante = canManageActas;
   const createMode: "global" | "teacher" =
     isDirector || isSecret || isAdmin ? "global" : "teacher";
 
@@ -134,7 +138,7 @@ export default function AccidentesIndexPage() {
   const [q, setQ] = useState("");
   const [alumnoFilterId, setAlumnoFilterId] = useState<string>("all");
   const [estadoFilter, setEstadoFilter] = useState<
-    "todas" | "firmadas" | "pendientes"
+    "todas" | "firmadas" | "cerradas" | "pendientes"
   >("todas");
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
@@ -144,7 +148,9 @@ export default function AccidentesIndexPage() {
   const [viewActa, setViewActa] = useState<ActaVM | null>(null);
   const [editActa, setEditActa] = useState<ActaAccidenteDTO | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [markingId, setMarkingId] = useState<number | null>(null);
+  const [closingId, setClosingId] = useState<number | null>(null);
+  const [firmandoId, setFirmandoId] = useState<number | null>(null);
+  const [updatingFirmanteId, setUpdatingFirmanteId] = useState<number | null>(null);
 
   if (isFamilyScope) {
     return (
@@ -371,12 +377,27 @@ export default function AccidentesIndexPage() {
     return map;
   }, [personal, personalPersonas]);
 
+  const direccionOptions = useMemo(() => {
+    const items = (personal ?? []).filter(
+      (p) => (p.rolEmpleado ?? null) === RolEmpleado.DIRECCION,
+    );
+    return items
+      .map((p) => ({
+        value: String(p.id),
+        label: personalInfoById.get(p.id)?.label ?? `Empleado #${p.id}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }, [personal, personalInfoById]);
+
   // VM
   const actasVM: ActaVM[] = useMemo(() => {
     return (actas ?? []).map((a) => {
       const info = alumnoInfo.get(a.alumnoId) ?? null;
       const alumnoLabel = info?.name ?? `Alumno #${a.alumnoId}`;
       const seccion = alumnoSeccion.get(a.alumnoId) ?? info?.section ?? null;
+      const informanteId = a.informanteId ?? null;
+      const informanteInfo =
+        informanteId != null ? personalInfoById.get(informanteId) : undefined;
       const firmanteId = (a as any).firmanteId ?? null;
       const firmanteInfo =
         firmanteId != null ? personalInfoById.get(firmanteId) : undefined;
@@ -396,6 +417,10 @@ export default function AccidentesIndexPage() {
         acciones: (a as any).acciones ?? null,
         estado: String((a as any).estado ?? ""),
         creadoPor: (a as any).creadoPor ?? null,
+        informante:
+          informanteInfo?.label ??
+          (informanteId != null ? `Empleado #${informanteId}` : undefined),
+        informanteDni: informanteInfo?.dni ?? null,
         firmante: firmanteInfo?.label ?? undefined,
         firmanteDni: firmanteInfo?.dni ?? null,
         informanteId: a.informanteId ?? null,
@@ -414,7 +439,7 @@ export default function AccidentesIndexPage() {
   // métricas
   const total = actasVM.length;
   const firmadas = actasVM.filter(
-    (a) => a.estado.toUpperCase() === "CERRADA",
+    (a) => a.estado.toUpperCase() === "FIRMADA",
   ).length;
   const pendientes = total - firmadas;
   const pctFirmadas = total ? Math.round((firmadas / total) * 100) : 0;
@@ -427,12 +452,15 @@ export default function AccidentesIndexPage() {
       .filter((a) => {
         if (!Number.isNaN(alumnoIdNum) && a.alumnoId !== alumnoIdNum)
           return false;
-        if (estadoFilter === "firmadas" && a.estado.toUpperCase() !== "CERRADA")
+        const estadoUpper = a.estado.toUpperCase();
+        if (estadoFilter === "firmadas" && estadoUpper !== "FIRMADA")
           return false;
         if (
           estadoFilter === "pendientes" &&
-          a.estado.toUpperCase() === "CERRADA"
+          estadoUpper === "FIRMADA"
         )
+          return false;
+        if (estadoFilter === "cerradas" && estadoUpper !== "CERRADA")
           return false;
         if (fromDate && a.fecha < fromDate) return false;
         if (toDate && a.fecha > toDate) return false;
@@ -457,13 +485,13 @@ export default function AccidentesIndexPage() {
     if (personalRes.data) setPersonal(personalRes.data);
   };
 
-  const isCerradaDto = (dto?: ActaAccidenteDTO | null) =>
-    String(dto?.estado ?? "").toUpperCase() === "CERRADA";
+  const isFirmadaDto = (dto?: ActaAccidenteDTO | null) =>
+    String(dto?.estado ?? "").toUpperCase() === "FIRMADA";
 
   const openEditActa = (id: number) => {
     const target = actas.find((a) => a.id === id);
     if (!target) return;
-    if (isCerradaDto(target)) {
+    if (isFirmadaDto(target)) {
       toast.warning("El acta ya está firmada y no puede editarse.");
       return;
     }
@@ -486,12 +514,12 @@ export default function AccidentesIndexPage() {
     }
   };
 
-  const handleMarkSigned = async (id: number) => {
+  const handleCloseActa = async (id: number) => {
     const target = actas.find((a) => a.id === id);
     if (!target) return;
     if (!target.horaSuceso || !(target as any).acciones || !target.lugar) {
       toast.error(
-        "El acta no tiene información completa. Editá sus datos antes de marcarla como firmada.",
+        "El acta no tiene información completa. Editá sus datos antes de cerrar el acta.",
       );
       return;
     }
@@ -500,7 +528,7 @@ export default function AccidentesIndexPage() {
       return;
     }
     try {
-      setMarkingId(id);
+      setClosingId(id);
       await vidaEscolar.actasAccidente.update(id, {
         alumnoId: target.alumnoId,
         informanteId: target.informanteId,
@@ -513,8 +541,7 @@ export default function AccidentesIndexPage() {
         firmanteId: (target as any).firmanteId ?? undefined,
         creadoPor: target.creadoPor ?? undefined,
       });
-      toast.success("Acta marcada como firmada");
-      setViewActa(null);
+      toast.success("Acta cerrada");
       setActas((prev) =>
         prev.map((a) =>
           a.id === id
@@ -525,11 +552,124 @@ export default function AccidentesIndexPage() {
             : a,
         ),
       );
+      setViewActa((prev) =>
+        prev && prev.id === id ? { ...prev, estado: "CERRADA" } : prev,
+      );
       await refresh();
     } catch (error: any) {
       toast.error(error?.message ?? "No se pudo actualizar el acta");
     } finally {
-      setMarkingId(null);
+      setClosingId(null);
+    }
+  };
+
+  const handleMarkFirmada = async (id: number) => {
+    const target = actas.find((a) => a.id === id);
+    if (!target) return;
+    const estadoActual = String(target.estado ?? "").toUpperCase();
+    if (estadoActual !== "CERRADA") {
+      toast.error("Primero cerrá el acta antes de marcarla como firmada.");
+      return;
+    }
+    const firmanteId = (target as any).firmanteId ?? null;
+    if (firmanteId == null) {
+      toast.error("Asigná una dirección firmante antes de marcar el acta como firmada.");
+      return;
+    }
+    if (target.alumnoId == null || target.informanteId == null) {
+      toast.error("El acta no tiene asignado un alumno o docente responsable.");
+      return;
+    }
+    try {
+      setFirmandoId(id);
+      await vidaEscolar.actasAccidente.update(id, {
+        alumnoId: target.alumnoId,
+        informanteId: target.informanteId,
+        fechaSuceso: target.fechaSuceso ?? todayISO(),
+        horaSuceso: target.horaSuceso ?? "00:00",
+        lugar: target.lugar ?? "",
+        descripcion: target.descripcion ?? "",
+        acciones: (target as any).acciones ?? "",
+        estado: "FIRMADA" as EstadoActaAccidente,
+        firmanteId: firmanteId ?? undefined,
+        creadoPor: target.creadoPor ?? undefined,
+      });
+      toast.success("Acta marcada como firmada");
+      setActas((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                estado: "FIRMADA" as EstadoActaAccidente,
+              }
+            : a,
+        ),
+      );
+      setViewActa((prev) =>
+        prev && prev.id === id ? { ...prev, estado: "FIRMADA" } : prev,
+      );
+      await refresh();
+    } catch (error: any) {
+      toast.error(error?.message ?? "No se pudo actualizar el acta");
+    } finally {
+      setFirmandoId(null);
+    }
+  };
+
+  const handleAssignFirmante = async (id: number, firmanteId: number | null) => {
+    const target = actas.find((a) => a.id === id);
+    if (!target) return;
+    if (target.alumnoId == null || target.informanteId == null) {
+      toast.error("El acta no tiene asignado un alumno o docente responsable.");
+      return;
+    }
+    const estadoActual = String(target.estado ?? "").toUpperCase();
+    if (estadoActual === "BORRADOR") {
+      toast.error("Cerrá el acta antes de asignar una dirección firmante.");
+      return;
+    }
+    try {
+      setUpdatingFirmanteId(id);
+      await vidaEscolar.actasAccidente.update(id, {
+        alumnoId: target.alumnoId,
+        informanteId: target.informanteId,
+        fechaSuceso: target.fechaSuceso ?? todayISO(),
+        horaSuceso: target.horaSuceso ?? "00:00",
+        lugar: target.lugar ?? "",
+        descripcion: target.descripcion ?? "",
+        acciones: (target as any).acciones ?? "",
+        estado: (target.estado ?? "BORRADOR") as EstadoActaAccidente,
+        firmanteId: firmanteId ?? undefined,
+        creadoPor: target.creadoPor ?? undefined,
+      });
+      toast.success("Dirección firmante actualizada");
+      const info = firmanteId != null ? personalInfoById.get(firmanteId) : undefined;
+      setActas((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                firmanteId: firmanteId ?? undefined,
+              }
+            : a,
+        ),
+      );
+      setViewActa((prev) =>
+        prev && prev.id === id
+          ? {
+              ...prev,
+              firmanteId: firmanteId ?? null,
+              firmante:
+                info?.label ?? (firmanteId != null ? `Empleado #${firmanteId}` : null),
+              firmanteDni: info?.dni ?? null,
+            }
+          : prev,
+      );
+      await refresh();
+    } catch (error: any) {
+      toast.error(error?.message ?? "No se pudo actualizar el acta");
+    } finally {
+      setUpdatingFirmanteId(null);
     }
   };
 
@@ -650,8 +790,9 @@ export default function AccidentesIndexPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas</SelectItem>
-              <SelectItem value="firmadas">Cerradas</SelectItem>
-              <SelectItem value="pendientes">Borradores</SelectItem>
+              <SelectItem value="firmadas">Firmadas</SelectItem>
+              <SelectItem value="cerradas">Cerradas</SelectItem>
+              <SelectItem value="pendientes">Pendientes de firma</SelectItem>
             </SelectContent>
           </Select>
 
@@ -709,7 +850,7 @@ export default function AccidentesIndexPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">
-                Actas Cerradas
+                Actas firmadas
               </CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
@@ -724,14 +865,18 @@ export default function AccidentesIndexPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Borradores</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Pendientes de firma
+              </CardTitle>
               <AlertTriangle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
                 {pendientes}
               </div>
-              <p className="text-xs text-muted-foreground">Requieren cierre</p>
+              <p className="text-xs text-muted-foreground">
+                Incluye borradores y actas cerradas
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -750,7 +895,19 @@ export default function AccidentesIndexPage() {
                 {loading && <LoadingState label="Cargando actas…" />}
                 {!loading &&
                   filtered.map((a) => {
-                    const isCerrada = a.estado.toUpperCase() === "CERRADA";
+                    const estadoUpper = a.estado.toUpperCase();
+                    const estadoBadge = (() => {
+                      if (estadoUpper === "FIRMADA")
+                        return { label: "Firmada", variant: "default" as const };
+                      if (estadoUpper === "CERRADA")
+                        return { label: "Cerrada", variant: "secondary" as const };
+                      if (estadoUpper === "BORRADOR")
+                        return { label: "Borrador", variant: "destructive" as const };
+                      return {
+                        label: a.estado || "Sin estado",
+                        variant: "outline" as const,
+                      };
+                    })();
                     return (
                       <div
                         key={a.id}
@@ -780,11 +937,14 @@ export default function AccidentesIndexPage() {
                             {a.descripcion || "—"}
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                            <Badge
-                              variant={isCerrada ? "default" : "destructive"}
-                            >
-                              {isCerrada ? "Cerrada" : "Borrador"}
+                            <Badge variant={estadoBadge.variant}>
+                              {estadoBadge.label}
                             </Badge>
+                            {a.informante && (
+                              <Badge variant="outline">
+                                Docente informante: {a.informante}
+                              </Badge>
+                            )}
                             {a.firmante && (
                               <Badge variant="outline">
                                 Dirección firmante: {a.firmante}
@@ -793,7 +953,7 @@ export default function AccidentesIndexPage() {
                           </div>
                         </div>
                         <div className="ml-3 flex items-center gap-2">
-                          {canEditActas && !isCerrada && (
+                          {canEditActas && estadoUpper !== "FIRMADA" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -839,20 +999,27 @@ export default function AccidentesIndexPage() {
             acta={viewActa}
             onClose={() => setViewActa(null)}
             canEdit={
-              canEditActas && viewActa.estado.toUpperCase() !== "CERRADA"
+              canEditActas && viewActa.estado.toUpperCase() !== "FIRMADA"
             }
             canDelete={canDeleteActas}
-            canMarkSigned={
-              canMarkSigned && viewActa.estado.toUpperCase() !== "CERRADA"
-            }
+            canCloseActa={canCloseActas}
+            canMarkFirmada={canMarkFirmada}
+            canManageFirmante={canManageFirmante}
             onEdit={() => {
               openEditActa(viewActa.id);
               setViewActa(null);
             }}
             onDelete={() => handleDeleteActa(viewActa.id)}
-            onMarkSigned={() => handleMarkSigned(viewActa.id)}
+            onCloseActa={() => handleCloseActa(viewActa.id)}
+            onMarkFirmada={() => handleMarkFirmada(viewActa.id)}
+            onFirmanteChange={(value) =>
+              handleAssignFirmante(viewActa.id, value)
+            }
             deleting={deletingId === viewActa.id}
-            marking={markingId === viewActa.id}
+            closing={closingId === viewActa.id}
+            markingFirmada={firmandoId === viewActa.id}
+            firmanteOptions={direccionOptions}
+            firmanteUpdating={updatingFirmanteId === viewActa.id}
           />
         )}
         {editActa && (
@@ -863,7 +1030,7 @@ export default function AccidentesIndexPage() {
               setEditActa(null);
               await refresh();
             }}
-            canManageFirmante={canManageActas}
+            canManageFirmante={canManageFirmante}
           />
         )}
       </div>

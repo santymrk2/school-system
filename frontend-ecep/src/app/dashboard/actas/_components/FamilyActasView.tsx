@@ -47,11 +47,14 @@ function formatTime(value?: string | null) {
 
 function estadoInfo(estado?: string | null) {
   const normalized = String(estado ?? "").toUpperCase();
-  if (normalized === "CERRADA") {
+  if (normalized === "FIRMADA") {
     return { label: "Firmada", variant: "default" as const };
   }
+  if (normalized === "CERRADA") {
+    return { label: "Cerrada", variant: "secondary" as const };
+  }
   if (normalized === "BORRADOR") {
-    return { label: "Pendiente", variant: "outline" as const };
+    return { label: "Borrador", variant: "outline" as const };
   }
   if (!normalized) {
     return { label: "Sin estado", variant: "secondary" as const };

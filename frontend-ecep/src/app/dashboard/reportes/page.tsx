@@ -1522,7 +1522,7 @@ export default function ReportesPage() {
             actions: acta.acciones ?? "Sin acciones registradas.",
             signer: signer?.name,
             signerDni: signer?.dni ?? null,
-            signed: acta.estado === EstadoActaAccidente.CERRADA,
+            signed: acta.estado === EstadoActaAccidente.FIRMADA,
             familyName: alumnoInfo?.familyName ?? null,
             familyDni: alumnoInfo?.familyDni ?? null,
           } satisfies ActaRegistro;

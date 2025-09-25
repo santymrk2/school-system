@@ -78,6 +78,9 @@ export default function NewActaDialog({
   const [lugar, setLugar] = useState<string>("");
   const [descripcion, setDescripcion] = useState<string>("");
   const [acciones, setAcciones] = useState<string>("");
+  const [informanteEmpleadoId, setInformanteEmpleadoId] = useState<
+    number | null
+  >(null);
 
   // Firmante (opcional) — solo Dirección
   const [firmadoPorEmpleadoId, setFirmadoPorEmpleadoId] = useState<
@@ -97,16 +100,25 @@ export default function NewActaDialog({
         setLoading(true);
 
         const meRes = await identidad.me().catch(() => ({ data: null }));
-        let emps: EmpleadoDTO[] = [];
+        let empleadosCatalogo: EmpleadoDTO[] = [];
         try {
-          const empleadosRes = await identidad.empleados.list({
-            rolEmpleado: RolEmpleado.DIRECCION,
-          });
-          emps = pageContent<EmpleadoDTO>(empleadosRes.data);
+          const empleadosRes = await identidad.empleados
+            .list()
+            .catch(() => ({ data: [] }));
+          empleadosCatalogo = pageContent<EmpleadoDTO>(empleadosRes.data);
         } catch {
-          emps = [];
+          empleadosCatalogo = [];
         }
-        emps = emps.filter((e) => (e.rolEmpleado ?? null) === RolEmpleado.DIRECCION);
+        const direccion = empleadosCatalogo.filter(
+          (e) => (e.rolEmpleado ?? null) === RolEmpleado.DIRECCION,
+        );
+        const meData: any = meRes.data ?? null;
+        const personaId = meData?.personaId ?? null;
+        const empleadoActual = personaId
+          ? empleadosCatalogo.find((e: any) => e.personaId === personaId)
+          : null;
+        const empleadoId = empleadoActual?.id ?? null;
+        setInformanteEmpleadoId(empleadoId ?? null);
 
         // Dataset alumnos según modo
         let alumnos: Array<AlumnoDTO | AlumnoLiteDTO> = [];
@@ -135,16 +147,6 @@ export default function NewActaDialog({
           alumnos = Array.from(uniq.values());
         } else {
           // Docente: secciones vigentes del docente hoy → alumnos por esas secciones
-          const meData: any = meRes.data ?? null;
-          const personaId = meData?.personaId ?? null;
-
-          // Encontrar empleadoId del usuario por personaId (1:1 con Empleado)
-          let empleadoId: number | null = null;
-          if (personaId) {
-            const match = emps.find((e: any) => e.personaId === personaId);
-            empleadoId = match?.id ?? null;
-          }
-
           let seccionIds: number[] = [];
           try {
             // Si tenés un endpoint específico, podés reemplazar por él
@@ -215,11 +217,11 @@ export default function NewActaDialog({
         };
 
         setMe(meRes.data ?? null);
-        setEmpleados(emps);
+        setEmpleados(direccion);
         // construir nombres de empleados a partir de Persona
         const map = new Map<number, string>();
         await Promise.all(
-          (emps ?? []).map(async (e: any) => {
+          (direccion ?? []).map(async (e: any) => {
             let display = `Empleado #${e.id}`;
             if (e.personaId) {
               try {
@@ -293,19 +295,27 @@ export default function NewActaDialog({
     }
 
     // Inferir informanteId (Empleado)
-    let informanteId: number | undefined;
-    try {
-      const meData: any = me ?? (await identidad.me().then((r) => r.data));
-      const emps = empleados.length
-        ? empleados
-        : await identidad.empleados
-            .list()
-            .then((r) => pageContent<EmpleadoDTO>(r.data))
-            .catch(() => []);
-      const match = emps.find((e: any) => e.personaId === meData?.personaId);
-      informanteId = match?.id ?? undefined;
-    } catch {
-      /* noop */
+    let informanteId: number | undefined = informanteEmpleadoId ?? undefined;
+    if (!informanteId) {
+      try {
+        const meData: any = me ?? (await identidad.me().then((r) => r.data));
+        const emps = await identidad.empleados
+          .list()
+          .then((r) => pageContent<EmpleadoDTO>(r.data))
+          .catch(() => []);
+        const match = emps.find((e: any) => e.personaId === meData?.personaId);
+        if (match?.id != null) {
+          informanteId = match.id;
+          setInformanteEmpleadoId(match.id);
+        }
+      } catch {
+        /* noop */
+      }
+    }
+
+    if (!informanteId) {
+      toast.error("No se pudo determinar el docente informante.");
+      return;
     }
 
     const body: ActaAccidenteCreateDTO & any = {

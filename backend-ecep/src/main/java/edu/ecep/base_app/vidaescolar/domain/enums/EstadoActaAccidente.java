@@ -1,3 +1,3 @@
 package edu.ecep.base_app.vidaescolar.domain.enums;
 
-public enum EstadoActaAccidente { BORRADOR, CERRADA }
+public enum EstadoActaAccidente { BORRADOR, CERRADA, FIRMADA }

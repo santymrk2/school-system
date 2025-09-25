@@ -11,6 +11,8 @@ export type AccidentActPdfData = {
   lugar?: string | null;
   descripcion?: string | null;
   acciones?: string | null;
+  informante?: string | null;
+  informanteDni?: string | null;
   firmante?: string | null;
   firmanteDni?: string | null;
   familiar?: string | null;
@@ -204,6 +206,21 @@ const drawSignatureBox = (
   return y + height + 12;
 };
 
+const drawSignatureRow = (
+  doc: jsPDF,
+  left: { title: string; name: string; dni?: string | null; note?: string },
+  right: { title: string; name: string; dni?: string | null; note?: string },
+  x: number,
+  y: number,
+  totalWidth: number,
+) => {
+  const gap = 16;
+  const boxWidth = (totalWidth - gap) / 2;
+  const nextLeft = drawSignatureBox(doc, left, x, y, boxWidth);
+  const nextRight = drawSignatureBox(doc, right, x + boxWidth + gap, y, boxWidth);
+  return Math.max(nextLeft, nextRight);
+};
+
 const autoTableFromEntries = (
   doc: jsPDF,
   entries: { label: string; value: string }[],
@@ -254,7 +271,9 @@ export const renderAccidentActPdf = (
   const contentWidth = pageWidth - marginX * 2;
 
   const effectiveStatus = statusLabel ?? "Borrador";
-  const statusIsClosed = effectiveStatus.toLowerCase() === "cerrada";
+  const normalizedStatus = effectiveStatus.trim().toLowerCase();
+  const statusIsFirmada = normalizedStatus === "firmada";
+  const statusIsCerrada = normalizedStatus === "cerrada";
   const idLabel = fallback(acta.id, "S/D");
   const generatedLabel =
     generatedAt ??
@@ -279,17 +298,24 @@ export const renderAccidentActPdf = (
   doc.text("Acta de la Escuela Complejo Evangelico Pilar", marginX, cursorY + 14);
 
   const badgeX = pageWidth - marginX;
-  if (statusIsClosed) {
-    doc.setFillColor(220, 252, 231);
-    doc.setDrawColor(134, 239, 172);
+  if (statusIsFirmada || statusIsCerrada) {
     const label = effectiveStatus;
     const paddingX = 12;
     const paddingY = 6;
     const textWidth = doc.getTextWidth(label);
     const width = textWidth + paddingX * 2;
     const height = paddingY * 2 + 4;
-    doc.roundedRect(badgeX - width, cursorY - 12, width, height, 6, 6, "FD");
-    doc.setTextColor(21, 128, 61);
+    if (statusIsFirmada) {
+      doc.setFillColor(220, 252, 231);
+      doc.setDrawColor(134, 239, 172);
+      doc.roundedRect(badgeX - width, cursorY - 12, width, height, 6, 6, "FD");
+      doc.setTextColor(21, 128, 61);
+    } else {
+      doc.setFillColor(254, 243, 199);
+      doc.setDrawColor(250, 204, 21);
+      doc.roundedRect(badgeX - width, cursorY - 12, width, height, 6, 6, "FD");
+      doc.setTextColor(180, 83, 9);
+    }
     doc.setFont("helvetica", "bold");
     doc.text(label, badgeX - width / 2, cursorY + height / 2 - 6, {
       align: "center",
@@ -333,6 +359,14 @@ export const renderAccidentActPdf = (
 
   const participantDetails = [
     {
+      label: "Docente informante",
+      value: formatPersonWithDni(
+        acta.informante,
+        acta.informanteDni,
+        "Pendiente de asignación",
+      ),
+    },
+    {
       label: "Dirección firmante",
       value: formatPersonWithDni(
         acta.firmante,
@@ -340,18 +374,16 @@ export const renderAccidentActPdf = (
         "Pendiente de asignación",
       ),
     },
-  ].filter((entry) => entry.value.length > 0);
+  ];
 
-  if (participantDetails.length > 0) {
-    cursorY = autoTableFromEntries(
-      doc,
-      participantDetails,
-      cursorY,
-      "Referentes del acta",
-      marginX,
-      contentWidth,
-    );
-  }
+  cursorY = autoTableFromEntries(
+    doc,
+    participantDetails,
+    cursorY,
+    "Referentes del acta",
+    marginX,
+    contentWidth,
+  );
 
   const familyDetails = [
     { label: "Familiar responsable", value: fallback(acta.familiar) },
@@ -388,9 +420,15 @@ export const renderAccidentActPdf = (
     contentWidth,
   );
 
-  cursorY = drawSectionTitle(doc, "Firma", marginX, cursorY);
-  cursorY = drawSignatureBox(
+  cursorY = drawSectionTitle(doc, "Firmas", marginX, cursorY);
+  cursorY = drawSignatureRow(
     doc,
+    {
+      title: "Docente informante",
+      name: formatText(acta.informante) || "Pendiente de asignación",
+      dni: formatText(acta.informanteDni) || undefined,
+      note: "Docente responsable del registro",
+    },
     {
       title: "Dirección firmante",
       name: formatText(acta.firmante) || "Pendiente de asignación",

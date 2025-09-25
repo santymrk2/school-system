@@ -130,7 +130,7 @@ export default function LoginPage() {
   // ---- UI de login ----
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-green-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900"
+      className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-[hsl(var(--success-soft))] to-[hsl(var(--success-soft))] dark:from-slate-950 dark:via-[hsl(var(--success-soft))] dark:to-slate-900"
     >
       <div className="w-full max-w-md space-y-8">
         {/* Logo y título */}

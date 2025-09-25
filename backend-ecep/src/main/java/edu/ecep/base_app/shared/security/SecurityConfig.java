@@ -78,6 +78,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/personas",
                                 "/api/familiares",
                                 "/api/aspirantes",
                                 "/api/aspirante-familiar",
@@ -86,6 +87,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PUT,
+                                "/api/personas/*",
                                 "/api/familiares/*",
                                 "/api/aspirantes/*"
                         ).permitAll()

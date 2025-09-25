@@ -32,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Popover,
   PopoverContent,
@@ -334,6 +335,35 @@ type AssignmentManagerProps = {
   secciones: EmpleadoSeccionView[];
   materias: EmpleadoMateriaView[];
   disabled?: boolean;
+};
+
+type TitularInfo = {
+  empleadoId: number;
+  nombre: string;
+};
+
+type MateriaSectionGroup = {
+  seccionId: number;
+  seccionLabel: string;
+  nivel?: string | null;
+  seccionTitular?: TitularInfo | null;
+  materias: Array<{
+    seccionMateriaId: number;
+    materiaId: number;
+    materiaNombre: string;
+    currentTitular?: TitularInfo | null;
+  }>;
+};
+
+type SectionMateriaSelectorProps = {
+  label: string;
+  placeholder: string;
+  sections: MateriaSectionGroup[];
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+  disabled?: boolean;
+  summaryEmptyText?: string;
+  empleadoId: number | null;
 };
 
 const nivelLabel: Record<string, string> = {
@@ -645,12 +675,278 @@ function MultiSelectControl({
   );
 }
 
+function SectionMateriaSelector({
+  label,
+  placeholder,
+  sections,
+  selectedIds,
+  onChange,
+  disabled,
+  summaryEmptyText,
+  empleadoId,
+}: SectionMateriaSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const optionDetails = useMemo(() => {
+    const map = new Map<
+      number,
+      { materiaNombre: string; seccionLabel: string }
+    >();
+    sections.forEach((section) => {
+      section.materias.forEach((materia) => {
+        map.set(materia.seccionMateriaId, {
+          materiaNombre: materia.materiaNombre,
+          seccionLabel: section.seccionLabel,
+        });
+      });
+    });
+    return map;
+  }, [sections]);
+
+  const selectedSummaries = useMemo(() => {
+    return selectedIds
+      .map((id) => {
+        const detail = optionDetails.get(id);
+        if (!detail) {
+          return null;
+        }
+        return { id, ...detail };
+      })
+      .filter(
+        (
+          value,
+        ): value is {
+          id: number;
+          materiaNombre: string;
+          seccionLabel: string;
+        } => Boolean(value),
+      );
+  }, [optionDetails, selectedIds]);
+
+  const resolvedPlaceholder = selectedSummaries.length
+    ? `${selectedSummaries.length} seleccionada${
+        selectedSummaries.length === 1 ? "" : "s"
+      }`
+    : placeholder;
+
+  const resolvedSummaryEmpty =
+    summaryEmptyText ??
+    (sections.length === 0
+      ? "Sin materias disponibles"
+      : "Seleccioná las materias por sección o dejalo vacío para removerlas.");
+
+  const resolvedEmptyMessage = sections.length === 0
+    ? "No hay materias disponibles."
+    : "No encontramos materias en las secciones disponibles.";
+
+  const handleToggle = useCallback(
+    (
+      materiaId: number,
+      seccionLabel: string,
+      materiaNombre: string,
+      currentTitular?: TitularInfo | null,
+    ) => {
+      const isSelected = selectedIds.includes(materiaId);
+      if (isSelected) {
+        onChange(selectedIds.filter((value) => value !== materiaId));
+        return;
+      }
+      if (
+        currentTitular &&
+        (empleadoId == null || currentTitular.empleadoId !== empleadoId)
+      ) {
+        const message = `La materia ${materiaNombre} de ${seccionLabel} ya tiene un titular asignado (${currentTitular.nombre}). ¿Querés reemplazarlo?`;
+        const confirmed =
+          typeof window === "undefined" ? true : window.confirm(message);
+        if (!confirmed) {
+          return;
+        }
+      }
+      onChange(Array.from(new Set([...selectedIds, materiaId])));
+    },
+    [empleadoId, onChange, selectedIds],
+  );
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Dialog
+        open={disabled ? false : open}
+        onOpenChange={(next) => {
+          if (!disabled) {
+            setOpen(next);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+            disabled={disabled || sections.length === 0}
+          >
+            <span className="truncate text-left">{resolvedPlaceholder}</span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{label}</DialogTitle>
+            <DialogDescription>
+              Seleccioná las materias correspondientes a cada sección.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="mt-2 max-h-[60vh] pr-6">
+            <div className="space-y-4">
+              {sections.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {resolvedEmptyMessage}
+                </p>
+              ) : (
+                sections.map((section) => {
+                  const titular = section.seccionTitular ?? null;
+                  const titularLabel = titular
+                    ? titular.empleadoId === empleadoId
+                      ? "Titular asignado a este docente"
+                      : `Titular actual: ${titular.nombre}`
+                    : "Sin titular asignado";
+                  return (
+                    <div
+                      key={`materia-section-${section.seccionId}`}
+                      className="rounded-lg border border-border bg-background p-4"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h3 className="text-base font-semibold leading-none text-foreground">
+                            {section.seccionLabel}
+                          </h3>
+                          {section.nivel ? (
+                            <p className="text-xs text-muted-foreground">
+                              Nivel: {formatNivel(section.nivel)}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Badge
+                          variant={titular ? "secondary" : "outline"}
+                          className="flex items-center gap-1"
+                        >
+                          <Users className="h-3 w-3" />
+                          <span>{titularLabel}</span>
+                        </Badge>
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {section.materias.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            Sin materias registradas en esta sección.
+                          </p>
+                        ) : (
+                          section.materias.map((materia) => {
+                            const isSelected = selectedSet.has(
+                              materia.seccionMateriaId,
+                            );
+                            const materiaTitular = materia.currentTitular ?? null;
+                            const materiaTitularLabel = materiaTitular
+                              ? materiaTitular.empleadoId === empleadoId
+                                ? "Asignada a este docente"
+                                : `Titular actual: ${materiaTitular.nombre}`
+                              : "Sin titular asignado";
+                            return (
+                              <div
+                                key={`materia-option-${materia.seccionMateriaId}`}
+                                className={`rounded-lg border border-border p-3 transition-colors hover:bg-muted/40 ${
+                                  isSelected ? "border-primary bg-primary/5" : ""
+                                }`}
+                              >
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <Checkbox
+                                      checked={isSelected}
+                                      disabled={disabled}
+                                      onCheckedChange={() =>
+                                        handleToggle(
+                                          materia.seccionMateriaId,
+                                          section.seccionLabel,
+                                          materia.materiaNombre,
+                                          materiaTitular,
+                                        )
+                                      }
+                                    />
+                                    <span className="text-sm font-medium text-foreground">
+                                      {materia.materiaNombre}
+                                    </span>
+                                  </div>
+                                  {isSelected ? (
+                                    <Badge variant="default" className="w-fit">
+                                      Seleccionada
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  {materiaTitularLabel}
+                                </p>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter className="mt-4">
+            <DialogClose asChild>
+              <Button type="button">Listo</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {selectedSummaries.length ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {selectedSummaries.map((item) => (
+            <Badge
+              key={`materia-summary-${item.id}`}
+              variant="outline"
+              className="flex items-center gap-1"
+            >
+              <span className="text-xs text-muted-foreground">
+                {item.seccionLabel}
+              </span>
+              <span>{item.materiaNombre}</span>
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">{resolvedSummaryEmpty}</p>
+      )}
+    </div>
+  );
+}
+
 function isLicenseActiveOn(licencia: LicenciaDTO, referenceIso: string) {
   const start = normalizeIsoDate(licencia.fechaInicio);
   if (!start || start > referenceIso) {
     return false;
   }
   const end = normalizeIsoDate(licencia.fechaFin);
+  if (end && end < referenceIso) {
+    return false;
+  }
+  return true;
+}
+
+function isAssignmentActiveOn(
+  vigenciaDesde?: string | null,
+  vigenciaHasta?: string | null,
+  referenceIso: string = todayIso(),
+) {
+  const start = normalizeIsoDate(vigenciaDesde);
+  if (start && start > referenceIso) {
+    return false;
+  }
+  const end = normalizeIsoDate(vigenciaHasta);
   if (end && end < referenceIso) {
     return false;
   }
@@ -1186,53 +1482,85 @@ export default function PersonalPage() {
 
         const seccionAssignments =
           seccionesPorEmpleado.get(empleado.id ?? 0) ?? [];
-        const seccionesInfo: EmpleadoSeccionView[] = seccionAssignments
-          .map((assignment) => {
-            const seccion = seccionMap.get(assignment.seccionId);
-            if (!seccion) {
-              return null;
-            }
-            return {
-              ...assignment,
-              seccionId: seccion.id!,
-              label: formatSeccionLabel(seccion),
-              nivel: seccion.nivel ?? null,
-            } satisfies EmpleadoSeccionView;
-          })
-          .filter((value): value is EmpleadoSeccionView => Boolean(value));
+        const activeSeccionAssignments = seccionAssignments.filter((assignment) =>
+          isAssignmentActiveOn(
+            assignment.vigenciaDesde,
+            assignment.vigenciaHasta,
+            referenciaIso,
+          ),
+        );
+        const seccionEntryMap = new Map<string, EmpleadoSeccionView>();
+        for (const assignment of activeSeccionAssignments) {
+          const seccion = seccionMap.get(assignment.seccionId);
+          if (!seccion) {
+            continue;
+          }
+          const key = `${assignment.seccionId}-${assignment.rol ?? "SIN_ROL"}`;
+          const nextEntry: EmpleadoSeccionView = {
+            ...assignment,
+            seccionId: seccion.id!,
+            label: formatSeccionLabel(seccion),
+            nivel: seccion.nivel ?? null,
+          };
+          const existing = seccionEntryMap.get(key);
+          if (
+            !existing ||
+            (nextEntry.vigenciaDesde ?? "") > (existing.vigenciaDesde ?? "")
+          ) {
+            seccionEntryMap.set(key, nextEntry);
+          }
+        }
+        const seccionesInfo: EmpleadoSeccionView[] = Array.from(
+          seccionEntryMap.values(),
+        );
 
         const materiaAssignments =
           materiasPorEmpleado.get(empleado.id ?? 0) ?? [];
-        const materiasInfo: EmpleadoMateriaView[] = materiaAssignments
-          .map((assignment) => {
-            const seccionMateria = seccionMateriaMap.get(
-              assignment.seccionMateriaId,
-            );
-            if (!seccionMateria) {
-              return null;
-            }
-            const seccion =
-              typeof seccionMateria.seccionId === "number"
-                ? seccionMap.get(seccionMateria.seccionId)
-                : null;
-            const materia =
-              typeof seccionMateria.materiaId === "number"
-                ? materiaMap.get(seccionMateria.materiaId)
-                : null;
-            if (!seccion || !materia) {
-              return null;
-            }
-            const materiaNombre =
-              materia.nombre ?? `Materia #${materia.id ?? assignment.materiaId}`;
-            return {
-              ...assignment,
-              seccionId: seccion.id!,
-              seccionLabel: formatSeccionLabel(seccion),
-              materiaId: materia.id!,
-              materiaNombre,
-            } satisfies EmpleadoMateriaView;
-          })
-          .filter((value): value is EmpleadoMateriaView => Boolean(value));
+        const activeMateriaAssignments = materiaAssignments.filter(
+          (assignment) =>
+            isAssignmentActiveOn(
+              assignment.vigenciaDesde,
+              assignment.vigenciaHasta,
+              referenciaIso,
+            ),
+        );
+        const materiaEntryMap = new Map<string, EmpleadoMateriaView>();
+        for (const assignment of activeMateriaAssignments) {
+          const seccionMateria = seccionMateriaMap.get(
+            assignment.seccionMateriaId,
+          );
+          if (!seccionMateria) {
+            continue;
+          }
+          const seccion =
+            typeof seccionMateria.seccionId === "number"
+              ? seccionMap.get(seccionMateria.seccionId)
+              : null;
+          const materia =
+            typeof seccionMateria.materiaId === "number"
+              ? materiaMap.get(seccionMateria.materiaId)
+              : null;
+          const key = `${assignment.seccionMateriaId}-${assignment.rol ?? "SIN_ROL"}`;
+          const nextEntry: EmpleadoMateriaView = {
+            ...assignment,
+            seccionId: seccion?.id ?? assignment.seccionId,
+            seccionLabel: seccion
+              ? formatSeccionLabel(seccion)
+              : assignment.seccionLabel,
+            materiaId: materia?.id ?? assignment.materiaId,
+            materiaNombre: materia?.nombre ?? assignment.materiaNombre,
+          };
+          const existing = materiaEntryMap.get(key);
+          if (
+            !existing ||
+            (nextEntry.vigenciaDesde ?? "") > (existing.vigenciaDesde ?? "")
+          ) {
+            materiaEntryMap.set(key, nextEntry);
+          }
+        }
+        const materiasInfo: EmpleadoMateriaView[] = Array.from(
+          materiaEntryMap.values(),
+        );
 
         const formacionInfo =
           formacionesPorEmpleado.get(empleado.id ?? 0) ?? [];
@@ -1424,33 +1752,88 @@ export default function PersonalPage() {
     );
   }, [personal]);
 
-  const seccionMultiOptions = useMemo(() => {
-    return availableSecciones
-      .filter(
-        (seccion): seccion is SeccionDTO & { id: number } =>
-          typeof seccion.id === "number",
-      )
-      .map((seccion) => ({
-        id: seccion.id!,
-        label: formatSeccionLabel(seccion),
-        description: seccion.nivel ? formatNivel(seccion.nivel) : undefined,
-      }))
-      .sort((a, b) =>
-        a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
-      );
-  }, [availableSecciones]);
-
-  const materiaMultiOptions = useMemo(() => {
-    const seccionMap = new Map<number, SeccionDTO>();
+  const seccionMetadataById = useMemo(() => {
+    const map = new Map<number, { label: string; nivel?: string | null }>();
     availableSecciones.forEach((seccion) => {
       if (typeof seccion.id === "number") {
-        seccionMap.set(seccion.id, seccion);
+        map.set(seccion.id, {
+          label: formatSeccionLabel(seccion),
+          nivel: seccion.nivel ?? null,
+        });
       }
     });
-    const materiaMap = new Map<number, MateriaDTO>();
+    return map;
+  }, [availableSecciones]);
+
+  const titularSeccionMap = useMemo(() => {
+    const map = new Map<number, TitularInfo>();
+    personal.forEach((item) => {
+      const empleadoId = item.empleado.id;
+      if (typeof empleadoId !== "number") {
+        return;
+      }
+      const nombre = buildFullName(item.persona) || `Empleado #${empleadoId}`;
+      item.secciones.forEach((seccion) => {
+        if (seccion.rol !== RolSeccion.MAESTRO_TITULAR) {
+          return;
+        }
+        map.set(seccion.seccionId, { empleadoId, nombre });
+      });
+    });
+    return map;
+  }, [personal]);
+
+  const titularMateriaMap = useMemo(() => {
+    const map = new Map<number, TitularInfo>();
+    personal.forEach((item) => {
+      const empleadoId = item.empleado.id;
+      if (typeof empleadoId !== "number") {
+        return;
+      }
+      const nombre = buildFullName(item.persona) || `Empleado #${empleadoId}`;
+      item.materias.forEach((materia) => {
+        if (materia.rol !== RolMateria.TITULAR) {
+          return;
+        }
+        map.set(materia.seccionMateriaId, { empleadoId, nombre });
+      });
+    });
+    return map;
+  }, [personal]);
+
+  const seccionMultiOptions = useMemo(() => {
+    const entries = Array.from(seccionMetadataById.entries()).map(
+      ([id, metadata]) => {
+        const titular = titularSeccionMap.get(id);
+        const descriptionParts: string[] = [];
+        if (metadata.nivel) {
+          descriptionParts.push(formatNivel(metadata.nivel));
+        }
+        if (titular) {
+          descriptionParts.push(`Titular actual: ${titular.nombre}`);
+        }
+        return {
+          id,
+          label: metadata.label,
+          description: descriptionParts.length
+            ? descriptionParts.join(" • ")
+            : undefined,
+        };
+      },
+    );
+    return entries.sort((a, b) =>
+      a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+    );
+  }, [seccionMetadataById, titularSeccionMap]);
+
+  const materiaMultiOptions = useMemo(() => {
+    const materiaNombreMap = new Map<number, string>();
     availableMaterias.forEach((materia) => {
       if (typeof materia.id === "number") {
-        materiaMap.set(materia.id, materia);
+        materiaNombreMap.set(
+          materia.id,
+          materia.nombre ?? `Materia #${materia.id}`,
+        );
       }
     });
 
@@ -1461,10 +1844,10 @@ export default function PersonalPage() {
         typeof sm.materiaId === "number",
       )
       .map((sm) => {
-        const seccion = seccionMap.get(sm.seccionId!);
-        const materia = materiaMap.get(sm.materiaId!);
-        const materiaNombre = materia?.nombre ?? `Materia #${sm.materiaId}`;
-        const seccionLabel = seccion ? formatSeccionLabel(seccion) : "Sección";
+        const seccionMeta = seccionMetadataById.get(sm.seccionId!);
+        const materiaNombre =
+          materiaNombreMap.get(sm.materiaId!) ?? `Materia #${sm.materiaId}`;
+        const seccionLabel = seccionMeta?.label ?? "Sección";
         return {
           id: sm.id!,
           label: materiaNombre,
@@ -1482,7 +1865,71 @@ export default function PersonalPage() {
         const descB = b.description ?? "";
         return descA.localeCompare(descB, "es", { sensitivity: "base" });
       });
-  }, [availableMaterias, availableSeccionMaterias, availableSecciones]);
+  }, [availableMaterias, availableSeccionMaterias, seccionMetadataById]);
+
+  const materiaSelectionGroups = useMemo(() => {
+    const materiaNombreMap = new Map<number, string>();
+    availableMaterias.forEach((materia) => {
+      if (typeof materia.id === "number") {
+        materiaNombreMap.set(
+          materia.id,
+          materia.nombre ?? `Materia #${materia.id}`,
+        );
+      }
+    });
+
+    const groups = new Map<number, MateriaSectionGroup>();
+    availableSeccionMaterias.forEach((sm) => {
+      if (
+        typeof sm.id !== "number" ||
+        typeof sm.seccionId !== "number" ||
+        typeof sm.materiaId !== "number"
+      ) {
+        return;
+      }
+      const seccionMeta = seccionMetadataById.get(sm.seccionId);
+      const existing = groups.get(sm.seccionId);
+      const group: MateriaSectionGroup =
+        existing ?? {
+          seccionId: sm.seccionId,
+          seccionLabel: seccionMeta?.label ?? `Sección #${sm.seccionId}`,
+          nivel: seccionMeta?.nivel ?? null,
+          seccionTitular: titularSeccionMap.get(sm.seccionId) ?? null,
+          materias: [],
+        };
+      group.materias.push({
+        seccionMateriaId: sm.id,
+        materiaId: sm.materiaId,
+        materiaNombre:
+          materiaNombreMap.get(sm.materiaId) ?? `Materia #${sm.materiaId}`,
+        currentTitular: titularMateriaMap.get(sm.id) ?? null,
+      });
+      groups.set(sm.seccionId, group);
+    });
+
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        seccionTitular:
+          titularSeccionMap.get(group.seccionId) ?? group.seccionTitular ?? null,
+        materias: [...group.materias].sort((a, b) =>
+          a.materiaNombre.localeCompare(b.materiaNombre, "es", {
+            sensitivity: "base",
+          }),
+        ),
+      }))
+      .sort((a, b) =>
+        a.seccionLabel.localeCompare(b.seccionLabel, "es", {
+          sensitivity: "base",
+        }),
+      );
+  }, [
+    availableMaterias,
+    availableSeccionMaterias,
+    seccionMetadataById,
+    titularMateriaMap,
+    titularSeccionMap,
+  ]);
 
   const syncEmployeeAssignments = useCallback(
     async ({
@@ -1606,14 +2053,37 @@ export default function PersonalPage() {
 
     const handleSeccionesChange = useCallback(
       (ids: number[]) => {
+        const trimmed = ids.slice(0, 2);
         if (ids.length > 2) {
           toast.error(
             "Solo se pueden asignar hasta dos secciones como titulares.",
           );
         }
-        setSelectedSecciones(ids.slice(0, 2));
+        const next: number[] = [];
+        trimmed.forEach((seccionId) => {
+          const alreadySelected = selectedSecciones.includes(seccionId);
+          if (!alreadySelected) {
+            const titular = titularSeccionMap.get(seccionId);
+            if (
+              titular &&
+              (empleadoId == null || titular.empleadoId !== empleadoId)
+            ) {
+              const seccionLabel =
+                seccionMetadataById.get(seccionId)?.label ??
+                `Sección #${seccionId}`;
+              const message = `La sección ${seccionLabel} ya tiene un titular asignado (${titular.nombre}). ¿Querés reemplazarlo?`;
+              const confirmed =
+                typeof window === "undefined" ? true : window.confirm(message);
+              if (!confirmed) {
+                return;
+              }
+            }
+          }
+          next.push(seccionId);
+        });
+        setSelectedSecciones(next);
       },
-      [],
+      [empleadoId, seccionMetadataById, selectedSecciones, titularSeccionMap],
     );
 
     const handleSave = useCallback(async () => {
@@ -1673,14 +2143,14 @@ export default function PersonalPage() {
                 : "Seleccioná hasta dos secciones o dejalo vacío para no asignar ninguna."
             }
           />
-          <MultiSelectControl
+          <SectionMateriaSelector
             label="Materias asignadas"
             placeholder="Seleccioná las materias"
-            options={materiaMultiOptions}
+            sections={materiaSelectionGroups}
             selectedIds={selectedMaterias}
-            onChange={(ids) => setSelectedMaterias(ids)}
+            onChange={setSelectedMaterias}
             disabled={isDisabled}
-            badgeVariant="outline"
+            empleadoId={empleadoId}
             summaryEmptyText={
               isDisabled
                 ? "Sin materias asignadas."

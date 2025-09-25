@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTheme } from "next-themes";
 import LoadingState from "@/components/common/LoadingState";
 import {
   Dialog,
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { calendario } from "@/services/api/modules";
 import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
@@ -84,6 +86,8 @@ export function ConfiguracionDialog({
 
           <ScrollArea className="flex-1 px-6 pb-6">
             <div className="space-y-6 pr-2">
+              <AparienciaConfig />
+
               {tieneDireccion ? (
                 currentRole === UserRole.DIRECTOR ? (
                   <DireccionConfig open={open} />
@@ -95,7 +99,7 @@ export function ConfiguracionDialog({
                 )
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No hay configuraciones disponibles para tu rol actual.
+                  No hay configuraciones adicionales disponibles para tu rol actual.
                 </p>
               )}
             </div>
@@ -103,6 +107,44 @@ export function ConfiguracionDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AparienciaConfig() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDarkMode = mounted ? resolvedTheme === "dark" : false;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Apariencia</CardTitle>
+        <CardDescription>
+          Elegí el tema de la aplicación que prefieras para esta computadora.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">Modo oscuro</p>
+            <p className="text-sm text-muted-foreground">
+              Activá el modo oscuro para reducir el brillo y descansar la vista.
+            </p>
+          </div>
+          <Switch
+            checked={isDarkMode}
+            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+            aria-label="Alternar modo oscuro"
+            disabled={!mounted}
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

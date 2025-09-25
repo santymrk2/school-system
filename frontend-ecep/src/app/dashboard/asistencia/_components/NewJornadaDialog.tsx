@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Calendar as CalendarIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { asistencias } from "@/services/api/modules";
 import { toast } from "sonner";
 import type { SeccionDTO, TrimestreDTO } from "@/types/api-generated";
@@ -21,6 +23,7 @@ import {
   getTrimestreInicio,
   isFechaDentroDeTrimestre,
 } from "@/lib/trimestres";
+import { cn } from "@/lib/utils";
 
 type Props = {
   seccion: SeccionDTO;
@@ -28,9 +31,15 @@ type Props = {
   onCreated?: (jornadaId: number) => void;
 };
 
+function formatDateToISO(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function hoyISO(): string {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return formatDateToISO(new Date());
 }
 
 function isWeekend(dateString: string) {
@@ -64,6 +73,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const [creating, setCreating] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
   const [busyDates, setBusyDates] = useState<Set<string>>(new Set());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const { trimestreActivo, trimestresDelPeriodo } = useActivePeriod();
 
   const activeTrimestre = useMemo(() => {
@@ -136,7 +146,10 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setDatePickerOpen(false);
+      return;
+    }
     let alive = true;
     (async () => {
       try {
@@ -177,6 +190,48 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const minFecha = trimestreInicio || `${currentYear}-01-01`;
   const maxFecha = trimestreFin || `${currentYear}-12-31`;
   const formattedFecha = useMemo(() => formatHumanDate(fecha), [fecha]);
+  const selectedDate = useMemo(() => {
+    if (!fecha) return undefined;
+    const parsed = new Date(`${fecha}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }, [fecha]);
+  const minDate = useMemo(() => new Date(`${minFecha}T00:00:00`), [minFecha]);
+  const maxDate = useMemo(() => new Date(`${maxFecha}T00:00:00`), [maxFecha]);
+
+  const isDisabledDate = useCallback(
+    (date: Date) => {
+      const iso = formatDateToISO(date);
+      const year = date.getFullYear();
+      if (Number.isNaN(year) || year !== currentYear) {
+        return true;
+      }
+      if (iso < minFecha || iso > maxFecha) {
+        return true;
+      }
+      if (isWeekend(iso)) {
+        return true;
+      }
+      return busyDates.has(iso);
+    },
+    [busyDates, currentYear, minFecha, maxFecha],
+  );
+
+  const handleCalendarSelect = useCallback(
+    (date: Date | undefined) => {
+      if (!date) return;
+      const iso = formatDateToISO(date);
+      const year = date.getFullYear();
+      if (Number.isNaN(year) || year !== currentYear) {
+        toast.warning("Solo se permiten fechas dentro del año actual.");
+        return;
+      }
+      const ok = setFechaWithValidation(iso, { showToast: true });
+      if (ok) {
+        setDatePickerOpen(false);
+      }
+    },
+    [currentYear, setFechaWithValidation],
+  );
 
   const defaultTrigger = useMemo(
     () => <Button size="sm">Nueva Asistencia</Button>,
@@ -266,26 +321,33 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         <div className="space-y-3">
           <div>
             <label className="text-sm mb-1 block">Fecha</label>
-            <Input
-              type="date"
-              value={fecha}
-              min={minFecha}
-              max={maxFecha}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setFecha(value);
-                  setDateError("Seleccioná una fecha");
-                  return;
-                }
-                const valueYear = new Date(value).getFullYear();
-                if (Number.isNaN(valueYear) || valueYear !== currentYear) {
-                  toast.warning("Solo se permiten fechas dentro del año actual.");
-                  return;
-                }
-                setFechaWithValidation(value, { showToast: true });
-              }}
-            />
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !fecha && "text-muted-foreground",
+                    dateError && "border-destructive focus-visible:ring-destructive",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formattedFecha || "Seleccioná una fecha"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  defaultMonth={selectedDate ?? minDate}
+                  onSelect={handleCalendarSelect}
+                  disabled={isDisabledDate}
+                  fromDate={minDate}
+                  toDate={maxDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             {formattedFecha && (
               <p className="text-xs text-muted-foreground mt-1">{formattedFecha}</p>
             )}

@@ -100,7 +100,8 @@ export function ConfiguracionDialog({
 
   const renderDireccionRoleMessage = (feature: string) => (
     <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-      Seleccioná el rol <strong>Dirección</strong> para acceder a la gestión de {feature}.
+      Seleccioná el rol <strong>Dirección</strong> para acceder a la gestión de{" "}
+      {feature}.
     </div>
   );
 
@@ -108,7 +109,7 @@ export function ConfiguracionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl overflow-hidden p-0 sm:max-h-[85vh]">
         <div className="flex h-full max-h-[85vh] flex-col">
-          <DialogHeader className="border-b px-6 py-4">
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Configuración</DialogTitle>
             <DialogDescription>
               Administrá las preferencias disponibles para tu rol actual.
@@ -124,7 +125,11 @@ export function ConfiguracionDialog({
               >
                 <TabsList className="w-full justify-start overflow-x-auto">
                   {availableTabs.map((tab) => (
-                    <TabsTrigger key={tab.value} value={tab.value} className="px-6">
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="px-6"
+                    >
                       {tab.label}
                     </TabsTrigger>
                   ))}
@@ -134,7 +139,8 @@ export function ConfiguracionDialog({
                   <AparienciaConfig />
                   {!tieneDireccion && (
                     <p className="text-sm text-muted-foreground">
-                      No hay configuraciones adicionales disponibles para tu rol actual.
+                      No hay configuraciones adicionales disponibles para tu rol
+                      actual.
                     </p>
                   )}
                 </TabsContent>
@@ -186,30 +192,20 @@ function AparienciaConfig() {
   const isDarkMode = mounted ? resolvedTheme === "dark" : false;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Apariencia</CardTitle>
-        <CardDescription>
-          Elegí el tema de la aplicación que prefieras para esta computadora.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">Modo oscuro</p>
-            <p className="text-sm text-muted-foreground">
-              Activá el modo oscuro para reducir el brillo y descansar la vista.
-            </p>
-          </div>
-          <Switch
-            checked={isDarkMode}
-            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-            aria-label="Alternar modo oscuro"
-            disabled={!mounted}
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center justify-between">
+      <div className="space-y-1">
+        <p className="text-sm font-medium leading-none">Modo oscuro</p>
+        <p className="text-sm text-muted-foreground">
+          Activá el modo oscuro para reducir el brillo y descansar la vista.
+        </p>
+      </div>
+      <Switch
+        checked={isDarkMode}
+        onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+        aria-label="Alternar modo oscuro"
+        disabled={!mounted}
+      />
+    </div>
   );
 }
 
@@ -231,25 +227,34 @@ const DIRECCION_SECTIONS = [
 
 type DireccionSectionId = (typeof DIRECCION_SECTIONS)[number]["id"];
 
-function DireccionConfig({ open, section, hideNavigation = false }: DireccionConfigProps) {
+function DireccionConfig({
+  open,
+  section,
+  hideNavigation = false,
+}: DireccionConfigProps) {
   const [loading, setLoading] = useState(false);
   const [periodos, setPeriodos] = useState<PeriodoEscolarDTO[]>([]);
   const [trimestres, setTrimestres] = useState<TrimestreDTO[]>([]);
   const [drafts, setDrafts] = useState<Record<number, TrimestreDraft>>({});
-  const [savingTrimestreId, setSavingTrimestreId] = useState<number | null>(null);
-  const [togglingTrimestreId, setTogglingTrimestreId] =
-    useState<number | null>(null);
-  const [togglingEstado, setTogglingEstado] = useState<
-    Extract<TrimestreEstado, "activo" | "cerrado">
-    | null
-  >(null);
+  const [savingTrimestreId, setSavingTrimestreId] = useState<number | null>(
+    null,
+  );
+  const [togglingTrimestreId, setTogglingTrimestreId] = useState<number | null>(
+    null,
+  );
+  const [togglingEstado, setTogglingEstado] = useState<Extract<
+    TrimestreEstado,
+    "activo" | "cerrado"
+  > | null>(null);
   const [activeSection, setActiveSection] = useState<DireccionSectionId>(
     section ?? "trimestres",
   );
   const [mobileView, setMobileView] = useState<"menu" | "content">(
     hideNavigation ? "content" : "menu",
   );
-  const [updatingPeriodoId, setUpdatingPeriodoId] = useState<number | null>(null);
+  const [updatingPeriodoId, setUpdatingPeriodoId] = useState<number | null>(
+    null,
+  );
   const [updatingPeriodoAccion, setUpdatingPeriodoAccion] = useState<
     "abrir" | "cerrar" | null
   >(null);
@@ -270,10 +275,7 @@ function DireccionConfig({ open, section, hideNavigation = false }: DireccionCon
       setPeriodos(per);
       setTrimestres(tri);
 
-      const maxYear = per.reduce(
-        (max, p) => Math.max(max, p.anio ?? 0),
-        0,
-      );
+      const maxYear = per.reduce((max, p) => Math.max(max, p.anio ?? 0), 0);
       const currentYear = new Date().getFullYear();
       const suggestedYear = per.length
         ? Math.max(maxYear + 1, currentYear)
@@ -284,10 +286,7 @@ function DireccionConfig({ open, section, hideNavigation = false }: DireccionCon
       }));
     } catch (error) {
       toast.error(
-        resolveErrorMessage(
-          error,
-          "No se pudo cargar el calendario escolar",
-        ),
+        resolveErrorMessage(error, "No se pudo cargar el calendario escolar"),
       );
     } finally {
       setLoading(false);
@@ -339,9 +338,7 @@ function DireccionConfig({ open, section, hideNavigation = false }: DireccionCon
 
   const trimestresOrdenados = useMemo(
     () =>
-      [...trimestresPeriodo].sort(
-        (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
-      ),
+      [...trimestresPeriodo].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
     [trimestresPeriodo],
   );
 
@@ -519,9 +516,7 @@ function DireccionConfig({ open, section, hideNavigation = false }: DireccionCon
       setUpdatingPeriodoAccion(accion);
       if (accion === "abrir") {
         await calendario.periodos.abrir(periodo.id);
-        toast.success(
-          `Período ${periodo.anio ?? ""} activado como vigente`,
-        );
+        toast.success(`Período ${periodo.anio ?? ""} activado como vigente`);
       } else {
         await calendario.periodos.cerrar(periodo.id);
         toast.success(`Período ${periodo.anio ?? ""} cerrado`);
@@ -581,288 +576,269 @@ function DireccionConfig({ open, section, hideNavigation = false }: DireccionCon
   };
 
   const trimestresContent = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gestión de trimestres</CardTitle>
-        <CardDescription>
-          Ajustá las fechas y el estado de los trimestres del período en curso.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {loading ? (
-          <LoadingState label="Cargando datos…" />
-        ) : trimestresOrdenados.length ? (
-          trimestresOrdenados.map((tri) => {
-            const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
-            const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
-            const estado = getTrimestreEstado(tri);
-            const estadoPrevio = previo ? getTrimestreEstado(previo) : null;
-            const hayOtroActivo = trimestresOrdenados.some(
-              (t) => t.id !== tri.id && getTrimestreEstado(t) === "activo",
-            );
-            const draft = drafts[tri.id] ?? { inicio: "", fin: "" };
-            const activarDisabledReason =
-              estado === "activo"
-                ? "Este trimestre ya está activo."
-                : hayOtroActivo
-                  ? "Cerrá el trimestre activo antes de abrir otro."
-                  : previo && estadoPrevio !== "cerrado"
-                    ? `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`
-                    : null;
-            const activarDisabled =
-              loading ||
-              togglingTrimestreId === tri.id ||
-              !!activarDisabledReason;
-            const cerrarDisabledReason =
-              estado === "cerrado"
-                ? "Este trimestre ya está cerrado."
-                : estado === "inactivo"
-                  ? "Activá el trimestre antes de cerrarlo."
+    <div className="space-y-2">
+      {loading ? (
+        <LoadingState label="Cargando datos…" />
+      ) : trimestresOrdenados.length ? (
+        trimestresOrdenados.map((tri) => {
+          const idx = trimestresOrdenados.findIndex((t) => t.id === tri.id);
+          const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
+          const estado = getTrimestreEstado(tri);
+          const estadoPrevio = previo ? getTrimestreEstado(previo) : null;
+          const hayOtroActivo = trimestresOrdenados.some(
+            (t) => t.id !== tri.id && getTrimestreEstado(t) === "activo",
+          );
+          const draft = drafts[tri.id] ?? { inicio: "", fin: "" };
+          const activarDisabledReason =
+            estado === "activo"
+              ? "Este trimestre ya está activo."
+              : hayOtroActivo
+                ? "Cerrá el trimestre activo antes de abrir otro."
+                : previo && estadoPrevio !== "cerrado"
+                  ? `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`
                   : null;
-            const cerrarDisabled =
-              loading ||
-              togglingTrimestreId === tri.id ||
-              estado !== "activo";
-            const activarBusy =
-              togglingTrimestreId === tri.id && togglingEstado === "activo";
-            const cerrarBusy =
-              togglingTrimestreId === tri.id && togglingEstado === "cerrado";
-            const activarLabel =
-              estado === "cerrado" ? "Reabrir" : "Activar";
-            const cerrarLabel =
-              estado === "cerrado"
-                ? "Cerrado"
-                : estado === "inactivo"
-                  ? "Inactivo"
-                  : "Cerrar";
-            return (
-              <div
-                key={tri.id}
-                className="space-y-4 rounded-lg border bg-muted/30 p-4"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">Trimestre {tri.orden ?? ""}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>
-                        Período {resolveTrimestrePeriodoId(tri, periodoActual?.id) ?? "—"}
-                      </span>
-                      <TrimestreEstadoBadge
-                        estado={estado}
-                        className="text-xs text-muted-foreground"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetEstadoTrimestre(tri, "activo")}
-                      disabled={activarDisabled}
-                      title={activarDisabledReason ?? undefined}
-                    >
-                      {activarBusy ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Actualizando
-                        </span>
-                      ) : (
-                        activarLabel
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetEstadoTrimestre(tri, "cerrado")}
-                      disabled={cerrarDisabled}
-                      title={cerrarDisabledReason ?? undefined}
-                    >
-                      {cerrarBusy ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Cerrando
-                        </span>
-                      ) : (
-                        cerrarLabel
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label>Desde</Label>
-                    <Input
-                      type="date"
-                      value={draft.inicio}
-                      onChange={(e) =>
-                        handleDraftChange(tri.id, "inicio", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Hasta</Label>
-                    <Input
-                      type="date"
-                      value={draft.fin}
-                      onChange={(e) =>
-                        handleDraftChange(tri.id, "fin", e.target.value)
-                      }
+          const activarDisabled =
+            loading ||
+            togglingTrimestreId === tri.id ||
+            !!activarDisabledReason;
+          const cerrarDisabledReason =
+            estado === "cerrado"
+              ? "Este trimestre ya está cerrado."
+              : estado === "inactivo"
+                ? "Activá el trimestre antes de cerrarlo."
+                : null;
+          const cerrarDisabled =
+            loading || togglingTrimestreId === tri.id || estado !== "activo";
+          const activarBusy =
+            togglingTrimestreId === tri.id && togglingEstado === "activo";
+          const cerrarBusy =
+            togglingTrimestreId === tri.id && togglingEstado === "cerrado";
+          const activarLabel = estado === "cerrado" ? "Reabrir" : "Activar";
+          const cerrarLabel =
+            estado === "cerrado"
+              ? "Cerrado"
+              : estado === "inactivo"
+                ? "Inactivo"
+                : "Cerrar";
+          return (
+            <div
+              key={tri.id}
+              className="space-y-4 rounded-lg border bg-muted/30 p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">Trimestre {tri.orden ?? ""}</p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>
+                      Período{" "}
+                      {resolveTrimestrePeriodoId(tri, periodoActual?.id) ?? "—"}
+                    </span>
+                    <TrimestreEstadoBadge
+                      estado={estado}
+                      className="text-xs text-muted-foreground"
                     />
                   </div>
                 </div>
-
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => handleResetTrimestre(tri)}
-                    disabled={!hasChanges(tri)}
+                    onClick={() => handleSetEstadoTrimestre(tri, "activo")}
+                    disabled={activarDisabled}
+                    title={activarDisabledReason ?? undefined}
                   >
-                    Restaurar
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleSaveTrimestre(tri)}
-                    disabled={
-                      savingTrimestreId === tri.id || !hasChanges(tri)
-                    }
-                  >
-                    {savingTrimestreId === tri.id ? (
+                    {activarBusy ? (
                       <span className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Guardando
+                        Actualizando
                       </span>
                     ) : (
-                      "Guardar cambios"
+                      activarLabel
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSetEstadoTrimestre(tri, "cerrado")}
+                    disabled={cerrarDisabled}
+                    title={cerrarDisabledReason ?? undefined}
+                  >
+                    {cerrarBusy ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Cerrando
+                      </span>
+                    ) : (
+                      cerrarLabel
                     )}
                   </Button>
                 </div>
               </div>
-            );
-          })
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No hay trimestres cargados para el período seleccionado.
-          </p>
-        )}
-      </CardContent>
-    </Card>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Desde</Label>
+                  <Input
+                    type="date"
+                    value={draft.inicio}
+                    onChange={(e) =>
+                      handleDraftChange(tri.id, "inicio", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Hasta</Label>
+                  <Input
+                    type="date"
+                    value={draft.fin}
+                    onChange={(e) =>
+                      handleDraftChange(tri.id, "fin", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleResetTrimestre(tri)}
+                  disabled={!hasChanges(tri)}
+                >
+                  Restaurar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleSaveTrimestre(tri)}
+                  disabled={savingTrimestreId === tri.id || !hasChanges(tri)}
+                >
+                  {savingTrimestreId === tri.id ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Guardando
+                    </span>
+                  ) : (
+                    "Guardar cambios"
+                  )}
+                </Button>
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No hay trimestres cargados para el período seleccionado.
+        </p>
+      )}
+    </div>
   );
 
   const periodoContent = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Período escolar</CardTitle>
-        <CardDescription>
-          Definí qué período está activo en el sistema. Solo puede haber uno
-          abierto a la vez.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {periodosOrdenados.length ? (
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-medium">
-                {periodoActivo
-                  ? `Período activo: ${periodoActivo.anio ?? "—"}`
-                  : "No hay un período activo en este momento."}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {periodoActivo
-                  ? "Al activar otro período, este se cerrará automáticamente."
-                  : "Activá uno de los períodos listados para habilitarlo en el sistema."}
-              </p>
-            </div>
-            <div className="space-y-3">
-              {periodosOrdenados.map((periodo) => {
-                const isActivo = periodo.activo !== false;
-                const accion: "abrir" | "cerrar" = isActivo ? "cerrar" : "abrir";
-                const busy =
-                  updatingPeriodoId === periodo.id &&
-                  updatingPeriodoAccion === accion;
-                const disabled =
-                  updatingPeriodoId !== null && updatingPeriodoId !== periodo.id;
-                return (
-                  <div
-                    key={periodo.id}
-                    className="space-y-2 rounded-lg border bg-muted/30 p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-medium">
-                          Período {periodo.anio ?? "—"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Estado: {isActivo ? "Abierto" : "Cerrado"}
-                        </p>
-                      </div>
-                      <Badge variant={isActivo ? "default" : "outline"}>
-                        {isActivo ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button
-                        variant={isActivo ? "outline" : "default"}
-                        onClick={() => handleActualizarEstadoPeriodo(periodo, accion)}
-                        disabled={disabled || busy}
-                      >
-                        {busy ? (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {accion === "abrir" ? "Activando" : "Cerrando"}
-                          </span>
-                        ) : accion === "abrir" ? (
-                          "Activar período"
-                        ) : (
-                          "Cerrar período"
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Aún no hay períodos creados.
-          </p>
-        )}
-
-        <Separator />
-
+    <div>
+      {periodosOrdenados.length ? (
         <div className="space-y-3">
-          <p className="text-sm font-medium">Abrir nuevo período</p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="sm:w-40">
-              <Label htmlFor="nuevo-periodo-anio">Año</Label>
-              <Input
-                id="nuevo-periodo-anio"
-                type="number"
-                min={2000}
-                value={nuevoPeriodo.anio}
-                onChange={(e) =>
-                  setNuevoPeriodo({ anio: e.target.value.slice(0, 4) })
-                }
-              />
-            </div>
-            <Button
-              onClick={handleCrearPeriodo}
-              disabled={creatingPeriodo || !nuevoPeriodo.anio}
-            >
-              {creatingPeriodo ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Creando
-                </span>
-              ) : (
-                "Crear período"
-              )}
-            </Button>
+          <div>
+            <p className="text-sm font-medium">
+              {periodoActivo
+                ? `Período activo: ${periodoActivo.anio ?? "—"}`
+                : "No hay un período activo en este momento."}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {periodoActivo
+                ? "Al activar otro período, este se cerrará automáticamente."
+                : "Activá uno de los períodos listados para habilitarlo en el sistema."}
+            </p>
+          </div>
+          <div className="space-y-3">
+            {periodosOrdenados.map((periodo) => {
+              const isActivo = periodo.activo !== false;
+              const accion: "abrir" | "cerrar" = isActivo ? "cerrar" : "abrir";
+              const busy =
+                updatingPeriodoId === periodo.id &&
+                updatingPeriodoAccion === accion;
+              const disabled =
+                updatingPeriodoId !== null && updatingPeriodoId !== periodo.id;
+              return (
+                <div
+                  key={periodo.id}
+                  className="space-y-2 rounded-lg border bg-muted/30 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium">
+                        Período {periodo.anio ?? "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Estado: {isActivo ? "Abierto" : "Cerrado"}
+                      </p>
+                    </div>
+                    <Badge variant={isActivo ? "default" : "outline"}>
+                      {isActivo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      variant={isActivo ? "outline" : "default"}
+                      onClick={() =>
+                        handleActualizarEstadoPeriodo(periodo, accion)
+                      }
+                      disabled={disabled || busy}
+                    >
+                      {busy ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {accion === "abrir" ? "Activando" : "Cerrando"}
+                        </span>
+                      ) : accion === "abrir" ? (
+                        "Activar período"
+                      ) : (
+                        "Cerrar período"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Aún no hay períodos creados.
+        </p>
+      )}
+
+      <Separator />
+
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Abrir nuevo período</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="sm:w-40">
+            <Label htmlFor="nuevo-periodo-anio">Año</Label>
+            <Input
+              id="nuevo-periodo-anio"
+              type="number"
+              min={2000}
+              value={nuevoPeriodo.anio}
+              onChange={(e) =>
+                setNuevoPeriodo({ anio: e.target.value.slice(0, 4) })
+              }
+            />
+          </div>
+          <Button
+            onClick={handleCrearPeriodo}
+            disabled={creatingPeriodo || !nuevoPeriodo.anio}
+          >
+            {creatingPeriodo ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Creando
+              </span>
+            ) : (
+              "Crear período"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 
   if (!showNavigation) {
@@ -902,9 +878,7 @@ function DireccionConfig({ open, section, hideNavigation = false }: DireccionCon
                     ? "bg-muted text-primary"
                     : "text-muted-foreground hover:bg-muted",
                 )}
-                aria-current={
-                  activeSection === section.id ? "page" : undefined
-                }
+                aria-current={activeSection === section.id ? "page" : undefined}
               >
                 {section.label}
               </button>

@@ -1,17 +1,5 @@
 import { pdf } from "@react-pdf/renderer";
-
-const escapeMap: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-export const escapeHtml = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined) return "";
-  return String(value).replace(/[&<>"']/g, (char) => escapeMap[char] ?? char);
-};
+import type { ReactElement } from "react";
 
 const sanitizeFileName = (value: string) =>
   value
@@ -29,24 +17,20 @@ export const suggestPdfFileName = (title: string, fallback = "documento") => {
 };
 
 export type PdfDownloadParams = {
-  html: string;
-  title: string;
+  document: ReactElement;
   fileName?: string;
-  includeTitle?: boolean;
 };
 
 export const downloadPdfDocument = async ({
-  html,
-  title,
+  document,
   fileName,
-  includeTitle = true,
 }: PdfDownloadParams) => {
   if (typeof window === "undefined") {
     throw new Error("La descarga de PDF solo está disponible en el navegador.");
   }
 
-  const effectiveFileName = fileName ?? suggestPdfFileName(title);
-  const instance = pdf({ title, html, includeTitle });
+  const effectiveFileName = fileName ?? suggestPdfFileName("documento");
+  const instance = pdf(document);
   const blob = await instance.toBlob();
 
   const url = window.URL.createObjectURL(blob);

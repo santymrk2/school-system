@@ -27,7 +27,8 @@ import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { toast } from "sonner";
 import { getTrimestreEstado, TRIMESTRE_ESTADO_LABEL } from "@/lib/trimestres";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
-import { downloadPdfDocument, escapeHtml, suggestPdfFileName } from "@/lib/pdf";
+import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
+import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 function fmt(iso?: string) {
   if (!iso) return "";
@@ -47,6 +48,98 @@ function formatMonthYearLabel(value: string) {
   });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
+
+const cierrePdfStyles = StyleSheet.create({
+  page: {
+    padding: 32,
+    backgroundColor: "#f8fafc",
+  },
+  container: {
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 28,
+    fontFamily: "Helvetica",
+    fontSize: 11,
+    color: "#0f172a",
+  },
+  header: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 10,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
+    marginTop: 12,
+  },
+  summaryCard: {
+    flexGrow: 1,
+    flexShrink: 0,
+    flexBasis: "45%",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 14,
+    backgroundColor: "#f8fafc",
+    padding: 14,
+    marginHorizontal: 6,
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 9,
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+    color: "#64748b",
+    marginBottom: 6,
+  },
+  summaryValue: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 14,
+    marginTop: 16,
+    overflow: "hidden",
+  },
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  tableHeader: {
+    backgroundColor: "#e2f3ff",
+  },
+  tableCell: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    fontSize: 10,
+    color: "#0f172a",
+  },
+  tableCellLabel: {
+    flex: 1.2,
+    fontWeight: "bold",
+  },
+  note: {
+    marginTop: 16,
+    fontSize: 9,
+    color: "#64748b",
+  },
+});
 
 export default function VistaDireccion() {
   const {
@@ -118,33 +211,97 @@ export default function VistaDireccion() {
     const sectionLabel = `${item.s.gradoSala} ${item.s.division}`.trim();
     const monthLabel = formatMonthYearLabel(mes);
     const title = `Cierre mensual ${sectionLabel} – ${monthLabel}`;
-    const summaryHtml = `
-      <div class="card">
-        <p><strong>Sección:</strong> ${escapeHtml(sectionLabel)}</p>
-        <p><strong>Mes:</strong> ${escapeHtml(monthLabel)}</p>
-        <p><strong>Jornadas registradas:</strong> ${escapeHtml(item.jCount)}</p>
-        <p><strong>Días no hábiles declarados:</strong> ${escapeHtml(diasNoHabilesEnMes)}</p>
-        <p><strong>Asistencia promedio:</strong> ${escapeHtml(item.pct)}%</p>
-      </div>
-      <div class="card">
-        <h2>Detalle de asistencias</h2>
-        <table>
-          <tbody>
-            <tr><th>Total de registros</th><td>${escapeHtml(item.totalRegistros)}</td></tr>
-            <tr><th>Presentes</th><td>${escapeHtml(item.presentes)}</td></tr>
-            <tr><th>Ausentes</th><td>${escapeHtml(item.ausentes)}</td></tr>
-            <tr><th>Llegadas tarde</th><td>${escapeHtml(item.llegadasTarde)}</td></tr>
-            <tr><th>Retiros anticipados</th><td>${escapeHtml(item.retirosAnticipados)}</td></tr>
-          </tbody>
-        </table>
-      </div>
-    `;
-
     try {
       setExportingCierreSectionId(item.s.id);
+      const summaryCards = [
+        { label: "Sección", value: sectionLabel },
+        { label: "Mes", value: monthLabel },
+        { label: "Jornadas registradas", value: String(item.jCount) },
+        {
+          label: "Días no hábiles declarados",
+          value: String(diasNoHabilesEnMes),
+        },
+        { label: "Asistencia promedio", value: `${item.pct}%` },
+      ];
+
+      const detailRows = [
+        { label: "Total de registros", value: String(item.totalRegistros) },
+        { label: "Presentes", value: String(item.presentes) },
+        { label: "Ausentes", value: String(item.ausentes) },
+        { label: "Llegadas tarde", value: String(item.llegadasTarde) },
+        {
+          label: "Retiros anticipados",
+          value: String(item.retirosAnticipados),
+        },
+      ];
+
+      const document = (
+        <Document title={title} author="Sistema escolar">
+          <Page size="A4" style={cierrePdfStyles.page}>
+            <View style={cierrePdfStyles.container}>
+              <View style={cierrePdfStyles.header}>
+                <Text style={cierrePdfStyles.title}>{title}</Text>
+                <Text style={cierrePdfStyles.subtitle}>
+                  Resumen mensual de asistencia
+                </Text>
+              </View>
+              <View style={cierrePdfStyles.summaryRow}>
+                {summaryCards.map((card) => (
+                  <View key={card.label} style={cierrePdfStyles.summaryCard}>
+                    <Text style={cierrePdfStyles.summaryLabel}>{card.label}</Text>
+                    <Text style={cierrePdfStyles.summaryValue}>{card.value}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={cierrePdfStyles.table}>
+                <View
+                  style={[
+                    cierrePdfStyles.tableRow,
+                    cierrePdfStyles.tableHeader,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      cierrePdfStyles.tableCell,
+                      cierrePdfStyles.tableCellLabel,
+                    ]}
+                  >
+                    Indicador
+                  </Text>
+                  <Text style={cierrePdfStyles.tableCell}>Valor</Text>
+                </View>
+                {detailRows.map((row, index) => (
+                  <View
+                    key={row.label}
+                    style={[
+                      cierrePdfStyles.tableRow,
+                      index === detailRows.length - 1
+                        ? { borderBottomWidth: 0 }
+                        : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        cierrePdfStyles.tableCell,
+                        cierrePdfStyles.tableCellLabel,
+                      ]}
+                    >
+                      {row.label}
+                    </Text>
+                    <Text style={cierrePdfStyles.tableCell}>{row.value}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={cierrePdfStyles.note}>
+                Elaborado automáticamente por el sistema de gestión institucional.
+              </Text>
+            </View>
+          </Page>
+        </Document>
+      );
+
       await downloadPdfDocument({
-        html: summaryHtml,
-        title,
+        document,
         fileName: suggestPdfFileName(title),
       });
       toast.success("PDF generado correctamente.");

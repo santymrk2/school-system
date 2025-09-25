@@ -129,7 +129,9 @@ export default function LoginPage() {
 
   // ---- UI de login ----
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 flex items-center justify-center p-4 transition-colors"
+    >
       <div className="w-full max-w-md space-y-8">
         {/* Logo y título */}
         <div className="text-center">
@@ -138,11 +140,11 @@ export default function LoginPage() {
               <School className="h-8 w-8" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">ECEP</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">ECEP</h1>
+          <p className="text-muted-foreground mt-2">
             Escuela Complejo Evangelico Pilar
           </p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Sistema de Gestión Escolar
           </p>
         </div>
@@ -150,7 +152,7 @@ export default function LoginPage() {
         {/* Formulario de login */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">
+            <CardTitle className="text-2xl text-center text-foreground">
               Iniciar Sesión
             </CardTitle>
             <CardDescription className="text-center">
@@ -211,7 +213,7 @@ export default function LoginPage() {
                   </div>
 
                   {loginError && (
-                    <p className="text-sm text-red-500">{loginError}</p>
+                    <p className="text-sm text-destructive">{loginError}</p>
                   )}
                 </>
               )}
@@ -229,10 +231,10 @@ export default function LoginPage() {
               <>
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
+                    <div className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-2 text-gray-500">o</span>
+                    <span className="bg-background px-2 text-muted-foreground">o</span>
                   </div>
                 </div>
 
@@ -248,7 +250,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Información adicional */}
-        <div className="text-center text-sm text-gray-600 space-y-2">
+        <div className="text-center text-sm text-muted-foreground space-y-2">
           <div className="flex flex-wrap items-center justify-center gap-4">
             <div className="flex items-center">
               <GraduationCap className="h-4 w-4 mr-1" />

@@ -70,6 +70,7 @@ import {
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { formatDni } from "@/lib/form-utils";
 import { gestionAcademica, identidad } from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
@@ -406,6 +407,16 @@ function formatSeccionLabel(seccion?: Partial<SeccionDTO> | null) {
   const turno = seccion.turno ? ` (${seccion.turno.toLowerCase()})` : "";
   const composed = `${grado}${division}`.trim();
   return composed ? `${composed}${turno}` : `Sección #${seccion.id ?? ""}`;
+}
+
+function getSeccionPeriodoId(seccion?: Partial<SeccionDTO> | null) {
+  if (!seccion) return undefined;
+  const rawPeriodoId =
+    (seccion as any)?.periodoEscolarId ??
+    (seccion as any)?.periodoId ??
+    (seccion as any)?.periodoEscolar?.id ??
+    (seccion as any)?.periodo?.id;
+  return typeof rawPeriodoId === "number" ? rawPeriodoId : undefined;
 }
 
 function getSeccionDisplayName(label?: string | null) {
@@ -954,6 +965,7 @@ function isAssignmentActiveOn(
 }
 export default function PersonalPage() {
   const { loading, user, hasRole } = useAuth();
+  const { periodoEscolarId: activePeriodoId } = useActivePeriod();
   const router = useRouter();
   const mountedRef = useRef(false);
   const searchRef = useRef<string>("");
@@ -1267,8 +1279,8 @@ export default function PersonalPage() {
       const [
         licencias,
         formaciones,
-        secciones,
-        seccionMaterias,
+        seccionesRaw,
+        seccionMateriasRaw,
         materias,
         asignacionesSeccion,
         asignacionesMateria,
@@ -1310,6 +1322,45 @@ export default function PersonalPage() {
         ),
       ]);
 
+      const seccionesList = Array.isArray(seccionesRaw)
+        ? (seccionesRaw as SeccionDTO[])
+        : [];
+      const seccionMateriasList = Array.isArray(seccionMateriasRaw)
+        ? (seccionMateriasRaw as SeccionMateriaDTO[])
+        : [];
+
+      const filteredSecciones = (() => {
+        if (typeof activePeriodoId !== "number") {
+          return seccionesList;
+        }
+
+        const matches = seccionesList.filter((seccion) => {
+          const periodoId = getSeccionPeriodoId(seccion);
+          if (periodoId == null) {
+            return true;
+          }
+          return periodoId === activePeriodoId;
+        });
+
+        return matches.length > 0 ? matches : seccionesList;
+      })();
+
+      const allowedSeccionIds = new Set<number>(
+        filteredSecciones
+          .map((seccion) => seccion?.id)
+          .filter((id): id is number => typeof id === "number"),
+      );
+
+      const filteredSeccionMaterias =
+        allowedSeccionIds.size > 0
+          ? seccionMateriasList.filter((seccionMateria) => {
+              if (typeof seccionMateria.seccionId !== "number") {
+                return true;
+              }
+              return allowedSeccionIds.has(seccionMateria.seccionId);
+            })
+          : seccionMateriasList;
+
       const personaIds = Array.from(
         new Set(
           empleados
@@ -1341,14 +1392,14 @@ export default function PersonalPage() {
       }
 
       const seccionMap = new Map<number, SeccionDTO>();
-      for (const seccion of secciones) {
+      for (const seccion of filteredSecciones) {
         if (typeof seccion.id === "number") {
           seccionMap.set(seccion.id, seccion);
         }
       }
 
       const seccionMateriaMap = new Map<number, SeccionMateriaDTO>();
-      for (const seccionMateria of seccionMaterias) {
+      for (const seccionMateria of filteredSeccionMaterias) {
         if (typeof seccionMateria.id === "number") {
           seccionMateriaMap.set(seccionMateria.id, seccionMateria);
         }
@@ -1604,12 +1655,12 @@ export default function PersonalPage() {
         personalData,
         licenciasOrdenadas,
         pageInfo,
-        secciones,
-        seccionMaterias,
+        secciones: filteredSecciones,
+        seccionMaterias: filteredSeccionMaterias,
         materias,
       };
     },
-    [pageSize],
+    [pageSize, activePeriodoId],
   );
 
   const refreshData = useCallback(

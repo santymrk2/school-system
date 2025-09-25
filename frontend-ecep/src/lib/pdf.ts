@@ -1,3 +1,5 @@
+"use client";
+
 import { pdf } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
 
@@ -30,7 +32,8 @@ export const downloadPdfDocument = async ({
   }
 
   const effectiveFileName = fileName ?? suggestPdfFileName("documento");
-  const instance = pdf(pdfDocument);
+  const instance = pdf();
+  instance.updateContainer(pdfDocument);
   const blob = await instance.toBlob();
 
   const url = window.URL.createObjectURL(blob);

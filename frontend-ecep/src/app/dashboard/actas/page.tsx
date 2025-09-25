@@ -482,7 +482,7 @@ export default function AccidentesIndexPage() {
       identidad.empleados.list().catch(() => ({ data: [] })),
     ]);
     setActas(actasRes.data ?? []);
-    if (personalRes.data) setPersonal(personalRes.data);
+    setPersonal(pageContent<EmpleadoDTO>(personalRes.data));
   };
 
   const isFirmadaDto = (dto?: ActaAccidenteDTO | null) =>

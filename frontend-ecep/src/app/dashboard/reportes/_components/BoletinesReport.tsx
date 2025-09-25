@@ -27,10 +27,9 @@ import {
 } from "@/components/ui/sheet";
 import { TabsContent } from "@/components/ui/tabs";
 import { GraduationCap, Printer } from "lucide-react";
-import { type BoletinStudent, type BoletinSubject } from "../types";
+import { type BoletinStudent } from "../types";
 import {
   formatPercent,
-  getBoletinGradeDisplay,
   sanitizeTeacherName,
 } from "../utils";
 
@@ -48,8 +47,6 @@ export type BoletinesReportProps = {
   onPrintStudent: () => void;
   exportingStudent: boolean;
   isActiveStudentPrimario: boolean;
-  boletinTrimesters: { id: number; label: string }[];
-  boletinSubjectsForTable: BoletinSubject[];
   boletinSubjectsByTrimester: {
     id: number;
     label: string;
@@ -71,8 +68,6 @@ export function BoletinesReport({
   onPrintStudent,
   exportingStudent,
   isActiveStudentPrimario,
-  boletinTrimesters,
-  boletinSubjectsForTable,
   boletinSubjectsByTrimester,
 }: BoletinesReportProps) {
   const sectionPlaceholder = useMemo(() => {
@@ -184,9 +179,7 @@ export function BoletinesReport({
 
                 {activeStudent.level === "Primario" ? (
                   <BoletinSubjectsDetail
-                    boletinTrimesters={boletinTrimesters}
                     boletinSubjectsByTrimester={boletinSubjectsByTrimester}
-                    boletinSubjectsForTable={boletinSubjectsForTable}
                   />
                 ) : (
                   <InformeDetail informes={activeStudent.informes} activeStudentId={activeStudent.id} />
@@ -303,95 +296,61 @@ function SummaryCard({ label, children }: { label: string; children: React.React
 }
 
 function BoletinSubjectsDetail({
-  boletinTrimesters,
   boletinSubjectsByTrimester,
-  boletinSubjectsForTable,
 }: {
-  boletinTrimesters: { id: number; label: string }[];
   boletinSubjectsByTrimester: {
     id: number;
     label: string;
     subjects: { id: string; name: string; teacher: string | null; grade: string }[];
   }[];
-  boletinSubjectsForTable: BoletinSubject[];
 }) {
-  return (
-    <div className="space-y-4">
+  if (boletinSubjectsByTrimester.length === 0) {
+    return (
       <div className="rounded-lg border">
         <div className="border-b px-4 py-3 text-sm font-semibold">Materias y calificaciones</div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-sm">
-            <thead className="bg-muted text-xs uppercase">
-              <tr>
-                <th className="px-3 py-2 text-left">Materia</th>
-                {boletinTrimesters.map((trimester) => (
-                  <th key={trimester.id} className="px-3 py-2 text-left">
-                    {trimester.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {boletinSubjectsByTrimester.length === 0 ? (
-                <tr>
-                  <td colSpan={boletinTrimesters.length + 1} className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    No hay calificaciones registradas para este alumno.
-                  </td>
-                </tr>
-              ) : (
-                boletinSubjectsByTrimester[0].subjects.map((subject, subjectIndex) => (
-                  <tr key={subject.id} className="border-b last:border-0">
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{subject.name}</div>
-                      {subject.teacher && (
-                        <div className="text-xs text-muted-foreground">Docente: {subject.teacher}</div>
-                      )}
-                    </td>
-                    {boletinSubjectsByTrimester.map((trimester) => (
-                      <td key={`${trimester.id}-${subject.id}`} className="px-3 py-2 font-semibold">
-                        {trimester.subjects[subjectIndex]?.grade ?? "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="px-4 py-6 text-sm text-muted-foreground">
+          No hay calificaciones registradas para este alumno.
         </div>
       </div>
+    );
+  }
 
-      <div className="grid gap-3 p-4 md:hidden">
-        {boletinSubjectsForTable.map((subject) => {
-          const displayTeacher = sanitizeTeacherName(subject.teacher);
+  return (
+    <div className="rounded-lg border">
+      <div className="border-b px-4 py-3 text-sm font-semibold">Materias y calificaciones</div>
+      <div className="space-y-4 p-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {boletinSubjectsByTrimester.map((trimester) => (
+            <div key={trimester.id} className="flex flex-col rounded-lg border bg-background">
+              <div className="border-b px-4 py-3 text-sm font-semibold">{trimester.label}</div>
+              {trimester.subjects.length ? (
+                <div className="divide-y">
+                  {trimester.subjects.map((subject) => {
+                    const displayTeacher = sanitizeTeacherName(subject.teacher);
 
-          return (
-            <div key={subject.id} className="space-y-3 rounded-md border border-border bg-background p-3 shadow-sm">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold">{subject.name}</p>
-                {displayTeacher && (
-                  <p className="text-xs text-muted-foreground">Docente: {displayTeacher}</p>
-                )}
-              </div>
-              <div className="grid gap-2">
-                {boletinTrimesters.map((trimester) => {
-                  const grade = subject.grades.find((g) => g.trimestreId === trimester.id);
-                  const gradeValue = getBoletinGradeDisplay(grade);
-
-                  return (
-                    <div key={`${subject.id}-${trimester.id}`} className="rounded border border-dashed border-border/60 p-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {trimester.label}
+                    return (
+                      <div key={subject.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-foreground">{subject.name}</p>
+                          {displayTeacher && (
+                            <p className="text-xs text-muted-foreground">Docente: {displayTeacher}</p>
+                          )}
+                        </div>
+                        <span className="rounded-md bg-muted px-2 py-1 text-sm font-semibold text-foreground whitespace-nowrap">
+                          {subject.grade ?? "—"}
                         </span>
-                        <span className="text-sm font-semibold text-foreground">{gradeValue}</span>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  No hay calificaciones registradas para este trimestre.
+                </div>
+              )}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );

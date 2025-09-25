@@ -1821,7 +1821,30 @@ export default function PersonalPage() {
         };
       },
     );
-    return entries.sort((a, b) =>
+
+    const labelCounts = new Map<string, number>();
+    entries.forEach((entry) => {
+      labelCounts.set(entry.label, (labelCounts.get(entry.label) ?? 0) + 1);
+    });
+
+    const normalizedEntries = entries.map((entry) => {
+      if ((labelCounts.get(entry.label) ?? 0) <= 1) {
+        return entry;
+      }
+      const metadata = seccionMetadataById.get(entry.id);
+      const suffixParts: string[] = [];
+      if (metadata?.nivel) {
+        suffixParts.push(formatNivel(metadata.nivel));
+      }
+      suffixParts.push(`ID ${entry.id}`);
+      const suffix = suffixParts.join(" • ");
+      return {
+        ...entry,
+        label: `${entry.label} – ${suffix}`,
+      };
+    });
+
+    return normalizedEntries.sort((a, b) =>
       a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
     );
   }, [seccionMetadataById, titularSeccionMap]);

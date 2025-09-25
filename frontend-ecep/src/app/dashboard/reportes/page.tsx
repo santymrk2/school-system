@@ -170,29 +170,19 @@ const sanitizeTeacherName = (teacher?: string | null) => {
 };
 
 const getBoletinGradeDisplay = (grade?: BoletinSubjectGrade | null) => {
-  const defaultResult = { value: "—", observations: null as string | null };
-  if (!grade) return defaultResult;
+  if (!grade) return "—";
 
   const conceptual = grade.notaConceptual?.trim();
   if (conceptual && conceptual !== "—") {
-    return {
-      value: conceptual,
-      observations: grade.observaciones?.trim() || null,
-    };
+    return conceptual;
   }
 
   const numeric = typeof grade.notaNumerica === "number" ? grade.notaNumerica : null;
   if (numeric != null && Number.isFinite(numeric)) {
-    return {
-      value: numeric.toFixed(1),
-      observations: grade.observaciones?.trim() || null,
-    };
+    return numeric.toFixed(1);
   }
 
-  return {
-    value: "—",
-    observations: grade.observaciones?.trim() || null,
-  };
+  return "—";
 };
 
 type ApprovalSummary = {
@@ -947,10 +937,9 @@ export default function ReportesPage() {
 
         const trimesterCells = boletinTrimesters.map((trimester) => {
           const grade = subject.grades.find((g) => g.trimestreId === trimester.id);
-          const { value: gradeValue, observations } = getBoletinGradeDisplay(grade);
-          const observationLabel = observations ? `\nObservaciones: ${observations}` : "";
+          const gradeValue = getBoletinGradeDisplay(grade);
 
-          return `${gradeValue}${observationLabel}`;
+          return gradeValue;
         });
 
         return [subjectCell, ...trimesterCells];
@@ -3192,25 +3181,14 @@ const handleExportCurrent = async () => {
                                       const grade = subject.grades.find(
                                         (g) => g.trimestreId === trimester.id,
                                       );
-                                      const { value: gradeValue, observations } =
-                                        getBoletinGradeDisplay(grade);
+                                      const gradeValue = getBoletinGradeDisplay(grade);
 
                                       return (
                                         <td
                                           key={`${subject.id}-${trimester.id}`}
                                           className="border border-border px-3 py-2 align-top"
                                         >
-                                          <div className="space-y-1">
-                                            <span className="font-medium">{gradeValue}</span>
-                                            {observations && (
-                                              <p className="whitespace-pre-wrap text-[0.7rem] text-muted-foreground">
-                                                <span className="font-semibold uppercase tracking-wide text-[0.65rem] text-muted-foreground">
-                                                  Observaciones:
-                                                </span>{" "}
-                                                {observations}
-                                              </p>
-                                            )}
-                                          </div>
+                                          <span className="font-medium">{gradeValue}</span>
                                         </td>
                                       );
                                     })}
@@ -3241,8 +3219,7 @@ const handleExportCurrent = async () => {
                                     const grade = subject.grades.find(
                                       (g) => g.trimestreId === trimester.id,
                                     );
-                                    const { value: gradeValue, observations } =
-                                      getBoletinGradeDisplay(grade);
+                                    const gradeValue = getBoletinGradeDisplay(grade);
 
                                     return (
                                       <div
@@ -3257,12 +3234,6 @@ const handleExportCurrent = async () => {
                                             {gradeValue}
                                           </span>
                                         </div>
-                                        {observations && (
-                                          <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                                            <span className="font-semibold uppercase tracking-wide">Observaciones:</span>{" "}
-                                            {observations}
-                                          </p>
-                                        )}
                                       </div>
                                     );
                                   })}

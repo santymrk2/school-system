@@ -50,9 +50,11 @@ public class ActaAccidenteService {
         ActaAccidente acta = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Acta no encontrada: " + id));
 
+        Long currentInformanteId = acta.getInformante() != null ? acta.getInformante().getId() : null;
+
         boolean coreDataChanged =
                 !Objects.equals(acta.getAlumno().getId(), dto.alumnoId()) ||
-                !Objects.equals(acta.getInformante().getId(), dto.informanteId()) ||
+                !Objects.equals(currentInformanteId, dto.informanteId()) ||
                 !Objects.equals(acta.getFechaSuceso(), dto.fechaSuceso()) ||
                 !Objects.equals(acta.getHoraSuceso(), dto.horaSuceso()) ||
                 !Objects.equals(acta.getLugar(), dto.lugar()) ||

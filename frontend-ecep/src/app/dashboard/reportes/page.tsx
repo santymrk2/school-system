@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { pageContent } from "@/lib/page-response";
 import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
@@ -25,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -408,6 +407,7 @@ export default function ReportesPage() {
   const [boletinError, setBoletinError] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [activeBoletin, setActiveBoletin] = useState<BoletinStudent | null>(null);
+  const [exportingBoletin, setExportingBoletin] = useState(false);
   const [empleadoMap, setEmpleadoMap] = useState<
     Record<number, { name: string; cargo?: string; situacion?: string }>
   >({});
@@ -847,6 +847,42 @@ export default function ReportesPage() {
 
   const boletinTrimesters = boletinTableData.trimesters;
   const boletinSubjectsForTable = boletinTableData.subjects;
+
+  const handlePrintBoletin = useCallback(async () => {
+    if (!activeBoletin) return;
+
+    const legajo = activeBoletin.matriculaId ?? activeBoletin.alumnoId;
+    const legajoLabel = legajo != null ? String(legajo) : "—";
+    const attendanceLabel =
+      typeof activeBoletin.attendancePercentage === "number"
+        ? formatPercent(activeBoletin.attendancePercentage, 1)
+        : "Sin datos";
+    const title = `Resumen de boletín – ${activeBoletin.name}`;
+    const html = `
+      <div class="card">
+        <p><strong>Alumno:</strong> ${escapeHtml(activeBoletin.name)}</p>
+        <p><strong>Legajo:</strong> ${escapeHtml(legajoLabel)}</p>
+        <p><strong>Sección:</strong> ${escapeHtml(activeBoletin.section)}</p>
+        <p><strong>Promedio de asistencias:</strong> ${escapeHtml(attendanceLabel)}</p>
+      </div>
+    `;
+
+    try {
+      setExportingBoletin(true);
+      await exportHtmlAsPdf(html, title);
+      toast.success("Resumen del boletín listo para imprimir.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo generar el resumen del boletín.";
+      toast.error(message);
+    } finally {
+      setExportingBoletin(false);
+    }
+  }, [activeBoletin]);
+
+  const isActiveBoletinPrimario = activeBoletin?.level === "Primario";
 
   useEffect(() => {
     boletinSections.forEach((section) => {
@@ -2592,23 +2628,45 @@ export default function ReportesPage() {
 
       {/* Lateral Boletín */}
       <Sheet open={!!activeBoletin} onOpenChange={(open) => !open && setActiveBoletin(null)}>
-        <SheetContent className="max-w-xl overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-3xl sm:overflow-y-auto lg:w-[80vw] lg:max-w-5xl lg:overflow-visible">
           {activeBoletin && (
             <>
-              <SheetHeader>
-                <SheetTitle>{activeBoletin.name}</SheetTitle>
-                <SheetDescription className="space-x-1">
-                  <span>{activeBoletin.section}</span>
-                  {typeof activeBoletin.attendancePercentage === "number" && (
-                    <span>
-                      • {formatPercent(activeBoletin.attendancePercentage, 0)} de asistencia
-                    </span>
-                  )}
-                </SheetDescription>
+              <SheetHeader className="space-y-4 text-left">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-2">
+                    <SheetTitle className="text-xl lg:text-2xl">{activeBoletin.name}</SheetTitle>
+                    <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="font-medium text-foreground">{activeBoletin.section}</span>
+                      <span className="text-muted-foreground">
+                        Legajo: {activeBoletin.matriculaId ?? activeBoletin.alumnoId ?? "—"}
+                      </span>
+                      {typeof activeBoletin.attendancePercentage === "number" && (
+                        <span className="text-muted-foreground">
+                          Asistencia: {formatPercent(activeBoletin.attendancePercentage, 0)}
+                        </span>
+                      )}
+                    </SheetDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="justify-center lg:justify-start"
+                    onClick={handlePrintBoletin}
+                    disabled={exportingBoletin}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    {exportingBoletin ? "Generando…" : "Imprimir resumen"}
+                  </Button>
+                </div>
               </SheetHeader>
-              <div className="mt-6 space-y-4 text-sm">
+              <div
+                className={`mt-6 space-y-4 text-sm ${
+                  isActiveBoletinPrimario
+                    ? "lg:grid lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start lg:gap-6 lg:space-y-0"
+                    : ""
+                }`}
+              >
                 {activeBoletin.attendanceDetail && (
-                  <div className="rounded-lg border p-4">
+                  <div className="rounded-lg border p-4 lg:sticky lg:top-6">
                     <h3 className="text-sm font-semibold">Detalle de asistencia</h3>
                     <ul className="mt-2 space-y-1 text-muted-foreground">
                       <li>Días hábiles: {activeBoletin.attendanceDetail.workingDays}</li>
@@ -2630,14 +2688,13 @@ export default function ReportesPage() {
                         No hay calificaciones registradas para este alumno.
                       </div>
                     ) : (
-                      <ScrollArea className="w-full">
-                        <div className="min-w-full">
-                          <table className="w-full border-collapse text-xs sm:text-sm">
-                            <thead>
-                              <tr>
-                                <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
-                                  Materia
-                                </th>
+                      <div className="w-full overflow-x-auto lg:overflow-visible">
+                        <table className="min-w-full border-collapse text-xs sm:text-sm lg:table-fixed">
+                          <thead>
+                            <tr>
+                              <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
+                                Materia
+                              </th>
                                 {boletinTrimesters.map((trimester) => (
                                   <th
                                     key={trimester.id}
@@ -2706,8 +2763,6 @@ export default function ReportesPage() {
                             </tbody>
                           </table>
                         </div>
-                        <ScrollBar orientation="horizontal" />
-                      </ScrollArea>
                     )}
                   </div>
                 ) : (

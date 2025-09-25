@@ -88,6 +88,7 @@ export default function NewActaDialog({
   >(undefined);
   // states
   const [empleados, setEmpleados] = useState<EmpleadoDTO[]>([]);
+  const [docentes, setDocentes] = useState<EmpleadoDTO[]>([]);
   const [empleadoNombre, setEmpleadoNombre] = useState<Map<number, string>>(
     new Map(),
   );
@@ -112,13 +113,25 @@ export default function NewActaDialog({
         const direccion = empleadosCatalogo.filter(
           (e) => (e.rolEmpleado ?? null) === RolEmpleado.DIRECCION,
         );
+        const docentesCatalogo = empleadosCatalogo.filter(
+          (e) => (e.rolEmpleado ?? null) === RolEmpleado.DOCENTE,
+        );
         const meData: any = meRes.data ?? null;
         const personaId = meData?.personaId ?? null;
         const empleadoActual = personaId
           ? empleadosCatalogo.find((e: any) => e.personaId === personaId)
           : null;
         const empleadoId = empleadoActual?.id ?? null;
-        setInformanteEmpleadoId(empleadoId ?? null);
+        const empleadoRol = empleadoActual?.rolEmpleado ?? null;
+
+        if (
+          mode === "teacher" ||
+          empleadoRol === RolEmpleado.DOCENTE
+        ) {
+          setInformanteEmpleadoId(empleadoId ?? null);
+        } else {
+          setInformanteEmpleadoId(null);
+        }
 
         // Dataset alumnos según modo
         let alumnos: Array<AlumnoDTO | AlumnoLiteDTO> = [];
@@ -218,10 +231,18 @@ export default function NewActaDialog({
 
         setMe(meRes.data ?? null);
         setEmpleados(direccion);
+        setDocentes(docentesCatalogo);
         // construir nombres de empleados a partir de Persona
         const map = new Map<number, string>();
+        const relevantes = [
+          ...direccion,
+          ...docentesCatalogo,
+        ];
+        if (empleadoActual && !relevantes.some((e) => e.id === empleadoActual.id)) {
+          relevantes.push(empleadoActual);
+        }
         await Promise.all(
-          (direccion ?? []).map(async (e: any) => {
+          relevantes.map(async (e: any) => {
             let display = `Empleado #${e.id}`;
             if (e.personaId) {
               try {
@@ -250,6 +271,9 @@ export default function NewActaDialog({
         setDescripcion("");
         setAcciones("");
         setFirmadoPorEmpleadoId(undefined);
+        if (mode === "global") {
+          setInformanteEmpleadoId(null);
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -314,7 +338,11 @@ export default function NewActaDialog({
     }
 
     if (!informanteId) {
-      toast.error("No se pudo determinar el docente informante.");
+      toast.error(
+        mode === "global"
+          ? "Seleccioná un docente informante."
+          : "No se pudo determinar el docente informante.",
+      );
       return;
     }
 
@@ -462,6 +490,40 @@ export default function NewActaDialog({
                 onChange={(e) => setAcciones(e.target.value)}
               />
             </div>
+
+            {mode === "global" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Docente informante *
+                </label>
+                <Select
+                  value={
+                    informanteEmpleadoId ? String(informanteEmpleadoId) : ""
+                  }
+                  onValueChange={(v) =>
+                    setInformanteEmpleadoId(v ? Number(v) : null)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar docente informante" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docentes.map((docente) => (
+                      <SelectItem key={docente.id} value={String(docente.id)}>
+                        {empleadoNombre.get(docente.id) ??
+                          `Empleado #${docente.id}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {docentes.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No se encontraron docentes registrados. Actualizá el padrón
+                    de personal para seleccionarlo como informante.
+                  </p>
+                )}
+              </div>
+            )}
 
             {mode === "global" && (
               <div className="space-y-2">

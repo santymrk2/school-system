@@ -165,11 +165,9 @@ export default function DashboardPage() {
                   <Link
                     key={index}
                     href={action.href}
-                    className="flex flex-col items-center p-4 border rounded-lg hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+                    className="flex flex-col items-center rounded-lg border border-border p-4 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   >
-                    <div
-                      className={`p-2 rounded-full ${"bg-primary"} text-white mb-2`}
-                    >
+                    <div className={`mb-2 rounded-full bg-primary p-2 text-primary-foreground`}>
                       <action.icon className="h-5 w-5" />
                     </div>
                     <span className="text-sm font-medium text-center">
@@ -201,7 +199,7 @@ export default function DashboardPage() {
                   {recentMsgs.map((it) => (
                     <div
                       key={it.userId}
-                      className="flex items-start gap-3 p-2 rounded hover:bg-gray-50"
+                      className="flex items-start gap-3 rounded p-2 transition-colors hover:bg-muted/70"
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
                         {it.nombre

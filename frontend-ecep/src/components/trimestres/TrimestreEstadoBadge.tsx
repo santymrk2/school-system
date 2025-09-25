@@ -9,9 +9,10 @@ import { TRIMESTRE_ESTADO_LABEL, type TrimestreEstado } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
 
 const CIRCLE_STYLES: Record<TrimestreEstado, string> = {
-  activo: "bg-emerald-100 text-emerald-400",
-  inactivo: "bg-gray-100 text-gray-400",
-  cerrado: "bg-red-100 text-red-400",
+  activo:
+    "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-200",
+  inactivo: "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground",
+  cerrado: "bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-300",
 };
 
 export interface TrimestreEstadoBadgeProps {

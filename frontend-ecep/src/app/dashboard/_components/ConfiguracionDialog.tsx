@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { calendario } from "@/services/api/modules";
 import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
@@ -72,6 +73,24 @@ export function ConfiguracionDialog({
   roles,
 }: ConfiguracionDialogProps) {
   const tieneDireccion = roles.includes(UserRole.DIRECTOR);
+  const availableTabs = useMemo(
+    () =>
+      [
+        { value: "general", label: "General" as const },
+        ...(tieneDireccion
+          ? ([{ value: "institucional", label: "Institucional" as const }] as const)
+          : []),
+      ],
+    [tieneDireccion],
+  );
+  type ConfigTabValue = (typeof availableTabs)[number]["value"];
+  const [activeTab, setActiveTab] = useState<ConfigTabValue>("general");
+
+  useEffect(() => {
+    if (!availableTabs.some((tab) => tab.value === activeTab)) {
+      setActiveTab(availableTabs[0]?.value ?? "general");
+    }
+  }, [availableTabs, activeTab]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -86,22 +105,41 @@ export function ConfiguracionDialog({
 
           <ScrollArea className="flex-1 px-6 pb-6">
             <div className="space-y-6 pr-2">
-              <AparienciaConfig />
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as ConfigTabValue)}
+                className="space-y-6"
+              >
+                <TabsList className="w-full justify-start overflow-x-auto">
+                  {availableTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className="px-6">
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-              {tieneDireccion ? (
-                currentRole === UserRole.DIRECTOR ? (
-                  <DireccionConfig open={open} />
-                ) : (
-                  <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-                    Seleccioná el rol <strong>Dirección</strong> para acceder a la
-                    configuración institucional.
-                  </div>
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No hay configuraciones adicionales disponibles para tu rol actual.
-                </p>
-              )}
+                <TabsContent value="general" className="space-y-6">
+                  <AparienciaConfig />
+                  {!tieneDireccion && (
+                    <p className="text-sm text-muted-foreground">
+                      No hay configuraciones adicionales disponibles para tu rol actual.
+                    </p>
+                  )}
+                </TabsContent>
+
+                {tieneDireccion && (
+                  <TabsContent value="institucional" className="space-y-6">
+                    {currentRole === UserRole.DIRECTOR ? (
+                      <DireccionConfig open={open} />
+                    ) : (
+                      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+                        Seleccioná el rol <strong>Dirección</strong> para acceder a la
+                        configuración institucional.
+                      </div>
+                    )}
+                  </TabsContent>
+                )}
+              </Tabs>
             </div>
           </ScrollArea>
         </div>

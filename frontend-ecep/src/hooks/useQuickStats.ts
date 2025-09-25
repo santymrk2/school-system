@@ -110,12 +110,28 @@ export function useQuickStats() {
         const licRes = await identidad.licencias
           .list()
           .catch(() => ({ data: [] as any[] }));
-        const lic = licRes.data ?? [];
-        const licAct = lic.filter((l: any) => {
+        const licRaw = licRes.data ?? [];
+        const licActSet = new Set<number>();
+        let licSinEmpleado = 0;
+        for (const l of licRaw as any[]) {
           const d = l.desde ?? l.fechaInicio ?? l.inicio;
           const h = l.hasta ?? l.fechaFin ?? l.fin;
-          return inRangeISO(hoyISO, d, h);
-        }).length;
+          if (!inRangeISO(hoyISO, d, h)) continue;
+
+          const empleadoId =
+            l.empleadoId ??
+            l.personalId ??
+            l.docenteId ??
+            l.personaId ??
+            null;
+
+          if (typeof empleadoId === "number") {
+            licActSet.add(empleadoId);
+          } else {
+            licSinEmpleado += 1;
+          }
+        }
+        const licAct = licActSet.size + licSinEmpleado;
 
         // ========= Actas de accidente sin firmar (BORRADOR) =========
         const actasRes = await vidaEscolar.actasAccidente

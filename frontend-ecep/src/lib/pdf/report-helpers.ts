@@ -21,19 +21,28 @@ export type ReportRenderParams = {
   metadataTitle?: string;
 };
 
-const REPORT_MARGIN_X = 40;
-const REPORT_MARGIN_TOP = 48;
-const TABLE_FONT_SIZE = 8;
-const TABLE_CELL_PADDING = 3;
+const REPORT_MARGIN_X = 44;
+const REPORT_MARGIN_TOP = 52;
+const TABLE_FONT_SIZE = 9;
+const TABLE_CELL_PADDING = 4;
 
-const ensureCursorPosition = (doc: jsPDF, cursorY: number) => {
+const ensureCursorPosition = (doc: jsPDF, cursorY: number, neededSpace = 0) => {
   const pageHeight = doc.internal.pageSize.getHeight();
-  if (cursorY <= pageHeight - 96) {
+  const bottomLimit = pageHeight - 72;
+  if (cursorY + neededSpace <= bottomLimit) {
     return cursorY;
   }
 
   doc.addPage();
   return REPORT_MARGIN_TOP;
+};
+
+const drawSectionTitle = (doc: jsPDF, title: string, x: number, y: number) => {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text(title.toUpperCase(), x, y);
+  return y + 10;
 };
 
 const renderKeyValueSection = (
@@ -47,45 +56,77 @@ const renderKeyValueSection = (
     return cursorY;
   }
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(30, 41, 59);
-  doc.text(title.toUpperCase(), REPORT_MARGIN_X, cursorY);
+  const cardPaddingX = 14;
+  const cardPaddingY = 12;
+  const innerWidth = contentWidth - cardPaddingX * 2;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(51, 65, 85);
+  const estimatedHeight = (() => {
+    let total = cardPaddingY * 2;
+    pairs.forEach((pair, index) => {
+      const valueLines = doc.splitTextToSize(pair.value, innerWidth);
+      total += 10; // label line
+      total += valueLines.length * 10;
+      if (index < pairs.length - 1) {
+        total += 8;
+      }
+    });
+    return total + 8; // extra spacing after section
+  })();
 
-  const segments = pairs.map((pair) => `${pair.label}: ${pair.value}`);
-  const lines: string[] = [];
+  cursorY = ensureCursorPosition(doc, cursorY, estimatedHeight);
 
-  let currentLine = "";
-  segments.forEach((segment) => {
-    const separator = currentLine ? "   •   " : "";
-    const candidate = `${currentLine}${separator}${segment}`;
+  const afterTitleY = drawSectionTitle(doc, title, REPORT_MARGIN_X, cursorY);
+  const cardY = afterTitleY + 2;
+  const cardHeight = (() => {
+    let total = cardPaddingY * 2;
+    pairs.forEach((pair, index) => {
+      const valueLines = doc.splitTextToSize(pair.value, innerWidth);
+      total += 10;
+      total += valueLines.length * 10;
+      if (index < pairs.length - 1) {
+        total += 8;
+      }
+    });
+    return Math.max(total, 54);
+  })();
 
-    if (currentLine && doc.getTextWidth(candidate) > contentWidth && lines.length === 0) {
-      lines.push(currentLine);
-      currentLine = segment;
-      return;
+  doc.setDrawColor(191, 219, 254);
+  doc.setFillColor(240, 249, 255);
+  doc.roundedRect(
+    REPORT_MARGIN_X,
+    cardY,
+    contentWidth,
+    cardHeight,
+    12,
+    12,
+    "FD",
+  );
+  doc.roundedRect(REPORT_MARGIN_X, cardY, contentWidth, cardHeight, 12, 12, "D");
+
+  let textY = cardY + cardPaddingY + 2;
+  pairs.forEach((pair, index) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(37, 99, 235);
+    doc.text(pair.label.toUpperCase(), REPORT_MARGIN_X + cardPaddingX, textY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    textY += 10;
+
+    const valueLines = doc.splitTextToSize(pair.value, innerWidth);
+    valueLines.forEach((line) => {
+      doc.text(line, REPORT_MARGIN_X + cardPaddingX, textY);
+      textY += 10;
+    });
+
+    if (index < pairs.length - 1) {
+      textY += 6;
     }
-
-    currentLine = candidate;
   });
 
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  const printableLines = lines.slice(0, 2);
-  const lineHeight = 14;
-  let lineY = cursorY + 10;
-
-  printableLines.forEach((line, index) => {
-    doc.text(line, REPORT_MARGIN_X, lineY + index * lineHeight, { maxWidth: contentWidth });
-  });
-
-  return lineY + printableLines.length * lineHeight + 6;
+  return cardY + cardHeight + 12;
 };
 
 const renderTableSection = (
@@ -100,10 +141,8 @@ const renderTableSection = (
     return cursorY;
   }
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(30, 41, 59);
-  doc.text(title.toUpperCase(), REPORT_MARGIN_X, cursorY);
+  cursorY = ensureCursorPosition(doc, cursorY, 96);
+  const afterTitleY = drawSectionTitle(doc, title, REPORT_MARGIN_X, cursorY);
 
   const head = [columns.map((column) => column.label)];
   const body = rows.map((row) => row.map((value) => String(value)));
@@ -118,7 +157,7 @@ const renderTableSection = (
   });
 
   autoTable(doc, {
-    startY: cursorY + 8,
+    startY: afterTitleY + 6,
     margin: { left: REPORT_MARGIN_X, right: REPORT_MARGIN_X },
     tableWidth: contentWidth,
     head,
@@ -127,21 +166,28 @@ const renderTableSection = (
       font: "helvetica",
       fontSize: TABLE_FONT_SIZE,
       cellPadding: TABLE_CELL_PADDING,
+      lineColor: [226, 232, 240],
+      lineWidth: 0.3,
     },
     headStyles: {
-      fillColor: [226, 232, 240],
+      fillColor: [226, 242, 255],
       textColor: [15, 23, 42],
       fontStyle: "bold",
     },
     bodyStyles: {
       textColor: [15, 23, 42],
+      fillColor: [255, 255, 255],
+      halign: "left",
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252],
     },
     columnStyles,
     theme: "grid",
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY ?? cursorY + 24;
-  return finalY + 12;
+  const finalY = (doc as any).lastAutoTable?.finalY ?? afterTitleY + 28;
+  return finalY + 14;
 };
 
 export const renderInstitutionalReport = (doc: jsPDF, params: ReportRenderParams) => {
@@ -159,27 +205,28 @@ export const renderInstitutionalReport = (doc: jsPDF, params: ReportRenderParams
   doc.setFontSize(20);
   doc.setTextColor(15, 23, 42);
   doc.text(params.title, REPORT_MARGIN_X, cursorY);
-  cursorY += 24;
 
   if (params.subtitle) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setTextColor(71, 85, 105);
-    doc.text(params.subtitle, REPORT_MARGIN_X, cursorY);
-    cursorY += 18;
+    doc.text(params.subtitle, REPORT_MARGIN_X, cursorY + 16);
   }
 
   if (params.detail) {
-    doc.setFontSize(10);
+    const detailY = params.subtitle ? cursorY + 28 : cursorY + 18;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text(params.detail, REPORT_MARGIN_X, cursorY);
-    cursorY += 16;
+    doc.text(params.detail, REPORT_MARGIN_X, detailY);
+    cursorY = detailY + 18;
+  } else {
+    cursorY += params.subtitle ? 32 : 26;
   }
 
   doc.setTextColor(15, 23, 42);
 
   params.sections.forEach((section) => {
-    cursorY = ensureCursorPosition(doc, cursorY);
     if (section.type === "keyValue") {
       cursorY = renderKeyValueSection(doc, cursorY, section.title, section.pairs, contentWidth);
     } else {

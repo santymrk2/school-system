@@ -28,8 +28,8 @@ type ActaVM = {
   acciones?: string | null;
   estado: string;
   creadoPor?: string | null;
-  informante?: string | null;
   firmante?: string | null;
+  firmanteDni?: string | null;
 };
 
 export default function ViewActaDialog({
@@ -57,11 +57,6 @@ export default function ViewActaDialog({
 }) {
   const [downloading, setDownloading] = useState(false);
   const isCerrada = String(acta.estado).toUpperCase() === "CERRADA";
-  const docenteResponsable = acta.informante
-    ? `${acta.informante}${
-        acta.informanteDni ? ` (DNI ${acta.informanteDni})` : ""
-      }`
-    : "—";
   const direccionFirmante = acta.firmante
     ? `${acta.firmante}${acta.firmanteDni ? ` (DNI ${acta.firmanteDni})` : ""}`
     : "Pendiente de asignación";
@@ -109,9 +104,6 @@ export default function ViewActaDialog({
             <Badge variant={isCerrada ? "default" : "destructive"}>
               {isCerrada ? "Cerrada" : "Borrador"}
             </Badge>
-            {acta.creadoPor && (
-              <Badge variant="outline">Creada por: {acta.creadoPor}</Badge>
-            )}
           </div>
 
           <div className="grid gap-3 text-sm sm:grid-cols-2">
@@ -140,10 +132,7 @@ export default function ViewActaDialog({
               <b>Estado:</b> {String(acta.estado)}
             </div>
             <div className="sm:col-span-2">
-              <b>Docente responsable:</b> {docenteResponsable}
-            </div>
-            <div className="sm:col-span-2">
-              <b>Dirección / Firmante:</b> {direccionFirmante}
+              <b>Dirección firmante:</b> {direccionFirmante}
             </div>
           </div>
 

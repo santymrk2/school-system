@@ -1,5 +1,8 @@
 package edu.ecep.base_app.vidaescolar.application;
 
+import edu.ecep.base_app.identidad.domain.Empleado;
+import edu.ecep.base_app.identidad.domain.enums.RolEmpleado;
+import edu.ecep.base_app.identidad.infrastructure.persistence.EmpleadoRepository;
 import edu.ecep.base_app.vidaescolar.domain.ActaAccidente;
 import edu.ecep.base_app.vidaescolar.presentation.dto.ActaAccidenteCreateDTO;
 import edu.ecep.base_app.vidaescolar.presentation.dto.ActaAccidenteDTO;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 public class ActaAccidenteService {
     private final ActaAccidenteRepository repo;
     private final ActaAccidenteMapper mapper;
+    private final EmpleadoRepository empleadoRepository;
 
     public List<ActaAccidenteDTO> findAll(){
         return repo.findAll(Sort.by("fechaSuceso").descending())
@@ -37,6 +41,7 @@ public class ActaAccidenteService {
     public Long create(ActaAccidenteCreateDTO dto){
         if (ChronoUnit.DAYS.between(dto.getFechaSuceso(), LocalDate.now()) > 2)
             throw new IllegalArgumentException("Fuera de ventana de edición");
+        validateFirmante(dto.getFirmanteId());
         return repo.save(mapper.toEntity(dto)).getId();
     }
 
@@ -63,6 +68,7 @@ public class ActaAccidenteService {
             }
         }
 
+        validateFirmante(dto.firmanteId());
         mapper.applyUpdate(acta, dto);
         repo.save(acta);
     }
@@ -74,5 +80,19 @@ public class ActaAccidenteService {
 
         // (Con seguridad: sólo Dirección. @SQLDelete hará soft delete.)
         repo.delete(acta);
+    }
+
+    private void validateFirmante(Long firmanteId) {
+        if (firmanteId == null) {
+            return;
+        }
+
+        Empleado empleado = empleadoRepository
+                .findById(firmanteId)
+                .orElseThrow(() -> new EntityNotFoundException("Firmante no encontrado: " + firmanteId));
+
+        if (empleado.getRolEmpleado() != RolEmpleado.DIRECCION) {
+            throw new IllegalArgumentException("El firmante debe pertenecer a Dirección");
+        }
     }
 }

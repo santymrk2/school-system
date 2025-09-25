@@ -68,7 +68,6 @@ type ActaVM = {
   estado: string;
   creadoPor?: string | null;
   descripcion: string;
-  informante?: string | null;
   firmante?: string | null;
   firmanteId?: number | null;
   informanteId?: number | null;
@@ -284,8 +283,7 @@ export default function AccidentesSeccionPage() {
         seccion: seccionLabel,
         seccionId: idx.seccionId,
         docente:
-          personalDisplayById.get(a.firmanteId ?? a.informanteId ?? 0) ??
-          a.creadoPor ?? null,
+          personalDisplayById.get(a.firmanteId ?? 0) ?? a.creadoPor ?? null,
         fecha: a.fechaSuceso,
         hora: (a as any).horaSuceso ?? null,
         lugar: (a as any).lugar ?? null,
@@ -294,8 +292,6 @@ export default function AccidentesSeccionPage() {
         estado: String(a.estado ?? ""),
         creadoPor: a.creadoPor ?? null,
         descripcion: a.descripcion ?? "",
-        informante:
-          personalDisplayById.get(a.informanteId ?? 0) ?? undefined,
         firmante:
           personalDisplayById.get((a as any).firmanteId ?? 0) ?? undefined,
         firmanteId: (a as any).firmanteId ?? null,
@@ -501,14 +497,9 @@ export default function AccidentesSeccionPage() {
                           Lugar: {a.lugar}
                         </span>
                       )}
-                      {a.informante && (
-                        <span className="inline-flex items-center">
-                          Informante: {a.informante}
-                        </span>
-                      )}
                       {a.firmante && (
                         <span className="inline-flex items-center">
-                          Firmante: {a.firmante}
+                          Dirección firmante: {a.firmante}
                         </span>
                       )}
                     </div>

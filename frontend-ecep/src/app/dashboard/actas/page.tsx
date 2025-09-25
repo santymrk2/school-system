@@ -77,8 +77,6 @@ type ActaVM = {
   estado: string; // enum -> string
   creadoPor?: string | null;
   acciones?: string | null;
-  informante?: string | null;
-  informanteDni?: string | null;
   firmante?: string | null;
   firmanteDni?: string | null;
   informanteId?: number | null;
@@ -379,8 +377,6 @@ export default function AccidentesIndexPage() {
       const info = alumnoInfo.get(a.alumnoId) ?? null;
       const alumnoLabel = info?.name ?? `Alumno #${a.alumnoId}`;
       const seccion = alumnoSeccion.get(a.alumnoId) ?? info?.section ?? null;
-      const informanteInfo =
-        a.informanteId != null ? personalInfoById.get(a.informanteId) : undefined;
       const firmanteId = (a as any).firmanteId ?? null;
       const firmanteInfo =
         firmanteId != null ? personalInfoById.get(firmanteId) : undefined;
@@ -400,8 +396,6 @@ export default function AccidentesIndexPage() {
         acciones: (a as any).acciones ?? null,
         estado: String((a as any).estado ?? ""),
         creadoPor: (a as any).creadoPor ?? null,
-        informante: informanteInfo?.label ?? undefined,
-        informanteDni: informanteInfo?.dni ?? null,
         firmante: firmanteInfo?.label ?? undefined,
         firmanteDni: firmanteInfo?.dni ?? null,
         informanteId: a.informanteId ?? null,
@@ -446,9 +440,9 @@ export default function AccidentesIndexPage() {
         const blob =
           `${a.alumno} ${a.alumnoDni ?? ""} ${a.familiar ?? ""} ${
             a.familiarDni ?? ""
-          } ${a.seccion ?? ""} ${a.creadoPor ?? ""} ${a.descripcion ?? ""} ${
-            a.informante ?? ""
-          } ${a.firmante ?? ""} ${a.lugar ?? ""} ${a.acciones ?? ""}`.toLowerCase();
+          } ${a.seccion ?? ""} ${a.descripcion ?? ""} ${a.firmante ?? ""} ${
+            a.lugar ?? ""
+          } ${a.acciones ?? ""}`.toLowerCase();
         return blob.includes(term);
       })
       .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
@@ -549,8 +543,6 @@ export default function AccidentesIndexPage() {
         "Hora",
         "Lugar",
         "Estado",
-        "Creada por",
-        "Informante",
         "Firmante",
         "Descripción",
         "Acciones",
@@ -563,8 +555,6 @@ export default function AccidentesIndexPage() {
         a.hora ?? "-",
         a.lugar ?? "-",
         a.estado,
-        a.creadoPor ?? "-",
-        a.informante ?? "-",
         a.firmante ?? "-",
         (a.descripcion ?? "").replace(/\n/g, " ").slice(0, 1000),
         (a.acciones ?? "").replace(/\n/g, " ").slice(0, 1000),
@@ -795,19 +785,9 @@ export default function AccidentesIndexPage() {
                             >
                               {isCerrada ? "Cerrada" : "Borrador"}
                             </Badge>
-                            {a.creadoPor && (
-                              <Badge variant="outline">
-                                Creada por: {a.creadoPor}
-                              </Badge>
-                            )}
-                            {a.informante && (
-                              <Badge variant="outline">
-                                Informante: {a.informante}
-                              </Badge>
-                            )}
                             {a.firmante && (
                               <Badge variant="outline">
-                                Firmante: {a.firmante}
+                                Dirección firmante: {a.firmante}
                               </Badge>
                             )}
                           </div>

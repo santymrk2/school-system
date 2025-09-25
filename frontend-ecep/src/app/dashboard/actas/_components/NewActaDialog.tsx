@@ -17,6 +17,7 @@ import type {
   EmpleadoDTO,
   AsignacionDocenteSeccionDTO,
 } from "@/types/api-generated";
+import { RolEmpleado } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -98,11 +99,14 @@ export default function NewActaDialog({
         const meRes = await identidad.me().catch(() => ({ data: null }));
         let emps: EmpleadoDTO[] = [];
         try {
-          const empleadosRes = await identidad.empleados.list();
+          const empleadosRes = await identidad.empleados.list({
+            rolEmpleado: RolEmpleado.DIRECCION,
+          });
           emps = pageContent<EmpleadoDTO>(empleadosRes.data);
         } catch {
           emps = [];
         }
+        emps = emps.filter((e) => (e.rolEmpleado ?? null) === RolEmpleado.DIRECCION);
 
         // Dataset alumnos según modo
         let alumnos: Array<AlumnoDTO | AlumnoLiteDTO> = [];
@@ -315,10 +319,8 @@ export default function NewActaDialog({
       creadoPor: (me as any)?.personaNombre ?? (me as any)?.email ?? undefined,
     };
 
-    if (mode === "global" && firmadoPorEmpleadoId) {
+    if (firmadoPorEmpleadoId) {
       body.firmanteId = firmadoPorEmpleadoId;
-    } else if (mode !== "global" && informanteId) {
-      body.firmanteId = informanteId;
     }
 
     try {
@@ -454,7 +456,7 @@ export default function NewActaDialog({
             {mode === "global" && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
-                  Firmante (empleado) — opcional
+                  Dirección firmante — opcional
                 </label>
                 <Select
                   value={
@@ -463,7 +465,7 @@ export default function NewActaDialog({
                   onValueChange={(v) => setFirmadoPorEmpleadoId(Number(v))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar firmante (opcional)" />
+                    <SelectValue placeholder="Seleccionar directivo (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {empleados.map((p) => (

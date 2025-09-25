@@ -316,7 +316,7 @@ export function FamilyAttendanceView() {
                   </div>
                   <div className="flex-1 space-y-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <CheckCircle className="h-4 w-4 text-[hsl(var(--success))]" />
                       <span className="font-medium">
                         Presentes: {resumen.presentes}
                       </span>

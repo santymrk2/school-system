@@ -80,7 +80,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats?.alumnosActivos}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-green-600 inline-flex items-center">
+                <span className="text-[hsl(var(--success))] inline-flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   {loadingStats ? "actualizando…" : "en período vigente"}
                 </span>

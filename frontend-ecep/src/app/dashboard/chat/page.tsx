@@ -397,7 +397,7 @@ export default function ChatComponent() {
         );
       case "connected":
         return (
-          <div className="flex items-center gap-2 text-green-600">
+          <div className="flex items-center gap-2 text-[hsl(var(--success))]">
             <Wifi className="h-4 w-4" />
             <span className="text-sm">Conectado</span>
           </div>

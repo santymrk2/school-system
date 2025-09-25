@@ -910,7 +910,7 @@ export default function PostulacionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-[hsl(var(--success-soft))] to-[hsl(var(--success-soft))] dark:from-slate-950 dark:via-[hsl(var(--success-soft))] dark:to-slate-900 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <Button variant="outline" asChild>
           <Link href="/">Volver</Link>

@@ -97,8 +97,13 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
-import { createAccidentActDocument } from "@/lib/pdf/accident-act";
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import type { PdfCreateCallback } from "@/lib/pdf";
+import { renderAccidentActPdf } from "@/lib/pdf/accident-act";
+import {
+  renderInstitutionalReport,
+  type KeyValuePair,
+  type ReportSection,
+} from "@/lib/pdf/report-helpers";
 
 // -----------------------------------------------------------------------------
 // Mock data (mantener hasta integrar API real en los demás reportes)
@@ -318,201 +323,6 @@ const startOfDay = (date: Date) => {
 const formatPercent = (value: number, digits = 0) =>
   `${(value * 100).toFixed(digits)}%`;
 
-const reportPdfStyles = StyleSheet.create({
-  page: {
-    padding: 32,
-    backgroundColor: "#f8fafc",
-  },
-  container: {
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    padding: 28,
-    fontFamily: "Helvetica",
-    fontSize: 11,
-    color: "#0f172a",
-  },
-  header: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 10,
-    color: "#64748b",
-    textTransform: "uppercase",
-    letterSpacing: 1.4,
-  },
-  section: {
-    marginTop: 18,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    letterSpacing: 1.4,
-    marginBottom: 8,
-    color: "#1e293b",
-  },
-  keyValueList: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  keyValueRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  keyValueLabel: {
-    flex: 1.4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    fontSize: 10,
-    color: "#64748b",
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-  },
-  keyValueValue: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#0f172a",
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 14,
-    overflow: "hidden",
-    marginTop: 10,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  tableHeader: {
-    backgroundColor: "#f1f5f9",
-  },
-  tableCell: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    fontSize: 10,
-    color: "#0f172a",
-  },
-  tableCellWide: {
-    flex: 1.4,
-  },
-  tableCellBold: {
-    fontWeight: "bold",
-  },
-  paragraph: {
-    fontSize: 11,
-    lineHeight: 1.6,
-    color: "#1e293b",
-    marginBottom: 6,
-  },
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 6,
-  },
-  badge: {
-    backgroundColor: "#eff6ff",
-    color: "#1d4ed8",
-    fontSize: 9,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginRight: 6,
-    marginBottom: 6,
-  },
-  footerNote: {
-    marginTop: 20,
-    fontSize: 9,
-    color: "#64748b",
-  },
-});
-
-const renderKeyValueList = (pairs: { label: string; value: string }[]) => (
-  <View style={reportPdfStyles.keyValueList}>
-    {pairs.map((pair, index) => {
-      const rowStyles =
-        index === pairs.length - 1
-          ? [reportPdfStyles.keyValueRow, { borderBottomWidth: 0 }]
-          : [reportPdfStyles.keyValueRow];
-
-      return (
-        <View key={pair.label} style={rowStyles}>
-          <Text style={reportPdfStyles.keyValueLabel}>{pair.label}</Text>
-          <Text style={reportPdfStyles.keyValueValue}>{pair.value}</Text>
-        </View>
-      );
-    })}
-  </View>
-);
-
-type TableColumn = {
-  label: string;
-  width?: "wide";
-};
-
-const renderTable = (
-  columns: TableColumn[],
-  rows: (string | number)[][],
-) => (
-  <View style={reportPdfStyles.table}>
-    <View style={[reportPdfStyles.tableRow, reportPdfStyles.tableHeader]}>
-      {columns.map((column) => {
-        const headerStyles =
-          column.width === "wide"
-            ? [
-                reportPdfStyles.tableCell,
-                reportPdfStyles.tableCellBold,
-                reportPdfStyles.tableCellWide,
-              ]
-            : [reportPdfStyles.tableCell, reportPdfStyles.tableCellBold];
-
-        return (
-          <Text key={column.label} style={headerStyles}>
-            {column.label}
-          </Text>
-        );
-      })}
-    </View>
-    {rows.map((row, rowIndex) => {
-      const rowStyles =
-        rowIndex === rows.length - 1
-          ? [reportPdfStyles.tableRow, { borderBottomWidth: 0 }]
-          : [reportPdfStyles.tableRow];
-
-      return (
-        <View key={rowIndex} style={rowStyles}>
-          {row.map((value, colIndex) => {
-            const cellStyles =
-              columns[colIndex]?.width === "wide"
-                ? [reportPdfStyles.tableCell, reportPdfStyles.tableCellWide]
-                : [reportPdfStyles.tableCell];
-
-            return (
-              <Text key={`${rowIndex}-${colIndex}`} style={cellStyles}>
-                {String(value)}
-              </Text>
-            );
-          })}
-        </View>
-      );
-    })}
-  </View>
-);
 
 const computeAttendanceMetrics = (
   section: AttendanceSection,
@@ -1065,38 +875,29 @@ export default function ReportesPage() {
         ]
       : null;
 
-    const document = (
-      <Document title={title} author="Sistema escolar">
-        <Page size="A4" style={reportPdfStyles.page}>
-          <View style={reportPdfStyles.container}>
-            <View style={reportPdfStyles.header}>
-              <Text style={reportPdfStyles.title}>Resumen de boletín</Text>
-              <Text style={reportPdfStyles.subtitle}>{activeBoletin.name}</Text>
-            </View>
-            <View style={reportPdfStyles.section}>
-              <Text style={reportPdfStyles.sectionTitle}>Datos generales</Text>
-              {renderKeyValueList(details)}
-            </View>
-            {attendanceDetailPairs && (
-              <View style={reportPdfStyles.section}>
-                <Text style={reportPdfStyles.sectionTitle}>
-                  Detalle de asistencia
-                </Text>
-                {renderKeyValueList(attendanceDetailPairs)}
-              </View>
-            )}
-            <Text style={reportPdfStyles.footerNote}>
-              Generado el {generatedAt}
-            </Text>
-          </View>
-        </Page>
-      </Document>
-    );
+    const sections: ReportSection[] = [
+      { type: "keyValue", title: "Datos generales", pairs: details },
+    ];
+
+    if (attendanceDetailPairs) {
+      sections.push({
+        type: "keyValue",
+        title: "Detalle de asistencia",
+        pairs: attendanceDetailPairs,
+      });
+    }
 
     try {
       setExportingBoletin(true);
       await downloadPdfDocument({
-        document,
+        create: (doc) =>
+          renderInstitutionalReport(doc, {
+            title: "Resumen de boletín",
+            subtitle: activeBoletin.name,
+            sections,
+            footer: `Generado el ${generatedAt}`,
+            metadataTitle: title,
+          }),
         fileName: suggestPdfFileName(title),
       });
       toast.success("Resumen del boletín listo para imprimir.");
@@ -1719,394 +1520,351 @@ export default function ReportesPage() {
     actas: useRef<HTMLDivElement>(null),
   } as const;
 
-  const buildCurrentReportDocument = (title: string) => {
-    const generatedAt = new Intl.DateTimeFormat("es-AR", {
-      dateStyle: "long",
-      timeStyle: "short",
-    }).format(new Date());
+  
+const buildCurrentReportRenderer = (title: string): PdfCreateCallback | null => {
+  const generatedAt = new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "long",
+    timeStyle: "short",
+  }).format(new Date());
 
-    if (tab === "boletines") {
-      const totalSections = boletinSections.length;
-      const totalStudents = boletinSections.reduce(
-        (acc, section) => acc + section.students.length,
-        0,
-      );
-      const attendanceValues = boletinSections
-        .flatMap((section) =>
-          section.students
-            .map((student) =>
-              typeof student.attendancePercentage === "number"
-                ? student.attendancePercentage
-                : null,
-            )
-            .filter((value): value is number => value != null),
-        );
-      const attendanceAverage = attendanceValues.length
-        ? attendanceValues.reduce((acc, value) => acc + value, 0) /
-          attendanceValues.length
-        : null;
-
-      const summaryPairs = [
-        { label: "Secciones incluidas", value: String(totalSections) },
-        { label: "Estudiantes relevados", value: String(totalStudents) },
-        {
-          label: "Promedio general de asistencia",
-          value: attendanceAverage != null
-            ? formatPercent(attendanceAverage, 1)
-            : "Sin datos",
-        },
-      ];
-
-      const sectionRows = boletinSections.map((section) => {
-        const gradeValues = section.students
-          .map((student) =>
-            typeof student.average === "number" ? student.average : null,
-          )
-          .filter((value): value is number => value != null);
-        const sectionAverageGrade = gradeValues.length
-          ? (gradeValues.reduce((acc, value) => acc + value, 0) /
-              gradeValues.length)
-              .toFixed(1)
-          : "Sin datos";
-
-        const sectionAttendanceValues = section.students
+  if (tab === "boletines") {
+    const totalSections = boletinSections.length;
+    const totalStudents = boletinSections.reduce(
+      (acc, section) => acc + section.students.length,
+      0,
+    );
+    const attendanceValues = boletinSections
+      .flatMap((section) =>
+        section.students
           .map((student) =>
             typeof student.attendancePercentage === "number"
               ? student.attendancePercentage
               : null,
           )
-          .filter((value): value is number => value != null);
-
-        const sectionAttendanceAverage = sectionAttendanceValues.length
-          ? formatPercent(
-              sectionAttendanceValues.reduce((acc, value) => acc + value, 0) /
-                sectionAttendanceValues.length,
-              1,
-            )
-          : "Sin datos";
-
-        return [
-          section.label,
-          section.level,
-          String(section.students.length),
-          sectionAverageGrade,
-          sectionAttendanceAverage,
-        ];
-      });
-
-      return (
-        <Document title={title} author="Sistema escolar">
-          <Page size="A4" style={reportPdfStyles.page}>
-            <View style={reportPdfStyles.container}>
-              <View style={reportPdfStyles.header}>
-                <Text style={reportPdfStyles.title}>{title}</Text>
-                <Text style={reportPdfStyles.subtitle}>Generado el {generatedAt}</Text>
-              </View>
-              <View style={reportPdfStyles.section}>
-                <Text style={reportPdfStyles.sectionTitle}>Resumen general</Text>
-                {renderKeyValueList(summaryPairs)}
-              </View>
-              {sectionRows.length > 0 && (
-                <View style={reportPdfStyles.section}>
-                  <Text style={reportPdfStyles.sectionTitle}>Detalle por sección</Text>
-                  {renderTable(
-                    [
-                      { label: "Sección", width: "wide" },
-                      { label: "Nivel" },
-                      { label: "Estudiantes" },
-                      { label: "Promedio general" },
-                      { label: "Asistencia promedio" },
-                    ],
-                    sectionRows,
-                  )}
-                </View>
-              )}
-              <Text style={reportPdfStyles.footerNote}>
-                Informe consolidado automáticamente por el sistema institucional.
-              </Text>
-            </View>
-          </Page>
-        </Document>
+          .filter((value): value is number => value != null),
       );
-    }
+    const attendanceAverage = attendanceValues.length
+      ? attendanceValues.reduce((acc, value) => acc + value, 0) /
+        attendanceValues.length
+      : null;
 
-    if (tab === "aprobacion") {
-      const summaryPairs = [
-        {
-          label: "Materias evaluadas",
-          value: String(approvalSummary.totalSubjects),
-        },
-        { label: "Aprobadas", value: String(approvalSummary.approved) },
-        { label: "Desaprobadas", value: String(approvalSummary.failed) },
-        {
-          label: "Materia con más desaprobaciones",
-          value: approvalSummary.subjectWithMoreFails,
-        },
-        {
-          label: "Alumnos con pendientes",
-          value: String(approvalSummary.studentsWithPending),
-        },
-      ];
+    const summaryPairs: KeyValuePair[] = [
+      { label: "Secciones incluidas", value: String(totalSections) },
+      { label: "Estudiantes relevados", value: String(totalStudents) },
+      {
+        label: "Promedio general de asistencia",
+        value:
+          attendanceAverage != null
+            ? formatPercent(attendanceAverage, 1)
+            : "Sin datos",
+      },
+    ];
 
-      const sectionRows = approvalData.sections.map((section) => [
-        section.label,
-        String(section.stats.approved),
-        String(section.stats.failed),
-        section.stats.averageApprovedPerStudent.toFixed(1),
-      ]);
-
-      return (
-        <Document title={title} author="Sistema escolar">
-          <Page size="A4" style={reportPdfStyles.page}>
-            <View style={reportPdfStyles.container}>
-              <View style={reportPdfStyles.header}>
-                <Text style={reportPdfStyles.title}>{title}</Text>
-                <Text style={reportPdfStyles.subtitle}>Generado el {generatedAt}</Text>
-              </View>
-              <View style={reportPdfStyles.section}>
-                <Text style={reportPdfStyles.sectionTitle}>Resumen general</Text>
-                {renderKeyValueList(summaryPairs)}
-              </View>
-              {sectionRows.length > 0 && (
-                <View style={reportPdfStyles.section}>
-                  <Text style={reportPdfStyles.sectionTitle}>Estado por sección</Text>
-                  {renderTable(
-                    [
-                      { label: "Sección", width: "wide" },
-                      { label: "Aprobadas" },
-                      { label: "Desaprobadas" },
-                      { label: "Prom. aprobadas / alumno" },
-                    ],
-                    sectionRows,
-                  )}
-                </View>
-              )}
-              <Text style={reportPdfStyles.footerNote}>
-                Datos basados en las calificaciones registradas en el período activo.
-              </Text>
-            </View>
-          </Page>
-        </Document>
-      );
-    }
-
-    if (tab === "asistencias") {
-      const rangeLabel = attendanceFrom || attendanceTo
-        ? `${attendanceFrom ? formatDate(attendanceFrom) : "Inicio"} – ${
-            attendanceTo ? formatDate(attendanceTo) : "Fin"
-          }`
-        : "Periodo completo";
-
-      const totalSections = attendanceSummaries.length;
-      const totalDays = attendanceSummaries.reduce(
-        (acc, summary) => acc + summary.totalDays,
-        0,
-      );
-      const totalAttended = attendanceSummaries.reduce(
-        (acc, summary) => acc + summary.attended,
-        0,
-      );
-      const attendanceAverage = totalDays
-        ? formatPercent(totalAttended / totalDays, 1)
+    const sectionRows = boletinSections.map((section) => {
+      const gradeValues = section.students
+        .map((student) =>
+          typeof student.average === "number" ? student.average : null,
+        )
+        .filter((value): value is number => value != null);
+      const sectionAverageGrade = gradeValues.length
+        ? (gradeValues.reduce((acc, value) => acc + value, 0) /
+            gradeValues.length)
+            .toFixed(1)
         : "Sin datos";
 
-      const summaryPairs = [
-        { label: "Secciones analizadas", value: String(totalSections) },
-        { label: "Período", value: rangeLabel },
-        { label: "Total de días relevados", value: String(totalDays) },
-        { label: "Asistencias registradas", value: String(totalAttended) },
-        { label: "Promedio de asistencia", value: attendanceAverage },
-      ];
+      const sectionAttendanceValues = section.students
+        .map((student) =>
+          typeof student.attendancePercentage === "number"
+            ? student.attendancePercentage
+            : null,
+        )
+        .filter((value): value is number => value != null);
 
-      const attendanceRows = attendanceSummaries.map((summary) => {
-        const attendanceRatio = summary.totalDays
-          ? summary.attended / summary.totalDays
-          : 0;
-        return [
-          summary.label,
-          summary.level,
-          String(summary.totalDays),
-          String(summary.attended),
-          formatPercent(attendanceRatio, 1),
-        ];
+      const sectionAttendanceAverage = sectionAttendanceValues.length
+        ? formatPercent(
+            sectionAttendanceValues.reduce((acc, value) => acc + value, 0) /
+              sectionAttendanceValues.length,
+            1,
+          )
+        : "Sin datos";
+
+      return [
+        section.label,
+        section.level,
+        String(section.students.length),
+        sectionAverageGrade,
+        sectionAttendanceAverage,
+      ];
+    });
+
+    const sections: ReportSection[] = [
+      { type: "keyValue", title: "Resumen general", pairs: summaryPairs },
+    ];
+
+    if (sectionRows.length > 0) {
+      sections.push({
+        type: "table",
+        title: "Detalle por sección",
+        columns: [
+          { label: "Sección", width: "wide" },
+          { label: "Nivel" },
+          { label: "Estudiantes" },
+          { label: "Promedio general" },
+          { label: "Asistencia promedio" },
+        ],
+        rows: sectionRows,
       });
-
-      return (
-        <Document title={title} author="Sistema escolar">
-          <Page size="A4" style={reportPdfStyles.page}>
-            <View style={reportPdfStyles.container}>
-              <View style={reportPdfStyles.header}>
-                <Text style={reportPdfStyles.title}>{title}</Text>
-                <Text style={reportPdfStyles.subtitle}>Generado el {generatedAt}</Text>
-              </View>
-              <View style={reportPdfStyles.section}>
-                <Text style={reportPdfStyles.sectionTitle}>Resumen general</Text>
-                {renderKeyValueList(summaryPairs)}
-              </View>
-              {attendanceRows.length > 0 && (
-                <View style={reportPdfStyles.section}>
-                  <Text style={reportPdfStyles.sectionTitle}>Detalle por sección</Text>
-                  {renderTable(
-                    [
-                      { label: "Sección", width: "wide" },
-                      { label: "Nivel" },
-                      { label: "Días" },
-                      { label: "Asistidos" },
-                      { label: "Asistencia" },
-                    ],
-                    attendanceRows,
-                  )}
-                </View>
-              )}
-              <Text style={reportPdfStyles.footerNote}>
-                Considera registros de asistencia dentro del intervalo seleccionado.
-              </Text>
-            </View>
-          </Page>
-        </Document>
-      );
     }
 
-    if (tab === "licencias") {
-      const summaryPairs = [
-        { label: "Total de licencias", value: String(licenseRows.length) },
-        { label: "Licencias activas", value: String(activeLicenses) },
-        {
-          label: "Próximas a vencer (15 días)",
-          value: String(expiringLicenses),
-        },
+    return (doc) =>
+      renderInstitutionalReport(doc, {
+        title,
+        detail: `Generado el ${generatedAt}`,
+        sections,
+        footer: "Informe consolidado automáticamente por el sistema institucional.",
+      });
+  }
+
+  if (tab === "aprobacion") {
+    const summaryPairs: KeyValuePair[] = [
+      {
+        label: "Materias evaluadas",
+        value: String(approvalSummary.totalSubjects),
+      },
+      { label: "Aprobadas", value: String(approvalSummary.approved) },
+      { label: "Desaprobadas", value: String(approvalSummary.failed) },
+      {
+        label: "Materia con más desaprobaciones",
+        value: approvalSummary.subjectWithMoreFails,
+      },
+      {
+        label: "Alumnos con pendientes",
+        value: String(approvalSummary.studentsWithPending),
+      },
+    ];
+
+    const sectionRows = approvalData.sections.map((section) => [
+      section.label,
+      String(section.stats.approved),
+      String(section.stats.failed),
+      section.stats.averageApprovedPerStudent.toFixed(1),
+    ]);
+
+    const sections: ReportSection[] = [
+      { type: "keyValue", title: "Resumen general", pairs: summaryPairs },
+    ];
+
+    if (sectionRows.length > 0) {
+      sections.push({
+        type: "table",
+        title: "Estado por sección",
+        columns: [
+          { label: "Sección", width: "wide" },
+          { label: "Aprobadas" },
+          { label: "Desaprobadas" },
+          { label: "Prom. aprobadas / alumno" },
+        ],
+        rows: sectionRows,
+      });
+    }
+
+    return (doc) =>
+      renderInstitutionalReport(doc, {
+        title,
+        detail: `Generado el ${generatedAt}`,
+        sections,
+        footer: "Datos basados en las calificaciones registradas en el período activo.",
+      });
+  }
+
+  if (tab === "asistencias") {
+    const rangeLabel = attendanceFrom || attendanceTo
+      ? `${attendanceFrom ? formatDate(attendanceFrom) : "Inicio"} – ${
+          attendanceTo ? formatDate(attendanceTo) : "Fin"
+        }`
+      : "Periodo completo";
+
+    const totalSections = attendanceSummaries.length;
+    const totalDays = attendanceSummaries.reduce(
+      (acc, summary) => acc + summary.totalDays,
+      0,
+    );
+    const totalAttended = attendanceSummaries.reduce(
+      (acc, summary) => acc + summary.attended,
+      0,
+    );
+    const attendanceAverage = totalDays
+      ? formatPercent(totalAttended / totalDays, 1)
+      : "Sin datos";
+
+    const summaryPairs: KeyValuePair[] = [
+      { label: "Secciones analizadas", value: String(totalSections) },
+      { label: "Período", value: rangeLabel },
+      { label: "Total de días relevados", value: String(totalDays) },
+      { label: "Asistencias registradas", value: String(totalAttended) },
+      { label: "Promedio de asistencia", value: attendanceAverage },
+    ];
+
+    const attendanceRows = attendanceSummaries.map((summary) => {
+      const attendanceRatio = summary.totalDays
+        ? summary.attended / summary.totalDays
+        : 0;
+      return [
+        summary.label,
+        summary.level,
+        String(summary.totalDays),
+        String(summary.attended),
+        formatPercent(attendanceRatio, 1),
       ];
+    });
 
-      const topTypeRows = topLicenseTypes.map((entry) => [
-        entry.name,
-        String(entry.value),
-      ]);
+    const sections: ReportSection[] = [
+      { type: "keyValue", title: "Resumen general", pairs: summaryPairs },
+    ];
 
-      const licenseTableRows = licenseRows.slice(0, 12).map((row) => [
-        row.teacherName,
-        row.tipoLabel,
-        row.rangeLabel,
-        row.justificada ? "Justificada" : "Sin justificar",
-      ]);
-
-      return (
-        <Document title={title} author="Sistema escolar">
-          <Page size="A4" style={reportPdfStyles.page}>
-            <View style={reportPdfStyles.container}>
-              <View style={reportPdfStyles.header}>
-                <Text style={reportPdfStyles.title}>{title}</Text>
-                <Text style={reportPdfStyles.subtitle}>Generado el {generatedAt}</Text>
-              </View>
-              <View style={reportPdfStyles.section}>
-                <Text style={reportPdfStyles.sectionTitle}>Resumen general</Text>
-                {renderKeyValueList(summaryPairs)}
-              </View>
-              {topTypeRows.length > 0 && (
-                <View style={reportPdfStyles.section}>
-                  <Text style={reportPdfStyles.sectionTitle}>
-                    Tipos de licencia más frecuentes
-                  </Text>
-                  {renderTable(
-                    [
-                      { label: "Tipo", width: "wide" },
-                      { label: "Cantidad" },
-                    ],
-                    topTypeRows,
-                  )}
-                </View>
-              )}
-              {licenseTableRows.length > 0 && (
-                <View style={reportPdfStyles.section}>
-                  <Text style={reportPdfStyles.sectionTitle}>
-                    Primeras licencias registradas
-                  </Text>
-                  {renderTable(
-                    [
-                      { label: "Docente", width: "wide" },
-                      { label: "Tipo" },
-                      { label: "Período" },
-                      { label: "Estado" },
-                    ],
-                    licenseTableRows,
-                  )}
-                </View>
-              )}
-              <Text style={reportPdfStyles.footerNote}>
-                Se listan hasta 12 licencias según los filtros aplicados.
-              </Text>
-            </View>
-          </Page>
-        </Document>
-      );
+    if (attendanceRows.length > 0) {
+      sections.push({
+        type: "table",
+        title: "Detalle por sección",
+        columns: [
+          { label: "Sección", width: "wide" },
+          { label: "Nivel" },
+          { label: "Días" },
+          { label: "Asistidos" },
+          { label: "Asistencia" },
+        ],
+        rows: attendanceRows,
+      });
     }
 
-    if (tab === "actas") {
-      const rangeLabel = actaFrom || actaTo
-        ? `${actaFrom ? formatDate(actaFrom) : "Inicio"} – ${
-            actaTo ? formatDate(actaTo) : "Fin"
-          }`
-        : "Periodo completo";
-      const signedCount = filteredActas.filter((acta) => acta.signed).length;
+    return (doc) =>
+      renderInstitutionalReport(doc, {
+        title,
+        detail: `Generado el ${generatedAt}`,
+        sections,
+        footer: "Considera registros de asistencia dentro del intervalo seleccionado.",
+      });
+  }
 
-      const summaryPairs = [
-        { label: "Actas incluidas", value: String(filteredActas.length) },
-        { label: "Firmadas", value: String(signedCount) },
-        { label: "Nivel", value: actaLevel === "Todos" ? "Todos" : actaLevel },
-        {
-          label: "Sección",
-          value: actaSection === "all" ? "Todas" : String(actaSection),
-        },
-        { label: "Rango seleccionado", value: rangeLabel },
-      ];
+  if (tab === "licencias") {
+    const summaryPairs: KeyValuePair[] = [
+      { label: "Total de licencias", value: String(licenseRows.length) },
+      { label: "Licencias activas", value: String(activeLicenses) },
+      {
+        label: "Próximas a vencer (15 días)",
+        value: String(expiringLicenses),
+      },
+    ];
 
-      const actaRows = filteredActas.slice(0, 12).map((acta) => [
-        acta.student,
-        acta.section,
-        acta.date,
-        acta.signed ? "Firmada" : "No firmada",
-        acta.informant,
-      ]);
+    const topTypeRows = topLicenseTypes.map((entry) => [
+      entry.name,
+      String(entry.value),
+    ]);
 
-      return (
-        <Document title={title} author="Sistema escolar">
-          <Page size="A4" style={reportPdfStyles.page}>
-            <View style={reportPdfStyles.container}>
-              <View style={reportPdfStyles.header}>
-                <Text style={reportPdfStyles.title}>{title}</Text>
-                <Text style={reportPdfStyles.subtitle}>Generado el {generatedAt}</Text>
-              </View>
-              <View style={reportPdfStyles.section}>
-                <Text style={reportPdfStyles.sectionTitle}>Resumen general</Text>
-                {renderKeyValueList(summaryPairs)}
-              </View>
-              {actaRows.length > 0 && (
-                <View style={reportPdfStyles.section}>
-                  <Text style={reportPdfStyles.sectionTitle}>Primeras actas</Text>
-                  {renderTable(
-                    [
-                      { label: "Alumno", width: "wide" },
-                      { label: "Sección" },
-                      { label: "Fecha" },
-                      { label: "Estado" },
-                      { label: "Informante" },
-                    ],
-                    actaRows,
-                  )}
-                </View>
-              )}
-              <Text style={reportPdfStyles.footerNote}>
-                Se muestran hasta 12 actas según los filtros aplicados.
-              </Text>
-            </View>
-          </Page>
-        </Document>
-      );
+    const licenseTableRows = licenseRows.slice(0, 12).map((row) => [
+      row.teacherName,
+      row.tipoLabel,
+      row.rangeLabel,
+      row.justificada ? "Justificada" : "Sin justificar",
+    ]);
+
+    const sections: ReportSection[] = [
+      { type: "keyValue", title: "Resumen general", pairs: summaryPairs },
+    ];
+
+    if (topTypeRows.length > 0) {
+      sections.push({
+        type: "table",
+        title: "Tipos de licencia más frecuentes",
+        columns: [
+          { label: "Tipo", width: "wide" },
+          { label: "Cantidad" },
+        ],
+        rows: topTypeRows,
+      });
     }
 
-    return null;
-  };
+    if (licenseTableRows.length > 0) {
+      sections.push({
+        type: "table",
+        title: "Primeras licencias registradas",
+        columns: [
+          { label: "Docente", width: "wide" },
+          { label: "Tipo" },
+          { label: "Período" },
+          { label: "Estado" },
+        ],
+        rows: licenseTableRows,
+      });
+    }
 
-  const handleExportCurrent = async () => {
+    return (doc) =>
+      renderInstitutionalReport(doc, {
+        title,
+        detail: `Generado el ${generatedAt}`,
+        sections,
+        footer: "Se listan hasta 12 licencias según los filtros aplicados.",
+      });
+  }
+
+  if (tab === "actas") {
+    const rangeLabel = actaFrom || actaTo
+      ? `${actaFrom ? formatDate(actaFrom) : "Inicio"} – ${
+          actaTo ? formatDate(actaTo) : "Fin"
+        }`
+      : "Periodo completo";
+    const signedCount = filteredActas.filter((acta) => acta.signed).length;
+
+    const summaryPairs: KeyValuePair[] = [
+      { label: "Actas incluidas", value: String(filteredActas.length) },
+      { label: "Firmadas", value: String(signedCount) },
+      { label: "Nivel", value: actaLevel === "Todos" ? "Todos" : actaLevel },
+      {
+        label: "Sección",
+        value: actaSection === "all" ? "Todas" : String(actaSection),
+      },
+      { label: "Rango seleccionado", value: rangeLabel },
+    ];
+
+    const actaRows = filteredActas.slice(0, 12).map((acta) => [
+      acta.student,
+      acta.section,
+      acta.date,
+      acta.signed ? "Firmada" : "No firmada",
+      acta.informant,
+    ]);
+
+    const sections: ReportSection[] = [
+      { type: "keyValue", title: "Resumen general", pairs: summaryPairs },
+    ];
+
+    if (actaRows.length > 0) {
+      sections.push({
+        type: "table",
+        title: "Primeras actas",
+        columns: [
+          { label: "Alumno", width: "wide" },
+          { label: "Sección" },
+          { label: "Fecha" },
+          { label: "Estado" },
+          { label: "Informante" },
+        ],
+        rows: actaRows,
+      });
+    }
+
+    return (doc) =>
+      renderInstitutionalReport(doc, {
+        title,
+        detail: `Generado el ${generatedAt}`,
+        sections,
+        footer: "Se muestran hasta 12 actas según los filtros aplicados.",
+      });
+  }
+
+  return null;
+};
+const handleExportCurrent = async () => {
     const titleMap: Record<string, string> = {
       boletines: "Reporte de Boletines",
       aprobacion: "Reporte de Aprobación",
@@ -2117,12 +1875,12 @@ export default function ReportesPage() {
     const key = tab as keyof typeof reportRefs;
     try {
       setExportingPdf(true);
-      const document = buildCurrentReportDocument(titleMap[key]);
-      if (!document) {
+      const renderer = buildCurrentReportRenderer(titleMap[key]);
+      if (!renderer) {
         throw new Error("No encontramos datos para exportar.");
       }
       await downloadPdfDocument({
-        document,
+        create: renderer,
         fileName: suggestPdfFileName(titleMap[key]),
       });
       toast.success("PDF generado correctamente.");
@@ -3472,28 +3230,29 @@ export default function ReportesPage() {
                     if (!activeActa) return;
                     void (async () => {
                       const title = `Acta #${activeActa.id}`;
-                      const document = createAccidentActDocument(
-                        {
-                          id: activeActa.id ?? title,
-                          alumno: activeActa.student,
-                          seccion: activeActa.section,
-                          fecha: activeActa.date,
-                          hora: activeActa.time,
-                          lugar: activeActa.location,
-                          descripcion: activeActa.description,
-                          acciones: activeActa.actions,
-                          creadoPor: activeActa.teacher,
-                          informante: activeActa.informant,
-                          firmante: activeActa.signer ?? undefined,
-                        },
-                        {
-                          statusLabel: activeActa.signed ? "Firmada" : "No firmada",
-                        },
-                      );
                       try {
                         setExportingActaId(activeActa.id ?? null);
                         await downloadPdfDocument({
-                          document,
+                          create: (doc) =>
+                            renderAccidentActPdf(
+                              doc,
+                              {
+                                id: activeActa.id ?? title,
+                                alumno: activeActa.student,
+                                seccion: activeActa.section,
+                                fecha: activeActa.date,
+                                hora: activeActa.time,
+                                lugar: activeActa.location,
+                                descripcion: activeActa.description,
+                                acciones: activeActa.actions,
+                                creadoPor: activeActa.teacher,
+                                informante: activeActa.informant,
+                                firmante: activeActa.signer ?? undefined,
+                              },
+                              {
+                                statusLabel: activeActa.signed ? "Firmada" : "No firmada",
+                              },
+                            ),
                           fileName: suggestPdfFileName(title),
                         });
                         toast.success("Acta exportada en PDF.");

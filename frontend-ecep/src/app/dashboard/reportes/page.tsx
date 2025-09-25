@@ -852,6 +852,24 @@ export default function ReportesPage() {
 
   const boletinTrimesters = boletinTableData.trimesters;
   const boletinSubjectsForTable = boletinTableData.subjects;
+  const boletinSubjectsByTrimester = useMemo(
+    () =>
+      boletinTrimesters.map((trimester) => ({
+        id: trimester.id,
+        label: trimester.label,
+        subjects: boletinSubjectsForTable.map((subject) => {
+          const grade = subject.grades.find((g) => g.trimestreId === trimester.id);
+
+          return {
+            id: subject.id,
+            name: subject.name,
+            teacher: sanitizeTeacherName(subject.teacher),
+            grade: getBoletinGradeDisplay(grade),
+          };
+        }),
+      })),
+    [boletinSubjectsForTable, boletinTrimesters],
+  );
 
   const handlePrintBoletin = useCallback(async () => {
     if (!activeBoletin) return;
@@ -3118,62 +3136,46 @@ const handleExportCurrent = async () => {
                       </div>
                     ) : (
                       <>
-                        <div className="hidden w-full max-w-full overflow-x-auto md:block">
-                          <table className="min-w-full table-auto border-collapse text-xs sm:text-sm">
-                            <thead>
-                              <tr>
-                                <th className="w-[200px] border border-border bg-muted/40 px-3 py-2 text-left font-medium">
-                                  Materia
-                                </th>
-                                {boletinTrimesters.map((trimester) => (
-                                  <th
-                                    key={trimester.id}
-                                    className="min-w-[140px] border border-border bg-muted/40 px-3 py-2 text-left font-medium"
+                        <div className="hidden flex-col gap-4 md:flex">
+                          {boletinSubjectsByTrimester.map((trimester) => (
+                            <div
+                              key={trimester.id}
+                              className="space-y-4 rounded-lg border border-border bg-background p-4 shadow-sm"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                  {trimester.label}
+                                </h3>
+                                <span className="text-xs text-muted-foreground">
+                                  {trimester.subjects.length} materia
+                                  {trimester.subjects.length === 1 ? "" : "s"}
+                                </span>
+                              </div>
+                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                {trimester.subjects.map((subject) => (
+                                  <div
+                                    key={subject.id}
+                                    className="space-y-3 rounded-md border border-border bg-muted/20 p-3 shadow-sm"
                                   >
-                                    {trimester.label}
-                                  </th>
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-semibold">{subject.name}</p>
+                                      {subject.teacher && (
+                                        <p className="text-xs text-muted-foreground">Docente: {subject.teacher}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center justify-between rounded border border-dashed border-border/60 bg-background px-3 py-2">
+                                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                        Calificación
+                                      </span>
+                                      <span className="text-base font-semibold text-foreground">
+                                        {subject.grade}
+                                      </span>
+                                    </div>
+                                  </div>
                                 ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {boletinSubjectsForTable.map((subject) => {
-                                const displayTeacher = sanitizeTeacherName(subject.teacher);
-
-                                return (
-                                  <tr key={subject.id} className="even:bg-muted/10">
-                                    <th
-                                      scope="row"
-                                      className="min-w-[180px] border border-border bg-muted/30 px-3 py-2 text-left"
-                                    >
-                                      <div className="flex flex-col gap-1">
-                                        <span className="font-medium">{subject.name}</span>
-                                        {displayTeacher && (
-                                          <span className="text-[0.7rem] font-normal text-muted-foreground">
-                                            Docente: {displayTeacher}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </th>
-                                    {boletinTrimesters.map((trimester) => {
-                                      const grade = subject.grades.find(
-                                        (g) => g.trimestreId === trimester.id,
-                                      );
-                                      const gradeValue = getBoletinGradeDisplay(grade);
-
-                                      return (
-                                        <td
-                                          key={`${subject.id}-${trimester.id}`}
-                                          className="border border-border px-3 py-2 align-top"
-                                        >
-                                          <span className="font-medium">{gradeValue}</span>
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                              </div>
+                            </div>
+                          ))}
                         </div>
 
                         <div className="grid gap-3 p-4 md:hidden">

@@ -159,8 +159,8 @@ const drawTextBox = (
 
 const drawDualSignatureRow = (
   doc: jsPDF,
-  left: { title: string; name: string; dni?: string | null; note?: string };
-  right: { title: string; name: string; dni?: string | null; note?: string };
+  left: { title: string; name: string; dni?: string | null; note?: string },
+  right: { title: string; name: string; dni?: string | null; note?: string },
   x: number,
   y: number,
   width: number,

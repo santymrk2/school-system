@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
-import { createAccidentActDocument } from "@/lib/pdf/accident-act";
+import { renderAccidentActPdf } from "@/lib/pdf/accident-act";
 import { Printer, Pencil, Trash2, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -60,15 +60,19 @@ export default function ViewActaDialog({
 
     try {
       setDownloading(true);
-      const document = createAccidentActDocument(acta, {
-        statusLabel: isCerrada ? "Cerrada" : "Borrador",
-      });
       const fileName = suggestPdfFileName(
         `acta-accidente-${acta.id}-${acta.alumno}`,
         `acta-accidente-${acta.id}`,
       );
       await downloadPdfDocument({
-        document,
+        create: (doc) =>
+          renderAccidentActPdf(
+            doc,
+            acta,
+            {
+              statusLabel: isCerrada ? "Cerrada" : "Borrador",
+            },
+          ),
         fileName,
       });
     } catch (error) {

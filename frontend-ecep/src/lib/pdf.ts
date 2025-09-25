@@ -1,7 +1,14 @@
 "use client";
 
-import { pdf } from "@react-pdf/renderer";
-import type { ReactElement } from "react";
+import jsPDF, { type jsPDFOptions } from "jspdf";
+
+export type PdfCreateCallback = (doc: jsPDF) => void | Promise<void>;
+
+export type PdfDownloadParams = {
+  create: PdfCreateCallback;
+  fileName?: string;
+  options?: jsPDFOptions;
+};
 
 const sanitizeFileName = (value: string) =>
   value
@@ -18,23 +25,25 @@ export const suggestPdfFileName = (title: string, fallback = "documento") => {
   return `${clean || fallback}-${date}.pdf`;
 };
 
-export type PdfDownloadParams = {
-  document: ReactElement;
-  fileName?: string;
-};
-
 export const downloadPdfDocument = async ({
-  document: pdfDocument,
+  create,
   fileName,
+  options,
 }: PdfDownloadParams) => {
   if (typeof window === "undefined") {
     throw new Error("La descarga de PDF solo está disponible en el navegador.");
   }
 
   const effectiveFileName = fileName ?? suggestPdfFileName("documento");
-  const instance = pdf(pdfDocument);
-  const blob = await instance.toBlob();
+  const doc = new jsPDF({
+    format: "a4",
+    unit: "pt",
+    ...options,
+  });
 
+  await create(doc);
+
+  const blob = doc.output("blob");
   const url = window.URL.createObjectURL(blob);
   const link = window.document.createElement("a");
   link.href = url;

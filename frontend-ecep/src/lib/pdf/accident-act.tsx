@@ -287,7 +287,10 @@ export const createAccidentActDocument = (
     { label: "Creada por", value: acta.creadoPor },
     { label: "Informante", value: acta.informante },
     { label: "Firmante", value: acta.firmante },
-  ].filter((detail) => detail.value && detail.value.trim().length > 0);
+  ].filter((detail) => {
+    if (typeof detail.value !== "string") return false;
+    return detail.value.trim().length > 0;
+  });
 
   const assignedSigner = acta.firmante?.trim().length
     ? acta.firmante
@@ -337,7 +340,7 @@ export const createAccidentActDocument = (
             </View>
           </View>
 
-          {participantDetails.length > 0 && (
+          {participantDetails.length > 0 ? (
             <View style={actaPdfStyles.section}>
               <Text style={actaPdfStyles.sectionTitle}>Referentes del acta</Text>
               <View style={actaPdfStyles.detailGrid}>
@@ -351,7 +354,7 @@ export const createAccidentActDocument = (
                 ))}
               </View>
             </View>
-          )}
+          ) : null}
 
           <View style={actaPdfStyles.section}>
             <Text style={actaPdfStyles.sectionTitle}>Descripción del suceso</Text>

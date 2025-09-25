@@ -22,7 +22,7 @@ import type {
   TrimestreDTO,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
-import { resolveTrimestrePeriodoId } from "@/lib/trimestres";
+import { getTrimestreEstado, resolveTrimestrePeriodoId } from "@/lib/trimestres";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 interface FamilyCalificacionesViewProps {
@@ -215,6 +215,12 @@ export default function FamilyCalificacionesView({
         }
 
         const allTrimestres = trimestresRes.data ?? [];
+        const allTrimestresById = new Map<number, TrimestreDTO>();
+        for (const tri of allTrimestres) {
+          if (tri.id != null) {
+            allTrimestresById.set(tri.id, tri);
+          }
+        }
         const filteredTrimestres =
           allowedPeriodoIds.size > 0
             ? allTrimestres.filter((tri) => {
@@ -235,13 +241,21 @@ export default function FamilyCalificacionesView({
 
         const califs = (calificacionesRes.data ?? []).filter((cal) => {
           if (!matriculaIds.includes(cal.matriculaId ?? -1)) return false;
-          if (!allowedTrimestreIds || allowedTrimestreIds.size === 0) return true;
           const triId =
             cal.trimestreId ??
             (cal as any).trimestreId ??
             (cal as any).trimestre?.id ??
             null;
-          return typeof triId === "number" && allowedTrimestreIds.has(triId);
+          if (typeof triId !== "number") return false;
+          if (
+            allowedTrimestreIds &&
+            allowedTrimestreIds.size > 0 &&
+            !allowedTrimestreIds.has(triId)
+          ) {
+            return false;
+          }
+          const trimestre = allTrimestresById.get(triId);
+          return getTrimestreEstado(trimestre) === "cerrado";
         });
         setCalificaciones(califs);
 
@@ -454,9 +468,25 @@ export default function FamilyCalificacionesView({
                             <div className="mt-3 space-y-3 text-sm">
                               {trimestresAlumno.map((tri) => {
                                 if (tri.id == null) return null;
-                                const cal = calificacionesMap.get(
-                                  `${materia.seccionMateriaId}-${tri.id}`,
-                                );
+                                const trimestreEstado = getTrimestreEstado(tri);
+                                const esTrimestreCerrado =
+                                  trimestreEstado === "cerrado";
+                                const cal = esTrimestreCerrado
+                                  ? calificacionesMap.get(
+                                      `${materia.seccionMateriaId}-${tri.id}`,
+                                    )
+                                  : undefined;
+                                const badgeVariant =
+                                  esTrimestreCerrado && cal
+                                    ? "default"
+                                    : "outline";
+                                const badgeLabel = esTrimestreCerrado
+                                  ? formatNota(cal)
+                                  : "Pendiente";
+                                const observacionesTexto = esTrimestreCerrado
+                                  ? cal?.observaciones?.trim() ||
+                                    "Sin observaciones"
+                                  : "Las calificaciones estarán disponibles una vez que la dirección cierre el trimestre.";
                                 return (
                                   <div
                                     key={`${materia.seccionMateriaId}-${tri.id}`}
@@ -466,14 +496,12 @@ export default function FamilyCalificacionesView({
                                       <span className="font-semibold">
                                         {formatTrimestre(tri)}
                                       </span>
-                                      <Badge variant={cal ? "default" : "outline"}>
-                                        {formatNota(cal)}
+                                      <Badge variant={badgeVariant}>
+                                        {badgeLabel}
                                       </Badge>
                                     </div>
                                     <p className="mt-2 text-xs text-muted-foreground">
-                                      {cal?.observaciones
-                                        ? cal.observaciones
-                                        : "Sin observaciones"}
+                                      {observacionesTexto}
                                     </p>
                                   </div>
                                 );

@@ -72,6 +72,13 @@ class PersonaSecurityIntegrationTest {
         return personaRepository.save(persona);
     }
 
+    private Persona persistPersonaWithoutCredentials() {
+        Persona persona = persistPersona();
+        persona.setPassword(null);
+        persona.setRoles(new HashSet<>());
+        return personaRepository.save(persona);
+    }
+
     private String issueToken(UserRole... roles) {
         Persona persona = persistPersona(roles);
         return jwtService.generateToken(persona);
@@ -99,17 +106,22 @@ class PersonaSecurityIntegrationTest {
     }
 
     @Test
-    void shouldRejectPersonaCreationWhenAnonymous() throws Exception {
+    void shouldSanitizePersonaCreationWhenAnonymous() throws Exception {
         PersonaCreateDTO dto = buildCreateDto();
+        dto.setRoles(EnumSet.of(UserRole.ADMIN, UserRole.SECRETARY));
 
         mockMvc.perform(post("/api/personas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isCreated());
+
+        Persona created = personaRepository.findByEmail(dto.getEmail()).orElseThrow();
+        assertThat(created.getRoles()).isEmpty();
+        assertThat(created.getPassword()).isNull();
     }
 
     @Test
-    void shouldRejectPersonaCreationForUnauthorizedRole() throws Exception {
+    void shouldSanitizePersonaCreationForNonPrivilegedUsers() throws Exception {
         PersonaCreateDTO dto = buildCreateDto();
         String familyToken = issueToken(UserRole.FAMILY);
 
@@ -117,7 +129,11 @@ class PersonaSecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + familyToken)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
+
+        Persona created = personaRepository.findByEmail(dto.getEmail()).orElseThrow();
+        assertThat(created.getRoles()).isEmpty();
+        assertThat(created.getPassword()).isNull();
     }
 
     @Test
@@ -131,11 +147,13 @@ class PersonaSecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated());
 
-        assertThat(personaRepository.findByEmail(dto.getEmail())).isPresent();
+        Persona created = personaRepository.findByEmail(dto.getEmail()).orElseThrow();
+        assertThat(created.getRoles()).containsExactlyInAnyOrder(UserRole.STUDENT);
+        assertThat(created.getPassword()).isNotNull();
     }
 
     @Test
-    void shouldRejectPersonaUpdateWhenAnonymous() throws Exception {
+    void shouldRejectPersonaUpdateWhenAnonymousIfPersonaHasCredentials() throws Exception {
         Persona persona = persistPersona(UserRole.STUDENT);
         PersonaUpdateDTO updateDto = buildUpdateDto();
 
@@ -146,7 +164,23 @@ class PersonaSecurityIntegrationTest {
     }
 
     @Test
-    void shouldRejectPersonaUpdateForUnauthorizedRole() throws Exception {
+    void shouldAllowPersonaUpdateWhenAnonymousForPublicPersona() throws Exception {
+        Persona persona = persistPersonaWithoutCredentials();
+        PersonaUpdateDTO updateDto = buildUpdateDto();
+
+        mockMvc.perform(put("/api/personas/" + persona.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDto)))
+                .andExpect(status().isNoContent());
+
+        Persona updated = personaRepository.findById(persona.getId()).orElseThrow();
+        assertThat(updated.getEmail()).isEqualTo(updateDto.getEmail());
+        assertThat(updated.getRoles()).isEmpty();
+        assertThat(updated.getPassword()).isNull();
+    }
+
+    @Test
+    void shouldRejectPersonaUpdateForUnauthorizedRoleWhenPersonaHasCredentials() throws Exception {
         Persona persona = persistPersona(UserRole.STUDENT);
         PersonaUpdateDTO updateDto = buildUpdateDto();
         String familyToken = issueToken(UserRole.FAMILY);
@@ -156,6 +190,24 @@ class PersonaSecurityIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + familyToken)
                         .content(objectMapper.writeValueAsString(updateDto)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldAllowPersonaUpdateForUnauthorizedRoleOnPublicPersona() throws Exception {
+        Persona persona = persistPersonaWithoutCredentials();
+        PersonaUpdateDTO updateDto = buildUpdateDto();
+        String familyToken = issueToken(UserRole.FAMILY);
+
+        mockMvc.perform(put("/api/personas/" + persona.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + familyToken)
+                        .content(objectMapper.writeValueAsString(updateDto)))
+                .andExpect(status().isNoContent());
+
+        Persona updated = personaRepository.findById(persona.getId()).orElseThrow();
+        assertThat(updated.getEmail()).isEqualTo(updateDto.getEmail());
+        assertThat(updated.getRoles()).isEmpty();
+        assertThat(updated.getPassword()).isNull();
     }
 
     @Test
@@ -172,6 +224,8 @@ class PersonaSecurityIntegrationTest {
 
         Persona updated = personaRepository.findById(persona.getId()).orElseThrow();
         assertThat(updated.getEmail()).isEqualTo(updateDto.getEmail());
+        assertThat(updated.getRoles()).containsExactlyInAnyOrder(UserRole.STUDENT);
+        assertThat(updated.getPassword()).isNotNull();
     }
 
     @Test

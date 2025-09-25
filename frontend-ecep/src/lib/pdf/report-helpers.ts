@@ -22,9 +22,9 @@ export type ReportRenderParams = {
 };
 
 const REPORT_MARGIN_X = 40;
-const REPORT_MARGIN_TOP = 56;
-const TABLE_FONT_SIZE = 9;
-const TABLE_CELL_PADDING = 5;
+const REPORT_MARGIN_TOP = 48;
+const TABLE_FONT_SIZE = 8;
+const TABLE_CELL_PADDING = 3;
 
 const ensureCursorPosition = (doc: jsPDF, cursorY: number) => {
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -52,30 +52,40 @@ const renderKeyValueSection = (
   doc.setTextColor(30, 41, 59);
   doc.text(title.toUpperCase(), REPORT_MARGIN_X, cursorY);
 
-  autoTable(doc, {
-    startY: cursorY + 8,
-    margin: { left: REPORT_MARGIN_X, right: REPORT_MARGIN_X },
-    tableWidth: contentWidth,
-    head: [["Detalle", "Valor"]],
-    body: pairs.map((pair) => [pair.label, pair.value]),
-    styles: {
-      font: "helvetica",
-      fontSize: TABLE_FONT_SIZE,
-      cellPadding: TABLE_CELL_PADDING,
-    },
-    headStyles: {
-      fillColor: [226, 232, 240],
-      textColor: [15, 23, 42],
-      fontStyle: "bold",
-    },
-    bodyStyles: {
-      textColor: [15, 23, 42],
-    },
-    theme: "grid",
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(51, 65, 85);
+
+  const segments = pairs.map((pair) => `${pair.label}: ${pair.value}`);
+  const lines: string[] = [];
+
+  let currentLine = "";
+  segments.forEach((segment) => {
+    const separator = currentLine ? "   •   " : "";
+    const candidate = `${currentLine}${separator}${segment}`;
+
+    if (currentLine && doc.getTextWidth(candidate) > contentWidth && lines.length === 0) {
+      lines.push(currentLine);
+      currentLine = segment;
+      return;
+    }
+
+    currentLine = candidate;
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY ?? cursorY + 24;
-  return finalY + 12;
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  const printableLines = lines.slice(0, 2);
+  const lineHeight = 14;
+  let lineY = cursorY + 10;
+
+  printableLines.forEach((line, index) => {
+    doc.text(line, REPORT_MARGIN_X, lineY + index * lineHeight, { maxWidth: contentWidth });
+  });
+
+  return lineY + printableLines.length * lineHeight + 6;
 };
 
 const renderTableSection = (

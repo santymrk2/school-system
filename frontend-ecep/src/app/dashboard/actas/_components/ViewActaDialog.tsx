@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { downloadPdfDocument, escapeHtml, suggestPdfFileName } from "@/lib/pdf";
+import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
+import { createAccidentActDocument } from "@/lib/pdf/accident-act";
 import { Printer, Pencil, Trash2, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -59,12 +60,16 @@ export default function ViewActaDialog({
 
     try {
       setDownloading(true);
-      const document = buildActaPdfDocument(acta, isCerrada);
+      const document = createAccidentActDocument(acta, {
+        statusLabel: isCerrada ? "Cerrada" : "Borrador",
+      });
+      const fileName = suggestPdfFileName(
+        `acta-accidente-${acta.id}-${acta.alumno}`,
+        `acta-accidente-${acta.id}`,
+      );
       await downloadPdfDocument({
-        html: document.html,
-        title: document.title,
-        fileName: document.fileName,
-        includeTitle: document.includeTitle,
+        document,
+        fileName,
       });
     } catch (error) {
       const message =
@@ -172,102 +177,3 @@ export default function ViewActaDialog({
     </Dialog>
   );
 }
-
-const buildActaPdfDocument = (acta: ActaVM, isCerrada: boolean) => {
-  const title = `Acta de Accidente #${acta.id}`;
-  const statusLabel = isCerrada ? "Cerrada" : "Borrador";
-  const statusClass = isCerrada ? "cerrada" : "borrador";
-  const generatedAt = new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(new Date());
-
-  const primaryDetails = [
-    { label: "Alumno", value: acta.alumno },
-    { label: "Sección", value: acta.seccion ?? "—" },
-    { label: "Fecha del suceso", value: acta.fecha },
-    { label: "Hora", value: acta.hora ?? "—" },
-    { label: "Lugar", value: acta.lugar ?? "—" },
-    { label: "Estado", value: statusLabel },
-  ];
-
-  const participantDetails = [
-    { label: "Creada por", value: acta.creadoPor },
-    { label: "Informante", value: acta.informante },
-    { label: "Firmante", value: acta.firmante },
-  ].filter((detail) => detail.value && detail.value.trim().length > 0);
-
-  const renderDetail = (label: string, value: string) => `
-    <div class="detail-card">
-      <div class="detail-label">${escapeHtml(label)}</div>
-      <div class="detail-value">${escapeHtml(value)}</div>
-    </div>
-  `;
-
-  const renderTextBlock = (value: string | null | undefined, emptyMessage: string) => {
-    if (!value || value.trim().length === 0) {
-      return `<div class="text-box empty">${escapeHtml(emptyMessage)}</div>`;
-    }
-
-    const paragraphs = value
-      .trim()
-      .split(/\n{2,}/)
-      .map((paragraph) =>
-        `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`
-      )
-      .join("");
-
-    return `<div class="text-box">${paragraphs}</div>`;
-  };
-
-  const body = `
-    <header class="header">
-      <div>
-        <div class="subtitle">Registro institucional</div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="detail-label" style="margin-top: 6px;">Alumno</div>
-        <div class="detail-value" style="font-weight: 600;">${escapeHtml(acta.alumno)}</div>
-      </div>
-      <div class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</div>
-    </header>
-    <section class="section">
-      <h2 class="section-title">Datos principales</h2>
-      <div class="details-grid">
-        ${primaryDetails.map((detail) => renderDetail(detail.label, detail.value)).join("")}
-      </div>
-    </section>
-    ${
-      participantDetails.length
-        ? `
-            <section class="section">
-              <h2 class="section-title">Referentes del acta</h2>
-              <div class="details-grid">
-                ${participantDetails
-                  .map((detail) => renderDetail(detail.label, detail.value ?? "—"))
-                  .join("")}
-              </div>
-            </section>
-          `
-        : ""
-    }
-    <section class="section">
-      <h2 class="section-title">Descripción del suceso</h2>
-      ${renderTextBlock(acta.descripcion, "No se registró una descripción.")}
-    </section>
-    <section class="section">
-      <h2 class="section-title">Acciones realizadas</h2>
-      ${renderTextBlock(acta.acciones ?? null, "No se registraron acciones.")}
-    </section>
-    <footer class="footer">
-      <span>Generado el ${escapeHtml(generatedAt)}</span>
-      <span>ID interno: ${escapeHtml(String(acta.id))}</span>
-    </footer>
-  `;
-
-  const fileName = suggestPdfFileName(
-    `acta-accidente-${acta.id}-${acta.alumno}`,
-    `acta-accidente-${acta.id}`,
-  );
-
-  return { html: body, title, fileName, includeTitle: false };
-};

@@ -85,6 +85,11 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     public void run(String... args) {
         log.info("Iniciando carga de datos de prueba...");
 
+        if (personaRepository.count() > 0) {
+            log.info("La base de datos ya contiene información. Se omite la carga inicial de datos.");
+            return;
+        }
+
         ensureAdminAndUser();
 
         PeriodoEscolar periodo2025 = ensurePeriodoEscolar(2025);

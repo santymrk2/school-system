@@ -48,6 +48,7 @@ export default function CalificacionesIndexPage() {
     secciones,
     hijos,
     periodoEscolarId,
+    getPeriodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
 
   const isAdmin = activeRole === UserRole.ADMIN;
@@ -89,6 +90,7 @@ export default function CalificacionesIndexPage() {
 
   const isTeacher = scope === "teacher";
   const isStaff = scope === "staff";
+  const periodoLabel = getPeriodoNombre(periodoEscolarId ?? null);
 
   if (!isTeacher && !isStaff) {
     return (
@@ -130,8 +132,8 @@ export default function CalificacionesIndexPage() {
             <Badge variant="outline">
               Inicial: {loading ? "—" : inicial.length}
             </Badge>
-            {periodoEscolarId && (
-              <Badge variant="outline">Período {periodoEscolarId}</Badge>
+            {periodoLabel && (
+              <Badge variant="outline">Período {periodoLabel}</Badge>
             )}
           </div>
         </div>

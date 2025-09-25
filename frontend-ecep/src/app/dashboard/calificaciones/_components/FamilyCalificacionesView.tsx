@@ -24,6 +24,7 @@ import type {
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
 import { getTrimestreEstado, resolveTrimestrePeriodoId } from "@/lib/trimestres";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 interface FamilyCalificacionesViewProps {
   alumnos: AlumnoLiteDTO[];
@@ -82,6 +83,7 @@ export default function FamilyCalificacionesView({
   initialError,
   periodoEscolarId,
 }: FamilyCalificacionesViewProps) {
+  const { getPeriodoNombre } = useActivePeriod();
   const [selectedMatriculaId, setSelectedMatriculaId] = useState<number | null>(
     null,
   );
@@ -353,6 +355,7 @@ export default function FamilyCalificacionesView({
             (seccion as any).periodoEscolar?.id ??
             null
           : null;
+        const periodoLabel = getPeriodoNombre(seccionPeriodoId);
         const basePorSeccion =
           typeof seccionPeriodoId === "number"
             ? trimestresPorPeriodo.get(seccionPeriodoId) ?? []
@@ -429,10 +432,8 @@ export default function FamilyCalificacionesView({
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       <Badge variant="outline">{nivelLabel(nivel)}</Badge>
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
-                      {seccion?.periodoEscolarId && (
-                        <Badge variant="outline">
-                          Período {seccion.periodoEscolarId}
-                        </Badge>
+                      {periodoLabel && (
+                        <Badge variant="outline">Período {periodoLabel}</Badge>
                       )}
                     </div>
                   </CardHeader>

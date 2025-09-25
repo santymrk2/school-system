@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { calendario } from "@/services/api/modules";
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
 import { getTrimestreEstado } from "@/lib/trimestres";
@@ -148,6 +148,28 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
     };
   }, [periodos, trimestres, today, preferOpen]);
 
+  const periodosById = useMemo(() => {
+    const map = new Map<number, PeriodoEscolarDTO>();
+    for (const periodo of periodos) {
+      if (periodo && typeof periodo.id === "number") {
+        map.set(periodo.id, periodo);
+      }
+    }
+    return map;
+  }, [periodos]);
+
+  const getPeriodoNombre = useCallback(
+    (id?: number | null) => {
+      if (id == null) return null;
+      const periodo = periodosById.get(id);
+      if (!periodo) return `#${id}`;
+      if (periodo.anio != null) return String(periodo.anio);
+      const nombre = (periodo as any)?.nombre;
+      return nombre ? String(nombre) : `#${id}`;
+    },
+    [periodosById],
+  );
+
   const getTrimestreByDate = (dateISO: string) =>
     computed.trimestresDelPeriodo.find((t) =>
       inRange(dateISO, norm.start(t), norm.end(t)),
@@ -164,6 +186,9 @@ export function useActivePeriod(opts?: UseActivePeriodOpts) {
     error,
     periodoEscolarId: computed.periodo?.id,
     periodoEscolar: computed.periodo,
+    periodos,
+    periodosMap: periodosById,
+    getPeriodoNombre,
     trimestres, // crudo
     trimestresDelPeriodo: computed.trimestresDelPeriodo,
     trimestreActivo: computed.trimestreActivo,

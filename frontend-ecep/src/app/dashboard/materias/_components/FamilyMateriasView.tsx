@@ -22,6 +22,7 @@ import type {
   SeccionMateriaDTO,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 type DocenteAsignado = {
   nombre: string;
@@ -95,6 +96,7 @@ export default function FamilyMateriasView({
   initialLoading,
   initialError,
 }: FamilyMateriasViewProps) {
+  const { getPeriodoNombre } = useActivePeriod();
   const [selectedMatriculaId, setSelectedMatriculaId] = useState<number | null>(
     null,
   );
@@ -324,6 +326,9 @@ export default function FamilyMateriasView({
         const turno = detalle?.seccion?.turno
           ? formatTurno(detalle.seccion.turno)
           : null;
+        const periodoLabel = getPeriodoNombre(
+          detalle?.seccion?.periodoEscolarId ?? null,
+        );
 
         return (
           <TabsContent
@@ -347,10 +352,8 @@ export default function FamilyMateriasView({
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       <Badge variant="outline">{nivelLabel(nivel)}</Badge>
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
-                      {detalle?.seccion?.periodoEscolarId && (
-                        <Badge variant="outline">
-                          Período {detalle.seccion.periodoEscolarId}
-                        </Badge>
+                      {periodoLabel && (
+                        <Badge variant="outline">Período {periodoLabel}</Badge>
                       )}
                     </div>
                   </CardHeader>

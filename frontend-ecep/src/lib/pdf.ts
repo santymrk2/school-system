@@ -32,8 +32,7 @@ export const downloadPdfDocument = async ({
   }
 
   const effectiveFileName = fileName ?? suggestPdfFileName("documento");
-  const instance = pdf();
-  instance.updateContainer(pdfDocument);
+  const instance = pdf(pdfDocument);
   const blob = await instance.toBlob();
 
   const url = window.URL.createObjectURL(blob);

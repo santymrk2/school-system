@@ -28,10 +28,7 @@ import {
 import { TabsContent } from "@/components/ui/tabs";
 import { GraduationCap, Printer } from "lucide-react";
 import { type BoletinStudent } from "../types";
-import {
-  formatPercent,
-  sanitizeTeacherName,
-} from "../utils";
+import { formatPercent, sanitizeTeacherName } from "../utils";
 
 export type BoletinesReportProps = {
   reportRef: RefObject<HTMLDivElement>;
@@ -50,7 +47,12 @@ export type BoletinesReportProps = {
   boletinSubjectsByTrimester: {
     id: number;
     label: string;
-    subjects: { id: string; name: string; teacher: string | null; grade: string }[];
+    subjects: {
+      id: string;
+      name: string;
+      teacher: string | null;
+      grade: string;
+    }[];
   }[];
 };
 
@@ -85,7 +87,8 @@ export function BoletinesReport({
               <GraduationCap className="h-5 w-5" /> Reporte de Boletines
             </CardTitle>
             <CardDescription>
-              Seleccione una sección para visualizar el resumen académico de cada alumno.
+              Seleccione una sección para visualizar el resumen académico de
+              cada alumno.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -114,24 +117,37 @@ export function BoletinesReport({
                 Elegí una sección del listado para ver sus alumnos.
               </div>
             ) : (
-              <StudentsGrid students={students} onSelectStudent={onSelectStudent} />
+              <StudentsGrid
+                students={students}
+                onSelectStudent={onSelectStudent}
+              />
             )}
           </CardContent>
         </Card>
       </TabsContent>
 
-      <Sheet open={!!activeStudent} onOpenChange={(open) => !open && onCloseStudent()}>
+      <Sheet
+        open={!!activeStudent}
+        onOpenChange={(open) => !open && onCloseStudent()}
+      >
         <SheetContent className="flex h-full w-full max-w-full flex-col overflow-y-auto sm:max-w-3xl md:overflow-y-visible lg:w-[80vw] lg:max-w-5xl">
           {activeStudent && (
             <>
               <SheetHeader className="space-y-4 text-left">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
-                    <SheetTitle className="text-xl lg:text-2xl">{activeStudent.name}</SheetTitle>
+                    <SheetTitle className="text-xl lg:text-2xl">
+                      {activeStudent.name}
+                    </SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="font-medium text-foreground">{activeStudent.section}</span>
+                      <span className="font-medium text-foreground">
+                        {activeStudent.section}
+                      </span>
                       <span className="text-muted-foreground">
-                        Legajo: {activeStudent.matriculaId ?? activeStudent.alumnoId ?? "—"}
+                        Legajo:{" "}
+                        {activeStudent.matriculaId ??
+                          activeStudent.alumnoId ??
+                          "—"}
                       </span>
                     </SheetDescription>
                   </div>
@@ -149,7 +165,9 @@ export function BoletinesReport({
 
               <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
                 <SummaryCard label="Promedio general">
-                  {typeof activeStudent.average === "number" ? activeStudent.average.toFixed(1) : "—"}
+                  {typeof activeStudent.average === "number"
+                    ? activeStudent.average.toFixed(1)
+                    : "—"}
                 </SummaryCard>
                 <SummaryCard label="Asistencia">
                   {typeof activeStudent.attendancePercentage === "number"
@@ -167,12 +185,25 @@ export function BoletinesReport({
               >
                 {activeStudent.attendanceDetail && (
                   <div className="rounded-lg border p-4 lg:sticky lg:top-6">
-                    <h3 className="text-sm font-semibold">Detalle de asistencia</h3>
+                    <h3 className="text-sm font-semibold">
+                      Detalle de asistencia
+                    </h3>
                     <ul className="mt-2 space-y-1 text-muted-foreground">
-                      <li>Días hábiles: {activeStudent.attendanceDetail.workingDays}</li>
-                      <li>Asistidos: {activeStudent.attendanceDetail.attended}</li>
-                      <li>Inasistencias justificadas: {activeStudent.attendanceDetail.justified}</li>
-                      <li>Inasistencias injustificadas: {activeStudent.attendanceDetail.unjustified}</li>
+                      <li>
+                        Días hábiles:{" "}
+                        {activeStudent.attendanceDetail.workingDays}
+                      </li>
+                      <li>
+                        Asistidos: {activeStudent.attendanceDetail.attended}
+                      </li>
+                      <li>
+                        Inasistencias justificadas:{" "}
+                        {activeStudent.attendanceDetail.justified}
+                      </li>
+                      <li>
+                        Inasistencias injustificadas:{" "}
+                        {activeStudent.attendanceDetail.unjustified}
+                      </li>
                     </ul>
                   </div>
                 )}
@@ -182,7 +213,10 @@ export function BoletinesReport({
                     boletinSubjectsByTrimester={boletinSubjectsByTrimester}
                   />
                 ) : (
-                  <InformeDetail informes={activeStudent.informes} activeStudentId={activeStudent.id} />
+                  <InformeDetail
+                    informes={activeStudent.informes}
+                    activeStudentId={activeStudent.id}
+                  />
                 )}
               </div>
             </>
@@ -208,7 +242,9 @@ function LabelledSectionSelect({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">Sección</label>
+      <label className="mb-1 block text-sm font-medium text-foreground">
+        Sección
+      </label>
       <Select
         value={selectedSectionId}
         onValueChange={onSelectSection}
@@ -276,7 +312,8 @@ function StudentsGrid({
                 {student.status ?? "Sin estado"}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                Click para ver {student.level === "Primario" ? "boletín" : "informes"} completo
+                Click para ver{" "}
+                {student.level === "Primario" ? "boletín" : "informes"} completo
               </span>
             </div>
           </CardContent>
@@ -286,10 +323,18 @@ function StudentsGrid({
   );
 }
 
-function SummaryCard({ label, children }: { label: string; children: React.ReactNode }) {
+function SummaryCard({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border bg-muted/30 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-2 text-lg font-semibold text-foreground">{children}</p>
     </div>
   );
@@ -301,13 +346,20 @@ function BoletinSubjectsDetail({
   boletinSubjectsByTrimester: {
     id: number;
     label: string;
-    subjects: { id: string; name: string; teacher: string | null; grade: string }[];
+    subjects: {
+      id: string;
+      name: string;
+      teacher: string | null;
+      grade: string;
+    }[];
   }[];
 }) {
   if (boletinSubjectsByTrimester.length === 0) {
     return (
       <div className="rounded-lg border">
-        <div className="border-b px-4 py-3 text-sm font-semibold">Materias y calificaciones</div>
+        <div className="border-b px-4 py-3 text-sm font-semibold">
+          Materias y calificaciones
+        </div>
         <div className="px-4 py-6 text-sm text-muted-foreground">
           No hay calificaciones registradas para este alumno.
         </div>
@@ -317,23 +369,37 @@ function BoletinSubjectsDetail({
 
   return (
     <div className="rounded-lg border">
-      <div className="border-b px-4 py-3 text-sm font-semibold">Materias y calificaciones</div>
+      <div className="border-b px-4 py-3 text-sm font-semibold">
+        Materias y calificaciones
+      </div>
       <div className="space-y-4 p-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {boletinSubjectsByTrimester.map((trimester) => (
-            <div key={trimester.id} className="flex flex-col rounded-lg border bg-background">
-              <div className="border-b px-4 py-3 text-sm font-semibold">{trimester.label}</div>
+            <div
+              key={trimester.id}
+              className="flex flex-col rounded-lg border bg-background"
+            >
+              <div className="border-b px-4 py-3 text-sm font-semibold">
+                {trimester.label}
+              </div>
               {trimester.subjects.length ? (
                 <div className="divide-y">
                   {trimester.subjects.map((subject) => {
                     const displayTeacher = sanitizeTeacherName(subject.teacher);
 
                     return (
-                      <div key={subject.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                      <div
+                        key={subject.id}
+                        className="flex items-start justify-between gap-3 px-4 py-3"
+                      >
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">{subject.name}</p>
+                          <p className="text-sm font-semibold text-foreground">
+                            {subject.name}
+                          </p>
                           {displayTeacher && (
-                            <p className="text-xs text-muted-foreground">Docente: {displayTeacher}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Docente: {displayTeacher}
+                            </p>
                           )}
                         </div>
                         <span className="rounded-md bg-muted px-2 py-1 text-sm font-semibold text-foreground whitespace-nowrap">
@@ -365,11 +431,16 @@ function InformeDetail({
 }) {
   return (
     <div className="rounded-lg border">
-      <div className="border-b px-4 py-3 text-sm font-semibold">Informes por trimestre</div>
+      <div className="border-b px-4 py-3 text-sm font-semibold">
+        Informes por trimestre
+      </div>
       <div className="divide-y">
         {informes && informes.length > 0 ? (
           informes.map((informe) => (
-            <div key={`${activeStudentId}-${informe.trimestreId}`} className="grid gap-2 p-4">
+            <div
+              key={`${activeStudentId}-${informe.trimestreId}`}
+              className="grid gap-2 p-4"
+            >
               <div className="font-medium">{informe.trimestreLabel}</div>
               <p className="text-xs text-muted-foreground whitespace-pre-wrap">
                 {informe.descripcion || "Sin descripción"}

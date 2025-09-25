@@ -19,6 +19,9 @@ export type AccidentActPdfOptions = {
   generatedAt?: string;
 };
 
+const BRAND_ICON_TEXT = "IE";
+const SIGNATURE_ICON_TEXT = "OK";
+
 const actaPdfStyles = StyleSheet.create({
   page: {
     padding: 32,
@@ -318,7 +321,7 @@ export const createAccidentActDocument = (
           <View style={actaPdfStyles.header}>
             <View style={actaPdfStyles.brand}>
               <View style={actaPdfStyles.brandIcon}>
-                <Text style={actaPdfStyles.brandIconText}>🏫</Text>
+                <Text style={actaPdfStyles.brandIconText}>{BRAND_ICON_TEXT}</Text>
               </View>
               <View>
                 <Text style={actaPdfStyles.subtitle}>Registro institucional</Text>
@@ -393,7 +396,9 @@ export const createAccidentActDocument = (
             <Text style={actaPdfStyles.sectionTitle}>Firma de conformidad</Text>
             <View style={actaPdfStyles.signatureBox}>
               <View style={actaPdfStyles.signatureIcon}>
-                <Text style={actaPdfStyles.signatureIconText}>✔</Text>
+                <Text style={actaPdfStyles.signatureIconText}>
+                  {SIGNATURE_ICON_TEXT}
+                </Text>
               </View>
               <View style={actaPdfStyles.signatureLine} />
               <Text style={actaPdfStyles.signatureName}>{assignedSigner}</Text>

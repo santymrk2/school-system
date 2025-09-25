@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import type * as DTO from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import {
@@ -285,8 +284,7 @@ export default function AlumnosIndexPage() {
   }, [secciones, alumnos]);
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -564,6 +562,6 @@ export default function AlumnosIndexPage() {
           </Tabs>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

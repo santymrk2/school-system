@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +25,7 @@ export default function SeccionAlumnosPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button
           variant="outline"
           onClick={() => router.push("/dashboard/alumnos")}
@@ -98,6 +96,6 @@ export default function SeccionAlumnosPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

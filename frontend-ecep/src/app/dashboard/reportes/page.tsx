@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { pageContent } from "@/lib/page-response";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { BoletinesReport } from "./_components/BoletinesReport";
 import { ApprovalReport } from "./_components/ApprovalReport";
 import { AttendanceReport } from "./_components/AttendanceReport";
@@ -1698,8 +1697,7 @@ const handleExportCurrent = async () => {
   }
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Reportes</h2>
@@ -1831,6 +1829,6 @@ const handleExportCurrent = async () => {
       </div>
 
 
-    </DashboardLayout>
+    
   );
 }

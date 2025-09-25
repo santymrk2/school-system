@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
@@ -176,7 +175,7 @@ export default function EvaluacionesIndexPage() {
 
   if (scope === "family" || scope === "student") {
     return (
-      <DashboardLayout>
+      
         <div className="p-4 md:p-8 space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -198,25 +197,24 @@ export default function EvaluacionesIndexPage() {
             initialError={errorScope ? String(errorScope) : null}
           />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (isAdmin) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Exámenes.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   const title = scope === "teacher" ? "Exámenes" : "Exámenes";
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
@@ -295,6 +293,6 @@ export default function EvaluacionesIndexPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

@@ -21,7 +21,6 @@ import {
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeRole } from "@/lib/auth-roles";
 import { MENU, type MenuItem } from "@/lib/menu";
@@ -56,8 +55,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -228,6 +226,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+    
   );
 }

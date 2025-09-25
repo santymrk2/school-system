@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardContent,
@@ -155,7 +154,7 @@ export default function AccidentesIndexPage() {
 
   if (isFamilyScope) {
     return (
-      <DashboardLayout>
+      
         <div className="p-4 md:p-8 space-y-6">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">
@@ -171,7 +170,7 @@ export default function AccidentesIndexPage() {
             initialError={scopeError ? String(scopeError) : null}
           />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -722,17 +721,16 @@ export default function AccidentesIndexPage() {
 
   if (noAccess) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — No tenés acceso a Actas de Accidentes.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -1035,6 +1033,6 @@ export default function AccidentesIndexPage() {
           />
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

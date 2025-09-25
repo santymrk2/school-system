@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -275,8 +274,7 @@ export default function ComunicadosPage() {
   const selectedFecha = selected ? fechaVisible(selected) : null;
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -399,7 +397,7 @@ export default function ComunicadosPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    
   );
 }
 
@@ -418,7 +416,7 @@ function FeedList({
 }) {
   if (!items.length) {
     return (
-      <Card>
+    <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
           No hay comunicados para mostrar.
         </CardContent>
@@ -505,7 +503,7 @@ function TipoBadge({
 }) {
   if (c.alcance === "INSTITUCIONAL")
     return (
-      <Badge variant="default">
+    <Badge variant="default">
         <Megaphone className="h-3 w-3 mr-1" />
         Institucional
       </Badge>

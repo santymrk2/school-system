@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import LoadingState from "@/components/common/LoadingState";
 import { asistencias, gestionAcademica } from "@/services/api/modules";
 import {
@@ -313,15 +312,15 @@ export default function JornadaPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      
         <LoadingState label="Cargando jornada…" />
-      </DashboardLayout>
+      
     );
   }
 
   if (err || !jornada) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6">
           <Card>
             <CardHeader>
@@ -336,13 +335,12 @@ export default function JornadaPage() {
             </CardContent>
           </Card>
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button variant="outline" onClick={() => router.back()}>
           Volver
         </Button>
@@ -418,6 +416,6 @@ export default function JornadaPage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    
   );
 }

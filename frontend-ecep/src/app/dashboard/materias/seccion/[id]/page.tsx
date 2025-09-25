@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardHeader,
@@ -377,41 +376,41 @@ export default function MateriasSeccionPage() {
 
   if (accessStatus === "admin") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Materias.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "forbidden") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — No tenés acceso a esta sección.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "checking") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6">
           <LoadingState label="Verificando acceso a la sección…" />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (accessStatus === "notAssigned") {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — Esta sección no pertenece a tus asignaciones.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -425,8 +424,7 @@ export default function MateriasSeccionPage() {
     );
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button
           variant="outline"
           onClick={() => router.push("/dashboard/materias")}
@@ -713,6 +711,6 @@ export default function MateriasSeccionPage() {
           onCreated={() => setRefreshKey((k) => k + 1)}
         />
       )}
-    </DashboardLayout>
+    
   );
 }

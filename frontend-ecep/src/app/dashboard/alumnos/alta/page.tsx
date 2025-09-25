@@ -10,7 +10,6 @@ import {
 } from "@/services/api/modules";
 import { isBirthDateValid, maxBirthDate, formatDni } from "@/lib/form-utils";
 import type * as DTO from "@/types/api-generated";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardHeader,
@@ -295,8 +294,7 @@ export default function AltaAlumnoPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-6 p-4 md:p-8">
+    <div className="flex-1 space-y-6 p-4 md:p-8">
         <Button variant="outline" onClick={() => router.push("/dashboard/alumnos")}>
           Volver
         </Button>
@@ -443,7 +441,7 @@ export default function AltaAlumnoPage() {
           </Button>
         </div>
       </div>
-    </DashboardLayout>
+    
   );
 }
 

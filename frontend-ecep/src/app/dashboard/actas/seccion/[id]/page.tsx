@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardHeader,
@@ -619,15 +618,14 @@ export default function AccidentesSeccionPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      
         <LoadingState label="Cargando actas…" />
-      </DashboardLayout>
+      
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <Button
           variant="outline"
           onClick={() => router.push("/dashboard/accidentes")}
@@ -822,6 +820,6 @@ export default function AccidentesSeccionPage() {
           />
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

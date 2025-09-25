@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
-import { DashboardLayout } from "@/app/dashboard/dashboard-layout";
 import {
   Card,
   CardHeader,
@@ -56,7 +55,7 @@ export default function CalificacionesIndexPage() {
 
   if (scope === "family" || scope === "student") {
     return (
-      <DashboardLayout>
+      
         <div className="p-4 md:p-8 space-y-6">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">
@@ -76,17 +75,17 @@ export default function CalificacionesIndexPage() {
             getPeriodoNombre={getPeriodoNombre}
           />
         </div>
-      </DashboardLayout>
+      
     );
   }
 
   if (isAdmin) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Calificaciones.
         </div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -95,9 +94,9 @@ export default function CalificacionesIndexPage() {
 
   if (!isTeacher && !isStaff) {
     return (
-      <DashboardLayout>
+      
         <div className="p-6 text-sm">403 — No tenés acceso a calificaciones.</div>
-      </DashboardLayout>
+      
     );
   }
 
@@ -122,8 +121,7 @@ export default function CalificacionesIndexPage() {
   }, [loading, primario.length, inicial.length]);
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <div className="space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Calificaciones</h2>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -228,6 +226,6 @@ export default function CalificacionesIndexPage() {
           </Tabs>
         )}
       </div>
-    </DashboardLayout>
+    
   );
 }

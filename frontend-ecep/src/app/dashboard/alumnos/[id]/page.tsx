@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -1016,16 +1017,16 @@ export default function AlumnoPerfilPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Fecha de nacimiento</Label>
-                        <Input
-                          type="date"
+                        <DatePicker
                           max={maxBirthDate}
-                          value={personaDraft.fechaNacimiento}
-                          onChange={(e) =>
+                          value={personaDraft.fechaNacimiento || undefined}
+                          onChange={(value) =>
                             setPersonaDraft((prev) => ({
                               ...prev,
-                              fechaNacimiento: e.target.value,
+                              fechaNacimiento: value ?? "",
                             }))
                           }
+                          required
                         />
                       </div>
                       <div className="space-y-2">
@@ -1124,15 +1125,15 @@ export default function AlumnoPerfilPage() {
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Fecha de inscripción</Label>
-                        <Input
-                          type="date"
-                          value={alumnoDraft.fechaInscripcion}
-                          onChange={(e) =>
+                        <DatePicker
+                          value={alumnoDraft.fechaInscripcion || undefined}
+                          onChange={(value) =>
                             setAlumnoDraft((prev) => ({
                               ...prev,
-                              fechaInscripcion: e.target.value,
+                              fechaInscripcion: value ?? "",
                             }))
                           }
+                          required
                         />
                       </div>
                       <div className="space-y-2">

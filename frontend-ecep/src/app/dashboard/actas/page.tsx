@@ -11,6 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -797,24 +798,24 @@ export default function AccidentesIndexPage() {
           </Select>
 
           <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFromDate(value);
+            <DatePicker
+              value={fromDate || undefined}
+              max={toDate || undefined}
+              onChange={(value) => {
+                const next = value ?? "";
+                setFromDate(next);
                 if (value && toDate && value > toDate) {
                   setToDate(value);
                 }
               }}
             />
             <span className="text-xs text-muted-foreground">a</span>
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(e) => {
-                const value = e.target.value;
-                setToDate(value);
+            <DatePicker
+              value={toDate || undefined}
+              min={fromDate || undefined}
+              onChange={(value) => {
+                const next = value ?? "";
+                setToDate(next);
                 if (value && fromDate && value < fromDate) {
                   setFromDate(value);
                 }

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar, Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import {
@@ -656,10 +657,9 @@ export default function AccidentesSeccionPage() {
               <label className="text-xs block mb-1">
                 Fecha (roster activo)
               </label>
-              <Input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
+              <DatePicker
+                value={fecha || undefined}
+                onChange={(value) => setFecha(value ?? "")}
               />
             </div>
             <div className="relative w-[220px]">

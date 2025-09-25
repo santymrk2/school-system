@@ -46,6 +46,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -5135,15 +5136,14 @@ export default function PersonalPage() {
                     <Label htmlFor="editar-fecha-nac">
                       Fecha de nacimiento
                     </Label>
-                    <Input
+                    <DatePicker
                       id="editar-fecha-nac"
-                      type="date"
                       max={maxBirthDate}
-                      value={editPersona.fechaNacimiento}
-                      onChange={(event) =>
+                      value={editPersona.fechaNacimiento || undefined}
+                      onChange={(value) =>
                         setEditPersona((prev) => ({
                           ...prev,
-                          fechaNacimiento: event.target.value,
+                          fechaNacimiento: value ?? "",
                         }))
                       }
                       required
@@ -5448,14 +5448,13 @@ export default function PersonalPage() {
                     <Label htmlFor="editar-fecha-ingreso">
                       Fecha de ingreso
                     </Label>
-                    <Input
+                    <DatePicker
                       id="editar-fecha-ingreso"
-                      type="date"
-                      value={editEmpleado.fechaIngreso}
-                      onChange={(event) =>
+                      value={editEmpleado.fechaIngreso || undefined}
+                      onChange={(value) =>
                         setEditEmpleado((prev) => ({
                           ...prev,
-                          fechaIngreso: event.target.value,
+                          fechaIngreso: value ?? "",
                         }))
                       }
                       required
@@ -5579,18 +5578,18 @@ export default function PersonalPage() {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor={inicioId}>Fecha de inicio</Label>
-                            <Input
+                            <DatePicker
                               id={inicioId}
-                              type="date"
-                              value={formacion.fechaInicio}
-                              onChange={(event) => {
-                                const value = event.target.value;
+                              value={formacion.fechaInicio || undefined}
+                              max={formacion.fechaFin || undefined}
+                              onChange={(value) => {
+                                const nextValue = value ?? "";
                                 updateEditFormacionEntry(index, {
-                                  fechaInicio: value,
+                                  fechaInicio: nextValue,
                                   fechaFin:
                                     formacion.fechaFin &&
-                                    formacion.fechaFin < value
-                                      ? value
+                                    formacion.fechaFin < nextValue
+                                      ? nextValue
                                       : formacion.fechaFin,
                                 });
                               }}
@@ -5598,12 +5597,11 @@ export default function PersonalPage() {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor={finId}>Fecha de finalización</Label>
-                            <Input
+                            <DatePicker
                               id={finId}
-                              type="date"
-                              value={formacion.fechaFin}
-                              onChange={(event) => {
-                                const value = event.target.value;
+                              value={formacion.fechaFin || undefined}
+                              min={formacion.fechaInicio || undefined}
+                              onChange={(value) => {
                                 if (
                                   value &&
                                   formacion.fechaInicio &&
@@ -5615,7 +5613,7 @@ export default function PersonalPage() {
                                   return;
                                 }
                                 updateEditFormacionEntry(index, {
-                                  fechaFin: value,
+                                  fechaFin: value ?? "",
                                 });
                               }}
                             />
@@ -5855,15 +5853,14 @@ export default function PersonalPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nuevo-fecha-nac">Fecha de nacimiento</Label>
-                    <Input
+                    <DatePicker
                       id="nuevo-fecha-nac"
-                      type="date"
                       max={maxBirthDate}
-                      value={newPersona.fechaNacimiento}
-                      onChange={(event) =>
+                      value={newPersona.fechaNacimiento || undefined}
+                      onChange={(value) =>
                         setNewPersona((prev) => ({
                           ...prev,
-                          fechaNacimiento: event.target.value,
+                          fechaNacimiento: value ?? "",
                         }))
                       }
                       required
@@ -6165,14 +6162,13 @@ export default function PersonalPage() {
                     <Label htmlFor="nuevo-fecha-ingreso">
                       Fecha de ingreso
                     </Label>
-                    <Input
+                    <DatePicker
                       id="nuevo-fecha-ingreso"
-                      type="date"
-                      value={newEmpleado.fechaIngreso}
-                      onChange={(event) =>
+                      value={newEmpleado.fechaIngreso || undefined}
+                      onChange={(value) =>
                         setNewEmpleado((prev) => ({
                           ...prev,
-                          fechaIngreso: event.target.value,
+                          fechaIngreso: value ?? "",
                         }))
                       }
                       required
@@ -6335,18 +6331,18 @@ export default function PersonalPage() {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor={inicioId}>Fecha de inicio</Label>
-                            <Input
+                            <DatePicker
                               id={inicioId}
-                              type="date"
-                              value={formacion.fechaInicio}
-                              onChange={(event) => {
-                                const value = event.target.value;
+                              value={formacion.fechaInicio || undefined}
+                              max={formacion.fechaFin || undefined}
+                              onChange={(value) => {
+                                const nextValue = value ?? "";
                                 updateNewFormacionEntry(index, {
-                                  fechaInicio: value,
+                                  fechaInicio: nextValue,
                                   fechaFin:
                                     formacion.fechaFin &&
-                                    formacion.fechaFin < value
-                                      ? value
+                                    formacion.fechaFin < nextValue
+                                      ? nextValue
                                       : formacion.fechaFin,
                                 });
                               }}
@@ -6354,12 +6350,11 @@ export default function PersonalPage() {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor={finId}>Fecha de finalización</Label>
-                            <Input
+                            <DatePicker
                               id={finId}
-                              type="date"
-                              value={formacion.fechaFin}
-                              onChange={(event) => {
-                                const value = event.target.value;
+                              value={formacion.fechaFin || undefined}
+                              min={formacion.fechaInicio || undefined}
+                              onChange={(value) => {
                                 if (
                                   value &&
                                   formacion.fechaInicio &&
@@ -6371,7 +6366,7 @@ export default function PersonalPage() {
                                   return;
                                 }
                                 updateNewFormacionEntry(index, {
-                                  fechaFin: value,
+                                  fechaFin: value ?? "",
                                 });
                               }}
                             />
@@ -6534,15 +6529,14 @@ export default function PersonalPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="licencia-inicio">Fecha de inicio</Label>
-                  <Input
+                  <DatePicker
                     id="licencia-inicio"
-                    type="date"
-                    value={newLicense.fechaInicio}
-                    onChange={(event) => {
-                      const value = event.target.value;
+                    value={newLicense.fechaInicio || undefined}
+                    max={newLicense.fechaFin || undefined}
+                    onChange={(value) => {
                       setNewLicense((prev) => {
                         if (!value) {
-                          return { ...prev, fechaInicio: value };
+                          return { ...prev, fechaInicio: "" };
                         }
                         const next = { ...prev, fechaInicio: value };
                         if (prev.fechaFin && prev.fechaFin < value) {
@@ -6556,15 +6550,14 @@ export default function PersonalPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="licencia-fin">Fecha de finalización</Label>
-                  <Input
+                  <DatePicker
                     id="licencia-fin"
-                    type="date"
-                    value={newLicense.fechaFin}
-                    onChange={(event) => {
-                      const value = event.target.value;
+                    value={newLicense.fechaFin || undefined}
+                    min={newLicense.fechaInicio || undefined}
+                    onChange={(value) => {
                       setNewLicense((prev) => {
                         if (!value) {
-                          return { ...prev, fechaFin: value };
+                          return { ...prev, fechaFin: "" };
                         }
                         if (prev.fechaInicio && value < prev.fechaInicio) {
                           return { ...prev, fechaFin: prev.fechaInicio };

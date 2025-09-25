@@ -18,6 +18,7 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -354,15 +355,15 @@ export default function AltaAlumnoPage() {
                 <label className="text-sm font-medium text-muted-foreground">
                   Fecha de inscripción
                 </label>
-                <Input
-                  type="date"
-                  value={alumnoForm.fechaInscripcion}
-                  onChange={(e) =>
+                <DatePicker
+                  value={alumnoForm.fechaInscripcion || undefined}
+                  onChange={(value) =>
                     setAlumnoForm((prev) => ({
                       ...prev,
-                      fechaInscripcion: e.target.value,
+                      fechaInscripcion: value ?? "",
                     }))
                   }
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -497,11 +498,11 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
             <label className="text-sm font-medium text-muted-foreground">
               Fecha de nacimiento
             </label>
-            <Input
-              type="date"
+            <DatePicker
               max={maxBirthDate}
-              value={values.fechaNacimiento}
-              onChange={(e) => onChange("fechaNacimiento", e.target.value)}
+              value={values.fechaNacimiento || undefined}
+              onChange={(value) => onChange("fechaNacimiento", value ?? "")}
+              required
             />
           </div>
           <div className="space-y-1">

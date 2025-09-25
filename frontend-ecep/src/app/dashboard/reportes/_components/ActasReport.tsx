@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -94,12 +95,12 @@ export function ActasReport({
                 <CardContent className="space-y-4 text-sm">
                   <div className="space-y-2">
                     <Label>Desde</Label>
-                    <Input
-                      type="date"
-                      value={actaFrom}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setActaFrom(value);
+                    <DatePicker
+                      value={actaFrom || undefined}
+                      max={actaTo || undefined}
+                      onChange={(value) => {
+                        const next = value ?? "";
+                        setActaFrom(next);
                         if (value && actaTo && value > actaTo) {
                           setActaTo(value);
                         }
@@ -108,12 +109,12 @@ export function ActasReport({
                   </div>
                   <div className="space-y-2">
                     <Label>Hasta</Label>
-                    <Input
-                      type="date"
-                      value={actaTo}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setActaTo(value);
+                    <DatePicker
+                      value={actaTo || undefined}
+                      min={actaFrom || undefined}
+                      onChange={(value) => {
+                        const next = value ?? "";
+                        setActaTo(next);
                         if (value && actaFrom && value < actaFrom) {
                           setActaFrom(value);
                         }

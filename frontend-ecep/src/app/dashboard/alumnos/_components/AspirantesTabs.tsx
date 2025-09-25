@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1013,12 +1014,11 @@ function ScheduleModal({
                 <label className="text-xs font-medium text-muted-foreground">
                   Fecha {idx + 1}
                 </label>
-                <Input
-                  type="date"
-                  value={value}
-                  onChange={(e) => {
+                <DatePicker
+                  value={value || undefined}
+                  onChange={(nextValue) => {
                     const next = [...fechas];
-                    next[idx] = e.target.value;
+                    next[idx] = nextValue ?? "";
                     setFechas(next);
                   }}
                 />

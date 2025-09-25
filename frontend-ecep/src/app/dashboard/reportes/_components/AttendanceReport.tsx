@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -309,7 +309,10 @@ function DateField({
   return (
     <div>
       <Label className="mb-1 block">{label}</Label>
-      <Input type="date" value={value} onChange={(event) => onChange(event.target.value)} />
+      <DatePicker
+        value={value || undefined}
+        onChange={(next) => onChange(next ?? "")}
+      />
     </div>
   );
 }

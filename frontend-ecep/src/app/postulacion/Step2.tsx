@@ -4,6 +4,7 @@
 import React from "react";
 import { Users, Plus } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -222,12 +223,11 @@ export function Step2({
                   <Label htmlFor={`familiar-fecha-${i}`}>
                     Fecha de Nacimiento
                   </Label>
-                  <Input
+                  <DatePicker
                     id={`familiar-fecha-${i}`}
-                    type="date"
                     max={maxBirthDate}
-                    value={f.familiar?.fechaNacimiento ?? ""}
-                    onChange={(e) =>
+                    value={f.familiar?.fechaNacimiento ?? undefined}
+                    onChange={(value) =>
                       handleInputChange(
                         "familiares",
                         familiares.map((x, j) =>
@@ -236,7 +236,7 @@ export function Step2({
                                 ...x,
                                 familiar: {
                                   ...x.familiar!,
-                                  fechaNacimiento: e.target.value,
+                                  fechaNacimiento: value ?? "",
                                 },
                               }
                             : x,
@@ -244,10 +244,8 @@ export function Step2({
                         { errorKeys: [`familiares.${i}.familiar.fechaNacimiento`] },
                       )
                     }
-                    aria-invalid={fechaNacimientoError || undefined}
-                    className={cn(
-                      fechaNacimientoError && "border-destructive",
-                    )}
+                    error={Boolean(fechaNacimientoError)}
+                    required
                   />
                 </div>
 

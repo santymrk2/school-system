@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -253,12 +254,12 @@ export function LicensesReport({
             </div>
             <div className="space-y-1">
               <Label>Desde</Label>
-              <Input
-                type="date"
-                value={licenseFrom}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setLicenseFrom(value);
+              <DatePicker
+                value={licenseFrom || undefined}
+                max={licenseTo || undefined}
+                onChange={(value) => {
+                  const next = value ?? "";
+                  setLicenseFrom(next);
                   if (licenseTo && value && value > licenseTo) {
                     setLicenseTo(value);
                   }
@@ -267,12 +268,12 @@ export function LicensesReport({
             </div>
             <div className="space-y-1">
               <Label>Hasta</Label>
-              <Input
-                type="date"
-                value={licenseTo}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setLicenseTo(value);
+              <DatePicker
+                value={licenseTo || undefined}
+                min={licenseFrom || undefined}
+                onChange={(value) => {
+                  const next = value ?? "";
+                  setLicenseTo(next);
                   if (licenseFrom && value && value < licenseFrom) {
                     setLicenseFrom(value);
                   }

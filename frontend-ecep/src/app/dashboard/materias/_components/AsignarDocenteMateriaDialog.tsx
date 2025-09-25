@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { gestionAcademica } from "@/services/api/modules";
 import type { SeccionMateriaDTO, MateriaDTO } from "@/types/api-generated";
 import { toast } from "sonner";
@@ -168,18 +168,18 @@ export default function AsignarDocenteMateriaDialog({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm mb-1 block">Desde</label>
-                <Input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
+                <DatePicker
+                  value={desde || undefined}
+                  max={hasta || undefined}
+                  onChange={(value) => setDesde(value ?? "")}
                 />
               </div>
               <div>
                 <label className="text-sm mb-1 block">Hasta</label>
-                <Input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
+                <DatePicker
+                  value={hasta || undefined}
+                  min={desde || undefined}
+                  onChange={(value) => setHasta(value ?? "")}
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -403,21 +404,21 @@ export default function VistaDireccion() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Inicio</Label>
-              <Input
-                type="date"
-                value={nuevoTrimestre.inicio ?? ""}
-                onChange={(e) =>
-                  setNuevoTrimestre((s) => ({ ...s, inicio: e.target.value }))
+              <DatePicker
+                value={nuevoTrimestre.inicio ?? undefined}
+                max={nuevoTrimestre.fin ?? undefined}
+                onChange={(value) =>
+                  setNuevoTrimestre((s) => ({ ...s, inicio: value ?? "" }))
                 }
               />
             </div>
             <div>
               <Label>Fin</Label>
-              <Input
-                type="date"
-                value={nuevoTrimestre.fin ?? ""}
-                onChange={(e) =>
-                  setNuevoTrimestre((s) => ({ ...s, fin: e.target.value }))
+              <DatePicker
+                value={nuevoTrimestre.fin ?? undefined}
+                min={nuevoTrimestre.inicio ?? undefined}
+                onChange={(value) =>
+                  setNuevoTrimestre((s) => ({ ...s, fin: value ?? "" }))
                 }
               />
             </div>
@@ -439,10 +440,9 @@ export default function VistaDireccion() {
           </DialogHeader>
           <div>
             <Label>Fecha</Label>
-            <Input
-              type="date"
-              value={noHabilFecha}
-              onChange={(e) => setNoHabilFecha(e.target.value)}
+            <DatePicker
+              value={noHabilFecha || undefined}
+              onChange={(value) => setNoHabilFecha(value ?? "")}
             />
           </div>
           <DialogFooter>

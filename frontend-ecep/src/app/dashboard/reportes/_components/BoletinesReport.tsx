@@ -130,7 +130,10 @@ export function BoletinesReport({
         open={!!activeStudent}
         onOpenChange={(open) => !open && onCloseStudent()}
       >
-        <SheetContent className="flex h-full w-full max-w-full flex-col overflow-y-auto sm:max-w-3xl md:overflow-y-visible lg:w-[80vw] lg:max-w-5xl">
+        <SheetContent
+          size="xl"
+          className="flex h-full w-full flex-col overflow-y-auto md:overflow-y-visible lg:w-[85vw] lg:max-w-none xl:w-[90vw] xl:max-w-none 2xl:w-[92vw] 2xl:max-w-none"
+        >
           {activeStudent && (
             <>
               <SheetHeader className="space-y-4 text-left">
@@ -373,7 +376,7 @@ function BoletinSubjectsDetail({
         Materias y calificaciones
       </div>
       <div className="space-y-4 p-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {boletinSubjectsByTrimester.map((trimester) => (
             <div
               key={trimester.id}

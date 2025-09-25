@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/api-generated";
@@ -23,9 +23,6 @@ export default function SelectRolPage() {
   const userRoles = user?.roles;
   const roles = useMemo(() => normalizeRoles(userRoles), [userRoles]);
 
-  // Estado del dropdown (pre-selecciona el rol ya elegido o el primero)
-  const [localRole, setLocalRole] = useState<UserRole | null>(null);
-
   useEffect(() => {
     if (loading) return;
 
@@ -44,21 +41,12 @@ export default function SelectRolPage() {
       return;
     }
 
-    // 3) inicializar dropdown
-    if (!localRole) {
-      setLocalRole(selectedRole ?? roles[0] ?? null);
-    }
-  }, [loading, user, roles, selectedRole, localRole, setSelectedRole, router]);
+    // 3) múltiples roles → esperar interacción del usuario
+  }, [loading, user, roles, selectedRole, setSelectedRole, router]);
 
   // mientras carga o redirige
   if (loading || !user) return null;
   if (roles.length <= 1) return null; // ya redirige en el effect
-
-  const handleConfirm = () => {
-    if (!localRole) return;
-    setSelectedRole(localRole);
-    router.replace("/dashboard");
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -79,36 +67,19 @@ export default function SelectRolPage() {
                 <Button
                   key={r}
                   type="button"
-                  onClick={() => setLocalRole(r as UserRole)}
+                  onClick={() => {
+                    setSelectedRole(r as UserRole);
+                    router.replace("/dashboard");
+                  }}
                   className={cn(
                     "rounded-full px-4 h-9 text-sm whitespace-nowrap shrink-0 transition-all",
-                    localRole === r
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "border border-border bg-muted text-foreground/80 hover:bg-muted/80",
+                    "border border-border bg-muted text-foreground/80 hover:bg-muted/80",
                   )}
                 >
                   {displayRole(r)}
                 </Button>
               ))}
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              disabled={!selectedRole}
-              onClick={() => {
-                // Si no hab&iacute;a un rol previamente elegido,
-                // evitar loop de redirecci&oacute;n al dashboard → select-rol
-                if (!selectedRole) return;
-                router.replace("/dashboard");
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirm} disabled={!localRole}>
-              Entrar
-            </Button>
           </div>
         </CardContent>
       </Card>

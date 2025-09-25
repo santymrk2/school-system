@@ -310,10 +310,11 @@ export const createAccidentActDocument = (
               </View>
             </View>
             <Text
-              style={[
-                actaPdfStyles.statusPill,
-                statusIsCerrada ? actaPdfStyles.statusCerrada : null,
-              ]}
+              style={
+                statusIsCerrada
+                  ? [actaPdfStyles.statusPill, actaPdfStyles.statusCerrada]
+                  : [actaPdfStyles.statusPill]
+              }
             >
               {effectiveStatusLabel}
             </Text>

@@ -96,6 +96,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         Trimestre t1_2025 = ensureTrimestre(periodo2025, 1, LocalDate.of(2025, 3, 1), LocalDate.of(2025, 5, 31));
         Trimestre t2_2025 = ensureTrimestre(periodo2025, 2, LocalDate.of(2025, 6, 1), LocalDate.of(2025, 8, 31));
         Trimestre t3_2025 = ensureTrimestre(periodo2025, 3, LocalDate.of(2025, 9, 1), LocalDate.of(2025, 11, 30));
+        actualizarEstadoTrimestre(t1_2025, TrimestreEstado.CERRADO);
+        actualizarEstadoTrimestre(t2_2025, TrimestreEstado.ACTIVO);
+        actualizarEstadoTrimestre(t3_2025, TrimestreEstado.INACTIVO);
 
         PeriodoEscolar periodo2024 = ensurePeriodoEscolar(2024);
         Trimestre t1_2024 = ensureTrimestre(periodo2024, 1, LocalDate.of(2024, 3, 1), LocalDate.of(2024, 5, 31));
@@ -417,23 +420,6 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                     calificacion("Ciencias Sociales", 7.8, CalificacionConceptual.BUENO, "Interpreta hechos históricos.")
             ));
 
-            crearEvaluacionConResultados(data, t2_2025, "Ciencias Naturales", LocalDate.of(2025, 7, 4), 0.35);
-            crearEvaluacionConResultados(data, t2_2025, "Inglés", LocalDate.of(2025, 7, 18), 0.25);
-            crearEvaluacionConResultados(data, t2_2025, "Educación Física", LocalDate.of(2025, 7, 25), 0.20);
-            asignarCalificaciones(data, t2_2025, List.of(
-                    calificacion("Ciencias Naturales", 8.6, CalificacionConceptual.MUY_BUENO, "Aplica método científico en equipo."),
-                    calificacion("Inglés", 8.1, CalificacionConceptual.BUENO, "Comprende consignas y dialoga."),
-                    calificacion("Educación Física", 9.0, CalificacionConceptual.EXCELENTE, "Demuestra coordinación y respeto.")
-            ));
-
-            crearEvaluacionConResultados(data, t3_2025, "Lengua", LocalDate.of(2025, 10, 7), 0.30);
-            crearEvaluacionConResultados(data, t3_2025, "Ciencias Sociales", LocalDate.of(2025, 10, 21), 0.30);
-            crearEvaluacionConResultados(data, t3_2025, "Música", LocalDate.of(2025, 11, 5), 0.20);
-            asignarCalificaciones(data, t3_2025, List.of(
-                    calificacion("Lengua", 8.8, CalificacionConceptual.MUY_BUENO, "Produce textos narrativos."),
-                    calificacion("Ciencias Sociales", 8.0, CalificacionConceptual.BUENO, "Analiza procesos comunitarios."),
-                    calificacion("Música", 8.9, CalificacionConceptual.MUY_BUENO, "Interpreta ritmos y melodías.")
-            ));
         }
 
         for (SeccionData data : datosSecciones2024) {
@@ -490,7 +476,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         cerrarHistorialPeriodo(datosSecciones2024, t3_2024.getFin());
         cerrarHistorialPeriodo(datosSecciones2023, t3_2023.getFin());
 
-        generarAsistenciasUltimos30Dias(datosSecciones2025.stream().map(SeccionData::seccion).toList(), t1_2025, t2_2025, t3_2025);
+        generarAsistenciasUltimos30Dias(datosSecciones2025.stream().map(SeccionData::seccion).toList(), t1_2025);
         generarAsistenciasRango(datosSecciones2024.stream().map(SeccionData::seccion).toList(),
                 LocalDate.of(2024, 3, 4), LocalDate.of(2024, 11, 20), t1_2024, t2_2024, t3_2024);
         generarAsistenciasRango(datosSecciones2023.stream().map(SeccionData::seccion).toList(),
@@ -686,6 +672,16 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         // restantes quedan inactivos hasta que la dirección los habilite.
         t.setEstado(orden == 1 ? TrimestreEstado.ACTIVO : TrimestreEstado.INACTIVO);
         return trimestreRepository.save(t);
+    }
+
+    private void actualizarEstadoTrimestre(Trimestre trimestre, TrimestreEstado estado) {
+        if (trimestre == null || estado == null) {
+            return;
+        }
+        if (trimestre.getEstado() != estado) {
+            trimestre.setEstado(estado);
+            trimestreRepository.save(trimestre);
+        }
     }
 
     private Seccion ensureSeccion(PeriodoEscolar p, NivelAcademico nivel, String gradoSala, String division, Turno turno) {
@@ -1120,9 +1116,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     // ASISTENCIAS (demo)
     // =========================================================================
 
-    private void generarAsistenciasUltimos30Dias(List<Seccion> secciones, Trimestre t1, Trimestre t2, Trimestre t3) {
+    private void generarAsistenciasUltimos30Dias(List<Seccion> secciones, Trimestre... trimestres) {
         LocalDate hoy = LocalDate.now();
-        generarAsistenciasRango(secciones, hoy.minusDays(30), hoy, t1, t2, t3);
+        generarAsistenciasRango(secciones, hoy.minusDays(30), hoy, trimestres);
     }
 
     private void generarAsistenciasRango(List<Seccion> secciones, LocalDate inicio, LocalDate fin, Trimestre... trimestres) {

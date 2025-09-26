@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,21 +22,14 @@ import type {
   NivelAcademico,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-generated";
-import { CheckCircle, Minus, X } from "lucide-react";
+import { CheckCircle, X } from "lucide-react";
+import type { DayContentProps } from "react-day-picker";
 
-type AttendanceCategory =
-  | "present"
-  | "absent"
-  | "late"
-  | "justified"
-  | "other";
+type AttendanceCategory = "present" | "absent";
 
 const attendancePriority: Record<AttendanceCategory, number> = {
-  other: 0,
   present: 1,
-  justified: 2,
-  late: 3,
-  absent: 4,
+  absent: 2,
 };
 
 const calendarModifierClassNames: Record<AttendanceCategory, string> = {
@@ -45,20 +37,11 @@ const calendarModifierClassNames: Record<AttendanceCategory, string> = {
     "bg-emerald-500 text-white hover:bg-emerald-500 hover:text-white focus:bg-emerald-500 focus:text-white",
   absent:
     "bg-red-500 text-white hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white",
-  late:
-    "bg-amber-500 text-white hover:bg-amber-500 hover:text-white focus:bg-amber-500 focus:text-white",
-  justified:
-    "bg-sky-500 text-white hover:bg-sky-500 hover:text-white focus:bg-sky-500 focus:text-white",
-  other:
-    "bg-slate-300 text-slate-900 hover:bg-slate-300 hover:text-slate-900 focus:bg-slate-300 focus:text-slate-900",
 };
 
 const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string }[] = [
   { key: "present", label: "Presente", dotClass: "bg-emerald-500" },
   { key: "absent", label: "Ausente", dotClass: "bg-red-500" },
-  { key: "late", label: "Llegó tarde", dotClass: "bg-amber-500" },
-  { key: "justified", label: "Ausencia justificada", dotClass: "bg-sky-500" },
-  { key: "other", label: "Otro registro", dotClass: "bg-slate-300" },
 ];
 
 function Donut({ percent }: { percent: number }) {
@@ -100,19 +83,6 @@ function Donut({ percent }: { percent: number }) {
   );
 }
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return dateFormatter.format(parsed);
-}
-
 function parseISODateToDate(value?: string | null) {
   if (!value) return null;
   const parts = value.split("-");
@@ -137,11 +107,8 @@ function parseISODateToDate(value?: string | null) {
 
 function toAttendanceCategory(estado?: string | null): AttendanceCategory {
   const normalized = String(estado ?? "").toUpperCase();
-  if (normalized === "PRESENTE") return "present";
-  if (normalized === "AUSENTE") return "absent";
-  if (normalized === "TARDE") return "late";
-  if (normalized === "JUSTIFICADA") return "justified";
-  return "other";
+  if (normalized.includes("PRESENT")) return "present";
+  return "absent";
 }
 
 function nivelLabel(nivel?: NivelAcademico | null) {
@@ -149,27 +116,6 @@ function nivelLabel(nivel?: NivelAcademico | null) {
   if (nivel === NivelAcademicoEnum.PRIMARIO) return "Nivel primario";
   if (nivel === NivelAcademicoEnum.INICIAL) return "Nivel inicial";
   return String(nivel);
-}
-
-function estadoLabel(estado?: string | null) {
-  if (!estado) return "Sin dato";
-  const normalized = estado.toLowerCase();
-  if (normalized === "presente") return "Presente";
-  if (normalized === "ausente") return "Ausente";
-  if (normalized === "tarde") return "Llegó tarde";
-  if (normalized === "justificada") return "Ausencia justificada";
-  return estado
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase())
-    .trim();
-}
-
-function estadoVariant(estado?: string | null) {
-  if (!estado) return "outline" as const;
-  const normalized = estado.toLowerCase();
-  if (normalized === "presente") return "default" as const;
-  if (normalized === "ausente") return "destructive" as const;
-  return "secondary" as const;
 }
 
 export function FamilyAttendanceView() {
@@ -339,57 +285,67 @@ export function FamilyAttendanceView() {
     periodoLoading,
   ]);
 
+  const detallesEnPeriodo = useMemo(() => {
+    const fromISO = periodoDateRange.fromISO;
+    const toISO = periodoDateRange.toISO;
+
+    if (!fromISO || !toISO) {
+      return [] as DetalleAsistenciaDTO[];
+    }
+
+    return detalles.filter((detalle) => {
+      const jornada = detalle.jornadaId
+        ? jornadas.get(detalle.jornadaId)
+        : null;
+      const fecha = jornada?.fecha ?? null;
+      if (!fecha) return false;
+      return fecha >= fromISO && fecha <= toISO;
+    });
+  }, [detalles, jornadas, periodoDateRange.fromISO, periodoDateRange.toISO]);
+
   const resumen = useMemo(() => {
-    if (!detalles.length) {
+    if (!detallesEnPeriodo.length) {
       return {
         total: 0,
         presentes: 0,
         ausentes: 0,
-        otros: 0,
         porcentaje: 0,
       };
     }
 
-    const presentes = detalles.filter(
-      (d) => String(d.estado).toUpperCase() === "PRESENTE",
+    const presentes = detallesEnPeriodo.filter(
+      (d) => toAttendanceCategory(d.estado) === "present",
     ).length;
-    const ausentes = detalles.filter(
-      (d) => String(d.estado).toUpperCase() === "AUSENTE",
-    ).length;
-    const otros = detalles.length - presentes - ausentes;
-    const porcentaje = Math.round((presentes / detalles.length) * 100);
+    const ausentes = detallesEnPeriodo.length - presentes;
+    const porcentaje = Math.round((presentes / detallesEnPeriodo.length) * 100);
 
-    return { total: detalles.length, presentes, ausentes, otros, porcentaje };
-  }, [detalles]);
+    return {
+      total: detallesEnPeriodo.length,
+      presentes,
+      ausentes,
+      porcentaje,
+    };
+  }, [detallesEnPeriodo]);
 
   const historial = useMemo(() => {
-    const fromISO = periodoDateRange.fromISO;
-    const toISO = periodoDateRange.toISO;
-
-    return detalles
+    return detallesEnPeriodo
       .map((detalle) => {
         const jornada = detalle.jornadaId
           ? jornadas.get(detalle.jornadaId)
           : null;
         const fecha = jornada?.fecha ?? null;
-        const isoFecha = fecha ?? null;
-        const inRange =
-          !isoFecha ||
-          !fromISO ||
-          !toISO ||
-          (isoFecha >= fromISO && isoFecha <= toISO);
 
         return {
           id: detalle.id,
           estado: detalle.estado,
           observacion: detalle.observacion,
-          fecha: inRange ? fecha : null,
+          fecha,
           fechaISO: fecha,
         };
       })
-      .filter((item) => item.fechaISO == null || item.fecha != null)
+      .filter((item) => item.fechaISO != null)
       .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
-  }, [detalles, jornadas, periodoDateRange.fromISO, periodoDateRange.toISO]);
+  }, [detallesEnPeriodo, jornadas]);
 
   const calendarData = useMemo(() => {
     const dayByISO = new Map<
@@ -411,18 +367,24 @@ export function FamilyAttendanceView() {
     const modifiers: Record<AttendanceCategory, Date[]> = {
       present: [],
       absent: [],
-      late: [],
-      justified: [],
-      other: [],
     };
 
+    const labelByTime = new Map<number, AttendanceCategory>();
+
     for (const [, value] of dayByISO) {
+      const keyTime = new Date(
+        value.date.getFullYear(),
+        value.date.getMonth(),
+        value.date.getDate(),
+      ).getTime();
+      labelByTime.set(keyTime, value.key);
       modifiers[value.key].push(value.date);
     }
 
     return {
       modifiers,
       hasData: dayByISO.size > 0,
+      labelByTime,
     };
   }, [historial]);
 
@@ -439,6 +401,85 @@ export function FamilyAttendanceView() {
     }
     return new Date();
   }, [historial, periodoDateRange.fromDate, hoyISO]);
+
+  const calendarMinDate = periodoDateRange.fromDate ?? undefined;
+  const calendarMaxDate = periodoDateRange.toDate ?? undefined;
+
+  const clampCalendarMonth = useMemo(() => {
+    const minMonthTime = calendarMinDate
+      ? new Date(
+          calendarMinDate.getFullYear(),
+          calendarMinDate.getMonth(),
+          1,
+        ).getTime()
+      : null;
+    const maxMonthTime = calendarMaxDate
+      ? new Date(
+          calendarMaxDate.getFullYear(),
+          calendarMaxDate.getMonth(),
+          1,
+        ).getTime()
+      : null;
+
+    return (value: Date | undefined) => {
+      if (!value) return value;
+      const normalized = new Date(value.getFullYear(), value.getMonth(), 1);
+      const time = normalized.getTime();
+      if (minMonthTime != null && time < minMonthTime) {
+        return new Date(minMonthTime);
+      }
+      if (maxMonthTime != null && time > maxMonthTime) {
+        return new Date(maxMonthTime);
+      }
+      return normalized;
+    };
+  }, [calendarMinDate, calendarMaxDate]);
+
+  const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    setCalendarMonth((prev) => {
+      if (!calendarDefaultMonth) return clampCalendarMonth(prev);
+      if (!prev) return clampCalendarMonth(calendarDefaultMonth);
+      const sameMonth =
+        prev.getFullYear() === calendarDefaultMonth.getFullYear() &&
+        prev.getMonth() === calendarDefaultMonth.getMonth();
+      return clampCalendarMonth(sameMonth ? prev : calendarDefaultMonth);
+    });
+  }, [calendarDefaultMonth, clampCalendarMonth]);
+
+  useEffect(() => {
+    setCalendarMonth((prev) => clampCalendarMonth(prev));
+  }, [clampCalendarMonth]);
+
+  const handleCalendarMonthChange = useCallback(
+    (nextMonth: Date) => {
+      setCalendarMonth(clampCalendarMonth(nextMonth));
+    },
+    [clampCalendarMonth],
+  );
+
+  const CalendarDayContent = useMemo(() => {
+    const getKey = (date: Date) =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+    return function DayContent({ date }: DayContentProps) {
+      const category = calendarData.labelByTime.get(getKey(date));
+
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center py-1">
+          <span className="text-base font-semibold leading-none">
+            {date.getDate()}
+          </span>
+          {category ? (
+            <span className="sr-only">
+              {category === "present" ? "Presente" : "Ausente"}
+            </span>
+          ) : null}
+        </div>
+      );
+    };
+  }, [calendarData.labelByTime]);
 
   if (loading) {
     return <LoadingState label="Cargando alumnos vinculados…" />;
@@ -464,8 +505,8 @@ export function FamilyAttendanceView() {
       <header className="space-y-2">
         <h3 className="text-2xl font-semibold tracking-tight">{titulo}</h3>
         <p className="text-sm text-muted-foreground">
-          Seleccioná un alumno para revisar su historial diario y el porcentaje
-          total de asistencias.
+          Seleccioná un alumno para revisar su porcentaje de asistencias y el
+          detalle en el calendario del período activo.
         </p>
       </header>
 
@@ -520,66 +561,10 @@ export function FamilyAttendanceView() {
                           Ausentes: {resumen.ausentes}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Minus className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          Otros registros: {resumen.otros}
-                        </span>
-                      </div>
                       <div className="text-xs text-muted-foreground">
                         Total de días registrados: {resumen.total}
                       </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Historial diario</CardTitle>
-                <CardDescription>
-                  Registros de asistencias e inasistencias cargados por los
-                  docentes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {loadingDetalles && (
-                  <LoadingState label="Cargando historial…" className="h-32" />
-                )}
-
-                {!loadingDetalles && errorDetalles && (
-                  <div className="text-sm text-red-600">{errorDetalles}</div>
-                )}
-
-                {!loadingDetalles && !errorDetalles && !historial.length && (
-                  <div className="text-sm text-muted-foreground">
-                    Aún no hay asistencias registradas en el período consultado.
-                  </div>
-                )}
-
-                {!loadingDetalles && !errorDetalles && historial.length > 0 && (
-                  <div className="space-y-2">
-                    {historial.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded border p-3"
-                      >
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">
-                            {formatDate(item.fecha)}
-                          </div>
-                          {item.observacion && (
-                            <p className="text-xs text-muted-foreground">
-                              {item.observacion}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant={estadoVariant(item.estado)}>
-                          {estadoLabel(item.estado)}
-                        </Badge>
-                      </div>
-                    ))}
                   </div>
                 )}
               </CardContent>
@@ -590,13 +575,15 @@ export function FamilyAttendanceView() {
             <CardHeader>
               <CardTitle>Calendario de asistencias</CardTitle>
               <CardDescription>
-                Visualizá rápidamente los días presentes, ausentes o con
-                novedades del período activo.
+                Visualizá rápidamente los días presentes y ausentes del
+                período activo.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingDetalles ? (
                 <LoadingState label="Cargando calendario…" className="h-64" />
+              ) : errorDetalles ? (
+                <div className="text-sm text-red-600">{errorDetalles}</div>
               ) : (
                 <div className="space-y-4">
                   <AttendanceCalendar
@@ -604,7 +591,7 @@ export function FamilyAttendanceView() {
                     classNames={{
                       months: "flex flex-col gap-4",
                       day: cn(
-                        "h-10 w-10 p-0 text-sm font-medium",
+                        "flex h-14 w-14 flex-col items-center justify-center rounded-md p-0 text-xs font-medium",
                         "aria-selected:opacity-100",
                       ),
                       day_today:
@@ -613,10 +600,13 @@ export function FamilyAttendanceView() {
                     disableMonthDropdown
                     disableYearDropdown
                     defaultMonth={calendarDefaultMonth}
-                    fromDate={periodoDateRange.fromDate ?? undefined}
-                    toDate={periodoDateRange.toDate ?? undefined}
+                    month={calendarMonth}
+                    onMonthChange={handleCalendarMonthChange}
+                    fromDate={calendarMinDate}
+                    toDate={calendarMaxDate}
                     modifiers={calendarData.modifiers}
                     modifiersClassNames={calendarModifierClassNames}
+                    components={{ DayContent: CalendarDayContent }}
                   />
 
                   <div className="flex flex-wrap gap-4 text-xs">

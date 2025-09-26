@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CaptionProps } from 'react-day-picker';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, useDayPicker } from 'react-day-picker';
 
 import { buttonVariants } from '@/components/ui/button';
 import {
@@ -40,6 +40,7 @@ function CalendarCaption({
   disableMonthDropdown,
   disableYearDropdown,
 }: CalendarCaptionProps) {
+  const { goToMonth: contextGoToMonth } = useDayPicker();
   const currentMonth = displayMonth.getMonth();
   const currentYear = displayMonth.getFullYear();
   const currentMonthStart = React.useMemo(
@@ -115,15 +116,37 @@ function CalendarCaption({
     );
   }, [currentYear, maxMonth, minMonth]);
 
+  const canNavigate = React.useMemo(
+    () => typeof goToMonth === 'function' || typeof contextGoToMonth === 'function',
+    [contextGoToMonth, goToMonth]
+  );
+
+  const navigateToMonth = React.useCallback(
+    (nextDate: Date) => {
+      if (!canNavigate) return;
+
+      const targetDate = clampMonth(nextDate);
+
+      if (typeof goToMonth === 'function') {
+        goToMonth(targetDate);
+        return;
+      }
+
+      if (typeof contextGoToMonth === 'function') {
+        contextGoToMonth(targetDate);
+      }
+    },
+    [canNavigate, clampMonth, contextGoToMonth, goToMonth]
+  );
+
   const handleMonthChange = React.useCallback(
     (value: string) => {
       const monthIndex = Number.parseInt(value, 10);
       if (Number.isNaN(monthIndex)) return;
 
-      const nextDate = monthStart(new Date(currentYear, monthIndex, 1));
-      goToMonth(clampMonth(nextDate));
+      navigateToMonth(monthStart(new Date(currentYear, monthIndex, 1)));
     },
-    [clampMonth, currentYear, goToMonth]
+    [currentYear, navigateToMonth]
   );
 
   const handleYearChange = React.useCallback(
@@ -131,10 +154,9 @@ function CalendarCaption({
       const year = Number.parseInt(value, 10);
       if (Number.isNaN(year)) return;
 
-      const nextDate = monthStart(new Date(year, currentMonth, 1));
-      goToMonth(clampMonth(nextDate));
+      navigateToMonth(monthStart(new Date(year, currentMonth, 1)));
     },
-    [clampMonth, currentMonth, goToMonth]
+    [currentMonth, navigateToMonth]
   );
 
   const previousMonth = React.useMemo(
@@ -165,13 +187,13 @@ function CalendarCaption({
 
   const handlePreviousMonth = React.useCallback(() => {
     if (isPreviousDisabled) return;
-    goToMonth(clampMonth(previousMonth));
-  }, [clampMonth, goToMonth, isPreviousDisabled, previousMonth]);
+    navigateToMonth(previousMonth);
+  }, [isPreviousDisabled, navigateToMonth, previousMonth]);
 
   const handleNextMonth = React.useCallback(() => {
     if (isNextDisabled) return;
-    goToMonth(clampMonth(nextMonth));
-  }, [clampMonth, goToMonth, isNextDisabled, nextMonth]);
+    navigateToMonth(nextMonth);
+  }, [isNextDisabled, navigateToMonth, nextMonth]);
 
   const renderMonthLabel = () => (
     <span className="h-8 w-[140px] text-sm font-medium capitalize text-center sm:text-left">
@@ -192,7 +214,7 @@ function CalendarCaption({
         className={navButtonClassName}
         onClick={handlePreviousMonth}
         aria-label="Mes anterior"
-        disabled={isPreviousDisabled}
+        disabled={isPreviousDisabled || !canNavigate}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
@@ -202,47 +224,51 @@ function CalendarCaption({
         ) : (
           <Select
             value={String(currentMonth)}
-          onValueChange={handleMonthChange}
-          disabled={months.every((month) => month.disabled)}
-        >
-          <SelectTrigger
-            className="h-8 w-[140px] bg-transparent text-sm font-medium"
-            aria-label="Seleccionar mes"
+            onValueChange={handleMonthChange}
+            disabled={!canNavigate || months.every((month) => month.disabled)}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            {months.map((month) => (
-              <SelectItem
-                key={month.value}
-                value={month.value}
-                disabled={month.disabled}
-                className="capitalize"
-              >
-                {month.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      {disableYearDropdown ? (
-        renderYearLabel()
-      ) : (
-        <Select value={String(currentYear)} onValueChange={handleYearChange}>
-          <SelectTrigger
-            className="h-8 w-[112px] bg-transparent text-sm font-medium"
-            aria-label="Seleccionar año"
+            <SelectTrigger
+              className="h-8 w-[140px] bg-transparent text-sm font-medium"
+              aria-label="Seleccionar mes"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {months.map((month) => (
+                <SelectItem
+                  key={month.value}
+                  value={month.value}
+                  disabled={month.disabled}
+                  className="capitalize"
+                >
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {disableYearDropdown ? (
+          renderYearLabel()
+        ) : (
+          <Select
+            value={String(currentYear)}
+            onValueChange={handleYearChange}
+            disabled={!canNavigate}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            {years.map((year) => (
-              <SelectItem key={year} value={year}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              className="h-8 w-[112px] bg-transparent text-sm font-medium"
+              aria-label="Seleccionar año"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
       <button
@@ -250,7 +276,7 @@ function CalendarCaption({
         className={navButtonClassName}
         onClick={handleNextMonth}
         aria-label="Mes siguiente"
-        disabled={isNextDisabled}
+        disabled={isNextDisabled || !canNavigate}
       >
         <ChevronRight className="h-4 w-4" />
       </button>

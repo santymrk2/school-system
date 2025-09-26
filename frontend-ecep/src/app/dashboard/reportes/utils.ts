@@ -37,20 +37,11 @@ export const formatPercent = (value: number, digits = 0) =>
   `${(value * 100).toFixed(digits)}%`;
 
 function formatConceptualGrade(value: string) {
-  const hasUnderscores = value.includes("_");
   const cleaned = value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
 
   if (!cleaned) return value;
 
-  if (!hasUnderscores) {
-    return cleaned;
-  }
-
-  return cleaned
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
+  return cleaned.toUpperCase();
 }
 
 export const parseISO = (value: string) => new Date(`${value}T00:00:00`);

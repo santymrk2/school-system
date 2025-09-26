@@ -2,7 +2,7 @@
 "use client";
 import { useMemo } from "react";
 import { MENU, type MenuItem } from "@/lib/menu";
-import type { UserRole } from "@/types/api-generated";
+import { UserRole } from "@/types/api-generated";
 
 const HIDDEN_ITEMS_BY_ROLE: Partial<Record<UserRole, string[]>> = {
   [UserRole.ADMIN]: [

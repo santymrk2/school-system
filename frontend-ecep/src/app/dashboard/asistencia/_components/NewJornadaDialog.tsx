@@ -67,6 +67,10 @@ function formatHumanDate(dateString?: string) {
   return `${weekday} ${day} de ${month}, ${year}`;
 }
 
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
 export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const [open, setOpen] = useState(false);
   const [fecha, setFecha] = useState<string>(hoyISO());
@@ -197,6 +201,35 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   }, [fecha]);
   const minDate = useMemo(() => new Date(`${minFecha}T00:00:00`), [minFecha]);
   const maxDate = useMemo(() => new Date(`${maxFecha}T00:00:00`), [maxFecha]);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const base =
+      selectedDate && isDateWithinBounds(selectedDate) ? selectedDate : minDate;
+    return startOfMonth(base);
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setCalendarMonth((prev) => {
+      const base =
+        selectedDate && isDateWithinBounds(selectedDate) ? selectedDate : minDate;
+      const target = startOfMonth(base);
+      return prev.getTime() === target.getTime() ? prev : target;
+    });
+  }, [open, selectedDate, isDateWithinBounds, minDate]);
+
+  const isDateWithinBounds = useCallback(
+    (date: Date) => {
+      if (Number.isNaN(date.getTime())) {
+        return false;
+      }
+      const iso = formatDateToISO(date);
+      if (iso < minFecha || iso > maxFecha) {
+        return false;
+      }
+      return true;
+    },
+    [minFecha, maxFecha],
+  );
 
   const isDateWithinBounds = useCallback(
     (date: Date) => {
@@ -342,8 +375,10 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  defaultMonth={selectedDate ?? minDate}
+                  month={calendarMonth}
+                  defaultMonth={calendarMonth}
                   onSelect={handleCalendarSelect}
+                  onMonthChange={(month) => setCalendarMonth(startOfMonth(month))}
                   disabled={isDisabledDate}
                   fromDate={minDate}
                   toDate={maxDate}

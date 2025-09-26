@@ -60,4 +60,11 @@ public class SolicitudAdmisionController {
         service.decidir(id, dto);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/alta")
+    public ResponseEntity<SolicitudAdmisionAltaResultDTO> darDeAlta(
+            @PathVariable Long id,
+            @RequestBody @Valid SolicitudAdmisionAltaDTO dto) {
+        return ResponseEntity.ok(service.darDeAlta(id, dto));
+    }
 }

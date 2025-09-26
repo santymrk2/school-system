@@ -5146,6 +5146,8 @@ export default function PersonalPage() {
                         }))
                       }
                       required
+                      showMonthDropdown
+                      showYearDropdown
                     />
                   </div>
                   <div className="space-y-2">
@@ -5863,6 +5865,8 @@ export default function PersonalPage() {
                         }))
                       }
                       required
+                      showMonthDropdown
+                      showYearDropdown
                     />
                   </div>
                   <div className="space-y-2">

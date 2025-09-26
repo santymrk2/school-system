@@ -501,6 +501,8 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
               value={values.fechaNacimiento || undefined}
               onChange={(value) => onChange("fechaNacimiento", value ?? "")}
               required
+              showMonthDropdown
+              showYearDropdown
             />
           </div>
           <div className="space-y-1">

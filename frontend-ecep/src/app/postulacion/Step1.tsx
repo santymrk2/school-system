@@ -112,6 +112,8 @@ export function Step1({
             }
             error={Boolean(errors.fechaNacimiento)}
             required
+            showMonthDropdown
+            showYearDropdown
           />
         </div>
 

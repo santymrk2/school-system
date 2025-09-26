@@ -22,6 +22,8 @@ export interface DatePickerProps {
   required?: boolean;
   error?: boolean;
   align?: "start" | "center" | "end";
+  showMonthDropdown?: boolean;
+  showYearDropdown?: boolean;
 }
 
 const formatDisplay = (value: string) => {
@@ -61,6 +63,8 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
       required,
       error,
       align = "start",
+      showMonthDropdown,
+      showYearDropdown,
     },
     ref,
   ) => {
@@ -128,6 +132,12 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
               }}
               fromDate={minDate}
               toDate={maxDate}
+              {...(showMonthDropdown !== undefined
+                ? { disableMonthDropdown: !showMonthDropdown }
+                : {})}
+              {...(showYearDropdown !== undefined
+                ? { disableYearDropdown: !showYearDropdown }
+                : {})}
               initialFocus
             />
             {!required && value ? (

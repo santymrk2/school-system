@@ -1025,6 +1025,8 @@ export default function AlumnoPerfilPage() {
                             }))
                           }
                           required
+                          showMonthDropdown
+                          showYearDropdown
                         />
                       </div>
                       <div className="space-y-2">

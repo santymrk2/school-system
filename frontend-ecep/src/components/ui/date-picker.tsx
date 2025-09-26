@@ -73,6 +73,19 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
     const selectedDate = React.useMemo(() => getDate(value), [value]);
     const minDate = React.useMemo(() => getDate(min), [min]);
     const maxDate = React.useMemo(() => getDate(max), [max]);
+    const resolvedMonth = React.useMemo(() => {
+      return selectedDate ?? minDate ?? new Date();
+    }, [minDate, selectedDate]);
+    const [currentMonth, setCurrentMonth] = React.useState<Date>(resolvedMonth);
+
+    React.useEffect(() => {
+      setCurrentMonth((prev) => {
+        if (prev.getTime() === resolvedMonth.getTime()) {
+          return prev;
+        }
+        return resolvedMonth;
+      });
+    }, [resolvedMonth]);
 
     const handleSelect = React.useCallback(
       (date?: Date) => {
@@ -90,6 +103,7 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
         }
 
         onChange?.(format(date, "yyyy-MM-dd"));
+        setCurrentMonth(date);
         setOpen(false);
       },
       [disabled, maxDate, minDate, onChange],
@@ -122,8 +136,9 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
             <Calendar
               mode="single"
               selected={selectedDate}
-              defaultMonth={selectedDate ?? minDate ?? undefined}
+              month={currentMonth}
               onSelect={handleSelect}
+              onMonthChange={setCurrentMonth}
               disabled={(date) => {
                 if (disabled) return true;
                 if (minDate && date < minDate) return true;

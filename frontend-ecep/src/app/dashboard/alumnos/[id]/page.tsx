@@ -133,6 +133,8 @@ export default function AlumnoPerfilPage() {
     return `${grado} ${div} ${turno}`.trim();
   };
 
+  const NO_SECTION_VALUE = "__no-section__";
+
   const sectionOptions = useMemo(() => {
     if (!seccionesList.length) return [] as { id: string; label: string }[];
     return seccionesList
@@ -1134,15 +1136,23 @@ export default function AlumnoPerfilPage() {
                       <div className="space-y-2">
                         <Label>Sección (periodo actual)</Label>
                         <Select
-                          value={selectedSeccionId}
-                          onValueChange={setSelectedSeccionId}
+                          value={
+                            selectedSeccionId ? selectedSeccionId : NO_SECTION_VALUE
+                          }
+                          onValueChange={(value) =>
+                            setSelectedSeccionId(
+                              value === NO_SECTION_VALUE ? "" : value
+                            )
+                          }
                           disabled={!sectionOptions.length}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Sin sección asignada" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sin sección asignada</SelectItem>
+                            <SelectItem value={NO_SECTION_VALUE}>
+                              Sin sección asignada
+                            </SelectItem>
                             {sectionOptions.map((option) => (
                               <SelectItem key={option.id} value={option.id}>
                                 {option.label}

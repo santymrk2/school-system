@@ -49,6 +49,11 @@ const solicitudesAdmision = {
     http.post<void>(`/api/solicitudes-admision/${id}/entrevista`, body),
   decidir: (id: number, body: DTO.SolicitudAdmisionDecisionDTO) =>
     http.post<void>(`/api/solicitudes-admision/${id}/decision`, body),
+  alta: (id: number, body: DTO.SolicitudAdmisionAltaDTO) =>
+    http.post<DTO.SolicitudAdmisionAltaResultDTO>(
+      `/api/solicitudes-admision/${id}/alta`,
+      body,
+    ),
 };
 
 export const admisiones = {

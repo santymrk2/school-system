@@ -15,11 +15,18 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+type DayPickerProps = React.ComponentProps<typeof DayPicker>;
+
+export type CalendarProps = DayPickerProps & {
+  disableMonthDropdown?: boolean;
+  disableYearDropdown?: boolean;
+};
 
 type CalendarCaptionProps = CaptionProps & {
   minDate?: Date;
   maxDate?: Date;
+  disableMonthDropdown?: boolean;
+  disableYearDropdown?: boolean;
 };
 
 const monthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
@@ -30,6 +37,8 @@ function CalendarCaption({
   goToMonth,
   minDate,
   maxDate,
+  disableMonthDropdown,
+  disableYearDropdown,
 }: CalendarCaptionProps) {
   const currentMonth = displayMonth.getMonth();
   const currentYear = displayMonth.getFullYear();
@@ -124,47 +133,67 @@ function CalendarCaption({
     [clampMonth, currentMonth, goToMonth]
   );
 
+  const renderMonthLabel = () => (
+    <span className="h-8 w-[140px] text-sm font-medium capitalize text-center sm:text-left">
+      {monthFormatter(currentMonth)}
+    </span>
+  );
+
+  const renderYearLabel = () => (
+    <span className="h-8 w-[112px] text-sm font-medium text-center sm:text-left">
+      {currentYear}
+    </span>
+  );
+
   return (
     <div className="flex flex-col items-center gap-2 sm:flex-row">
-      <Select
-        value={String(currentMonth)}
-        onValueChange={handleMonthChange}
-        disabled={months.every((month) => month.disabled)}
-      >
-        <SelectTrigger
-          className="h-8 w-[140px] bg-transparent text-sm font-medium"
-          aria-label="Seleccionar mes"
+      {disableMonthDropdown ? (
+        renderMonthLabel()
+      ) : (
+        <Select
+          value={String(currentMonth)}
+          onValueChange={handleMonthChange}
+          disabled={months.every((month) => month.disabled)}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent position="popper">
-          {months.map((month) => (
-            <SelectItem
-              key={month.value}
-              value={month.value}
-              disabled={month.disabled}
-              className="capitalize"
-            >
-              {month.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={String(currentYear)} onValueChange={handleYearChange}>
-        <SelectTrigger
-          className="h-8 w-[112px] bg-transparent text-sm font-medium"
-          aria-label="Seleccionar año"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent position="popper">
-          {years.map((year) => (
-            <SelectItem key={year} value={year}>
-              {year}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            className="h-8 w-[140px] bg-transparent text-sm font-medium"
+            aria-label="Seleccionar mes"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {months.map((month) => (
+              <SelectItem
+                key={month.value}
+                value={month.value}
+                disabled={month.disabled}
+                className="capitalize"
+              >
+                {month.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      {disableYearDropdown ? (
+        renderYearLabel()
+      ) : (
+        <Select value={String(currentYear)} onValueChange={handleYearChange}>
+          <SelectTrigger
+            className="h-8 w-[112px] bg-transparent text-sm font-medium"
+            aria-label="Seleccionar año"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {years.map((year) => (
+              <SelectItem key={year} value={year}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }
@@ -174,6 +203,8 @@ function Calendar({
   classNames,
   showOutsideDays = true,
   components,
+  disableMonthDropdown = false,
+  disableYearDropdown = false,
   ...props
 }: CalendarProps) {
   const minDate =
@@ -236,6 +267,8 @@ function Calendar({
             {...captionProps}
             minDate={minDate}
             maxDate={maxDate}
+            disableMonthDropdown={disableMonthDropdown}
+            disableYearDropdown={disableYearDropdown}
           />
         ),
         ...components,

@@ -425,257 +425,252 @@ export default function MateriasSeccionPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/materias")}
-        >
-          Volver
-        </Button>
+      <Button
+        variant="outline"
+        onClick={() => router.push("/dashboard/materias")}
+      >
+        Volver
+      </Button>
 
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h2 className="text-2xl font-bold">Docentes y materias</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline">{seccionLabel}</Badge>
-              {nivelBadge && (
-                <Badge variant="outline">{nivelBadge}</Badge>
-              )}
-              {turnoBadgeLabel && (
-                <Badge variant="outline">{turnoBadgeLabel}</Badge>
-              )}
-              {seccion?.periodoEscolarId && (
-                <Badge variant="outline">
-                  Período {periodoNombre ?? "—"}
-                </Badge>
-              )}
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {esInicial
-                ? "Gestioná la maestra titular, suplente y otros roles de la sección."
-                : "Asignaciones y vigencias de docentes por materia."}
-            </p>
-          </div>
-          {esPrimario && (
-            <div>
-              <Button onClick={() => setOpenAdd(true)}>
-                <Plus className="h-4 w-4 mr-1" /> Agregar materia
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {loading ? (
-          <LoadingState label="Cargando asignaciones…" />
-        ) : error ? (
-          <div className="text-sm text-red-600">{error}</div>
-        ) : (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Docentes de la sección</CardTitle>
-                <CardDescription>
-                  Maestra titular, suplente y otros roles vigentes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-medium">Titular</div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setOpenAsignarSeccion({
-                            rol: RolSeccion.MAESTRO_TITULAR,
-                          })
-                        }
-                      >
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        Asignar
-                      </Button>
-                    </div>
-                    <div className="mt-2">
-                      <div className="font-medium">
-                        {fmtEmpleado(
-                          titularSeccion
-                            ? empleadoById.get(titularSeccion.empleadoId)
-                            : undefined,
-                        )}
-                      </div>
-                      {titularSeccion ? (
-                        <div className="text-xs text-muted-foreground">
-                          Vigente desde {titularSeccion.vigenciaDesde}
-                          {titularSeccion.vigenciaHasta
-                            ? ` hasta ${titularSeccion.vigenciaHasta}`
-                            : ""}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-muted-foreground">
-                          Sin titular asignado.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-medium">Suplente</div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setOpenAsignarSeccion({ rol: RolSeccion.SUPLENTE })
-                        }
-                      >
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        Asignar
-                      </Button>
-                    </div>
-                    <div className="mt-2">
-                      <div className="font-medium">
-                        {fmtEmpleado(
-                          suplenteSeccion
-                            ? empleadoById.get(suplenteSeccion.empleadoId)
-                            : undefined,
-                        )}
-                      </div>
-                      {suplenteSeccion ? (
-                        <div className="text-xs text-muted-foreground">
-                          Vigente del {suplenteSeccion.vigenciaDesde} al
-                          {" "}
-                          {suplenteSeccion.vigenciaHasta ?? "—"}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-muted-foreground">
-                          Sin suplente vigente.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {otrosRolesSeccion.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-xs uppercase text-muted-foreground">
-                      Otros roles asignados
-                    </div>
-                    <div className="space-y-1">
-                      {otrosRolesSeccion.map((a) => (
-                        <div
-                          key={`${a.id}-${a.rol}`}
-                          className="flex flex-wrap items-center gap-2"
-                        >
-                          <span className="font-medium">
-                            {fmtEmpleado(empleadoById.get(a.empleadoId))}
-                          </span>
-                          <Badge variant="outline">
-                            {formatRolSeccionLabel(a.rol)}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {a.vigenciaDesde}
-                            {a.vigenciaHasta ? ` → ${a.vigenciaHasta}` : ""}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {esPrimario ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Materias</CardTitle>
-                  <CardDescription>
-                    Docente titular y suplente vigentes por materia.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {sms.length === 0 && (
-                    <div className="text-sm text-muted-foreground">
-                      Sin materias aún.
-                    </div>
-                  )}
-
-                  {sms.map((sm) => {
-                    const mat = materiasById.get(sm.materiaId);
-                    const tit = titularVigente(sm.id);
-                    const sup = suplenteVigente(sm.id);
-
-
-                    return (
-                      <div key={sm.id} className="border rounded p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">
-                            {mat?.nombre ?? `Materia #${sm.materiaId}`}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                mat &&
-                                  setOpenAsignar({
-                                    sm,
-                                    materia: mat,
-                                    ocupados: {
-                                      titularId:
-                                        titularVigente(sm.id)?.empleadoId ?? null,
-                                      suplenteId:
-                                        suplenteVigente(sm.id)?.empleadoId ?? null,
-                                    },
-                                  })
-                              }
-                            >
-                              <UserPlus className="h-4 w-4 mr-1" />
-                              Asignar docente
-                            </Button>
-                            {/* Si luego agregás DELETE en /api/secciones-materias, activás esto */}
-                            {/* <Button size="sm" variant="destructive" onClick={() => unlink(sm.id)}>Quitar</Button> */}
-                          </div>
-                        </div>
-
-                        <Separator className="my-2" />
-
-                        <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="default">Titular</Badge>
-                            <span className="truncate">
-                              {fmtEmpleado(empleadoById.get(tit?.empleadoId ?? 0))}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">Suplente</Badge>
-                            <span className="truncate">
-                              {fmtEmpleado(empleadoById.get(sup?.empleadoId ?? 0))}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Materias</CardTitle>
-                  <CardDescription>
-                    En el nivel inicial no se gestionan materias, solo docentes de
-                    sección.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-muted-foreground">
-                    No hay materias asociadas a esta sección.
-                  </div>
-                </CardContent>
-              </Card>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Docentes y materias</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="outline">{seccionLabel}</Badge>
+            {nivelBadge && <Badge variant="outline">{nivelBadge}</Badge>}
+            {turnoBadgeLabel && (
+              <Badge variant="outline">{turnoBadgeLabel}</Badge>
             )}
+            {seccion?.periodoEscolarId && (
+              <Badge variant="outline">
+                Período {periodoNombre ?? "—"}
+              </Badge>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {esInicial
+              ? "Gestioná la maestra titular, suplente y otros roles de la sección."
+              : "Asignaciones y vigencias de docentes por materia."}
+          </p>
+        </div>
+        {esPrimario && (
+          <div>
+            <Button onClick={() => setOpenAdd(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Agregar materia
+            </Button>
           </div>
         )}
       </div>
+
+      {loading ? (
+        <LoadingState label="Cargando asignaciones…" />
+      ) : error ? (
+        <div className="text-sm text-red-600">{error}</div>
+      ) : (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Docentes de la sección</CardTitle>
+              <CardDescription>
+                Maestra titular, suplente y otros roles vigentes.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium">Titular</div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setOpenAsignarSeccion({
+                          rol: RolSeccion.MAESTRO_TITULAR,
+                        })
+                      }
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Asignar
+                    </Button>
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-medium">
+                      {fmtEmpleado(
+                        titularSeccion
+                          ? empleadoById.get(titularSeccion.empleadoId)
+                          : undefined,
+                      )}
+                    </div>
+                    {titularSeccion ? (
+                      <div className="text-xs text-muted-foreground">
+                        Vigente desde {titularSeccion.vigenciaDesde}
+                        {titularSeccion.vigenciaHasta
+                          ? ` hasta ${titularSeccion.vigenciaHasta}`
+                          : ""}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Sin titular asignado.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium">Suplente</div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setOpenAsignarSeccion({ rol: RolSeccion.SUPLENTE })
+                      }
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Asignar
+                    </Button>
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-medium">
+                      {fmtEmpleado(
+                        suplenteSeccion
+                          ? empleadoById.get(suplenteSeccion.empleadoId)
+                          : undefined,
+                      )}
+                    </div>
+                    {suplenteSeccion ? (
+                      <div className="text-xs text-muted-foreground">
+                        Vigente del {suplenteSeccion.vigenciaDesde} al {" "}
+                        {suplenteSeccion.vigenciaHasta ?? "—"}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Sin suplente vigente.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {otrosRolesSeccion.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    Otros roles asignados
+                  </div>
+                  <div className="space-y-1">
+                    {otrosRolesSeccion.map((a) => (
+                      <div
+                        key={`${a.id}-${a.rol}`}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <span className="font-medium">
+                          {fmtEmpleado(empleadoById.get(a.empleadoId))}
+                        </span>
+                        <Badge variant="outline">
+                          {formatRolSeccionLabel(a.rol)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {a.vigenciaDesde}
+                          {a.vigenciaHasta ? ` → ${a.vigenciaHasta}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {esPrimario ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Materias</CardTitle>
+                <CardDescription>
+                  Docente titular y suplente vigentes por materia.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {sms.length === 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    Sin materias aún.
+                  </div>
+                )}
+
+                {sms.map((sm) => {
+                  const mat = materiasById.get(sm.materiaId);
+                  const tit = titularVigente(sm.id);
+                  const sup = suplenteVigente(sm.id);
+
+                  return (
+                    <div key={sm.id} className="border rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">
+                          {mat?.nombre ?? `Materia #${sm.materiaId}`}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              mat &&
+                                setOpenAsignar({
+                                  sm,
+                                  materia: mat,
+                                  ocupados: {
+                                    titularId:
+                                      titularVigente(sm.id)?.empleadoId ?? null,
+                                    suplenteId:
+                                      suplenteVigente(sm.id)?.empleadoId ?? null,
+                                  },
+                                })
+                            }
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Asignar docente
+                          </Button>
+                          {/* Si luego agregás DELETE en /api/secciones-materias, activás esto */}
+                          {/* <Button size="sm" variant="destructive" onClick={() => unlink(sm.id)}>Quitar</Button> */}
+                        </div>
+                      </div>
+
+                      <Separator className="my-2" />
+
+                      <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="default">Titular</Badge>
+                          <span className="truncate">
+                            {fmtEmpleado(empleadoById.get(tit?.empleadoId ?? 0))}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">Suplente</Badge>
+                          <span className="truncate">
+                            {fmtEmpleado(empleadoById.get(sup?.empleadoId ?? 0))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Materias</CardTitle>
+                <CardDescription>
+                  En el nivel inicial no se gestionan materias, solo docentes de
+                  sección.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  No hay materias asociadas a esta sección.
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {openAdd && seccion && esPrimario && (
         <AddMateriaToSeccionDialog
@@ -711,6 +706,6 @@ export default function MateriasSeccionPage() {
           onCreated={() => setRefreshKey((k) => k + 1)}
         />
       )}
-    
+    </div>
   );
 }

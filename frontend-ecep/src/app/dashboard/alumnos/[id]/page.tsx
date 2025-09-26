@@ -969,7 +969,7 @@ export default function AlumnoPerfilPage() {
                 <DialogTrigger asChild>
                   <Button variant="default">Editar datos</Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto sm:max-h-[80vh]">
                   <DialogHeader>
                     <DialogTitle>Editar perfil del alumno</DialogTitle>
                     <DialogDescription>

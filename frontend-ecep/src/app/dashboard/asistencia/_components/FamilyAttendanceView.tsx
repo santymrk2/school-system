@@ -26,6 +26,7 @@ import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-gene
 import { CheckCircle, X } from "lucide-react";
 import type { DayContentProps } from "react-day-picker";
 
+
 type AttendanceCategory = "present" | "absent";
 
 const attendancePriority: Record<AttendanceCategory, number> = {
@@ -357,6 +358,7 @@ export function FamilyAttendanceView() {
       porcentaje,
     };
   }, [detallesEnPeriodo]);
+
 
   const historial = useMemo(() => {
     return detallesEnPeriodo

@@ -22,7 +22,7 @@ export const getBoletinGradeDisplay = (grade?: BoletinSubjectGrade | null) => {
 
   const conceptual = grade.notaConceptual?.trim();
   if (conceptual && conceptual !== "—") {
-    return conceptual;
+    return formatConceptualGrade(conceptual);
   }
 
   const numeric = typeof grade.notaNumerica === "number" ? grade.notaNumerica : null;
@@ -35,6 +35,23 @@ export const getBoletinGradeDisplay = (grade?: BoletinSubjectGrade | null) => {
 
 export const formatPercent = (value: number, digits = 0) =>
   `${(value * 100).toFixed(digits)}%`;
+
+function formatConceptualGrade(value: string) {
+  const hasUnderscores = value.includes("_");
+  const cleaned = value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
+
+  if (!cleaned) return value;
+
+  if (!hasUnderscores) {
+    return cleaned;
+  }
+
+  return cleaned
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 export const parseISO = (value: string) => new Date(`${value}T00:00:00`);
 

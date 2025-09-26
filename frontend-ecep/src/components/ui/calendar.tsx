@@ -202,22 +202,22 @@ function CalendarCaption({
   }, [isNextDisabled, navigateToMonth, nextMonth]);
 
   const renderMonthLabel = () => (
-    <span className="h-8 w-[140px] text-sm font-medium capitalize text-center sm:text-left">
+    <span className="h-8 w-[140px] text-sm font-medium capitalize text-center">
       {monthFormatter(currentMonth)}
     </span>
   );
 
   const renderYearLabel = () => (
-    <span className="h-8 w-[112px] text-sm font-medium text-center sm:text-left">
+    <span className="h-8 w-[112px] text-sm font-medium text-center">
       {currentYear}
     </span>
   );
 
   return (
-    <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2">
+    <div className="grid grid-cols-[auto_auto_auto] items-center justify-center gap-2">
       <button
         type="button"
-        className={cn(navButtonClassName, 'justify-self-start')}
+        className={cn(navButtonClassName, 'justify-self-end')}
         onClick={handlePreviousMonth}
         aria-label="Mes anterior"
         disabled={isPreviousDisabled || !canNavigate}
@@ -234,7 +234,7 @@ function CalendarCaption({
             disabled={!canNavigate || months.every((month) => month.disabled)}
           >
             <SelectTrigger
-              className="h-8 w-[140px] bg-transparent text-sm font-medium"
+              className="h-8 w-[140px] bg-transparent text-sm font-medium justify-center text-center"
               aria-label="Seleccionar mes"
             >
               <SelectValue />
@@ -262,7 +262,7 @@ function CalendarCaption({
             disabled={!canNavigate}
           >
             <SelectTrigger
-              className="h-8 w-[112px] bg-transparent text-sm font-medium"
+              className="h-8 w-[112px] bg-transparent text-sm font-medium justify-center text-center"
               aria-label="Seleccionar año"
             >
               <SelectValue />
@@ -279,7 +279,7 @@ function CalendarCaption({
       </div>
       <button
         type="button"
-        className={cn(navButtonClassName, 'justify-self-end')}
+        className={cn(navButtonClassName, 'justify-self-start')}
         onClick={handleNextMonth}
         aria-label="Mes siguiente"
         disabled={isNextDisabled || !canNavigate}
@@ -315,18 +315,19 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn('p-3', className)}
+      className={cn('p-3 flex flex-col items-center gap-4', className)}
       classNames={{
-        months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
-        month: 'space-y-4',
-        caption: 'flex items-center justify-between pt-1',
+        months:
+          'flex flex-col items-center sm:flex-row sm:items-start sm:justify-center space-y-4 sm:space-x-4 sm:space-y-0',
+        month: 'flex flex-col items-center space-y-4',
+        caption: 'flex items-center justify-center gap-2 pt-1',
         caption_label: 'text-sm font-medium',
         nav: 'hidden',
         table: 'w-full border-collapse space-y-1',
-        head_row: 'flex',
+        head_row: 'flex justify-center',
         head_cell:
           'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
-        row: 'flex w-full mt-2',
+        row: 'flex w-full mt-2 justify-center',
         cell:
           'h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
         day: cn(

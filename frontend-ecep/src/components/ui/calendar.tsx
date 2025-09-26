@@ -119,17 +119,12 @@ function CalendarCaption({
   }, [currentYear, maxMonth, minMonth]);
 
   const canNavigate = React.useMemo(
-    () =>
-      typeof goToMonth === 'function' ||
-      typeof contextGoToMonth === 'function' ||
-      typeof onMonthChange === 'function',
+    () => Boolean(goToMonth ?? contextGoToMonth ?? onMonthChange),
     [contextGoToMonth, goToMonth, onMonthChange]
   );
 
   const navigateToMonth = React.useCallback(
     (nextDate: Date) => {
-      if (!canNavigate) return;
-
       const targetDate = clampMonth(nextDate);
 
       if (typeof goToMonth === 'function') {
@@ -142,7 +137,7 @@ function CalendarCaption({
         onMonthChange(targetDate);
       }
     },
-    [canNavigate, clampMonth, contextGoToMonth, goToMonth, onMonthChange]
+    [clampMonth, contextGoToMonth, goToMonth, onMonthChange]
   );
 
   const handleMonthChange = React.useCallback(

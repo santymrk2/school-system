@@ -43,6 +43,8 @@ type ActaVM = {
   informanteId?: number | null;
 };
 
+const UNASSIGNED_FIRMANTE_VALUE = "unassigned";
+
 export default function ViewActaDialog({
   acta,
   onClose,
@@ -184,10 +186,14 @@ export default function ViewActaDialog({
                     value={
                       acta.firmanteId != null
                         ? String(acta.firmanteId)
-                        : ""
+                        : UNASSIGNED_FIRMANTE_VALUE
                     }
                     onValueChange={(value) =>
-                      onFirmanteChange?.(value ? Number(value) : null)
+                      onFirmanteChange?.(
+                        value === UNASSIGNED_FIRMANTE_VALUE
+                          ? null
+                          : Number(value)
+                      )
                     }
                     disabled={firmanteUpdating}
                   >
@@ -195,7 +201,9 @@ export default function ViewActaDialog({
                       <SelectValue placeholder="Seleccioná directivo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin asignar</SelectItem>
+                      <SelectItem value={UNASSIGNED_FIRMANTE_VALUE}>
+                        Sin asignar
+                      </SelectItem>
                       {(firmanteOptions ?? []).map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}

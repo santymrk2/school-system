@@ -836,6 +836,17 @@ export interface SolicitudAdmisionDecisionDTO {
   mensaje?: string;
 }
 
+export interface SolicitudAdmisionAltaDTO {
+  seccionId?: number;
+  turno?: Turno;
+}
+
+export interface SolicitudAdmisionAltaResultDTO {
+  alumnoId?: number;
+  matriculaId?: number;
+  seccionId?: number;
+}
+
 export interface SolicitudBajaAlumnoCreateDTO {
   id?: number;
   matriculaId?: number;

@@ -13,6 +13,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -32,6 +34,14 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Calendar,
   CalendarDays,
@@ -45,9 +55,10 @@ import {
   RefreshCw,
   StickyNote,
   X,
+  Loader2,
 } from "lucide-react";
 import type * as DTO from "@/types/api-generated";
-import { admisiones, identidad } from "@/services/api/modules";
+import { admisiones, gestionAcademica, identidad } from "@/services/api/modules";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -260,6 +271,8 @@ export default function AspirantesTab({ searchTerm }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<SolicitudAdmisionItem | null>(null);
   const [promptInterviewOpen, setPromptInterviewOpen] = useState(false);
+  const [altaOpen, setAltaOpen] = useState(false);
+  const [altaSolicitud, setAltaSolicitud] = useState<SolicitudAdmisionItem | null>(null);
   const [page, setPage] = useState(0);
   const pageSize = 6;
 
@@ -282,6 +295,11 @@ export default function AspirantesTab({ searchTerm }: Props) {
   const openDetail = (row: SolicitudAdmisionItem) => {
     setSelected(row);
     setDetailOpen(true);
+  };
+
+  const openAlta = (row: SolicitudAdmisionItem) => {
+    setAltaSolicitud(row);
+    setAltaOpen(true);
   };
 
   useEffect(() => {
@@ -343,6 +361,8 @@ export default function AspirantesTab({ searchTerm }: Props) {
               const nombre = resolveAspiranteNombre(row);
               const opciones = row.fechasPropuestas ?? [];
               const cantidadPropuestas = row.cantidadPropuestasEnviadas ?? 0;
+              const estadoActual = String(row.estado ?? "").toUpperCase();
+              const puedeDarDeAlta = estadoActual === ESTADOS.ENTREVISTA_REALIZADA;
               return (
                 <Card key={row.id} className="flex flex-col">
                   <CardHeader className="pb-3">
@@ -395,6 +415,15 @@ export default function AspirantesTab({ searchTerm }: Props) {
                     )}
                   </CardContent>
                   <div className="flex justify-end gap-2 border-t px-6 py-4">
+                    {puedeDarDeAlta && (
+                      <Button
+                        size="sm"
+                        onClick={() => openAlta(row)}
+                        variant="default"
+                      >
+                        Dar de alta
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
                       Gestionar
                     </Button>
@@ -460,6 +489,22 @@ export default function AspirantesTab({ searchTerm }: Props) {
           setPromptInterviewOpen={setPromptInterviewOpen}
         />
       )}
+      {altaSolicitud && (
+        <AltaModal
+          open={altaOpen}
+          solicitud={altaSolicitud}
+          onOpenChange={(open) => {
+            setAltaOpen(open);
+            if (!open) {
+              setAltaSolicitud(null);
+            }
+          }}
+          onSuccess={() => {
+            refetch();
+            setAltaSolicitud(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -471,6 +516,13 @@ type DetailProps = {
   onUpdated: () => void;
   promptInterviewOpen: boolean;
   setPromptInterviewOpen: (open: boolean) => void;
+};
+
+type AltaModalProps = {
+  open: boolean;
+  solicitud: SolicitudAdmisionItem;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 };
 
 function SolicitudDetailDialog({
@@ -921,6 +973,211 @@ function SolicitudDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps) {
+  const [secciones, setSecciones] = useState<DTO.SeccionDTO[]>([]);
+  const [seccionesLoading, setSeccionesLoading] = useState(false);
+  const [seccionesError, setSeccionesError] = useState<string | null>(null);
+  const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
+  const [turno, setTurno] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const aspiranteNombre = resolveAspiranteNombre(solicitud);
+  const turnoPreferido = solicitud.aspirante?.turnoPreferido ?? null;
+
+  useEffect(() => {
+    if (!open) {
+      setSecciones([]);
+      setSeccionesError(null);
+      setSelectedSeccionId("");
+      setTurno("");
+      return;
+    }
+
+    const initialTurno = turnoPreferido ? String(turnoPreferido) : "";
+    setTurno(initialTurno);
+    setSelectedSeccionId("");
+    setSeccionesLoading(true);
+    setSeccionesError(null);
+
+    (async () => {
+      try {
+        const res = await gestionAcademica.secciones.list();
+        const data = res.data ?? [];
+        setSecciones(data);
+        let preselected: string | null = null;
+        if (initialTurno) {
+          const matching = data.find(
+            (sec) =>
+              String(sec.turno ?? "")
+                .trim()
+                .toUpperCase() === initialTurno,
+          );
+          if (matching?.id != null) {
+            preselected = String(matching.id);
+          }
+        }
+        if (!preselected && data.length === 1 && data[0].id != null) {
+          preselected = String(data[0].id);
+        }
+        if (preselected) {
+          setSelectedSeccionId(preselected);
+        }
+      } catch (error: any) {
+        setSeccionesError(
+          error?.message ?? "No se pudieron obtener las secciones disponibles",
+        );
+      } finally {
+        setSeccionesLoading(false);
+      }
+    })();
+  }, [open, solicitud.id, turnoPreferido]);
+
+  useEffect(() => {
+    if (!open || turno) return;
+    const seccion = secciones.find((sec) => String(sec.id) === selectedSeccionId);
+    if (seccion?.turno) {
+      setTurno(String(seccion.turno));
+    }
+  }, [open, selectedSeccionId, secciones, turno]);
+
+  const formatTurnoLabel = (value?: string | null) => {
+    if (!value) return "";
+    const normalized = String(value).trim().toUpperCase();
+    if (normalized === DTO.Turno.MANANA) return "Mañana";
+    if (normalized === DTO.Turno.TARDE) return "Tarde";
+    return normalized;
+  };
+
+  const formatSeccionLabel = (seccion: DTO.SeccionDTO) => {
+    const parts = [seccion.nivel, seccion.gradoSala, seccion.division]
+      .map((part) => (part ?? "").toString().trim())
+      .filter(Boolean);
+    const base = parts.join(" ");
+    const turnoLabel = formatTurnoLabel(seccion.turno);
+    if (turnoLabel) {
+      return `${base || "Sección"} (${turnoLabel})`;
+    }
+    return base || `Sección #${seccion.id}`;
+  };
+
+  const selectedSeccion = secciones.find((sec) => String(sec.id) === selectedSeccionId);
+
+  const handleSubmit = async () => {
+    if (!selectedSeccionId) {
+      toast.error("Seleccioná una sección para el alta");
+      return;
+    }
+    setSaving(true);
+    try {
+      await admisiones.solicitudesAdmision.alta(solicitud.id, {
+        seccionId: Number(selectedSeccionId),
+        turno: turno ? (turno as DTO.Turno) : undefined,
+      });
+      toast.success("Alumno dado de alta correctamente");
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error?.message ?? "No se pudo completar el alta");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Dar de alta — {aspiranteNombre}</DialogTitle>
+          <DialogDescription>
+            Migrá la solicitud a un alumno matriculado. Ajustá la sección y el turno antes de confirmar.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+            <p>
+              Curso solicitado: {formatCurso(solicitud.aspirante?.cursoSolicitado)}
+            </p>
+            <p>
+              Disponibilidad informada: {availabilityLabel(solicitud)}
+            </p>
+            {turnoPreferido && (
+              <p>
+                Turno preferido registrado: {formatTurnoLabel(turnoPreferido)}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Sección destino</Label>
+            <Select
+              value={selectedSeccionId}
+              onValueChange={setSelectedSeccionId}
+              disabled={seccionesLoading || !secciones.length}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccioná la sección" />
+              </SelectTrigger>
+              <SelectContent>
+                {secciones.map((sec) => (
+                  <SelectItem key={sec.id} value={String(sec.id)}>
+                    {formatSeccionLabel(sec)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {seccionesLoading && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Cargando secciones…
+              </p>
+            )}
+            {seccionesError && (
+              <p className="text-xs text-destructive">{seccionesError}</p>
+            )}
+            {!seccionesLoading && !secciones.length && !seccionesError && (
+              <p className="text-xs text-muted-foreground">
+                No hay secciones disponibles para matricular en este momento.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Turno</Label>
+            <Select value={turno} onValueChange={setTurno}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccioná el turno" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DTO.Turno.MANANA}>Mañana</SelectItem>
+                <SelectItem value={DTO.Turno.TARDE}>Tarde</SelectItem>
+              </SelectContent>
+            </Select>
+            {selectedSeccion?.turno && (
+              <p className="text-xs text-muted-foreground">
+                Turno sugerido por la sección: {formatTurnoLabel(selectedSeccion.turno)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={saving || !selectedSeccionId}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar alta
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

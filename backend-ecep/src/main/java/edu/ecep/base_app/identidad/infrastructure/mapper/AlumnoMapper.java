@@ -29,6 +29,6 @@ public interface AlumnoMapper {
 
     // Update (no tocar id; re-resolver persona desde personaId)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "persona", source = "personaId")
+    @Mapping(target = "persona", ignore = true)
     void update(@MappingTarget Alumno e, AlumnoDTO dto);
 }

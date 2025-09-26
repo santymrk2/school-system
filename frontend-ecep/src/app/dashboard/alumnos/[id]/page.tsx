@@ -909,6 +909,36 @@ export default function AlumnoPerfilPage() {
     }
   };
 
+  const handleDisableCredentials = async () => {
+    if (!persona?.id) {
+      toast.error("No encontramos la persona vinculada al alumno");
+      return;
+    }
+
+    setSavingCredentials(true);
+    try {
+      await identidad.personasCore.disableCredentials(persona.id);
+      const { data: refreshed } = await identidad.personasCore.getById(persona.id);
+      setPersona(refreshed ?? null);
+      toast.success("Acceso del alumno desactivado");
+      setCredentialsForm({
+        email: refreshed?.email ?? "",
+        password: "",
+        confirmPassword: "",
+        roles: normalizeRoles(refreshed?.roles ?? []),
+      });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        error?.response?.data?.message ??
+          error?.message ??
+          "No pudimos desactivar el acceso del alumno",
+      );
+    } finally {
+      setSavingCredentials(false);
+    }
+  };
+
   const handleSaveFamily = async () => {
     if (!alumno) return;
 

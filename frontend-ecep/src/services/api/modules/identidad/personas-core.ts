@@ -19,6 +19,8 @@ export const personasCore = {
   getById: (id: number) => http.get<DTO.PersonaDTO>(`/api/personas/${id}`),
   update: (id: number, patch: Partial<DTO.PersonaUpdateDTO>) =>
     http.put<void>(`/api/personas/${id}`, patch),
+  disableCredentials: (id: number) =>
+    http.delete<void>(`/api/personas/${id}/credenciales`),
   getResumen: (id: number) =>
     http.get<DTO.PersonaResumenDTO>(`/api/personas/credenciales/${id}`),
   searchCredenciales: (q?: string) =>

@@ -34,14 +34,14 @@ const attendancePriority: Record<AttendanceCategory, number> = {
 
 const calendarModifierClassNames: Record<AttendanceCategory, string> = {
   present:
-    "bg-emerald-500 text-white hover:bg-emerald-500 hover:text-white focus:bg-emerald-500 focus:text-white",
+    "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 focus:bg-emerald-500/20",
   absent:
-    "bg-red-500 text-white hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white",
+    "bg-red-500/15 text-red-700 hover:bg-red-500/20 focus:bg-red-500/20",
 };
 
 const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string }[] = [
-  { key: "present", label: "Presente", dotClass: "bg-emerald-500" },
-  { key: "absent", label: "Ausente", dotClass: "bg-red-500" },
+  { key: "present", label: "Presente", dotClass: "bg-emerald-500/70" },
+  { key: "absent", label: "Ausente", dotClass: "bg-red-500/70" },
 ];
 
 const calendarDayBadge: Record<AttendanceCategory, { text: string; className: string }> = {
@@ -298,15 +298,54 @@ export function FamilyAttendanceView() {
       return [] as DetalleAsistenciaDTO[];
     }
 
-    return detalles.filter((detalle) => {
+    const bestByJornada = new Map<number, DetalleAsistenciaDTO>();
+    const sinJornada: DetalleAsistenciaDTO[] = [];
+
+    for (const detalle of detalles) {
       const jornada = detalle.jornadaId
         ? jornadas.get(detalle.jornadaId)
         : null;
       const fecha = jornada?.fecha ?? null;
-      if (!fecha) return false;
-      return fecha >= fromISO && fecha <= toISO;
-    });
-  }, [detalles, jornadas, periodoDateRange.fromISO, periodoDateRange.toISO]);
+      if (!fecha || fecha < fromISO || fecha > toISO) {
+        continue;
+      }
+
+      if (detalle.jornadaId == null) {
+        sinJornada.push(detalle);
+        continue;
+      }
+
+      const existing = bestByJornada.get(detalle.jornadaId);
+      if (!existing) {
+        bestByJornada.set(detalle.jornadaId, detalle);
+        continue;
+      }
+
+      const nextPriority = attendancePriority[toAttendanceCategory(detalle.estado)];
+      const currentPriority =
+        attendancePriority[toAttendanceCategory(existing.estado)];
+
+      if (nextPriority >= currentPriority) {
+        bestByJornada.set(detalle.jornadaId, detalle);
+      }
+    }
+
+    const getFecha = (detalle: DetalleAsistenciaDTO) => {
+      const jornada = detalle.jornadaId
+        ? jornadas.get(detalle.jornadaId)
+        : null;
+      return jornada?.fecha ?? "";
+    };
+
+    return [...bestByJornada.values(), ...sinJornada].sort((a, b) =>
+      getFecha(b).localeCompare(getFecha(a)),
+    );
+  }, [
+    detalles,
+    jornadas,
+    periodoDateRange.fromISO,
+    periodoDateRange.toISO,
+  ]);
 
   const resumen = useMemo(() => {
     if (!detallesEnPeriodo.length) {
@@ -473,7 +512,7 @@ export function FamilyAttendanceView() {
 
       return (
         <div className="flex h-full w-full flex-col items-center justify-center py-1">
-          <span className="text-base font-semibold leading-none">
+          <span className="text-sm font-semibold leading-none">
             {date.getDate()}
           </span>
           {category ? (
@@ -596,11 +635,11 @@ export function FamilyAttendanceView() {
                     classNames={{
                       months: "flex flex-col gap-4",
                       day: cn(
-                        "flex h-14 w-14 flex-col items-center justify-center rounded-md p-0 text-xs font-medium",
+                        "m-1 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors",
                         "aria-selected:opacity-100",
                       ),
                       day_today:
-                        "border border-primary text-primary aria-selected:bg-primary/90 aria-selected:text-primary-foreground",
+                        "border border-primary/40 text-primary aria-selected:bg-primary/15 aria-selected:text-primary",
                     }}
                     disableMonthDropdown
                     disableYearDropdown

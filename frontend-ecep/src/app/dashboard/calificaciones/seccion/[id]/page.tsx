@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
 import { gestionAcademica } from "@/services/api/modules";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import CierrePrimarioView from "./_views/CierrePrimarioView";
 import InformeInicialView from "./_views/InformeInicialView";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
@@ -15,6 +16,7 @@ import { UserRole } from "@/types/api-generated";
 export default function CalificacionesSeccionPage() {
   const { id } = useParams<{ id: string }>();
   const seccionId = Number(id);
+  const router = useRouter();
   const { type, activeRole } = useViewerScope();
   const { loading: scopedLoading, secciones: accesibles } = useScopedSecciones();
   const { getPeriodoNombre } = useActivePeriod();
@@ -131,6 +133,12 @@ export default function CalificacionesSeccionPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-4">
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/calificaciones")}
+        >
+          Volver
+        </Button>
         <div>
           <h2 className="text-2xl font-semibold">{heading}</h2>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

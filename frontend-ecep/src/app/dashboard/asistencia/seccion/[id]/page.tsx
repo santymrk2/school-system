@@ -39,15 +39,24 @@ import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 
+function normalizeISODate(value?: string | null) {
+  if (!value) return null;
+  const normalized = String(value).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;
+  return normalized;
+}
+
 function fmt(iso?: string) {
   if (!iso) return "—";
-  const normalized = String(iso).slice(0, 10);
-  const parts = normalized.split("-");
-  if (parts.length === 3) {
-    const [year, month, day] = parts;
-    const dd = day.padStart(2, "0");
-    const mm = month.padStart(2, "0");
-    return `${dd}/${mm}/${year}`;
+  const normalized = normalizeISODate(iso);
+  if (normalized) {
+    const parts = normalized.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      const dd = day.padStart(2, "0");
+      const mm = month.padStart(2, "0");
+      return `${dd}/${mm}/${year}`;
+    }
   }
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -58,8 +67,8 @@ function fmt(iso?: string) {
 }
 
 function parseISODate(value?: string | null) {
-  if (!value) return null;
-  const normalized = String(value).slice(0, 10);
+  const normalized = normalizeISODate(value);
+  if (!normalized) return null;
   const [yearRaw, monthRaw, dayRaw] = normalized.split("-");
   const year = Number(yearRaw);
   const month = Number(monthRaw);
@@ -83,6 +92,27 @@ function formatISODate(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function findResumenMatch(
+  historial: AsistenciaDiaDTO[],
+  target: AsistenciaDiaDTO | null,
+) {
+  if (!target) return null;
+
+  if (target.id != null) {
+    const byId = historial.find((item) => item.id === target.id);
+    if (byId) return byId;
+  }
+
+  const targetDate = normalizeISODate(target.fecha);
+  if (!targetDate) return null;
+
+  return (
+    historial.find(
+      (item) => normalizeISODate(item.fecha) === targetDate,
+    ) ?? null
+  );
 }
 function alumnoDisplayName(row: any) {
   return (
@@ -286,9 +316,7 @@ export default function SeccionHistorialPage() {
     }
 
     if (selectedResumen) {
-      const refreshed = historial.find(
-        (item) => item.id === selectedResumen.id,
-      );
+      const refreshed = findResumenMatch(historial, selectedResumen);
       if (refreshed) {
         setSelectedResumen(refreshed);
         if (!selectedDay && refreshed.fecha) {

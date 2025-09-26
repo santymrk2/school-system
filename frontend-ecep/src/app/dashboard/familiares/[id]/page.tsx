@@ -555,9 +555,6 @@ export default function FamiliarPerfilPage() {
                             {link?.rolVinculo && (
                               <Badge variant="outline">{formatRol(link.rolVinculo)}</Badge>
                             )}
-                            {link?.esTutorLegal && (
-                              <Badge variant="default">Tutor legal</Badge>
-                            )}
                             <Button
                               variant="secondary"
                               onClick={() => router.push(`/dashboard/alumnos/${alumnoLite.alumnoId}`)}

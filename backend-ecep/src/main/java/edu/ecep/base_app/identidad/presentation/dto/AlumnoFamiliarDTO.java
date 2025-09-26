@@ -21,5 +21,4 @@ public class AlumnoFamiliarDTO {
     @NotBlank
     @Enumerated(EnumType.STRING)
     RolVinculo rolVinculo;
-    boolean esTutorLegal;
 }

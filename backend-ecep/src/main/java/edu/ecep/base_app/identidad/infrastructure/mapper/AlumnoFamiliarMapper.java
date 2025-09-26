@@ -15,19 +15,18 @@ public interface AlumnoFamiliarMapper {
 
     @Mapping(target = "alumnoId", source = "alumno.id")
     @Mapping(target = "familiarId", source = "familiar.id")
-    @Mapping(target = "esTutorLegal", source = "convive")
     AlumnoFamiliarDTO toDto(AlumnoFamiliar e);
 
     // CREATE
     @Mapping(target = "alumno", source = "alumnoId")
     @Mapping(target = "familiar", source = "familiarId")
-    @Mapping(target = "convive", source = "esTutorLegal")
+    @Mapping(target = "convive", constant = "false")
     AlumnoFamiliar toEntity(AlumnoFamiliarCreateDTO dto);
 
     // UPDATE
     @Mapping(target = "alumno", source = "alumnoId")
     @Mapping(target = "familiar", source = "familiarId")
-    @Mapping(target = "convive", source = "esTutorLegal")
+    @Mapping(target = "convive", ignore = true)
     @Mapping(target = "id", ignore = true)
     void update(@MappingTarget AlumnoFamiliar e, AlumnoFamiliarDTO dto);
 }

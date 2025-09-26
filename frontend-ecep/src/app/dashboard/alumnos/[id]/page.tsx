@@ -66,7 +66,6 @@ import { RolVinculo, UserRole } from "@/types/api-generated";
 
 type FamiliarConVinculo = FamiliarDTO & {
   parentesco?: string;
-  esTutorLegal?: boolean;
   _persona?: PersonaDTO | null;
   rolVinculo?: RolVinculo | null;
 };
@@ -209,7 +208,6 @@ export default function AlumnoPerfilPage() {
   const [addPersonaId, setAddPersonaId] = useState<number | null>(null);
   const [addFamiliarId, setAddFamiliarId] = useState<number | null>(null);
   const [addRol, setAddRol] = useState<RolVinculo | "">("");
-  const [addEsTutor, setAddEsTutor] = useState(false);
   const [savingFamily, setSavingFamily] = useState(false);
   const [familiaresCatalog, setFamiliaresCatalog] = useState<FamiliarDTO[]>([]);
 
@@ -366,7 +364,6 @@ export default function AlumnoPerfilPage() {
                 return {
                   ...f,
                   parentesco: link.rolVinculo ?? undefined,
-                  esTutorLegal: link.esTutorLegal ?? false,
                   rolVinculo: link.rolVinculo ?? null,
                   _persona: fp,
                 } as FamiliarConVinculo;
@@ -477,7 +474,6 @@ export default function AlumnoPerfilPage() {
     setAddPersonaId(null);
     setAddFamiliarId(null);
     setAddRol("");
-    setAddEsTutor(false);
     setAddLookupLoading(false);
     setAddLookupCompleted(false);
     setSavingFamily(false);
@@ -920,7 +916,6 @@ export default function AlumnoPerfilPage() {
         alumnoId,
         familiarId,
         rolVinculo: addRol,
-        esTutorLegal: addEsTutor,
       } as any);
 
       toast.success("Familiar agregado correctamente");
@@ -1513,7 +1508,7 @@ export default function AlumnoPerfilPage() {
                         )}
 
                         <Separator />
-                        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
+                        <div className="grid gap-3">
                           <div className="space-y-2">
                             <Label>Rol familiar</Label>
                             <Select
@@ -1532,15 +1527,6 @@ export default function AlumnoPerfilPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="add-es-tutor"
-                              checked={addEsTutor}
-                              onCheckedChange={(value) => setAddEsTutor(Boolean(value))}
-                              disabled={savingFamily || !addPersonaReady}
-                            />
-                            <Label htmlFor="add-es-tutor">Tutor legal</Label>
                           </div>
                         </div>
                       </div>
@@ -1596,9 +1582,6 @@ export default function AlumnoPerfilPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             {f.rolVinculo && (
                               <Badge variant="outline">{formatRol(f.rolVinculo)}</Badge>
-                            )}
-                            {f.esTutorLegal && (
-                              <Badge variant="default">Tutor legal</Badge>
                             )}
                           </div>
                         </div>

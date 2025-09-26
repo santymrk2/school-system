@@ -34,18 +34,18 @@ const attendancePriority: Record<AttendanceCategory, number> = {
 
 const calendarModifierClassNames: Record<AttendanceCategory, string> = {
   present:
-    "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 focus:bg-emerald-500/20",
+    "bg-secondary/20 text-secondary hover:bg-secondary/25 focus:bg-secondary/25 dark:text-secondary-foreground dark:hover:bg-secondary/30 dark:focus:bg-secondary/30",
   absent:
     "bg-red-500/15 text-red-700 hover:bg-red-500/20 focus:bg-red-500/20",
 };
 
 const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string }[] = [
-  { key: "present", label: "Presente", dotClass: "bg-emerald-500/70" },
+  { key: "present", label: "Presente", dotClass: "bg-secondary" },
   { key: "absent", label: "Ausente", dotClass: "bg-red-500/70" },
 ];
 
 const calendarDayBadge: Record<AttendanceCategory, { text: string; className: string }> = {
-  present: { text: "Presente", className: "bg-emerald-100 text-emerald-700" },
+  present: { text: "Presente", className: "bg-secondary text-secondary-foreground" },
   absent: { text: "Ausente", className: "bg-red-100 text-red-700" },
 };
 
@@ -621,7 +621,7 @@ export function FamilyAttendanceView() {
                     </div>
                     <div className="flex-1 space-y-3 text-sm">
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <CheckCircle className="h-4 w-4 text-secondary" />
                         <span className="font-medium">
                           Presentes: {resumen.presentes}
                         </span>

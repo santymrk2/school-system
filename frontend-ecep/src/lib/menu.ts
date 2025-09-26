@@ -33,7 +33,7 @@ export const MENU: MenuItem[] = [
     icon: MessageSquare,
     label: "Chat",
     href: "/dashboard/chat",
-    color: "bg-green-500",
+    color: "bg-secondary",
     group: "primary",
   },
   {

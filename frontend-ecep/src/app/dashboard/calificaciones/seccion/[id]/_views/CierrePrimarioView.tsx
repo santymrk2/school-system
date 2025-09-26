@@ -783,7 +783,7 @@ export default function CierrePrimarioView({
                                   </div>
                                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                                     <div
-                                      className="h-full bg-emerald-500"
+                                      className="h-full bg-secondary"
                                       style={{ width: `${row.safeAttendancePercent}%` }}
                                     />
                                   </div>
@@ -901,7 +901,7 @@ export default function CierrePrimarioView({
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-muted">
                               <div
-                                className="h-full bg-emerald-500"
+                                className="h-full bg-secondary"
                                 style={{ width: `${row.safeAttendancePercent}%` }}
                               />
                             </div>

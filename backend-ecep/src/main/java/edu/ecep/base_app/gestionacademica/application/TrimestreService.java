@@ -95,26 +95,6 @@ public class TrimestreService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El trimestre no tiene un período escolar asociado");
         }
-        List<Trimestre> delPeriodo = repo.findByPeriodoEscolarIdOrderByOrdenAsc(periodoId);
-
-        boolean otroAbierto = delPeriodo.stream()
-                .anyMatch(t -> !Objects.equals(t.getId(), e.getId()) && t.getEstado() == TrimestreEstado.ACTIVO);
-        if (otroAbierto) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Cerrá el trimestre activo antes de abrir otro");
-        }
-
-        boolean anterioresCerrados = delPeriodo.stream()
-                .filter(t -> !Objects.equals(t.getId(), e.getId())
-                        && t.getOrden() != null
-                        && e.getOrden() != null
-                        && t.getOrden() < e.getOrden())
-                .allMatch(t -> t.getEstado() == TrimestreEstado.CERRADO);
-        if (!anterioresCerrados) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Debés cerrar los trimestres anteriores antes de abrir este");
-        }
-
         e.setEstado(TrimestreEstado.ACTIVO);
         repo.save(e);
     }

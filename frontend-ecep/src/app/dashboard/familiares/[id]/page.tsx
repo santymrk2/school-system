@@ -555,6 +555,7 @@ export default function FamiliarPerfilPage() {
                             {link?.rolVinculo && (
                               <Badge variant="outline">{formatRol(link.rolVinculo)}</Badge>
                             )}
+                            {link?.convive && <Badge variant="default">Convive</Badge>}
                             <Button
                               variant="secondary"
                               onClick={() => router.push(`/dashboard/alumnos/${alumnoLite.alumnoId}`)}

@@ -20,13 +20,11 @@ public interface AlumnoFamiliarMapper {
     // CREATE
     @Mapping(target = "alumno", source = "alumnoId")
     @Mapping(target = "familiar", source = "familiarId")
-    @Mapping(target = "convive", constant = "false")
     AlumnoFamiliar toEntity(AlumnoFamiliarCreateDTO dto);
 
     // UPDATE
     @Mapping(target = "alumno", source = "alumnoId")
     @Mapping(target = "familiar", source = "familiarId")
-    @Mapping(target = "convive", ignore = true)
     @Mapping(target = "id", ignore = true)
     void update(@MappingTarget AlumnoFamiliar e, AlumnoFamiliarDTO dto);
 }

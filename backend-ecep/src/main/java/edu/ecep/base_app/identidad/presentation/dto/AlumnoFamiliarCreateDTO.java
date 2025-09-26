@@ -16,4 +16,5 @@ public class AlumnoFamiliarCreateDTO {
     Long familiarId;
     @NotBlank
     String rolVinculo;
+    boolean convive;
 }

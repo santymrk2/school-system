@@ -133,6 +133,48 @@ export default function AlumnoPerfilPage() {
     return `${grado} ${div} ${turno}`.trim();
   };
 
+  const parseDateValue = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = parseDateValue(value);
+    if (!parsed) return value;
+    return parsed.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatRange = (desde?: string | null, hasta?: string | null) => {
+    const start = formatDate(desde);
+    const end = formatDate(hasta);
+    if (start && end) return `${start} – ${end}`;
+    if (start && !end) return `${start} – Actualidad`;
+    if (!start && end) return `Hasta ${end}`;
+    return "Sin fechas registradas";
+  };
+
+  const getTimeValue = (value?: string | null) => {
+    const parsed = parseDateValue(value);
+    return parsed ? parsed.getTime() : null;
+  };
+
+  const getMatriculaYear = (matricula: MatriculaDTO) => {
+    const periodo =
+      ((matricula as any)?.periodoEscolar ?? null) || (matricula as any)?.periodo;
+    const yearValue =
+      (periodo?.anio as number | undefined) ??
+      (periodo?.year as number | undefined) ??
+      ((matricula as any)?.anio as number | undefined);
+    return yearValue ?? 0;
+  };
+
   const NO_SECTION_VALUE = "__no-section__";
 
   const sectionOptions = useMemo(() => {
@@ -425,6 +467,31 @@ export default function AlumnoPerfilPage() {
       }) ?? null
     );
   }, [matriculas, activePeriodId]);
+
+  const matriculasConHistorial = useMemo(
+    () =>
+      [...matriculas]
+        .sort((a, b) => {
+          const yearDiff = getMatriculaYear(b) - getMatriculaYear(a);
+          if (yearDiff !== 0) return yearDiff;
+          return (b.id ?? 0) - (a.id ?? 0);
+        })
+        .map((matricula) => ({
+          matricula,
+          filas: historial
+            .filter((h) => h.matriculaId === matricula.id)
+            .slice()
+            .sort((a, b) => {
+              const aStart = getTimeValue(a.desde) ?? Number.NEGATIVE_INFINITY;
+              const bStart = getTimeValue(b.desde) ?? Number.NEGATIVE_INFINITY;
+              if (aStart !== bStart) return bStart - aStart;
+              const aEnd = getTimeValue(a.hasta) ?? Number.NEGATIVE_INFINITY;
+              const bEnd = getTimeValue(b.hasta) ?? Number.NEGATIVE_INFINITY;
+              return bEnd - aEnd;
+            }),
+        })),
+    [matriculas, historial],
+  );
 
   useEffect(() => {
     if (!editOpen) return;
@@ -1270,67 +1337,142 @@ export default function AlumnoPerfilPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Estado académico</CardTitle>
-                <CardDescription>Matrícula vigente e historial</CardDescription>
+                <CardDescription>
+                  Sección vigente e historial de matrículas por período
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {seccionActual ? (
-                  <div className="rounded-md border px-3 py-2 text-sm">
-                    <div className="font-medium">Sección actual</div>
-                    <div className="text-muted-foreground">
-                      {seccionLabel(seccionActual.seccionId)}
-                      {seccionActual.desde
-                        ? ` • desde ${seccionActual.desde}`
-                        : ""}
+              <CardContent className="space-y-6">
+                <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Sección vigente
+                      </p>
+                      {seccionActual ? (
+                        <>
+                          <p className="text-base font-semibold">
+                            {seccionLabel(seccionActual.seccionId)}
+                          </p>
+                          {seccionActual.desde && (
+                            <p className="text-xs text-muted-foreground">
+                              Desde {formatDate(seccionActual.desde)}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Sin sección vigente
+                        </p>
+                      )}
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Sin sección vigente
-                  </div>
-                )}
-
-                <Separator className="my-2" />
-                <div className="font-medium text-sm">Matrículas</div>
-                {matriculas.length ? (
-                  matriculas.map((m) => {
-                    const filas = historial.filter(
-                      (h) => h.matriculaId === m.id,
-                    );
-                    const abierta = filas.find((h) => !h.hasta);
-                    return (
-                      <div
-                        key={m.id}
-                        className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-                      >
-                        <div>
-                          <div className="font-medium">Matrícula #{m.id}</div>
-                          <div className="text-muted-foreground">
-                            Período: {getPeriodoNombre(
-                              m.periodoEscolarId,
-                              ((m as any)?.periodoEscolar ?? null) as
-                                | { anio?: number }
-                                | null,
-                            )}
-                            {abierta ? (
-                              <>
-                                {" "}
-                                • Sección: {seccionLabel(abierta.seccionId)}
-                                {abierta.desde
-                                  ? ` (desde ${abierta.desde})`
-                                  : ""}
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
-                        <Badge variant="outline">Alumno #{m.alumnoId}</Badge>
+                    {matriculaActual && (
+                      <div className="text-right">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Matrícula activa
+                        </p>
+                        <p className="text-sm font-semibold">
+                          {getPeriodoNombre(
+                            matriculaActual.periodoEscolarId,
+                            ((matriculaActual as any)?.periodoEscolar ??
+                              null) as { anio?: number } | null,
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          ID #{matriculaActual.id}
+                        </p>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Sin matrículas
+                    )}
                   </div>
-                )}
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Historial académico
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Consulta cada matrícula y las secciones asignadas por
+                      período.
+                    </p>
+                  </div>
+
+                  {matriculasConHistorial.length ? (
+                    <div className="space-y-3">
+                      {matriculasConHistorial.map(({ matricula, filas }) => {
+                        const esMatrizActual =
+                          seccionActual?.matriculaId === matricula.id;
+                        return (
+                          <div
+                            key={matricula.id}
+                            className="rounded-lg border bg-background/60 p-4 text-sm"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                  Período escolar
+                                </p>
+                                <p className="text-base font-semibold">
+                                  {getPeriodoNombre(
+                                    matricula.periodoEscolarId,
+                                    ((matricula as any)?.periodoEscolar ??
+                                      null) as { anio?: number } | null,
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {esMatrizActual && (
+                                  <Badge variant="default">Vigente</Badge>
+                                )}
+                                <Badge variant="outline">
+                                  Matrícula #{matricula.id}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              {filas.length ? (
+                                filas.map((fila) => {
+                                  const esFilaActual = seccionActual?.id === fila.id;
+                                  return (
+                                    <div
+                                      key={fila.id}
+                                      className="rounded-md border bg-muted/30 px-3 py-2"
+                                    >
+                                      <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div className="space-y-0.5">
+                                          <p className="font-medium">
+                                            {fila.seccionLabel ??
+                                              seccionLabel(fila.seccionId)}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {formatRange(fila.desde, fila.hasta)}
+                                          </p>
+                                        </div>
+                                        {esFilaActual && (
+                                          <Badge variant="secondary">
+                                            Sección vigente
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-sm text-muted-foreground">
+                                  Sin secciones asignadas
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Sin matrículas registradas
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

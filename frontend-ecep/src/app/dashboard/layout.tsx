@@ -79,7 +79,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [role, pathname, router]);
 
   const handleChangeRole = (r: UserRole) => {
+    if (currentRole === r) return;
+
     setSelectedRole(r);
+
+    // Siempre mandamos al usuario al inicio del dashboard para evitar rutas
+    // incompatibles con el nuevo rol seleccionado.
+    router.replace("/dashboard");
   };
 
   const handleLogout = async (e?: React.FormEvent) => {

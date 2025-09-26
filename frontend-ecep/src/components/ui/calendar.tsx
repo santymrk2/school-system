@@ -2,19 +2,193 @@
 
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { CaptionProps } from 'react-day-picker';
 import { DayPicker } from 'react-day-picker';
 
-import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+
+type CalendarCaptionProps = CaptionProps & {
+  minDate?: Date;
+  maxDate?: Date;
+};
+
+const monthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
+
+function CalendarCaption({
+  displayMonth,
+  locale,
+  goToMonth,
+  minDate,
+  maxDate,
+}: CalendarCaptionProps) {
+  const currentMonth = displayMonth.getMonth();
+  const currentYear = displayMonth.getFullYear();
+
+  const minMonth = React.useMemo(
+    () => (minDate ? monthStart(minDate) : undefined),
+    [minDate]
+  );
+  const maxMonth = React.useMemo(
+    () => (maxDate ? monthStart(maxDate) : undefined),
+    [maxDate]
+  );
+
+  const clampMonth = React.useCallback(
+    (date: Date) => {
+      if (minMonth && date < minMonth) return minMonth;
+      if (maxMonth && date > maxMonth) return maxMonth;
+      return date;
+    },
+    [maxMonth, minMonth]
+  );
+
+  const monthFormatter = React.useCallback(
+    (monthIndex: number) => {
+      if (locale?.localize?.month) {
+        return locale.localize.month(monthIndex, { width: 'wide' });
+      }
+
+      return new Date(currentYear, monthIndex, 1).toLocaleString(
+        locale?.code,
+        { month: 'long' }
+      );
+    },
+    [currentYear, locale]
+  );
+
+  const months = React.useMemo(() => {
+    return Array.from({ length: 12 }, (_, index) => {
+      const dateForMonth = monthStart(new Date(currentYear, index, 1));
+      const disabled = Boolean(
+        (minMonth && dateForMonth < minMonth) ||
+          (maxMonth && dateForMonth > maxMonth)
+      );
+
+      return {
+        label: monthFormatter(index),
+        value: String(index),
+        disabled,
+      };
+    });
+  }, [currentYear, maxMonth, minMonth, monthFormatter]);
+
+  const years = React.useMemo(() => {
+    const today = new Date();
+    const fallbackMinYear = currentYear - 100;
+    const fallbackMaxYear = currentYear + 50;
+
+    const resolvedMinYear = minMonth
+      ? Math.min(minMonth.getFullYear(), currentYear)
+      : Math.min(fallbackMinYear, currentYear);
+    const resolvedMaxYear = maxMonth
+      ? Math.max(maxMonth.getFullYear(), currentYear)
+      : Math.max(fallbackMaxYear, currentYear, today.getFullYear());
+
+    const startYear = Math.min(resolvedMinYear, resolvedMaxYear);
+    const endYear = Math.max(resolvedMinYear, resolvedMaxYear);
+
+    return Array.from({ length: endYear - startYear + 1 }, (_, index) =>
+      String(startYear + index)
+    );
+  }, [currentYear, maxMonth, minMonth]);
+
+  const handleMonthChange = React.useCallback(
+    (value: string) => {
+      const monthIndex = Number.parseInt(value, 10);
+      if (Number.isNaN(monthIndex)) return;
+
+      const nextDate = monthStart(new Date(currentYear, monthIndex, 1));
+      goToMonth(clampMonth(nextDate));
+    },
+    [clampMonth, currentYear, goToMonth]
+  );
+
+  const handleYearChange = React.useCallback(
+    (value: string) => {
+      const year = Number.parseInt(value, 10);
+      if (Number.isNaN(year)) return;
+
+      const nextDate = monthStart(new Date(year, currentMonth, 1));
+      goToMonth(clampMonth(nextDate));
+    },
+    [clampMonth, currentMonth, goToMonth]
+  );
+
+  return (
+    <div className="flex flex-col items-center gap-2 sm:flex-row">
+      <Select
+        value={String(currentMonth)}
+        onValueChange={handleMonthChange}
+        disabled={months.every((month) => month.disabled)}
+      >
+        <SelectTrigger
+          className="h-8 w-[140px] bg-transparent text-sm font-medium"
+          aria-label="Seleccionar mes"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper">
+          {months.map((month) => (
+            <SelectItem
+              key={month.value}
+              value={month.value}
+              disabled={month.disabled}
+              className="capitalize"
+            >
+              {month.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={String(currentYear)} onValueChange={handleYearChange}>
+        <SelectTrigger
+          className="h-8 w-[112px] bg-transparent text-sm font-medium"
+          aria-label="Seleccionar año"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper">
+          {years.map((year) => (
+            <SelectItem key={year} value={year}>
+              {year}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  components,
   ...props
 }: CalendarProps) {
+  const minDate =
+    props.fromDate ??
+    props.fromMonth ??
+    (typeof props.fromYear === 'number'
+      ? new Date(props.fromYear, 0, 1)
+      : undefined);
+  const maxDate =
+    props.toDate ??
+    props.toMonth ??
+    (typeof props.toYear === 'number'
+      ? new Date(props.toYear, 11, 31)
+      : undefined);
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -36,7 +210,8 @@ function Calendar({
         head_cell:
           'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
         row: 'flex w-full mt-2',
-        cell: 'h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+        cell:
+          'h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
         day: cn(
           buttonVariants({ variant: 'ghost' }),
           'h-9 w-9 p-0 font-normal aria-selected:opacity-100'
@@ -54,8 +229,16 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
+        IconRight: () => <ChevronRight className="h-4 w-4" />,
+        Caption: (captionProps) => (
+          <CalendarCaption
+            {...captionProps}
+            minDate={minDate}
+            maxDate={maxDate}
+          />
+        ),
+        ...components,
       }}
       {...props}
     />

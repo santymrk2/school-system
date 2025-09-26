@@ -11,7 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Calendar as AttendanceCalendar } from "@/components/ui/calendar";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useViewerAlumnosLite } from "@/hooks/useViewerAlumnosLite";
+import { cn } from "@/lib/utils";
 import { asistencias } from "@/services/api/modules";
 import type {
   AlumnoLiteDTO,
@@ -21,6 +24,42 @@ import type {
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-generated";
 import { CheckCircle, Minus, X } from "lucide-react";
+
+type AttendanceCategory =
+  | "present"
+  | "absent"
+  | "late"
+  | "justified"
+  | "other";
+
+const attendancePriority: Record<AttendanceCategory, number> = {
+  other: 0,
+  present: 1,
+  justified: 2,
+  late: 3,
+  absent: 4,
+};
+
+const calendarModifierClassNames: Record<AttendanceCategory, string> = {
+  present:
+    "bg-emerald-500 text-white hover:bg-emerald-500 hover:text-white focus:bg-emerald-500 focus:text-white",
+  absent:
+    "bg-red-500 text-white hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white",
+  late:
+    "bg-amber-500 text-white hover:bg-amber-500 hover:text-white focus:bg-amber-500 focus:text-white",
+  justified:
+    "bg-sky-500 text-white hover:bg-sky-500 hover:text-white focus:bg-sky-500 focus:text-white",
+  other:
+    "bg-slate-300 text-slate-900 hover:bg-slate-300 hover:text-slate-900 focus:bg-slate-300 focus:text-slate-900",
+};
+
+const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string }[] = [
+  { key: "present", label: "Presente", dotClass: "bg-emerald-500" },
+  { key: "absent", label: "Ausente", dotClass: "bg-red-500" },
+  { key: "late", label: "Llegó tarde", dotClass: "bg-amber-500" },
+  { key: "justified", label: "Ausencia justificada", dotClass: "bg-sky-500" },
+  { key: "other", label: "Otro registro", dotClass: "bg-slate-300" },
+];
 
 function Donut({ percent }: { percent: number }) {
   const r = 36;
@@ -74,6 +113,37 @@ function formatDate(value?: string | null) {
   return dateFormatter.format(parsed);
 }
 
+function parseISODateToDate(value?: string | null) {
+  if (!value) return null;
+  const parts = value.split("-");
+  if (parts.length !== 3) return null;
+  const [yearRaw, monthRaw, dayRaw] = parts;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
+function toAttendanceCategory(estado?: string | null): AttendanceCategory {
+  const normalized = String(estado ?? "").toUpperCase();
+  if (normalized === "PRESENTE") return "present";
+  if (normalized === "AUSENTE") return "absent";
+  if (normalized === "TARDE") return "late";
+  if (normalized === "JUSTIFICADA") return "justified";
+  return "other";
+}
+
 function nivelLabel(nivel?: NivelAcademico | null) {
   if (!nivel) return "Nivel no disponible";
   if (nivel === NivelAcademicoEnum.PRIMARIO) return "Nivel primario";
@@ -104,6 +174,8 @@ function estadoVariant(estado?: string | null) {
 
 export function FamilyAttendanceView() {
   const { role, alumnos, loading, error } = useViewerAlumnosLite();
+  const { trimestresDelPeriodo, loading: periodoLoading, hoyISO } =
+    useActivePeriod();
   const [selectedMatriculaId, setSelectedMatriculaId] = useState<number | null>(
     null,
   );
@@ -137,6 +209,43 @@ export function FamilyAttendanceView() {
     );
   }, [alumnos, selectedMatriculaId]);
 
+  const periodoDateRange = useMemo(() => {
+    if (!trimestresDelPeriodo?.length) {
+      return {
+        fromISO: null as string | null,
+        toISO: null as string | null,
+        fromDate: null as Date | null,
+        toDate: null as Date | null,
+      };
+    }
+
+    let fromISO: string | null = null;
+    let toISO: string | null = null;
+
+    for (const tri of trimestresDelPeriodo) {
+      const start =
+        ((tri as any).fechaInicio ?? (tri as any).inicio ?? null) as
+          | string
+          | null;
+      const end =
+        ((tri as any).fechaFin ?? (tri as any).fin ?? null) as string | null;
+
+      if (start && (!fromISO || start < fromISO)) {
+        fromISO = start;
+      }
+      if (end && (!toISO || end > toISO)) {
+        toISO = end;
+      }
+    }
+
+    return {
+      fromISO,
+      toISO,
+      fromDate: parseISODateToDate(fromISO),
+      toDate: parseISODateToDate(toISO),
+    };
+  }, [trimestresDelPeriodo]);
+
   useEffect(() => {
     let alive = true;
 
@@ -145,6 +254,20 @@ export function FamilyAttendanceView() {
         setDetalles([]);
         setJornadas(new Map());
         setErrorDetalles(null);
+        setLoadingDetalles(false);
+        return;
+      }
+
+      if (periodoLoading) {
+        setLoadingDetalles(true);
+        return;
+      }
+
+      if (!periodoDateRange.fromISO || !periodoDateRange.toISO) {
+        setDetalles([]);
+        setJornadas(new Map());
+        setErrorDetalles(null);
+        setLoadingDetalles(false);
         return;
       }
 
@@ -154,6 +277,8 @@ export function FamilyAttendanceView() {
 
         const { data } = await asistencias.detalles.search({
           matriculaId: alumnoSeleccionado.matriculaId,
+          desde: periodoDateRange.fromISO,
+          hasta: periodoDateRange.toISO,
         });
         if (!alive) return;
         const registros = data ?? [];
@@ -207,7 +332,12 @@ export function FamilyAttendanceView() {
     return () => {
       alive = false;
     };
-  }, [alumnoSeleccionado]);
+  }, [
+    alumnoSeleccionado,
+    periodoDateRange.fromISO,
+    periodoDateRange.toISO,
+    periodoLoading,
+  ]);
 
   const resumen = useMemo(() => {
     if (!detalles.length) {
@@ -233,20 +363,82 @@ export function FamilyAttendanceView() {
   }, [detalles]);
 
   const historial = useMemo(() => {
+    const fromISO = periodoDateRange.fromISO;
+    const toISO = periodoDateRange.toISO;
+
     return detalles
       .map((detalle) => {
         const jornada = detalle.jornadaId
           ? jornadas.get(detalle.jornadaId)
           : null;
+        const fecha = jornada?.fecha ?? null;
+        const isoFecha = fecha ?? null;
+        const inRange =
+          !isoFecha ||
+          !fromISO ||
+          !toISO ||
+          (isoFecha >= fromISO && isoFecha <= toISO);
+
         return {
           id: detalle.id,
           estado: detalle.estado,
           observacion: detalle.observacion,
-          fecha: jornada?.fecha ?? null,
+          fecha: inRange ? fecha : null,
+          fechaISO: fecha,
         };
       })
+      .filter((item) => item.fechaISO == null || item.fecha != null)
       .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
-  }, [detalles, jornadas]);
+  }, [detalles, jornadas, periodoDateRange.fromISO, periodoDateRange.toISO]);
+
+  const calendarData = useMemo(() => {
+    const dayByISO = new Map<
+      string,
+      { key: AttendanceCategory; date: Date }
+    >();
+
+    for (const item of historial) {
+      if (!item.fechaISO) continue;
+      const date = parseISODateToDate(item.fechaISO);
+      if (!date) continue;
+      const key = toAttendanceCategory(item.estado);
+      const existing = dayByISO.get(item.fechaISO);
+      if (!existing || attendancePriority[key] > attendancePriority[existing.key]) {
+        dayByISO.set(item.fechaISO, { key, date });
+      }
+    }
+
+    const modifiers: Record<AttendanceCategory, Date[]> = {
+      present: [],
+      absent: [],
+      late: [],
+      justified: [],
+      other: [],
+    };
+
+    for (const [, value] of dayByISO) {
+      modifiers[value.key].push(value.date);
+    }
+
+    return {
+      modifiers,
+      hasData: dayByISO.size > 0,
+    };
+  }, [historial]);
+
+  const calendarDefaultMonth = useMemo(() => {
+    const withFecha = historial.find((item) => item.fechaISO);
+    if (withFecha?.fechaISO) {
+      const parsed = parseISODateToDate(withFecha.fechaISO);
+      if (parsed) return parsed;
+    }
+    if (periodoDateRange.fromDate) return periodoDateRange.fromDate;
+    if (hoyISO) {
+      const parsedHoy = parseISODateToDate(hoyISO);
+      if (parsedHoy) return parsedHoy;
+    }
+    return new Date();
+  }, [historial, periodoDateRange.fromDate, hoyISO]);
 
   if (loading) {
     return <LoadingState label="Cargando alumnos vinculados…" />;
@@ -295,98 +487,166 @@ export function FamilyAttendanceView() {
       )}
 
       {alumnoSeleccionado && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>{alumnoSeleccionado.nombreCompleto}</CardTitle>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                {alumnoSeleccionado.seccionNombre && (
-                  <div>Sección: {alumnoSeleccionado.seccionNombre}</div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{alumnoSeleccionado.nombreCompleto}</CardTitle>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  {alumnoSeleccionado.seccionNombre && (
+                    <div>Sección: {alumnoSeleccionado.seccionNombre}</div>
+                  )}
+                  <div>{nivelLabel(alumnoSeleccionado.nivel)}</div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingDetalles ? (
+                  <LoadingState label="Cargando asistencias…" className="h-32" />
+                ) : (
+                  <div className="flex flex-col gap-6 md:flex-row md:items-center">
+                    <div className="text-primary">
+                      <Donut percent={resumen.porcentaje} />
+                    </div>
+                    <div className="flex-1 space-y-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="font-medium">
+                          Presentes: {resumen.presentes}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <X className="h-4 w-4 text-red-600" />
+                        <span className="font-medium">
+                          Ausentes: {resumen.ausentes}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Minus className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          Otros registros: {resumen.otros}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Total de días registrados: {resumen.total}
+                      </div>
+                    </div>
+                  </div>
                 )}
-                <div>{nivelLabel(alumnoSeleccionado.nivel)}</div>
-              </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Historial diario</CardTitle>
+                <CardDescription>
+                  Registros de asistencias e inasistencias cargados por los
+                  docentes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingDetalles && (
+                  <LoadingState label="Cargando historial…" className="h-32" />
+                )}
+
+                {!loadingDetalles && errorDetalles && (
+                  <div className="text-sm text-red-600">{errorDetalles}</div>
+                )}
+
+                {!loadingDetalles && !errorDetalles && !historial.length && (
+                  <div className="text-sm text-muted-foreground">
+                    Aún no hay asistencias registradas en el período consultado.
+                  </div>
+                )}
+
+                {!loadingDetalles && !errorDetalles && historial.length > 0 && (
+                  <div className="space-y-2">
+                    {historial.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded border p-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">
+                            {formatDate(item.fecha)}
+                          </div>
+                          {item.observacion && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.observacion}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant={estadoVariant(item.estado)}>
+                          {estadoLabel(item.estado)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Calendario de asistencias</CardTitle>
+              <CardDescription>
+                Visualizá rápidamente los días presentes, ausentes o con
+                novedades del período activo.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingDetalles ? (
-                <LoadingState label="Cargando asistencias…" className="h-32" />
+                <LoadingState label="Cargando calendario…" className="h-64" />
               ) : (
-                <div className="flex flex-col gap-6 md:flex-row md:items-center">
-                  <div className="text-primary">
-                    <Donut percent={resumen.porcentaje} />
-                  </div>
-                  <div className="flex-1 space-y-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">
-                        Presentes: {resumen.presentes}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <X className="h-4 w-4 text-red-600" />
-                      <span className="font-medium">
-                        Ausentes: {resumen.ausentes}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Minus className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">
-                        Otros registros: {resumen.otros}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Total de días registrados: {resumen.total}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                <div className="space-y-4">
+                  <AttendanceCalendar
+                    className="mx-auto w-full max-w-[30rem] rounded-lg border p-4"
+                    classNames={{
+                      months: "flex flex-col gap-4",
+                      day: cn(
+                        "h-10 w-10 p-0 text-sm font-medium",
+                        "aria-selected:opacity-100",
+                      ),
+                      day_today:
+                        "border border-primary text-primary aria-selected:bg-primary/90 aria-selected:text-primary-foreground",
+                    }}
+                    disableMonthDropdown
+                    disableYearDropdown
+                    defaultMonth={calendarDefaultMonth}
+                    fromDate={periodoDateRange.fromDate ?? undefined}
+                    toDate={periodoDateRange.toDate ?? undefined}
+                    modifiers={calendarData.modifiers}
+                    modifiersClassNames={calendarModifierClassNames}
+                  />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Historial diario</CardTitle>
-              <CardDescription>
-                Registros de asistencias e inasistencias cargados por los
-                docentes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {loadingDetalles && (
-                <LoadingState label="Cargando historial…" className="h-32" />
-              )}
-
-              {!loadingDetalles && errorDetalles && (
-                <div className="text-sm text-red-600">{errorDetalles}</div>
-              )}
-
-              {!loadingDetalles && !errorDetalles && !historial.length && (
-                <div className="text-sm text-muted-foreground">
-                  Aún no hay asistencias registradas en el período consultado.
-                </div>
-              )}
-
-              {!loadingDetalles && !errorDetalles && historial.length > 0 && (
-                <div className="space-y-2">
-                  {historial.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded border p-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">
-                          {formatDate(item.fecha)}
+                  <div className="flex flex-wrap gap-4 text-xs">
+                    {calendarLegend.map((item) => {
+                      const active = calendarData.modifiers[item.key].length > 0;
+                      return (
+                        <div
+                          key={item.key}
+                          className="flex items-center gap-2"
+                        >
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "h-3 w-3 rounded-full",
+                              item.dotClass,
+                              !active && "opacity-30",
+                            )}
+                          />
+                          <span className="font-medium">{item.label}</span>
                         </div>
-                        {item.observacion && (
-                          <p className="text-xs text-muted-foreground">
-                            {item.observacion}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant={estadoVariant(item.estado)}>
-                        {estadoLabel(item.estado)}
-                      </Badge>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
+
+                  {!calendarData.hasData && (
+                    <p className="text-sm text-muted-foreground">
+                      Aún no hay asistencias registradas en el calendario del
+                      período activo.
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>

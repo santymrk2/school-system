@@ -362,7 +362,10 @@ export default function AspirantesTab({ searchTerm }: Props) {
               const opciones = row.fechasPropuestas ?? [];
               const cantidadPropuestas = row.cantidadPropuestasEnviadas ?? 0;
               const estadoActual = String(row.estado ?? "").toUpperCase();
-              const puedeDarDeAlta = estadoActual === ESTADOS.ENTREVISTA_REALIZADA;
+              const puedeDarDeAlta =
+                Boolean(row.entrevistaRealizada) ||
+                estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
+                estadoActual === ESTADOS.ACEPTADA;
               return (
                 <Card key={row.id} className="flex flex-col">
                   <CardHeader className="pb-3">
@@ -485,6 +488,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
           }}
           solicitud={selected}
           onUpdated={refetch}
+          onAlta={openAlta}
           promptInterviewOpen={promptInterviewOpen}
           setPromptInterviewOpen={setPromptInterviewOpen}
         />
@@ -514,6 +518,7 @@ type DetailProps = {
   solicitud: SolicitudAdmisionItem;
   onOpenChange: (open: boolean) => void;
   onUpdated: () => void;
+  onAlta: (solicitud: SolicitudAdmisionItem) => void;
   promptInterviewOpen: boolean;
   setPromptInterviewOpen: (open: boolean) => void;
 };
@@ -530,6 +535,7 @@ function SolicitudDetailDialog({
   solicitud,
   onOpenChange,
   onUpdated,
+  onAlta,
   promptInterviewOpen,
   setPromptInterviewOpen,
 }: DetailProps) {
@@ -715,6 +721,15 @@ function SolicitudDetailDialog({
   const puedeDecidir = estado === ESTADOS.ENTREVISTA_REALIZADA;
   const puedeRechazar = estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA || estado === ESTADOS.PROGRAMADA;
   const puedeProgramar = estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA;
+  const puedeDarDeAlta =
+    Boolean(solicitud.entrevistaRealizada) ||
+    estado === ESTADOS.ENTREVISTA_REALIZADA ||
+    estado === ESTADOS.ACEPTADA;
+
+  const handleDarDeAlta = () => {
+    onAlta(solicitud);
+    onOpenChange(false);
+  };
 
   return (
     <>
@@ -869,6 +884,9 @@ function SolicitudDetailDialog({
             )}
 
             <div className="flex flex-wrap gap-2 pt-2">
+              {puedeDarDeAlta && (
+                <Button onClick={handleDarDeAlta}>Dar de alta</Button>
+              )}
               {puedeRechazar && (
                 <Button
                   variant="destructive"

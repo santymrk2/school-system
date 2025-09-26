@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar as AttendanceCalendar } from "@/components/ui/calendar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useViewerAlumnosLite } from "@/hooks/useViewerAlumnosLite";
 import { cn } from "@/lib/utils";
@@ -159,6 +159,13 @@ export function FamilyAttendanceView() {
       alumnos.find((al) => al.matriculaId === selectedMatriculaId) ?? null
     );
   }, [alumnos, selectedMatriculaId]);
+
+  useEffect(() => {
+    setDetalles([]);
+    setJornadas(new Map());
+    setErrorDetalles(null);
+    setLoadingDetalles(alumnoSeleccionado != null);
+  }, [alumnoSeleccionado?.matriculaId]);
 
   const periodoDateRange = useMemo(() => {
     if (!trimestresDelPeriodo?.length) {
@@ -555,20 +562,28 @@ export function FamilyAttendanceView() {
       </header>
 
       {alumnos.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {alumnos.map((al) => (
-            <Button
-              key={al.matriculaId}
-              size="sm"
-              variant={
-                selectedMatriculaId === al.matriculaId ? "default" : "outline"
-              }
-              onClick={() => setSelectedMatriculaId(al.matriculaId)}
-            >
-              {al.nombreCompleto}
-            </Button>
-          ))}
-        </div>
+        <Tabs
+          value={selectedMatriculaId ? String(selectedMatriculaId) : undefined}
+          onValueChange={(value) => {
+            const nextId = Number(value);
+            if (!Number.isNaN(nextId)) {
+              setSelectedMatriculaId(nextId);
+            }
+          }}
+          className="w-full"
+        >
+          <TabsList className="flex flex-wrap gap-2 overflow-x-auto">
+            {alumnos.map((al) => (
+              <TabsTrigger
+                key={al.matriculaId}
+                value={String(al.matriculaId)}
+                className="text-sm"
+              >
+                {al.nombreCompleto}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       )}
 
       {alumnoSeleccionado && (

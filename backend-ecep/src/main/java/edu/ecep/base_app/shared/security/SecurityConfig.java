@@ -72,7 +72,7 @@ public class SecurityConfig {
                                 HttpMethod.GET,
                                 "/api/personas/dni/**",
                                 "/api/personas/*",
-                                "/api/aspirantes/*",
+                                "/api/aspirantes/**",
                                 "/api/familiares/*"
                         ).permitAll()
 

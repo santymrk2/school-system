@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ import type {
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-generated";
 import { CheckCircle, X } from "lucide-react";
+import type { DayContentProps } from "react-day-picker";
+
 
 type AttendanceCategory = "present" | "absent";
 
@@ -43,6 +45,11 @@ const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string
   { key: "present", label: "Presente", dotClass: "bg-emerald-500" },
   { key: "absent", label: "Ausente", dotClass: "bg-red-500" },
 ];
+
+const calendarDayBadge: Record<AttendanceCategory, { text: string; className: string }> = {
+  present: { text: "Presente", className: "bg-emerald-100 text-emerald-700" },
+  absent: { text: "Ausente", className: "bg-red-100 text-red-700" },
+};
 
 function Donut({ percent }: { percent: number }) {
   const r = 36;
@@ -310,8 +317,26 @@ export function FamilyAttendanceView() {
     periodoLoading,
   ]);
 
+  const detallesEnPeriodo = useMemo(() => {
+    const fromISO = periodoDateRange.fromISO;
+    const toISO = periodoDateRange.toISO;
+
+    if (!fromISO || !toISO) {
+      return [] as DetalleAsistenciaDTO[];
+    }
+
+    return detalles.filter((detalle) => {
+      const jornada = detalle.jornadaId
+        ? jornadas.get(detalle.jornadaId)
+        : null;
+      const fecha = jornada?.fecha ?? null;
+      if (!fecha) return false;
+      return fecha >= fromISO && fecha <= toISO;
+    });
+  }, [detalles, jornadas, periodoDateRange.fromISO, periodoDateRange.toISO]);
+
   const resumen = useMemo(() => {
-    if (!detalles.length) {
+    if (!detallesEnPeriodo.length) {
       return {
         total: 0,
         presentes: 0,
@@ -320,43 +345,40 @@ export function FamilyAttendanceView() {
       };
     }
 
-    const presentes = detalles.filter(
+    const presentes = detallesEnPeriodo.filter(
       (d) => toAttendanceCategory(d.estado) === "present",
     ).length;
-    const ausentes = detalles.length - presentes;
-    const porcentaje = Math.round((presentes / detalles.length) * 100);
+    const ausentes = detallesEnPeriodo.length - presentes;
+    const porcentaje = Math.round((presentes / detallesEnPeriodo.length) * 100);
 
-    return { total: detalles.length, presentes, ausentes, porcentaje };
-  }, [detalles]);
+    return {
+      total: detallesEnPeriodo.length,
+      presentes,
+      ausentes,
+      porcentaje,
+    };
+  }, [detallesEnPeriodo]);
+
 
   const historial = useMemo(() => {
-    const fromISO = periodoDateRange.fromISO;
-    const toISO = periodoDateRange.toISO;
-
-    return detalles
+    return detallesEnPeriodo
       .map((detalle) => {
         const jornada = detalle.jornadaId
           ? jornadas.get(detalle.jornadaId)
           : null;
         const fecha = jornada?.fecha ?? null;
-        const isoFecha = fecha ?? null;
-        const inRange =
-          !isoFecha ||
-          !fromISO ||
-          !toISO ||
-          (isoFecha >= fromISO && isoFecha <= toISO);
 
         return {
           id: detalle.id,
           estado: detalle.estado,
           observacion: detalle.observacion,
-          fecha: inRange ? fecha : null,
+          fecha,
           fechaISO: fecha,
         };
       })
-      .filter((item) => item.fechaISO == null || item.fecha != null)
+      .filter((item) => item.fechaISO != null)
       .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
-  }, [detalles, jornadas, periodoDateRange.fromISO, periodoDateRange.toISO]);
+  }, [detallesEnPeriodo, jornadas]);
 
   const calendarData = useMemo(() => {
     const dayByISO = new Map<
@@ -380,13 +402,22 @@ export function FamilyAttendanceView() {
       absent: [],
     };
 
+    const labelByTime = new Map<number, AttendanceCategory>();
+
     for (const [, value] of dayByISO) {
+      const keyTime = new Date(
+        value.date.getFullYear(),
+        value.date.getMonth(),
+        value.date.getDate(),
+      ).getTime();
+      labelByTime.set(keyTime, value.key);
       modifiers[value.key].push(value.date);
     }
 
     return {
       modifiers,
       hasData: dayByISO.size > 0,
+      labelByTime,
     };
   }, [historial]);
 
@@ -403,6 +434,91 @@ export function FamilyAttendanceView() {
     }
     return new Date();
   }, [historial, periodoDateRange.fromDate, hoyISO]);
+
+  const calendarMinDate = periodoDateRange.fromDate ?? undefined;
+  const calendarMaxDate = periodoDateRange.toDate ?? undefined;
+
+  const clampCalendarMonth = useMemo(() => {
+    const minMonthTime = calendarMinDate
+      ? new Date(
+          calendarMinDate.getFullYear(),
+          calendarMinDate.getMonth(),
+          1,
+        ).getTime()
+      : null;
+    const maxMonthTime = calendarMaxDate
+      ? new Date(
+          calendarMaxDate.getFullYear(),
+          calendarMaxDate.getMonth(),
+          1,
+        ).getTime()
+      : null;
+
+    return (value: Date | undefined) => {
+      if (!value) return value;
+      const normalized = new Date(value.getFullYear(), value.getMonth(), 1);
+      const time = normalized.getTime();
+      if (minMonthTime != null && time < minMonthTime) {
+        return new Date(minMonthTime);
+      }
+      if (maxMonthTime != null && time > maxMonthTime) {
+        return new Date(maxMonthTime);
+      }
+      return normalized;
+    };
+  }, [calendarMinDate, calendarMaxDate]);
+
+  const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    setCalendarMonth((prev) => {
+      if (!calendarDefaultMonth) return clampCalendarMonth(prev);
+      if (!prev) return clampCalendarMonth(calendarDefaultMonth);
+      const sameMonth =
+        prev.getFullYear() === calendarDefaultMonth.getFullYear() &&
+        prev.getMonth() === calendarDefaultMonth.getMonth();
+      return clampCalendarMonth(sameMonth ? prev : calendarDefaultMonth);
+    });
+  }, [calendarDefaultMonth, clampCalendarMonth]);
+
+  useEffect(() => {
+    setCalendarMonth((prev) => clampCalendarMonth(prev));
+  }, [clampCalendarMonth]);
+
+  const handleCalendarMonthChange = useCallback(
+    (nextMonth: Date) => {
+      setCalendarMonth(clampCalendarMonth(nextMonth));
+    },
+    [clampCalendarMonth],
+  );
+
+  const CalendarDayContent = useMemo(() => {
+    const getKey = (date: Date) =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+    return function DayContent({ date }: DayContentProps) {
+      const category = calendarData.labelByTime.get(getKey(date));
+      const badge = category ? calendarDayBadge[category] : null;
+
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 py-1">
+          <span className="text-base font-semibold leading-none">
+            {date.getDate()}
+          </span>
+          {badge ? (
+            <span
+              className={cn(
+                "rounded px-1 text-[9px] font-semibold uppercase leading-3",
+                badge.className,
+              )}
+            >
+              {badge.text}
+            </span>
+          ) : null}
+        </div>
+      );
+    };
+  }, [calendarData.labelByTime]);
 
   if (loading) {
     return <LoadingState label="Cargando alumnos vinculados…" />;
@@ -562,7 +678,7 @@ export function FamilyAttendanceView() {
                     classNames={{
                       months: "flex flex-col gap-4",
                       day: cn(
-                        "h-10 w-10 p-0 text-sm font-medium",
+                        "flex h-14 w-14 flex-col items-center justify-center rounded-md p-0 text-xs font-medium",
                         "aria-selected:opacity-100",
                       ),
                       day_today:
@@ -571,10 +687,13 @@ export function FamilyAttendanceView() {
                     disableMonthDropdown
                     disableYearDropdown
                     defaultMonth={calendarDefaultMonth}
-                    fromDate={periodoDateRange.fromDate ?? undefined}
-                    toDate={periodoDateRange.toDate ?? undefined}
+                    month={calendarMonth}
+                    onMonthChange={handleCalendarMonthChange}
+                    fromDate={calendarMinDate}
+                    toDate={calendarMaxDate}
                     modifiers={calendarData.modifiers}
                     modifiersClassNames={calendarModifierClassNames}
+                    components={{ DayContent: CalendarDayContent }}
                   />
 
                   <div className="flex flex-wrap gap-4 text-xs">

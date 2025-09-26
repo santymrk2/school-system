@@ -910,16 +910,20 @@ export default function PostulacionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+    <div
+      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors"
+    >
       <div className="max-w-4xl mx-auto space-y-6">
         <Button variant="outline" asChild>
           <Link href="/">Volver</Link>
         </Button>
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Postulación de Alumno
           </h1>
-          <p className="text-gray-600">Escuela Complejo Evangélico Pilar</p>
+          <p className="text-muted-foreground">
+            Escuela Complejo Evangélico Pilar
+          </p>
         </div>
 
         <Card className="shadow-lg">

@@ -44,6 +44,11 @@ const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string
   { key: "absent", label: "Ausente", dotClass: "bg-red-500" },
 ];
 
+const calendarDayBadge: Record<AttendanceCategory, { text: string; className: string }> = {
+  present: { text: "Presente", className: "bg-emerald-100 text-emerald-700" },
+  absent: { text: "Ausente", className: "bg-red-100 text-red-700" },
+};
+
 function Donut({ percent }: { percent: number }) {
   const r = 36;
   const c = 2 * Math.PI * r;

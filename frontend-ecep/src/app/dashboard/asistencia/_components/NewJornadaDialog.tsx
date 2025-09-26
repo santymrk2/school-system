@@ -80,32 +80,30 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const { trimestreActivo, trimestresDelPeriodo } = useActivePeriod();
 
-  const activeTrimestre = useMemo(() => {
+  const activeTrimestres = useMemo(
+    () =>
+      trimestresDelPeriodo.filter(
+        (t) => getTrimestreEstado(t) === "activo",
+      ),
+    [trimestresDelPeriodo],
+  );
+
+  const primaryActiveTrimestre = useMemo(() => {
     if (trimestreActivo && getTrimestreEstado(trimestreActivo) === "activo") {
       return trimestreActivo;
     }
-    return (
-      trimestresDelPeriodo.find(
-        (t) => getTrimestreEstado(t) === "activo",
-      ) ?? null
-    );
-  }, [trimestreActivo, trimestresDelPeriodo]);
+    return activeTrimestres[0] ?? null;
+  }, [trimestreActivo, activeTrimestres]);
 
   const resolveTrimestreForDate = useCallback(
     (value: string): TrimestreDTO | null => {
       if (!value) return null;
-      const match = trimestresDelPeriodo.find((t) =>
+      const match = activeTrimestres.find((t) =>
         isFechaDentroDeTrimestre(value, t),
       );
-      if (!match || getTrimestreEstado(match) !== "activo") {
-        return null;
-      }
-      if (activeTrimestre && match.id !== activeTrimestre.id) {
-        return null;
-      }
-      return match;
+      return match ?? null;
     },
-    [trimestresDelPeriodo, activeTrimestre],
+    [activeTrimestres],
   );
 
   const computeDateError = useCallback(
@@ -124,7 +122,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       }
       return null;
     },
-    [busyDates, resolveTrimestreForDate, activeTrimestre],
+    [busyDates, resolveTrimestreForDate],
   );
 
   const setFechaWithValidation = useCallback(
@@ -187,12 +185,28 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   }, [open, fecha, computeDateError]);
 
   const currentYear = new Date().getFullYear();
-  const trimestreInicio = activeTrimestre
-    ? getTrimestreInicio(activeTrimestre)
+  const activeStart = useMemo(() => {
+    const fechas = activeTrimestres
+      .map((tri) => getTrimestreInicio(tri))
+      .filter((value): value is string => Boolean(value));
+    if (!fechas.length) return "";
+    return fechas.reduce((min, current) => (current < min ? current : min));
+  }, [activeTrimestres]);
+  const activeEnd = useMemo(() => {
+    const fechas = activeTrimestres
+      .map((tri) => getTrimestreFin(tri))
+      .filter((value): value is string => Boolean(value));
+    if (!fechas.length) return "";
+    return fechas.reduce((max, current) => (current > max ? current : max));
+  }, [activeTrimestres]);
+  const fallbackInicio = primaryActiveTrimestre
+    ? getTrimestreInicio(primaryActiveTrimestre)
     : "";
-  const trimestreFin = activeTrimestre ? getTrimestreFin(activeTrimestre) : "";
-  const minFecha = trimestreInicio || `${currentYear}-01-01`;
-  const maxFecha = trimestreFin || `${currentYear}-12-31`;
+  const fallbackFin = primaryActiveTrimestre
+    ? getTrimestreFin(primaryActiveTrimestre)
+    : "";
+  const minFecha = activeStart || fallbackInicio || `${currentYear}-01-01`;
+  const maxFecha = activeEnd || fallbackFin || `${currentYear}-12-31`;
   const formattedFecha = useMemo(() => formatHumanDate(fecha), [fecha]);
   const selectedDate = useMemo(() => {
     if (!fecha) return undefined;
@@ -294,7 +308,8 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
 
       let tri = resolveTrimestreForDate(fecha) ?? undefined;
       if (!tri) {
-        const msg = "La fecha seleccionada no pertenece al trimestre activo.";
+        const msg =
+          "La fecha seleccionada no pertenece a un trimestre activo.";
         setDateError(msg);
         toast.warning(msg);
         return;
@@ -302,7 +317,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
 
       if (!isFechaDentroDeTrimestre(fecha, tri)) {
         const msg =
-          "La fecha seleccionada no pertenece al trimestre activo.";
+          "La fecha seleccionada no pertenece a un trimestre activo.";
         setDateError(msg);
         toast.warning(msg);
         return;

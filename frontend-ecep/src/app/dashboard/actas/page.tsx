@@ -851,10 +851,10 @@ export default function AccidentesIndexPage() {
               <CardTitle className="text-sm font-medium">
                 Actas firmadas
               </CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-secondary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-secondary">
                 {firmadas}
               </div>
               <p className="text-xs text-muted-foreground">

@@ -132,7 +132,7 @@ export function BoletinesReport({
       >
         <SheetContent
           size="xl"
-          className="flex h-full w-full flex-col overflow-y-auto md:overflow-y-visible lg:w-[85vw] lg:max-w-none xl:w-[90vw] xl:max-w-none 2xl:w-[92vw] 2xl:max-w-none"
+          className="flex h-full w-full flex-col overflow-y-auto md:overflow-y-visible lg:w-[70vw]"
         >
           {activeStudent && (
             <>
@@ -182,7 +182,7 @@ export function BoletinesReport({
               <div
                 className={`mt-6 flex-1 space-y-4 pb-8 text-sm ${
                   isActiveStudentPrimario
-                    ? "lg:grid lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start lg:gap-6 lg:space-y-0"
+                    ? "lg:grid  lg:items-start lg:gap-6 lg:space-y-0"
                     : ""
                 }`}
               >

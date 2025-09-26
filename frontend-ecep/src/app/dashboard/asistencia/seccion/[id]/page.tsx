@@ -15,11 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Calendar as AttendanceCalendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { asistencias, gestionAcademica } from "@/services/api/modules";
@@ -103,7 +99,8 @@ export default function SeccionHistorialPage() {
   const seccionId = Number(id);
   const router = useRouter();
   const { type, activeRole } = useViewerScope();
-  const { loading: scopedLoading, secciones: accesibles } = useScopedSecciones();
+  const { loading: scopedLoading, secciones: accesibles } =
+    useScopedSecciones();
   const isAdmin = activeRole === UserRole.ADMIN;
   const isTeacher = type === "teacher";
   const isStaff = type === "staff";
@@ -128,9 +125,8 @@ export default function SeccionHistorialPage() {
   const selectedTrimestre = useMemo(() => {
     if (!selectedTrimestreId) return null;
     return (
-      trimestresDelPeriodo.find(
-        (t) => String(t.id) === selectedTrimestreId,
-      ) ?? null
+      trimestresDelPeriodo.find((t) => String(t.id) === selectedTrimestreId) ??
+      null
     );
   }, [selectedTrimestreId, trimestresDelPeriodo]);
 
@@ -151,10 +147,11 @@ export default function SeccionHistorialPage() {
   const [historial, setHistorial] = useState<AsistenciaDiaDTO[]>([]);
   const [resumen, setResumen] = useState<AsistenciaAlumnoResumenDTO[]>([]);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [selectedResumen, setSelectedResumen] = useState<AsistenciaDiaDTO | null>(
-    null,
+  const [selectedResumen, setSelectedResumen] =
+    useState<AsistenciaDiaDTO | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(
+    undefined,
   );
-  const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
 
   const asistenciaDateSet = useMemo(() => {
     const set = new Set<string>();
@@ -176,22 +173,13 @@ export default function SeccionHistorialPage() {
       .sort((a, b) => a.getTime() - b.getTime());
   }, [asistenciaDateSet]);
 
-  const accessStatus = useMemo(
-    () => {
-      if (isAdmin) return "admin" as const;
-      if (!isTeacher && !isStaff) return "forbidden" as const;
-      if (isTeacher && scopedLoading) return "checking" as const;
-      if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
-      return "ok" as const;
-    },
-    [
-      isAdmin,
-      isTeacher,
-      isStaff,
-      scopedLoading,
-      teacherHasAccess,
-    ],
-  );
+  const accessStatus = useMemo(() => {
+    if (isAdmin) return "admin" as const;
+    if (!isTeacher && !isStaff) return "forbidden" as const;
+    if (isTeacher && scopedLoading) return "checking" as const;
+    if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
+    return "ok" as const;
+  }, [isAdmin, isTeacher, isStaff, scopedLoading, teacherHasAccess]);
 
   useEffect(() => {
     if (accessStatus !== "ok") return;
@@ -298,7 +286,9 @@ export default function SeccionHistorialPage() {
     }
 
     if (selectedResumen) {
-      const refreshed = historial.find((item) => item.id === selectedResumen.id);
+      const refreshed = historial.find(
+        (item) => item.id === selectedResumen.id,
+      );
       if (refreshed) {
         setSelectedResumen(refreshed);
         if (!selectedDay && refreshed.fecha) {
@@ -386,345 +376,341 @@ export default function SeccionHistorialPage() {
 
   if (accessStatus === "admin") {
     return (
-      
-        <div className="p-6 text-sm">
-          403 — El perfil de Administración no tiene acceso a Asistencia.
-        </div>
-      
+      <div className="p-6 text-sm">
+        403 — El perfil de Administración no tiene acceso a Asistencia.
+      </div>
     );
   }
 
   if (accessStatus === "forbidden") {
     return (
-      
-        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
-      
+      <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
     );
   }
 
   if (accessStatus === "checking") {
     return (
-      
-        <div className="p-6">
-          <LoadingState label="Verificando acceso a la sección…" />
-        </div>
-      
+      <div className="p-6">
+        <LoadingState label="Verificando acceso a la sección…" />
+      </div>
     );
   }
 
   if (accessStatus === "notAssigned") {
     return (
-      
-        <div className="p-6 text-sm">
-          403 — Esta sección no pertenece a tus asignaciones.
-        </div>
-      
+      <div className="p-6 text-sm">
+        403 — Esta sección no pertenece a tus asignaciones.
+      </div>
     );
   }
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/asistencia")}
-        >
-          Volver
-        </Button>
+      <Button
+        variant="outline"
+        onClick={() => router.push("/dashboard/asistencia")}
+      >
+        Volver
+      </Button>
 
-        <div className="space-y-3">
-          <div>
-            <h2 className="text-2xl font-bold">
-              Historial — Sección{" "}
-              {seccion
-                ? `${seccion.gradoSala} ${seccion.division}`
-                : loadingSec
-                  ? "cargando…"
-                  : `#${seccionId}`}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Turno: {seccion?.turno ?? "—"}
-            </p>
-            {secErr && <p className="text-sm text-red-600">{secErr}</p>}
-            <ActiveTrimestreBadge className="mt-2" />
-          </div>
-          {periodError && (
-            <p className="text-sm text-red-600">{periodError}</p>
-          )}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-bold">
+            Historial — Sección{" "}
+            {seccion
+              ? `${seccion.gradoSala} ${seccion.division}`
+              : loadingSec
+                ? "cargando…"
+                : `#${seccionId}`}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Turno: {seccion?.turno ?? "—"}
+          </p>
+          {secErr && <p className="text-sm text-red-600">{secErr}</p>}
+          <ActiveTrimestreBadge className="mt-2" />
         </div>
+        {periodError && <p className="text-sm text-red-600">{periodError}</p>}
+      </div>
 
-        {loadingPeriod ? (
-          <LoadingState label="Cargando trimestres…" />
-        ) : !trimestresDelPeriodo.length ? (
-          <div className="text-sm text-muted-foreground">
-            No hay trimestres configurados para el período actual.
-          </div>
-        ) : (
-          <Tabs
-            value={
-              selectedTrimestreId || String(trimestresDelPeriodo[0].id)
-            }
-            onValueChange={setSelectedTrimestreId}
-            className="space-y-4"
-          >
-            <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
-              {trimestresDelPeriodo.map((tri, index) => {
-                const label =
-                  tri.orden != null
-                    ? `Trimestre ${tri.orden}`
-                    : `Trimestre ${index + 1}`;
-                return (
-                  <TabsTrigger key={tri.id} value={String(tri.id)}>
-                    {label}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-
-            {trimestresDelPeriodo.map((tri) => {
-              const value = String(tri.id);
-              const hasRange =
-                Boolean(getTrimestreInicio(tri)) &&
-                Boolean(getTrimestreFin(tri));
-              const rangeLabel = formatTrimestreRange(tri);
-              const estado = getTrimestreEstado(tri);
-              const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
-              const canEdit = estado === "activo";
-              const estadoMessage =
-                estado === "cerrado"
-                  ? "Este trimestre está cerrado. Los registros son solo de lectura."
-                  : "Este trimestre está inactivo. No podés registrar ni editar asistencia.";
+      {loadingPeriod ? (
+        <LoadingState label="Cargando trimestres…" />
+      ) : !trimestresDelPeriodo.length ? (
+        <div className="text-sm text-muted-foreground">
+          No hay trimestres configurados para el período actual.
+        </div>
+      ) : (
+        <Tabs
+          value={selectedTrimestreId || String(trimestresDelPeriodo[0].id)}
+          onValueChange={setSelectedTrimestreId}
+          className="space-y-4"
+        >
+          <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
+            {trimestresDelPeriodo.map((tri, index) => {
+              const label =
+                tri.orden != null
+                  ? `Trimestre ${tri.orden}`
+                  : `Trimestre ${index + 1}`;
               return (
-                <TabsContent key={value} value={value} className="space-y-4">
-                  {!hasRange ? (
-                    <div className="text-sm text-muted-foreground">
-                      Configurá las fechas de inicio y fin del trimestre para
-                      visualizar los registros de asistencia.
-                    </div>
-                  ) : (
-                    <>
-                      {loading && <LoadingState label="Cargando asistencia…" />}
-                      {err && (
-                        <div className="text-sm text-red-600">{err}</div>
-                      )}
-                      {!loading && !err && (
-                        <>
-                          <Card>
-                            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <CardTitle className="flex flex-wrap items-center gap-2">
-                                  <span className="flex items-center">
-                                    <CalendarIcon className="h-5 w-5 mr-2" />
-                                    Jornadas del trimestre
-                                  </span>
-                                  <TrimestreEstadoBadge
-                                    estado={estado}
-                                    className="text-xs text-muted-foreground"
-                                  />
-                                </CardTitle>
-                                <CardDescription>
-                                  Seleccioná una fecha para ver o editar la
-                                  jornada.
-                                  {rangeLabel && (
-                                    <span className="block text-xs text-muted-foreground">
-                                      {rangeLabel}
-                                    </span>
-                                  )}
-                                </CardDescription>
-                              </div>
-
-                              {seccion && (
-                                <NewJornadaDialog
-                                  seccion={seccion}
-                                  trigger={
-                                    <Button
-                                      disabled={!canEdit}
-                                      title={
-                                        canEdit
-                                          ? undefined
-                                          : "Activá el trimestre para registrar jornadas."
-                                      }
-                                    >
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      Nueva jornada
-                                    </Button>
-                                  }
-                                  onCreated={(jid) =>
-                                    router.push(
-                                      `/dashboard/asistencia/jornada/${jid}`,
-                                    )
-                                  }
-                                />
-                              )}
-                            </CardHeader>
-
-                            <CardContent className="space-y-4">
-                              {!canEdit && (
-                                <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
-                                  <AlertTitle>{estadoLabel}</AlertTitle>
-                                  <AlertDescription>
-                                    {estadoMessage}
-                                  </AlertDescription>
-                                </Alert>
-                              )}
-                              {historial.length === 0 ? (
-                                <div className="text-sm text-muted-foreground">
-                                  No hay registros en el trimestre seleccionado.
-                                </div>
-                              ) : (
-                                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-                                  <div className="space-y-4">
-                                    <AttendanceCalendar
-                                      className="mx-auto w-full max-w-[38rem] rounded-lg border p-4 shadow-sm"
-                                      classNames={{
-                                        months: "flex flex-col gap-4",
-                                        month: "space-y-4",
-                                        table: "w-full border-collapse space-y-1",
-                                        head_row: "grid grid-cols-7 text-xs font-medium text-muted-foreground",
-                                        row: "grid grid-cols-7",
-                                        day: "m-1 flex h-12 w-12 items-center justify-center rounded-full text-sm font-medium transition-colors",
-                                        day_selected:
-                                          "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
-                                        day_today:
-                                          "border border-primary/40 text-primary aria-selected:bg-primary/15 aria-selected:text-primary",
-                                      }}
-                                      mode="single"
-                                      selected={selectedDay ?? undefined}
-                                      onSelect={handleCalendarSelect}
-                                      month={calendarMonth}
-                                      defaultMonth={
-                                        selectedDay ??
-                                        asistenciaDates[asistenciaDates.length - 1] ??
-                                        new Date()
-                                      }
-                                      onMonthChange={(month) => setCalendarMonth(month)}
-                                      fromDate={
-                                        selectedRange?.from
-                                          ? parseISODate(selectedRange.from) ?? undefined
-                                          : undefined
-                                      }
-                                      toDate={
-                                        selectedRange?.to
-                                          ? parseISODate(selectedRange.to) ?? undefined
-                                          : undefined
-                                      }
-                                      modifiers={{
-                                        loaded: asistenciaDates,
-                                      }}
-                                      modifiersClassNames={{
-                                        loaded:
-                                          "bg-primary/15 text-primary aria-selected:bg-primary aria-selected:text-primary-foreground",
-                                      }}
-                                      disabled={(date) =>
-                                        !asistenciaDateSet.has(formatISODate(date))
-                                      }
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                      Seleccioná un día marcado para ver su resumen y
-                                      abrir la jornada correspondiente.
-                                    </p>
-                                  </div>
-                                  <div className="space-y-3">
-                                    {selectedResumen ? (
-                                      <div className="space-y-4">
-                                        <div className="rounded-lg border p-4 space-y-2">
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">
-                                              Fecha
-                                            </span>
-                                            <Badge variant="outline">
-                                              {fmt(selectedResumen.fecha)}
-                                            </Badge>
-                                          </div>
-                                          <div className="text-sm">
-                                            Presentes: <b>{selectedResumen.presentes}</b>
-                                          </div>
-                                          <div className="text-sm">
-                                            Ausentes: <b>{selectedResumen.ausentes}</b>
-                                          </div>
-                                          <div className="text-sm">
-                                            Llegadas tarde: <b>{selectedResumen.tarde}</b>
-                                          </div>
-                                          <div className="text-sm">
-                                            Retiros anticipados:{" "}
-                                            <b>{selectedResumen.retiroAnticipado}</b>
-                                          </div>
-                                          <div className="text-sm">
-                                            Total registrados: <b>{selectedResumen.total}</b>
-                                          </div>
-                                          <div className="text-sm">
-                                            Asistencia promedio:{" "}
-                                            <b>{Math.round(selectedResumen.porcentaje ?? 0)}%</b>
-                                          </div>
-                                        </div>
-                                        <Button
-                                          onClick={() =>
-                                            openJornadaDetalle(selectedResumen.fecha)
-                                          }
-                                          disabled={!canEdit}
-                                          title={
-                                            canEdit
-                                              ? "Ver/editar jornada"
-                                              : "Trimestre no activo. Solo lectura"
-                                          }
-                                        >
-                                          Ver jornada
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <div className="text-sm text-muted-foreground">
-                                        Seleccioná un día con registros para ver su
-                                        resumen.
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>Asistencia por alumno</CardTitle>
-                              <CardDescription>
-                                Porcentaje acumulado en el trimestre
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                              {resumen.length === 0 ? (
-                                <div className="text-sm text-muted-foreground">
-                                  Sin registros acumulados para este trimestre.
-                                </div>
-                              ) : (
-                                resumen.map((r) => (
-                                  <div key={r.matriculaId} className="space-y-1">
-                                    <div className="flex justify-between text-sm">
-                                      <span className="font-medium">
-                                        {alumnoDisplayName(r as any)}
-                                      </span>
-                                      <span>
-                                        {Math.round(r.porcentaje)}% ({r.presentes}/
-                                        {r.presentes + r.ausentes})
-                                      </span>
-                                    </div>
-                                    <Progress
-                                      value={Math.round(r.porcentaje)}
-                                      className="h-2"
-                                    />
-                                  </div>
-                                ))
-                              )}
-                            </CardContent>
-                          </Card>
-                        </>
-                      )}
-                    </>
-                  )}
-                </TabsContent>
+                <TabsTrigger key={tri.id} value={String(tri.id)}>
+                  {label}
+                </TabsTrigger>
               );
             })}
-          </Tabs>
-        )}
-      </div>
-    
+          </TabsList>
+
+          {trimestresDelPeriodo.map((tri) => {
+            const value = String(tri.id);
+            const hasRange =
+              Boolean(getTrimestreInicio(tri)) && Boolean(getTrimestreFin(tri));
+            const rangeLabel = formatTrimestreRange(tri);
+            const estado = getTrimestreEstado(tri);
+            const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
+            const canEdit = estado === "activo";
+            const estadoMessage =
+              estado === "cerrado"
+                ? "Este trimestre está cerrado. Los registros son solo de lectura."
+                : "Este trimestre está inactivo. No podés registrar ni editar asistencia.";
+            return (
+              <TabsContent key={value} value={value} className="space-y-4">
+                {!hasRange ? (
+                  <div className="text-sm text-muted-foreground">
+                    Configurá las fechas de inicio y fin del trimestre para
+                    visualizar los registros de asistencia.
+                  </div>
+                ) : (
+                  <>
+                    {loading && <LoadingState label="Cargando asistencia…" />}
+                    {err && <div className="text-sm text-red-600">{err}</div>}
+                    {!loading && !err && (
+                      <>
+                        <Card>
+                          <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <CardTitle className="flex flex-wrap items-center gap-2">
+                                <span className="flex items-center">
+                                  Jornadas del trimestre
+                                </span>
+                                <TrimestreEstadoBadge
+                                  estado={estado}
+                                  className="text-xs text-muted-foreground"
+                                />
+                              </CardTitle>
+                            </div>
+
+                            {seccion && (
+                              <NewJornadaDialog
+                                seccion={seccion}
+                                trigger={
+                                  <Button
+                                    disabled={!canEdit}
+                                    title={
+                                      canEdit
+                                        ? undefined
+                                        : "Activá el trimestre para registrar jornadas."
+                                    }
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Nueva jornada
+                                  </Button>
+                                }
+                                onCreated={(jid) =>
+                                  router.push(
+                                    `/dashboard/asistencia/jornada/${jid}`,
+                                  )
+                                }
+                              />
+                            )}
+                          </CardHeader>
+
+                          <CardContent className="space-y-4">
+                            {!canEdit && (
+                              <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
+                                <AlertTitle>{estadoLabel}</AlertTitle>
+                                <AlertDescription>
+                                  {estadoMessage}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            {historial.length === 0 ? (
+                              <div className="text-sm text-muted-foreground">
+                                No hay registros en el trimestre seleccionado.
+                              </div>
+                            ) : (
+                              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                                <div className="space-y-4">
+                                  <AttendanceCalendar
+                                    className="mx-auto w-full max-w-[38rem] rounded-lg border p-4 shadow-sm"
+                                    classNames={{
+                                      months: "flex flex-col gap-4",
+                                      month: "space-y-4",
+                                      table: "w-full border-collapse space-y-1",
+                                      head_row:
+                                        "grid grid-cols-7 text-xs font-medium text-muted-foreground",
+                                      row: "grid grid-cols-7",
+                                      day: "m-1 flex h-12 w-12 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                                      day_selected:
+                                        "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
+                                      day_today:
+                                        "border border-primary/40 text-primary aria-selected:bg-primary/15 aria-selected:text-primary",
+                                    }}
+                                    mode="single"
+                                    selected={selectedDay ?? undefined}
+                                    onSelect={handleCalendarSelect}
+                                    month={calendarMonth}
+                                    defaultMonth={
+                                      selectedDay ??
+                                      asistenciaDates[
+                                        asistenciaDates.length - 1
+                                      ] ??
+                                      new Date()
+                                    }
+                                    onMonthChange={(month) =>
+                                      setCalendarMonth(month)
+                                    }
+                                    fromDate={
+                                      selectedRange?.from
+                                        ? (parseISODate(selectedRange.from) ??
+                                          undefined)
+                                        : undefined
+                                    }
+                                    toDate={
+                                      selectedRange?.to
+                                        ? (parseISODate(selectedRange.to) ??
+                                          undefined)
+                                        : undefined
+                                    }
+                                    modifiers={{
+                                      loaded: asistenciaDates,
+                                    }}
+                                    modifiersClassNames={{
+                                      loaded:
+                                        "bg-primary/15 text-primary aria-selected:bg-primary aria-selected:text-primary-foreground",
+                                    }}
+                                    disabled={(date) =>
+                                      !asistenciaDateSet.has(
+                                        formatISODate(date),
+                                      )
+                                    }
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Seleccioná un día marcado para ver su
+                                    resumen y abrir la jornada correspondiente.
+                                  </p>
+                                </div>
+                                <div className="space-y-3">
+                                  {selectedResumen ? (
+                                    <div className="space-y-4">
+                                      <div className="rounded-lg border p-4 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm font-medium">
+                                            Fecha
+                                          </span>
+                                          <Badge variant="outline">
+                                            {fmt(selectedResumen.fecha)}
+                                          </Badge>
+                                        </div>
+                                        <div className="text-sm">
+                                          Presentes:{" "}
+                                          <b>{selectedResumen.presentes}</b>
+                                        </div>
+                                        <div className="text-sm">
+                                          Ausentes:{" "}
+                                          <b>{selectedResumen.ausentes}</b>
+                                        </div>
+                                        <div className="text-sm">
+                                          Llegadas tarde:{" "}
+                                          <b>{selectedResumen.tarde}</b>
+                                        </div>
+                                        <div className="text-sm">
+                                          Retiros anticipados:{" "}
+                                          <b>
+                                            {selectedResumen.retiroAnticipado}
+                                          </b>
+                                        </div>
+                                        <div className="text-sm">
+                                          Total registrados:{" "}
+                                          <b>{selectedResumen.total}</b>
+                                        </div>
+                                        <div className="text-sm">
+                                          Asistencia promedio:{" "}
+                                          <b>
+                                            {Math.round(
+                                              selectedResumen.porcentaje ?? 0,
+                                            )}
+                                            %
+                                          </b>
+                                        </div>
+                                      </div>
+                                      <Button
+                                        onClick={() =>
+                                          openJornadaDetalle(
+                                            selectedResumen.fecha,
+                                          )
+                                        }
+                                        disabled={!canEdit}
+                                        title={
+                                          canEdit
+                                            ? "Ver/editar jornada"
+                                            : "Trimestre no activo. Solo lectura"
+                                        }
+                                      >
+                                        Ver jornada
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                      Seleccioná un día con registros para ver
+                                      su resumen.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Asistencia por alumno</CardTitle>
+                            <CardDescription>
+                              Porcentaje acumulado en el trimestre
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {resumen.length === 0 ? (
+                              <div className="text-sm text-muted-foreground">
+                                Sin registros acumulados para este trimestre.
+                              </div>
+                            ) : (
+                              resumen.map((r) => (
+                                <div key={r.matriculaId} className="space-y-1">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="font-medium">
+                                      {alumnoDisplayName(r as any)}
+                                    </span>
+                                    <span>
+                                      {Math.round(r.porcentaje)}% ({r.presentes}
+                                      /{r.presentes + r.ausentes})
+                                    </span>
+                                  </div>
+                                  <Progress
+                                    value={Math.round(r.porcentaje)}
+                                    className="h-2"
+                                  />
+                                </div>
+                              ))
+                            )}
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      )}
+    </div>
   );
 }

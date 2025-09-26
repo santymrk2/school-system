@@ -34,12 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
@@ -81,7 +76,8 @@ export default function SeccionEvaluacionesPage() {
   const { getTrimestreByDate, trimestresDelPeriodo, trimestreActivo } =
     useActivePeriod();
   const { type, activeRole } = useViewerScope();
-  const { loading: scopedLoading, secciones: accesibles } = useScopedSecciones();
+  const { loading: scopedLoading, secciones: accesibles } =
+    useScopedSecciones();
   const isAdmin = activeRole === UserRole.ADMIN;
   const isTeacher = type === "teacher";
   const isStaff = type === "staff";
@@ -105,29 +101,17 @@ export default function SeccionEvaluacionesPage() {
   const [filterMateriaId, setFilterMateriaId] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
 
-  const accessStatus = useMemo(
-    () => {
-      if (isAdmin) return "admin" as const;
-      if (!isTeacher && !isStaff) return "forbidden" as const;
-      if (isTeacher && scopedLoading) return "checking" as const;
-      if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
-      return "ok" as const;
-    },
-    [
-      isAdmin,
-      isTeacher,
-      isStaff,
-      scopedLoading,
-      teacherHasAccess,
-    ],
-  );
+  const accessStatus = useMemo(() => {
+    if (isAdmin) return "admin" as const;
+    if (!isTeacher && !isStaff) return "forbidden" as const;
+    if (isTeacher && scopedLoading) return "checking" as const;
+    if (isTeacher && !teacherHasAccess) return "notAssigned" as const;
+    return "ok" as const;
+  }, [isAdmin, isTeacher, isStaff, scopedLoading, teacherHasAccess]);
 
   // Nuevo examen
   const [openNew, setOpenNew] = useState(false);
-  const todayISO = useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    [],
-  );
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const currentYear = useMemo(() => Number(todayISO.slice(0, 4)), [todayISO]);
   const minDate = `${currentYear}-01-01`;
   const maxDate = `${currentYear}-12-31`;
@@ -152,7 +136,8 @@ export default function SeccionEvaluacionesPage() {
 
         let sec: SeccionDTO | null = null;
         try {
-          sec = (await gestionAcademica.secciones.byId?.(seccionId))?.data ?? null;
+          sec =
+            (await gestionAcademica.secciones.byId?.(seccionId))?.data ?? null;
         } catch {
           const list = (await gestionAcademica.secciones.list()).data ?? [];
           sec = list.find((s) => s.id === seccionId) ?? null;
@@ -169,7 +154,9 @@ export default function SeccionEvaluacionesPage() {
         );
         const smIds = smsSeccion.map((x) => x.id);
 
-        const evs = (await gestionAcademica.evaluaciones.search({ seccionId })).data ?? [];
+        const evs =
+          (await gestionAcademica.evaluaciones.search({ seccionId })).data ??
+          [];
 
         if (!alive) return;
         setSeccion(sec);
@@ -217,7 +204,8 @@ export default function SeccionEvaluacionesPage() {
 
   const seccionNombre = useMemo(() => {
     if (!seccion) return `Sección #${seccionId}`;
-    const nombre = `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim();
+    const nombre =
+      `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim();
     return nombre || `Sección #${seccion.id}`;
   }, [seccion, seccionId]);
 
@@ -228,7 +216,9 @@ export default function SeccionEvaluacionesPage() {
     const wanted = Number(filterMateriaId);
     if (Number.isNaN(wanted)) return evaluaciones;
     return evaluaciones.filter((e: any) => {
-      const sm = (secMats ?? []).find((x) => x.id === e.seccionMateriaId) as any;
+      const sm = (secMats ?? []).find(
+        (x) => x.id === e.seccionMateriaId,
+      ) as any;
       return sm?.materiaId === wanted;
     });
   }, [evaluaciones, filterMateriaId, secMats]);
@@ -264,39 +254,31 @@ export default function SeccionEvaluacionesPage() {
 
   if (accessStatus === "admin") {
     return (
-      
-        <div className="p-6 text-sm">
-          403 — El perfil de Administración no tiene acceso a Exámenes.
-        </div>
-      
+      <div className="p-6 text-sm">
+        403 — El perfil de Administración no tiene acceso a Exámenes.
+      </div>
     );
   }
 
   if (accessStatus === "forbidden") {
     return (
-      
-        <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
-      
+      <div className="p-6 text-sm">403 — No tenés acceso a esta sección.</div>
     );
   }
 
   if (accessStatus === "checking") {
     return (
-      
-        <div className="p-6">
-          <LoadingState label="Verificando acceso a la sección…" />
-        </div>
-      
+      <div className="p-6">
+        <LoadingState label="Verificando acceso a la sección…" />
+      </div>
     );
   }
 
   if (accessStatus === "notAssigned") {
     return (
-      
-        <div className="p-6 text-sm">
-          403 — Esta sección no pertenece a tus asignaciones.
-        </div>
-      
+      <div className="p-6 text-sm">
+        403 — Esta sección no pertenece a tus asignaciones.
+      </div>
     );
   }
 
@@ -307,7 +289,9 @@ export default function SeccionEvaluacionesPage() {
       // Resolver trimestre por fecha
       const tri = getTrimestreByDate(fecha);
       if (!tri) {
-        toast.error("La fecha seleccionada no coincide con un trimestre configurado.");
+        toast.error(
+          "La fecha seleccionada no coincide con un trimestre configurado.",
+        );
         return;
       }
       const estado = getTrimestreEstado(tri);
@@ -372,459 +356,461 @@ export default function SeccionEvaluacionesPage() {
   };
 
   if (loading) {
-    return (
-      
-        <LoadingState label="Cargando evaluaciones…" />
-      
-    );
+    return <LoadingState label="Cargando evaluaciones…" />;
   }
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/evaluaciones")}
-        >
-          Volver
-        </Button>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Evaluaciones</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <School className="h-3 w-3" /> {seccionNombre}
-              </Badge>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Clock3 className="h-3 w-3" /> Turno {turnoNombre}
-              </Badge>
-              <Badge variant="outline">
-                {evaluaciones.length}{" "}
-                {evaluaciones.length === 1 ? "examen" : "exámenes"}
-              </Badge>
-            </div>
-            <ActiveTrimestreBadge className="mt-2" />
+      <Button
+        variant="outline"
+        onClick={() => router.push("/dashboard/evaluaciones")}
+      >
+        Volver
+      </Button>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Evaluaciones</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <School className="h-3 w-3" /> {seccionNombre}
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Clock3 className="h-3 w-3" /> Turno {turnoNombre}
+            </Badge>
+            <Badge variant="outline">
+              {evaluaciones.length}{" "}
+              {evaluaciones.length === 1 ? "examen" : "exámenes"}
+            </Badge>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Filtro materia */}
-            {materiasDeSeccion.length > 0 && (
-              <Select
-                value={filterMateriaId}
-                onValueChange={(v) => setFilterMateriaId(v)}
-              >
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Filtrar por materia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las materias</SelectItem>
-                  {materiasDeSeccion.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+          <ActiveTrimestreBadge className="mt-2" />
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Filtro materia */}
+          {materiasDeSeccion.length > 0 && (
+            <Select
+              value={filterMateriaId}
+              onValueChange={(v) => setFilterMateriaId(v)}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Filtrar por materia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las materias</SelectItem>
+                {materiasDeSeccion.map((m) => (
+                  <SelectItem key={m.id} value={String(m.id)}>
+                    {m.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-            {/* Nuevo examen */}
-            <Dialog
-              open={openNew}
-              onOpenChange={(o) => {
-                setOpenNew(o);
-                if (o)
-                  setNewMateriaId(
-                    filterMateriaId !== "all"
-                      ? filterMateriaId
-                      : materiasDeSeccion.length > 0
+          {/* Nuevo examen */}
+          <Dialog
+            open={openNew}
+            onOpenChange={(o) => {
+              setOpenNew(o);
+              if (o)
+                setNewMateriaId(
+                  filterMateriaId !== "all"
+                    ? filterMateriaId
+                    : materiasDeSeccion.length > 0
                       ? String(materiasDeSeccion[0].id)
                       : "",
-                  );
-                if (o) {
-                  setTema("");
-                  setDetalle("");
-                  setFecha(todayISO);
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button disabled={materiasDeSeccion.length === 0}>
-                  <Plus className="h-4 w-4 mr-1" /> Nuevo examen
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Nuevo examen</DialogTitle>
-                  <DialogDescription>
-                    Solo podés agendar evaluaciones dentro del año en curso.
-                  </DialogDescription>
-                </DialogHeader>
+                );
+              if (o) {
+                setTema("");
+                setDetalle("");
+                setFecha(todayISO);
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button disabled={materiasDeSeccion.length === 0}>
+                <Plus className="h-4 w-4 mr-1" /> Nuevo examen
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nuevo examen</DialogTitle>
+                <DialogDescription>
+                  Solo podés agendar evaluaciones dentro del año en curso.
+                </DialogDescription>
+              </DialogHeader>
 
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <label className="text-sm">Materia</label>
-                    <Select
-                      value={newMateriaId}
-                      onValueChange={setNewMateriaId}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccioná materia" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materiasDeSeccion.map((m) => (
-                          <SelectItem key={m.id} value={String(m.id)}>
-                            {m.nombre}
-                          </SelectItem>
-                        ))}
-                        {materiasDeSeccion.length === 0 && (
-                          <div className="px-3 py-2 text-sm text-muted-foreground">
-                            Esta sección todavía no tiene materias asignadas.
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm mb-1 block">Fecha</label>
-                    <DatePicker
-                      value={fecha || undefined}
-                      min={minDate}
-                      max={maxDate}
-                      onChange={(next) => {
-                        if (!next) {
-                          setFecha(minDate);
-                          return;
-                        }
-                        const yearValue = Number(next.slice(0, 4));
-                        if (Number.isNaN(yearValue) || yearValue !== currentYear) {
-                          setFecha(yearValue < currentYear ? minDate : maxDate);
-                          return;
-                        }
-                        if (next < minDate) {
-                          setFecha(minDate);
-                          return;
-                        }
-                        if (next > maxDate) {
-                          setFecha(maxDate);
-                          return;
-                        }
-                        setFecha(next);
-                      }}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm mb-1 block">Tema</label>
-                    <Input
-                      value={tema}
-                      onChange={(e) => setTema(e.target.value)}
-                      placeholder="Ej.: Evaluación de fracciones"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm mb-1 block">Detalle (opcional)</label>
-                    <Textarea
-                      value={detalle}
-                      onChange={(e) => setDetalle(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setOpenNew(false)}>
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={createExamen}
-                      disabled={
-                        creating ||
-                        !newMateriaId ||
-                        newMateriaId === "all" ||
-                        materiasDeSeccion.length === 0
-                      }
-                    >
-                      {creating ? "Creando…" : "Crear"}
-                    </Button>
-                  </div>
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <label className="text-sm">Materia</label>
+                  <Select value={newMateriaId} onValueChange={setNewMateriaId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccioná materia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {materiasDeSeccion.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.nombre}
+                        </SelectItem>
+                      ))}
+                      {materiasDeSeccion.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">
+                          Esta sección todavía no tiene materias asignadas.
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </DialogContent>
-            </Dialog>
 
-          </div>
-        </div>
+                <div>
+                  <label className="text-sm mb-1 block">Fecha</label>
+                  <DatePicker
+                    value={fecha || undefined}
+                    min={minDate}
+                    max={maxDate}
+                    onChange={(next) => {
+                      if (!next) {
+                        setFecha(minDate);
+                        return;
+                      }
+                      const yearValue = Number(next.slice(0, 4));
+                      if (
+                        Number.isNaN(yearValue) ||
+                        yearValue !== currentYear
+                      ) {
+                        setFecha(yearValue < currentYear ? minDate : maxDate);
+                        return;
+                      }
+                      if (next < minDate) {
+                        setFecha(minDate);
+                        return;
+                      }
+                      if (next > maxDate) {
+                        setFecha(maxDate);
+                        return;
+                      }
+                      setFecha(next);
+                    }}
+                    required
+                  />
+                </div>
 
-        {error && (
-          <div className="text-sm text-red-600">{error}</div>
-        )}
+                <div>
+                  <label className="text-sm mb-1 block">Tema</label>
+                  <Input
+                    value={tema}
+                    onChange={(e) => setTema(e.target.value)}
+                    placeholder="Ej.: Evaluación de fracciones"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm mb-1 block">
+                    Detalle (opcional)
+                  </label>
+                  <Textarea
+                    value={detalle}
+                    onChange={(e) => setDetalle(e.target.value)}
+                    rows={3}
+                  />
+                </div>
 
-        {!error && (
-          <>
-            {!trimestresDelPeriodo.length ? (
-              <div className="text-sm text-muted-foreground">
-                No hay trimestres configurados para el período actual.
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setOpenNew(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={createExamen}
+                    disabled={
+                      creating ||
+                      !newMateriaId ||
+                      newMateriaId === "all" ||
+                      materiasDeSeccion.length === 0
+                    }
+                  >
+                    {creating ? "Creando…" : "Crear"}
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <Tabs
-                  value={
-                    selectedTrimestreId &&
-                    trimestresDelPeriodo.some(
-                      (t) => String(t.id) === selectedTrimestreId,
-                    )
-                      ? selectedTrimestreId
-                      : String(trimestresDelPeriodo[0].id)
-                  }
-                  onValueChange={(value) => setSelectedTrimestreId(value)}
-                  className="space-y-4"
-                >
-                  <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
-                    {trimestresDelPeriodo.map((tri, index) => {
-                      const label =
-                        tri.orden != null
-                          ? `Trimestre ${tri.orden}`
-                          : `Trimestre ${index + 1}`;
-                      return (
-                        <TabsTrigger
-                          key={tri.id}
-                          value={String(tri.id)}
-                        >
-                          {label}
-                        </TabsTrigger>
-                      );
-                    })}
-                  </TabsList>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
+      {error && <div className="text-sm text-red-600">{error}</div>}
+
+      {!error && (
+        <>
+          {!trimestresDelPeriodo.length ? (
+            <div className="text-sm text-muted-foreground">
+              No hay trimestres configurados para el período actual.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Tabs
+                value={
+                  selectedTrimestreId &&
+                  trimestresDelPeriodo.some(
+                    (t) => String(t.id) === selectedTrimestreId,
+                  )
+                    ? selectedTrimestreId
+                    : String(trimestresDelPeriodo[0].id)
+                }
+                onValueChange={(value) => setSelectedTrimestreId(value)}
+                className="space-y-4"
+              >
+                <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
                   {trimestresDelPeriodo.map((tri, index) => {
-                    const value = String(tri.id);
-                    const triLabel =
+                    const label =
                       tri.orden != null
                         ? `Trimestre ${tri.orden}`
                         : `Trimestre ${index + 1}`;
-                    const estado = getTrimestreEstado(tri);
-                    const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
-                    const rangeLabel = formatTrimestreRange(tri);
-                    const hasRange =
-                      Boolean(getTrimestreInicio(tri)) &&
-                      Boolean(getTrimestreFin(tri));
-                    const canEdit = estado === "activo";
-                    const estadoMessage =
-                      estado === "cerrado"
-                        ? "Este trimestre está cerrado. Los exámenes son solo de lectura."
-                        : "Este trimestre está inactivo. No podés registrar ni editar exámenes.";
-                    const evaluacionesTrimestre = filteredEvals.filter((e: any) => {
+                    return (
+                      <TabsTrigger key={tri.id} value={String(tri.id)}>
+                        {label}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+
+                {trimestresDelPeriodo.map((tri, index) => {
+                  const value = String(tri.id);
+                  const triLabel =
+                    tri.orden != null
+                      ? `Trimestre ${tri.orden}`
+                      : `Trimestre ${index + 1}`;
+                  const estado = getTrimestreEstado(tri);
+                  const estadoLabel = TRIMESTRE_ESTADO_LABEL[estado] ?? estado;
+                  const rangeLabel = formatTrimestreRange(tri);
+                  const hasRange =
+                    Boolean(getTrimestreInicio(tri)) &&
+                    Boolean(getTrimestreFin(tri));
+                  const canEdit = estado === "activo";
+                  const estadoMessage =
+                    estado === "cerrado"
+                      ? "Este trimestre está cerrado. Los exámenes son solo de lectura."
+                      : "Este trimestre está inactivo. No podés registrar ni editar exámenes.";
+                  const evaluacionesTrimestre = filteredEvals.filter(
+                    (e: any) => {
                       const triId =
                         e?.trimestreId ?? (e as any)?.trimestre?.id ?? null;
                       return triId === tri.id;
-                    });
-                    return (
-                      <TabsContent
-                        key={value}
-                        value={value}
-                        className="space-y-4"
-                      >
-                        <Card>
-                          <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                            <div>
-                              <CardTitle className="flex flex-wrap items-center gap-2">
-                                <span className="flex items-center">
-                                  <School className="h-5 w-5 mr-2" />
-                                  Exámenes del trimestre
-                                </span>
-                                <TrimestreEstadoBadge
-                                  estado={estado}
-                                  className="text-xs text-muted-foreground"
-                                />
-                              </CardTitle>
-                              <CardDescription>
-                                Consultá y gestioná los exámenes registrados durante
-                                este trimestre.
-                                {rangeLabel && (
-                                  <span className="block text-xs text-muted-foreground">
-                                    {rangeLabel}
-                                  </span>
-                                )}
-                              </CardDescription>
+                    },
+                  );
+                  return (
+                    <TabsContent
+                      key={value}
+                      value={value}
+                      className="space-y-4"
+                    >
+                      <Card>
+                        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <CardTitle className="flex flex-wrap items-center gap-2">
+                              <span className="flex items-center">
+                                Exámenes del trimestre
+                              </span>
+                              <TrimestreEstadoBadge
+                                estado={estado}
+                                className="text-xs text-muted-foreground"
+                              />
+                            </CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {!hasRange ? (
+                            <div className="text-sm text-muted-foreground">
+                              Configurá las fechas de inicio y fin del trimestre
+                              para visualizar los exámenes.
                             </div>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            {!hasRange ? (
-                              <div className="text-sm text-muted-foreground">
-                                Configurá las fechas de inicio y fin del trimestre para
-                                visualizar los exámenes.
-                              </div>
-                            ) : (
-                              <>
-                                {!canEdit && (
-                                  <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
-                                    <AlertTitle>{estadoLabel}</AlertTitle>
-                                    <AlertDescription>{estadoMessage}</AlertDescription>
-                                  </Alert>
-                                )}
-                                {evaluacionesTrimestre.length === 0 ? (
-                                  <div className="text-sm text-muted-foreground">
-                                    No hay exámenes para este trimestre con el filtro
-                                    seleccionado.
-                                  </div>
-                                ) : (
-                                  evaluacionesTrimestre.map((e) => {
-                                    const sm = (secMats ?? []).find(
-                                      (x) => x.id === (e as any).seccionMateriaId,
-                                    ) as any;
-                                    const matNom = sm
-                                      ? materiaNombreById.get(sm.materiaId)
-                                      : undefined;
-                                    const fechaLegible = formatFecha((e as any).fecha);
-                                    const tema = (e as any).tema ?? "Evaluación";
-                                    return (
-                                      <div
-                                        key={e.id}
-                                        className="space-y-3 rounded-lg border p-3 transition-colors hover:border-primary/50"
-                                      >
-                                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                          <div className="space-y-1">
-                                            <div className="text-base font-medium text-foreground">
-                                              {tema}
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                              {matNom && (
-                                                <Badge variant="outline">{matNom}</Badge>
-                                              )}
-                                              <span className="inline-flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                {fechaLegible}
-                                              </span>
-                                              <Badge variant="secondary">{triLabel}</Badge>
-                                            </div>
+                          ) : (
+                            <>
+                              {!canEdit && (
+                                <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
+                                  <AlertTitle>{estadoLabel}</AlertTitle>
+                                  <AlertDescription>
+                                    {estadoMessage}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+                              {evaluacionesTrimestre.length === 0 ? (
+                                <div className="text-sm text-muted-foreground">
+                                  No hay exámenes para este trimestre con el
+                                  filtro seleccionado.
+                                </div>
+                              ) : (
+                                evaluacionesTrimestre.map((e) => {
+                                  const sm = (secMats ?? []).find(
+                                    (x) => x.id === (e as any).seccionMateriaId,
+                                  ) as any;
+                                  const matNom = sm
+                                    ? materiaNombreById.get(sm.materiaId)
+                                    : undefined;
+                                  const fechaLegible = formatFecha(
+                                    (e as any).fecha,
+                                  );
+                                  const tema = (e as any).tema ?? "Evaluación";
+                                  return (
+                                    <div
+                                      key={e.id}
+                                      className="space-y-3 rounded-lg border p-3 transition-colors hover:border-primary/50"
+                                    >
+                                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                        <div className="space-y-1">
+                                          <div className="text-base font-medium text-foreground">
+                                            {tema}
                                           </div>
-                                          <div className="flex gap-2">
-                                            <Button
-                                              size="sm"
-                                              onClick={() =>
-                                                router.push(
-                                                  `/dashboard/evaluaciones/examenes/${e.id}`,
-                                                )
-                                              }
-                                            >
-                                              <Edit className="mr-2 h-4 w-4" /> Ver / editar
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => {
-                                                setSelEval(e);
-                                                setOpenNotas(true);
-                                              }}
-                                            >
-                                              <Plus className="mr-2 h-4 w-4" /> Notas
-                                            </Button>
+                                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                            {matNom && (
+                                              <Badge variant="outline">
+                                                {matNom}
+                                              </Badge>
+                                            )}
+                                            <span className="inline-flex items-center gap-1">
+                                              <Calendar className="h-3 w-3" />
+                                              {fechaLegible}
+                                            </span>
+                                            <Badge variant="secondary">
+                                              {triLabel}
+                                            </Badge>
                                           </div>
                                         </div>
-                                        <div className="space-y-2 text-xs text-muted-foreground">
-                                          <div className="flex flex-wrap items-center gap-2">
-                                            <span>
-                                              Creado el {formatFecha((e as any).fecha)}
-                                            </span>
-                                            <span>Tiempo estimado: {(e as any).duracion}</span>
-                                            {Boolean((e as any).observaciones) && (
-                                              <span>
-                                                Observaciones: {(e as any).observaciones}
-                                              </span>
-                                            )}
-                                          </div>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() =>
+                                              router.push(
+                                                `/dashboard/evaluaciones/examenes/${e.id}`,
+                                              )
+                                            }
+                                          >
+                                            <Edit className="mr-2 h-4 w-4" />{" "}
+                                            Ver / editar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setSelEval(e);
+                                              setOpenNotas(true);
+                                            }}
+                                          >
+                                            <Plus className="mr-2 h-4 w-4" />{" "}
+                                            Notas
+                                          </Button>
                                         </div>
                                       </div>
-                                    );
-                                  })
-                                )}
-                              </>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </TabsContent>
-                    );
-                  })}
-                </Tabs>
+                                      <div className="space-y-2 text-xs text-muted-foreground">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span>
+                                            Creado el{" "}
+                                            {formatFecha((e as any).fecha)}
+                                          </span>
+                                          <span>
+                                            Tiempo estimado:{" "}
+                                            {(e as any).duracion}
+                                          </span>
+                                          {Boolean(
+                                            (e as any).observaciones,
+                                          ) && (
+                                            <span>
+                                              Observaciones:{" "}
+                                              {(e as any).observaciones}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
 
-                {sinTrimestreEvals.length > 0 && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      Exámenes sin trimestre asignado
-                    </h3>
-                    {sinTrimestreEvals.map((e) => {
-                      const sm = (secMats ?? []).find(
-                        (x) => x.id === (e as any).seccionMateriaId,
-                      ) as any;
-                      const matNom = sm
-                        ? materiaNombreById.get(sm.materiaId)
-                        : undefined;
-                      const fechaLegible = formatFecha((e as any).fecha);
-                      const tema = (e as any).tema ?? "Evaluación";
-                      return (
-                        <div
-                          key={e.id}
-                          className="space-y-3 rounded-lg border p-3 transition-colors hover:border-primary/50"
-                        >
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div className="space-y-1">
-                              <div className="text-base font-medium text-foreground">
-                                {tema}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                {matNom && <Badge variant="outline">{matNom}</Badge>}
-                                <span className="inline-flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {fechaLegible}
-                                </span>
-                                <Badge variant="secondary">
-                                  Trimestre sin asignar
-                                </Badge>
-                              </div>
+              {sinTrimestreEvals.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Exámenes sin trimestre asignado
+                  </h3>
+                  {sinTrimestreEvals.map((e) => {
+                    const sm = (secMats ?? []).find(
+                      (x) => x.id === (e as any).seccionMateriaId,
+                    ) as any;
+                    const matNom = sm
+                      ? materiaNombreById.get(sm.materiaId)
+                      : undefined;
+                    const fechaLegible = formatFecha((e as any).fecha);
+                    const tema = (e as any).tema ?? "Evaluación";
+                    return (
+                      <div
+                        key={e.id}
+                        className="space-y-3 rounded-lg border p-3 transition-colors hover:border-primary/50"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-1">
+                            <div className="text-base font-medium text-foreground">
+                              {tema}
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  router.push(
-                                    `/dashboard/evaluaciones/examenes/${e.id}`,
-                                  )
-                                }
-                              >
-                                Ver examen
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelEval(e);
-                                  setOpenNotas(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Notas
-                              </Button>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              {matNom && (
+                                <Badge variant="outline">{matNom}</Badge>
+                              )}
+                              <span className="inline-flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {fechaLegible}
+                              </span>
+                              <Badge variant="secondary">
+                                Trimestre sin asignar
+                              </Badge>
                             </div>
                           </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                router.push(
+                                  `/dashboard/evaluaciones/examenes/${e.id}`,
+                                )
+                              }
+                            >
+                              Ver examen
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelEval(e);
+                                setOpenNotas(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Notas
+                            </Button>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
-        {selEval && (
-          <NotasExamenDialog
-            open={openNotas}
-            onOpenChange={(v) => {
-              setOpenNotas(v);
-              if (!v) setSelEval(null);
-            }}
-            evaluacion={selEval}
-          />
-        )}
-      </div>
-    
+      {selEval && (
+        <NotasExamenDialog
+          open={openNotas}
+          onOpenChange={(v) => {
+            setOpenNotas(v);
+            if (!v) setSelEval(null);
+          }}
+          evaluacion={selEval}
+        />
+      )}
+    </div>
   );
 }

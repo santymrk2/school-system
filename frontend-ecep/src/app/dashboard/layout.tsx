@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useId } from "react";
 import { UserRole } from "@/types/api-generated";
 import { useRouter, usePathname } from "next/navigation";
 import { ChevronsUpDown, LogOut, School, X, Menu, Settings } from "lucide-react";
@@ -69,6 +69,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const role = currentRole;
 
   const visibleMenu = useVisibleMenu(role);
+
+  const dropdownTriggerId = useId();
 
   useEffect(() => {
     if (!role) return;
@@ -173,7 +175,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* PERFIL ABAJO + dropdown hacia arriba */}
           <div className="p-4 lg:pr-0 mt-auto">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild id={dropdownTriggerId}>
                 <button className="w-full inline-flex items-center justify-between gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm">

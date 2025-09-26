@@ -136,11 +136,6 @@ function CalendarCaption({
         goToMonth(targetDate);
       } else if (typeof contextGoToMonth === 'function') {
         contextGoToMonth(targetDate);
-        return;
-      }
-
-      if (typeof onMonthChange === 'function') {
-        onMonthChange(targetDate);
       }
 
       if (typeof onMonthChange === 'function') {

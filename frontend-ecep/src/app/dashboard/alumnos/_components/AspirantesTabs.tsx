@@ -91,8 +91,11 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
+const normalizeEstado = (estado?: string | null) =>
+  String(estado ?? "").trim().toUpperCase();
+
 const estadoBadge = (estado?: string | null) => {
-  const e = String(estado ?? "").toUpperCase();
+  const e = normalizeEstado(estado);
   if (e === ESTADOS.PENDIENTE) {
     return (
       <Badge variant="secondary" className="gap-1">
@@ -121,7 +124,7 @@ const estadoBadge = (estado?: string | null) => {
       </Badge>
     );
   }
-  return <Badge variant="secondary">{estado ?? "—"}</Badge>;
+  return <Badge variant="secondary">{estado?.trim() || "—"}</Badge>;
 };
 
 const availabilityLabel = (solicitud: DTO.SolicitudAdmisionDTO) => {
@@ -307,7 +310,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
       setPromptInterviewOpen(false);
       return;
     }
-    const estado = String(selected.estado ?? "").toUpperCase();
+    const estado = normalizeEstado(selected.estado);
     if (
       estado === ESTADOS.PROGRAMADA &&
       selected.fechaEntrevistaConfirmada &&
@@ -361,7 +364,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
               const nombre = resolveAspiranteNombre(row);
               const opciones = row.fechasPropuestas ?? [];
               const cantidadPropuestas = row.cantidadPropuestasEnviadas ?? 0;
-              const estadoActual = String(row.estado ?? "").toUpperCase();
+              const estadoActual = normalizeEstado(row.estado);
               const puedeDarDeAlta =
                 Boolean(row.entrevistaRealizada) ||
                 estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
@@ -548,7 +551,7 @@ function SolicitudDetailDialog({
     solicitud.comentariosEntrevista ?? "",
   );
 
-  const estado = String(solicitud.estado ?? "").toUpperCase();
+  const estado = normalizeEstado(solicitud.estado);
   const propuestas = solicitud.fechasPropuestas ?? [];
   const fechaConfirmada = solicitud.fechaEntrevistaConfirmada;
   const aspiranteNombre = resolveAspiranteNombre(solicitud);

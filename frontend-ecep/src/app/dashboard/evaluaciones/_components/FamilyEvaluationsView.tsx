@@ -126,8 +126,22 @@ export function FamilyEvaluationsView({
   }>({ promedio: null, totalEvaluaciones: 0, evaluacionesCalificadas: 0 });
   const calendarVersion = useCalendarRefresh("trimestres");
 
+  const alumnosVisibles = useMemo(() => {
+    if (scope !== "family") return alumnos;
+    return alumnos.filter(
+      (alumno) => resolveNivel(alumno) !== NivelAcademicoEnum.INICIAL,
+    );
+  }, [alumnos, scope]);
+
+  const cantidadInicialOcultos = useMemo(() => {
+    if (scope !== "family") return 0;
+    return alumnos.filter(
+      (alumno) => resolveNivel(alumno) === NivelAcademicoEnum.INICIAL,
+    ).length;
+  }, [alumnos, scope]);
+
   useEffect(() => {
-    if (!alumnos.length) {
+    if (!alumnosVisibles.length) {
       setSelectedMatriculaId(null);
       setMaterias(null);
       setInformesInicial(null);
@@ -137,18 +151,18 @@ export function FamilyEvaluationsView({
 
     if (
       selectedMatriculaId == null ||
-      !alumnos.some((a) => a.matriculaId === selectedMatriculaId)
+      !alumnosVisibles.some((a) => a.matriculaId === selectedMatriculaId)
     ) {
-      setSelectedMatriculaId(alumnos[0].matriculaId);
+      setSelectedMatriculaId(alumnosVisibles[0].matriculaId);
     }
-  }, [alumnos, selectedMatriculaId]);
+  }, [alumnosVisibles, selectedMatriculaId]);
 
   const alumnoSeleccionado = useMemo(() => {
     if (selectedMatriculaId == null) return null;
     return (
-      alumnos.find((al) => al.matriculaId === selectedMatriculaId) ?? null
+      alumnosVisibles.find((al) => al.matriculaId === selectedMatriculaId) ?? null
     );
-  }, [alumnos, selectedMatriculaId]);
+  }, [alumnosVisibles, selectedMatriculaId]);
 
   useEffect(() => {
     let alive = true;
@@ -383,12 +397,16 @@ export function FamilyEvaluationsView({
     return <div className="text-sm text-red-600">{initialError}</div>;
   }
 
-  if (!alumnos.length) {
+  if (!alumnosVisibles.length) {
+    const sinEvaluacionesMessage =
+      scope === "family" && cantidadInicialOcultos > 0
+        ? "Tus hijos de nivel inicial no cuentan con exámenes registrados."
+        : scope === "student"
+          ? "Todavía no hay evaluaciones registradas para tu matrícula."
+          : "No hay alumnos asociados para consultar evaluaciones.";
     return (
       <div className="text-sm text-muted-foreground">
-        {scope === "student"
-          ? "Todavía no hay evaluaciones registradas para tu matrícula."
-          : "No hay alumnos asociados para consultar evaluaciones."}
+        {sinEvaluacionesMessage}
       </div>
     );
   }
@@ -408,9 +426,9 @@ export function FamilyEvaluationsView({
         </p>
       </header>
 
-      {alumnos.length > 1 && (
+      {alumnosVisibles.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {alumnos.map((al) => (
+          {alumnosVisibles.map((al) => (
             <Button
               key={al.matriculaId}
               size="sm"

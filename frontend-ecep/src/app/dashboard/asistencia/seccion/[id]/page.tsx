@@ -415,19 +415,21 @@ export default function SeccionHistorialPage() {
 
       <div className="space-y-3">
         <div>
-          <h2 className="text-2xl font-bold">
-            Historial — Sección{" "}
-            {seccion
-              ? `${seccion.gradoSala} ${seccion.division}`
-              : loadingSec
-                ? "cargando…"
-                : `#${seccionId}`}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Turno: {seccion?.turno ?? "—"}
-          </p>
+          <h2 className="text-2xl font-bold">Historial</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="outline">
+              {seccion
+                ? `Sección ${seccion.gradoSala} ${seccion.division}`
+                : loadingSec
+                  ? "Sección cargando…"
+                  : `Sección #${seccionId}`}
+            </Badge>
+            <Badge variant="secondary">
+              Turno {seccion?.turno ?? "—"}
+            </Badge>
+          </div>
           {secErr && <p className="text-sm text-red-600">{secErr}</p>}
-          <ActiveTrimestreBadge className="mt-2" />
+          <ActiveTrimestreBadge className="mt-3" />
         </div>
         {periodError && <p className="text-sm text-red-600">{periodError}</p>}
       </div>

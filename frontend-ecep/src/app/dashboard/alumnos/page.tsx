@@ -448,24 +448,26 @@ export default function AlumnosIndexPage() {
                               }
                               className="h-full w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             >
-                              <Card className="h-full transition hover:shadow-md">
+                              <Card className="h-full border transition-colors hover:border-primary hover:shadow-md">
                                 <CardContent className="space-y-4 pt-6 text-sm">
-                                  <dl className="grid gap-1">
-                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                      Nombre
-                                    </dt>
-                                    <dd className="text-base font-semibold text-foreground">
-                                      {nombre}
-                                    </dd>
-                                  </dl>
-                                  <dl className="grid gap-1">
-                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                      Apellido
-                                    </dt>
-                                    <dd className="text-base font-semibold text-foreground">
-                                      {apellido}
-                                    </dd>
-                                  </dl>
+                                  <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+                                    <dl className="grid gap-1">
+                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                        Nombre
+                                      </dt>
+                                      <dd className="text-base font-semibold text-foreground">
+                                        {nombre}
+                                      </dd>
+                                    </dl>
+                                    <dl className="grid gap-1">
+                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                        Apellido
+                                      </dt>
+                                      <dd className="text-base font-semibold text-foreground">
+                                        {apellido}
+                                      </dd>
+                                    </dl>
+                                  </div>
                                   <dl className="grid gap-1">
                                     <dt className="text-xs font-medium uppercase text-muted-foreground">
                                       DNI
@@ -474,22 +476,24 @@ export default function AlumnosIndexPage() {
                                       {dni}
                                     </dd>
                                   </dl>
-                                  <dl className="grid gap-1">
-                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                      Sección actual
-                                    </dt>
-                                    <dd className="text-base font-semibold text-foreground">
-                                      {seccionNombre}
-                                    </dd>
-                                  </dl>
-                                  <dl className="grid gap-1">
-                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                      Turno
-                                    </dt>
-                                    <dd className="text-base font-semibold text-foreground">
-                                      {turno}
-                                    </dd>
-                                  </dl>
+                                  <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+                                    <dl className="grid gap-1">
+                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                        Sección actual
+                                      </dt>
+                                      <dd className="text-base font-semibold text-foreground">
+                                        {seccionNombre}
+                                      </dd>
+                                    </dl>
+                                    <dl className="grid gap-1">
+                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                        Turno
+                                      </dt>
+                                      <dd className="text-base font-semibold text-foreground">
+                                        {turno}
+                                      </dd>
+                                    </dl>
+                                  </div>
                                 </CardContent>
                               </Card>
                             </button>

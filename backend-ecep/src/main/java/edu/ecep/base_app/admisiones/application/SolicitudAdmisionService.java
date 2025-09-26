@@ -2,9 +2,9 @@ package edu.ecep.base_app.admisiones.application;
 
 import edu.ecep.base_app.admisiones.domain.Aspirante;
 import edu.ecep.base_app.admisiones.domain.AspiranteFamiliar;
-import edu.ecep.base_app.identidad.domain.Familiar;
-import edu.ecep.base_app.identidad.domain.Persona;
 import edu.ecep.base_app.admisiones.domain.SolicitudAdmision;
+import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionAltaDTO;
+import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionAltaResultDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionDecisionDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionEntrevistaDTO;
@@ -14,7 +14,24 @@ import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionReprograma
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionSeleccionDTO;
 import edu.ecep.base_app.admisiones.infrastructure.mapper.SolicitudAdmisionMapper;
 import edu.ecep.base_app.admisiones.infrastructure.persistence.SolicitudAdmisionRepository;
+import edu.ecep.base_app.admisiones.infrastructure.persistence.AspiranteRepository;
+import edu.ecep.base_app.calendario.infrastructure.persistence.PeriodoEscolarRepository;
+import edu.ecep.base_app.gestionacademica.infrastructure.persistence.SeccionRepository;
+import edu.ecep.base_app.identidad.application.AlumnoService;
+import edu.ecep.base_app.identidad.domain.Alumno;
+import edu.ecep.base_app.identidad.domain.AlumnoFamiliar;
+import edu.ecep.base_app.identidad.domain.Familiar;
+import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoRepository;
+import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepository;
+import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
 import edu.ecep.base_app.shared.exception.NotFoundException;
+import edu.ecep.base_app.vidaescolar.application.MatriculaSeccionHistorialService;
+import edu.ecep.base_app.vidaescolar.application.MatriculaService;
+import edu.ecep.base_app.vidaescolar.domain.Matricula;
+import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaRepository;
+import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaCreateDTO;
+import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaSeccionHistorialCreateDTO;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -22,6 +39,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -42,6 +60,15 @@ public class SolicitudAdmisionService {
 
     private final SolicitudAdmisionRepository repository;
     private final SolicitudAdmisionMapper mapper;
+    private final AspiranteRepository aspiranteRepository;
+    private final AlumnoRepository alumnoRepository;
+    private final AlumnoFamiliarRepository alumnoFamiliarRepository;
+    private final AlumnoService alumnoService;
+    private final MatriculaRepository matriculaRepository;
+    private final MatriculaService matriculaService;
+    private final MatriculaSeccionHistorialService matriculaSeccionHistorialService;
+    private final PeriodoEscolarRepository periodoEscolarRepository;
+    private final SeccionRepository seccionRepository;
 
     public List<SolicitudAdmisionDTO> findAll() {
         return repository.findAll(Sort.by(Sort.Direction.DESC, "dateCreated"))
@@ -226,6 +253,118 @@ public class SolicitudAdmisionService {
                             (dto.getMensaje() != null ? " Motivo: " + dto.getMensaje() : ""));
         }
         repository.save(entity);
+    }
+
+    @Transactional
+    public SolicitudAdmisionAltaResultDTO darDeAlta(Long id, SolicitudAdmisionAltaDTO dto) {
+        SolicitudAdmision solicitud = repository.findById(id).orElseThrow(NotFoundException::new);
+
+        if (!ESTADO_ENTREVISTA_REALIZADA.equalsIgnoreCase(solicitud.getEstado())
+                && !ESTADO_ACEPTADA.equalsIgnoreCase(solicitud.getEstado())) {
+            throw new IllegalStateException("La solicitud debe tener la entrevista realizada para dar el alta");
+        }
+
+        Aspirante aspirante = solicitud.getAspirante();
+        if (aspirante == null || aspirante.getPersona() == null) {
+            throw new IllegalStateException("La solicitud no tiene un aspirante válido");
+        }
+
+        if (dto.getTurno() != null) {
+            aspirante.setTurnoPreferido(dto.getTurno());
+            aspiranteRepository.save(aspirante);
+        }
+
+        Long personaId = aspirante.getPersona().getId();
+        if (personaId == null) {
+            throw new IllegalStateException("El aspirante no tiene persona asociada");
+        }
+
+        Alumno alumno = alumnoRepository.findByPersonaId(personaId).orElse(null);
+        Long alumnoId;
+        if (alumno == null) {
+            AlumnoDTO alumnoDTO = new AlumnoDTO();
+            alumnoDTO.setPersonaId(personaId);
+            alumnoDTO.setFechaInscripcion(LocalDate.now());
+            alumnoId = alumnoService.create(alumnoDTO);
+            alumno = alumnoRepository.findById(alumnoId)
+                    .orElseThrow(() -> new NotFoundException("Alumno no creado"));
+        } else {
+            alumnoId = alumno.getId();
+        }
+
+        migrarFamiliaresAspirante(aspirante, alumno);
+
+        var periodoActivo = periodoEscolarRepository.findByActivoTrue().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("No hay un período escolar activo"));
+
+        Matricula matricula = matriculaRepository
+                .findByAlumnoIdAndPeriodoEscolarId(alumnoId, periodoActivo.getId())
+                .orElse(null);
+
+        Long matriculaId;
+        if (matricula == null) {
+            matriculaId = matriculaService.create(new MatriculaCreateDTO(alumnoId, periodoActivo.getId()));
+            matricula = matriculaRepository.findById(matriculaId)
+                    .orElseThrow(() -> new NotFoundException("Matrícula no creada"));
+        } else {
+            matriculaId = matricula.getId();
+        }
+
+        Long seccionId = null;
+        if (dto.getSeccionId() != null) {
+            var seccion = seccionRepository.findById(dto.getSeccionId())
+                    .orElseThrow(() -> new NotFoundException("Sección no encontrada"));
+            seccionId = seccion.getId();
+            matriculaSeccionHistorialService.asignar(new MatriculaSeccionHistorialCreateDTO(
+                    matriculaId,
+                    seccionId,
+                    LocalDate.now(),
+                    null));
+        }
+
+        solicitud.setEstado(ESTADO_ACEPTADA);
+        repository.save(solicitud);
+
+        return new SolicitudAdmisionAltaResultDTO(alumnoId, matriculaId, seccionId);
+    }
+
+    private void migrarFamiliaresAspirante(Aspirante aspirante, Alumno alumno) {
+        if (aspirante == null || alumno == null) {
+            return;
+        }
+        Set<AspiranteFamiliar> familiares = aspirante.getFamiliares();
+        if (familiares == null || familiares.isEmpty()) {
+            return;
+        }
+
+        for (AspiranteFamiliar aspiranteFamiliar : familiares) {
+            if (aspiranteFamiliar == null || !aspiranteFamiliar.isActivo()) {
+                continue;
+            }
+            Familiar familiar = aspiranteFamiliar.getFamiliar();
+            if (familiar == null || familiar.getId() == null) {
+                continue;
+            }
+
+            AlumnoFamiliar existente = alumno.getFamiliares().stream()
+                    .filter(af -> af.getFamiliar() != null && familiar.getId().equals(af.getFamiliar().getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existente == null) {
+                AlumnoFamiliar nuevo = new AlumnoFamiliar();
+                nuevo.setAlumno(alumno);
+                nuevo.setFamiliar(familiar);
+                nuevo.setRolVinculo(aspiranteFamiliar.getRolVinculo());
+                nuevo.setConvive(Boolean.TRUE.equals(aspiranteFamiliar.getConvive()));
+                alumnoFamiliarRepository.save(nuevo);
+                alumno.getFamiliares().add(nuevo);
+            } else {
+                existente.setRolVinculo(aspiranteFamiliar.getRolVinculo());
+                existente.setConvive(Boolean.TRUE.equals(aspiranteFamiliar.getConvive()));
+                alumnoFamiliarRepository.save(existente);
+            }
+        }
     }
 
     private SolicitudAdmisionDTO toDto(SolicitudAdmision entity) {

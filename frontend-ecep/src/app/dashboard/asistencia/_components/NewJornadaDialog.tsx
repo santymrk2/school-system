@@ -344,6 +344,8 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
                   disabled={isDisabledDate}
                   fromDate={minDate}
                   toDate={maxDate}
+                  disableMonthDropdown
+                  disableYearDropdown
                   initialFocus
                 />
               </PopoverContent>

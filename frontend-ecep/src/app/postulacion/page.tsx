@@ -911,7 +911,7 @@ export default function PostulacionPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors"
+      className="min-h-screen bg-background dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors"
     >
       <div className="max-w-4xl mx-auto space-y-6">
         <Button variant="outline" asChild>

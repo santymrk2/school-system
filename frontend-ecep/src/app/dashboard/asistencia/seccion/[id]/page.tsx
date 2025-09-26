@@ -539,19 +539,22 @@ export default function SeccionHistorialPage() {
                               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                                 <div className="space-y-4">
                                   <AttendanceCalendar
-                                    className="mx-auto w-full max-w-[38rem] rounded-lg border p-4 shadow-sm"
+                                    className="mx-auto w-full max-w-[26rem] rounded-lg border p-3 shadow-sm"
                                     classNames={{
-                                      months: "flex flex-col gap-4",
-                                      month: "space-y-4",
-                                      table: "w-full border-collapse space-y-1",
+                                      months: "flex flex-col gap-3",
+                                      month: "space-y-3",
+                                      table: "w-full border-collapse",
                                       head_row:
-                                        "grid grid-cols-7 text-xs font-medium text-muted-foreground",
-                                      row: "grid grid-cols-7",
-                                      day: "m-1 flex h-12 w-12 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                                        "grid grid-cols-7 text-[0.7rem] font-medium uppercase tracking-tight text-muted-foreground",
+                                      row: "grid grid-cols-7 gap-1",
+                                      cell: "flex items-center justify-center p-0",
+                                      day: "relative flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                                      day_button:
+                                        "flex h-full w-full items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
                                       day_selected:
-                                        "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
+                                        "bg-primary text-primary-foreground hover:bg-primary focus:bg-primary",
                                       day_today:
-                                        "border border-primary/40 text-primary aria-selected:bg-primary/15 aria-selected:text-primary",
+                                        "border border-primary/60 text-primary aria-selected:bg-primary/15 aria-selected:text-primary",
                                     }}
                                     mode="single"
                                     selected={selectedDay ?? undefined}
@@ -584,7 +587,7 @@ export default function SeccionHistorialPage() {
                                     }}
                                     modifiersClassNames={{
                                       loaded:
-                                        "bg-primary/15 text-primary aria-selected:bg-primary aria-selected:text-primary-foreground",
+                                        "text-primary ring-2 ring-primary/70 ring-offset-0 ring-offset-transparent aria-selected:bg-primary aria-selected:text-primary-foreground aria-selected:ring-0",
                                     }}
                                     disabled={(date) =>
                                       !asistenciaDateSet.has(

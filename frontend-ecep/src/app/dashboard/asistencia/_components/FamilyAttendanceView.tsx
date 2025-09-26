@@ -23,21 +23,13 @@ import type {
   NivelAcademico,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-generated";
-import { CheckCircle, Minus, X } from "lucide-react";
+import { CheckCircle, X } from "lucide-react";
 
-type AttendanceCategory =
-  | "present"
-  | "absent"
-  | "late"
-  | "justified"
-  | "other";
+type AttendanceCategory = "present" | "absent";
 
 const attendancePriority: Record<AttendanceCategory, number> = {
-  other: 0,
   present: 1,
-  justified: 2,
-  late: 3,
-  absent: 4,
+  absent: 2,
 };
 
 const calendarModifierClassNames: Record<AttendanceCategory, string> = {
@@ -45,20 +37,11 @@ const calendarModifierClassNames: Record<AttendanceCategory, string> = {
     "bg-emerald-500 text-white hover:bg-emerald-500 hover:text-white focus:bg-emerald-500 focus:text-white",
   absent:
     "bg-red-500 text-white hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white",
-  late:
-    "bg-amber-500 text-white hover:bg-amber-500 hover:text-white focus:bg-amber-500 focus:text-white",
-  justified:
-    "bg-sky-500 text-white hover:bg-sky-500 hover:text-white focus:bg-sky-500 focus:text-white",
-  other:
-    "bg-slate-300 text-slate-900 hover:bg-slate-300 hover:text-slate-900 focus:bg-slate-300 focus:text-slate-900",
 };
 
 const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string }[] = [
   { key: "present", label: "Presente", dotClass: "bg-emerald-500" },
   { key: "absent", label: "Ausente", dotClass: "bg-red-500" },
-  { key: "late", label: "Llegó tarde", dotClass: "bg-amber-500" },
-  { key: "justified", label: "Ausencia justificada", dotClass: "bg-sky-500" },
-  { key: "other", label: "Otro registro", dotClass: "bg-slate-300" },
 ];
 
 function Donut({ percent }: { percent: number }) {
@@ -137,11 +120,8 @@ function parseISODateToDate(value?: string | null) {
 
 function toAttendanceCategory(estado?: string | null): AttendanceCategory {
   const normalized = String(estado ?? "").toUpperCase();
-  if (normalized === "PRESENTE") return "present";
-  if (normalized === "AUSENTE") return "absent";
-  if (normalized === "TARDE") return "late";
-  if (normalized === "JUSTIFICADA") return "justified";
-  return "other";
+  if (normalized.includes("PRESENT")) return "present";
+  return "absent";
 }
 
 function nivelLabel(nivel?: NivelAcademico | null) {
@@ -153,23 +133,14 @@ function nivelLabel(nivel?: NivelAcademico | null) {
 
 function estadoLabel(estado?: string | null) {
   if (!estado) return "Sin dato";
-  const normalized = estado.toLowerCase();
-  if (normalized === "presente") return "Presente";
-  if (normalized === "ausente") return "Ausente";
-  if (normalized === "tarde") return "Llegó tarde";
-  if (normalized === "justificada") return "Ausencia justificada";
-  return estado
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase())
-    .trim();
+  return toAttendanceCategory(estado) === "present" ? "Presente" : "Ausente";
 }
 
 function estadoVariant(estado?: string | null) {
   if (!estado) return "outline" as const;
-  const normalized = estado.toLowerCase();
-  if (normalized === "presente") return "default" as const;
-  if (normalized === "ausente") return "destructive" as const;
-  return "secondary" as const;
+  return toAttendanceCategory(estado) === "present"
+    ? ("default" as const)
+    : ("destructive" as const);
 }
 
 export function FamilyAttendanceView() {
@@ -345,21 +316,17 @@ export function FamilyAttendanceView() {
         total: 0,
         presentes: 0,
         ausentes: 0,
-        otros: 0,
         porcentaje: 0,
       };
     }
 
     const presentes = detalles.filter(
-      (d) => String(d.estado).toUpperCase() === "PRESENTE",
+      (d) => toAttendanceCategory(d.estado) === "present",
     ).length;
-    const ausentes = detalles.filter(
-      (d) => String(d.estado).toUpperCase() === "AUSENTE",
-    ).length;
-    const otros = detalles.length - presentes - ausentes;
+    const ausentes = detalles.length - presentes;
     const porcentaje = Math.round((presentes / detalles.length) * 100);
 
-    return { total: detalles.length, presentes, ausentes, otros, porcentaje };
+    return { total: detalles.length, presentes, ausentes, porcentaje };
   }, [detalles]);
 
   const historial = useMemo(() => {
@@ -411,9 +378,6 @@ export function FamilyAttendanceView() {
     const modifiers: Record<AttendanceCategory, Date[]> = {
       present: [],
       absent: [],
-      late: [],
-      justified: [],
-      other: [],
     };
 
     for (const [, value] of dayByISO) {
@@ -520,12 +484,6 @@ export function FamilyAttendanceView() {
                           Ausentes: {resumen.ausentes}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Minus className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          Otros registros: {resumen.otros}
-                        </span>
-                      </div>
                       <div className="text-xs text-muted-foreground">
                         Total de días registrados: {resumen.total}
                       </div>
@@ -587,13 +545,13 @@ export function FamilyAttendanceView() {
           </div>
 
           <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Calendario de asistencias</CardTitle>
-              <CardDescription>
-                Visualizá rápidamente los días presentes, ausentes o con
-                novedades del período activo.
-              </CardDescription>
-            </CardHeader>
+              <CardHeader>
+                <CardTitle>Calendario de asistencias</CardTitle>
+                <CardDescription>
+                  Visualizá rápidamente los días presentes y ausentes del
+                  período activo.
+                </CardDescription>
+              </CardHeader>
             <CardContent>
               {loadingDetalles ? (
                 <LoadingState label="Cargando calendario…" className="h-64" />

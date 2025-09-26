@@ -42,6 +42,10 @@ function CalendarCaption({
 }: CalendarCaptionProps) {
   const currentMonth = displayMonth.getMonth();
   const currentYear = displayMonth.getFullYear();
+  const currentMonthStart = React.useMemo(
+    () => monthStart(displayMonth),
+    [displayMonth]
+  );
 
   const minMonth = React.useMemo(
     () => (minDate ? monthStart(minDate) : undefined),
@@ -133,6 +137,42 @@ function CalendarCaption({
     [clampMonth, currentMonth, goToMonth]
   );
 
+  const previousMonth = React.useMemo(
+    () => monthStart(new Date(currentYear, currentMonth - 1, 1)),
+    [currentMonth, currentYear]
+  );
+  const nextMonth = React.useMemo(
+    () => monthStart(new Date(currentYear, currentMonth + 1, 1)),
+    [currentMonth, currentYear]
+  );
+
+  const isPreviousDisabled = React.useMemo(() => {
+    return Boolean(minMonth && currentMonthStart <= minMonth);
+  }, [currentMonthStart, minMonth]);
+
+  const isNextDisabled = React.useMemo(() => {
+    return Boolean(maxMonth && currentMonthStart >= maxMonth);
+  }, [currentMonthStart, maxMonth]);
+
+  const navButtonClassName = React.useMemo(
+    () =>
+      cn(
+        buttonVariants({ variant: 'outline' }),
+        'h-8 w-8 bg-transparent p-0 disabled:pointer-events-none disabled:opacity-50'
+      ),
+    []
+  );
+
+  const handlePreviousMonth = React.useCallback(() => {
+    if (isPreviousDisabled) return;
+    goToMonth(clampMonth(previousMonth));
+  }, [clampMonth, goToMonth, isPreviousDisabled, previousMonth]);
+
+  const handleNextMonth = React.useCallback(() => {
+    if (isNextDisabled) return;
+    goToMonth(clampMonth(nextMonth));
+  }, [clampMonth, goToMonth, isNextDisabled, nextMonth]);
+
   const renderMonthLabel = () => (
     <span className="h-8 w-[140px] text-sm font-medium capitalize text-center sm:text-left">
       {monthFormatter(currentMonth)}
@@ -146,12 +186,22 @@ function CalendarCaption({
   );
 
   return (
-    <div className="flex flex-col items-center gap-2 sm:flex-row">
-      {disableMonthDropdown ? (
-        renderMonthLabel()
-      ) : (
-        <Select
-          value={String(currentMonth)}
+    <div className="flex w-full items-center justify-between gap-2">
+      <button
+        type="button"
+        className={navButtonClassName}
+        onClick={handlePreviousMonth}
+        aria-label="Mes anterior"
+        disabled={isPreviousDisabled}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <div className="flex flex-col items-center gap-2 sm:flex-row">
+        {disableMonthDropdown ? (
+          renderMonthLabel()
+        ) : (
+          <Select
+            value={String(currentMonth)}
           onValueChange={handleMonthChange}
           disabled={months.every((month) => month.disabled)}
         >
@@ -193,7 +243,17 @@ function CalendarCaption({
             ))}
           </SelectContent>
         </Select>
-      )}
+        )}
+      </div>
+      <button
+        type="button"
+        className={navButtonClassName}
+        onClick={handleNextMonth}
+        aria-label="Mes siguiente"
+        disabled={isNextDisabled}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -227,15 +287,9 @@ function Calendar({
       classNames={{
         months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
         month: 'space-y-4',
-        caption: 'flex justify-center pt-1 relative items-center',
+        caption: 'flex items-center justify-between pt-1',
         caption_label: 'text-sm font-medium',
-        nav: 'space-x-1 flex items-center',
-        nav_button: cn(
-          buttonVariants({ variant: 'outline' }),
-          'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100'
-        ),
-        nav_button_previous: 'absolute left-1',
-        nav_button_next: 'absolute right-1',
+        nav: 'hidden',
         table: 'w-full border-collapse space-y-1',
         head_row: 'flex',
         head_cell:

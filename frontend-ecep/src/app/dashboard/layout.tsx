@@ -50,6 +50,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ? normalizeRole(selectedRole)
     : (rolesNormalized[0] ?? null);
 
+  const role = currentRole;
+  const visibleMenu = useVisibleMenu(role);
+
+  useEffect(() => {
+    if (!role) return;
+    const item = MENU.find((i) => isItemActive(pathname, i.href));
+    if (item?.roles && !item.roles.includes(role)) {
+      router.replace("/dashboard");
+    }
+  }, [role, pathname, router]);
+
   useEffect(() => {
     if (loading || !user) return;
     if (rolesNormalized.length > 1 && !selectedRole) {
@@ -65,18 +76,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (user && rolesNormalized.length > 1 && !selectedRole) return null;
 
   const displayName = user?.nombreCompleto || user?.email || "Usuario";
-
-  const role = currentRole;
-
-  const visibleMenu = useVisibleMenu(role);
-
-  useEffect(() => {
-    if (!role) return;
-    const item = MENU.find((i) => isItemActive(pathname, i.href));
-    if (item?.roles && !item.roles.includes(role)) {
-      router.replace("/dashboard");
-    }
-  }, [role, pathname, router]);
 
   const handleChangeRole = (r: UserRole) => {
     if (currentRole === r) return;

@@ -66,9 +66,9 @@ import { RolVinculo, UserRole } from "@/types/api-generated";
 
 type FamiliarConVinculo = FamiliarDTO & {
   parentesco?: string;
-  esTutorLegal?: boolean;
   _persona?: PersonaDTO | null;
   rolVinculo?: RolVinculo | null;
+  convive?: boolean;
 };
 
 type HistorialVM = {
@@ -209,7 +209,7 @@ export default function AlumnoPerfilPage() {
   const [addPersonaId, setAddPersonaId] = useState<number | null>(null);
   const [addFamiliarId, setAddFamiliarId] = useState<number | null>(null);
   const [addRol, setAddRol] = useState<RolVinculo | "">("");
-  const [addEsTutor, setAddEsTutor] = useState(false);
+  const [addConvive, setAddConvive] = useState(false);
   const [savingFamily, setSavingFamily] = useState(false);
   const [familiaresCatalog, setFamiliaresCatalog] = useState<FamiliarDTO[]>([]);
 
@@ -366,8 +366,8 @@ export default function AlumnoPerfilPage() {
                 return {
                   ...f,
                   parentesco: link.rolVinculo ?? undefined,
-                  esTutorLegal: link.esTutorLegal ?? false,
                   rolVinculo: link.rolVinculo ?? null,
+                  convive: Boolean(link.convive),
                   _persona: fp,
                 } as FamiliarConVinculo;
               } catch (error) {
@@ -477,7 +477,7 @@ export default function AlumnoPerfilPage() {
     setAddPersonaId(null);
     setAddFamiliarId(null);
     setAddRol("");
-    setAddEsTutor(false);
+    setAddConvive(false);
     setAddLookupLoading(false);
     setAddLookupCompleted(false);
     setSavingFamily(false);
@@ -920,7 +920,7 @@ export default function AlumnoPerfilPage() {
         alumnoId,
         familiarId,
         rolVinculo: addRol,
-        esTutorLegal: addEsTutor,
+        convive: addConvive,
       } as any);
 
       toast.success("Familiar agregado correctamente");
@@ -1535,12 +1535,12 @@ export default function AlumnoPerfilPage() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox
-                              id="add-es-tutor"
-                              checked={addEsTutor}
-                              onCheckedChange={(value) => setAddEsTutor(Boolean(value))}
+                              id="add-convive"
+                              checked={addConvive}
+                              onCheckedChange={(value) => setAddConvive(Boolean(value))}
                               disabled={savingFamily || !addPersonaReady}
                             />
-                            <Label htmlFor="add-es-tutor">Tutor legal</Label>
+                            <Label htmlFor="add-convive">Convive</Label>
                           </div>
                         </div>
                       </div>
@@ -1597,9 +1597,7 @@ export default function AlumnoPerfilPage() {
                             {f.rolVinculo && (
                               <Badge variant="outline">{formatRol(f.rolVinculo)}</Badge>
                             )}
-                            {f.esTutorLegal && (
-                              <Badge variant="default">Tutor legal</Badge>
-                            )}
+                            {f.convive && <Badge variant="default">Convive</Badge>}
                           </div>
                         </div>
                         <Separator />

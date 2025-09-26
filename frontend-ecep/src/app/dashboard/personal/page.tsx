@@ -3983,7 +3983,8 @@ export default function PersonalPage() {
   const canManageAccess = canCreatePersonal;
 
   return (
-    <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
+    <>
+      <div className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">
             Gestión de personal
@@ -6661,6 +6662,6 @@ export default function PersonalPage() {
           </form>
         </DialogContent>
       </Dialog>
-    
+    </>
   );
 }

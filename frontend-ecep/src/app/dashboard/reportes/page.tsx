@@ -28,6 +28,7 @@ import type { PdfCreateCallback } from "@/lib/pdf";
 import { renderAccidentActPdf } from "@/lib/pdf/accident-act";
 import { fetchAlumnoExtendedInfo } from "../actas/_utils/alumno-info";
 import {
+  renderBoletinReport,
   renderInstitutionalReport,
   type KeyValuePair,
   type ReportSection,
@@ -562,13 +563,16 @@ export default function ReportesPage() {
       timeStyle: "short",
     }).format(new Date());
 
-    const details = [
-      { label: "Alumno", value: activeBoletin.name },
-      { label: "Legajo", value: legajoLabel },
-      { label: "Sección", value: activeBoletin.section },
-      { label: "Nivel", value: activeBoletin.level },
+    const summaryCards = [
       { label: "Promedio general", value: averageLabel },
       { label: "Asistencia promedio", value: attendanceLabel },
+    ];
+
+    const details: KeyValuePair[] = [
+      { label: "Alumno", value: activeBoletin.name },
+      { label: "Sección", value: activeBoletin.section },
+      { label: "Nivel", value: activeBoletin.level },
+      { label: "Legajo", value: legajoLabel },
       {
         label: "Materias registradas",
         value: String(activeBoletin.subjects.length),
@@ -596,57 +600,31 @@ export default function ReportesPage() {
         ]
       : null;
 
-    const sections: ReportSection[] = [
-      { type: "keyValue", title: "Datos generales", pairs: details },
-    ];
-
-    if (attendanceDetailPairs) {
-      sections.push({
-        type: "keyValue",
-        title: "Detalle de asistencia",
-        pairs: attendanceDetailPairs,
-      });
-    }
-
-    if (boletinSubjectsForTable.length && boletinTrimesters.length) {
-      const tableColumns: TableColumn[] = [
-        { label: "Materia", width: "wide" },
-        ...boletinTrimesters.map((trimester) => ({ label: trimester.label })),
-      ];
-
-      const tableRows = boletinSubjectsForTable.map((subject) => {
-        const displayTeacher = sanitizeTeacherName(subject.teacher);
-        const teacherLabel = displayTeacher ? `\nDocente: ${displayTeacher}` : "";
-        const subjectCell = `${subject.name}${teacherLabel}`;
-
-        const trimesterCells = boletinTrimesters.map((trimester) => {
-          const grade = subject.grades.find((g) => g.trimestreId === trimester.id);
-          const gradeValue = getBoletinGradeDisplay(grade);
-
-          return gradeValue;
-        });
-
-        return [subjectCell, ...trimesterCells];
-      });
-
-      sections.push({
-        type: "table",
-        title: "Calificaciones por trimestre",
-        columns: tableColumns,
-        rows: tableRows,
-      });
-    }
-
     try {
       setExportingBoletin(true);
       await downloadPdfDocument({
         create: (doc) =>
-          renderInstitutionalReport(doc, {
+          renderBoletinReport(doc, {
             title: "Resumen de boletín",
-            subtitle: activeBoletin.name,
-            sections,
-            footer: `Generado el ${generatedAt}`,
             metadataTitle: title,
+            student: {
+              name: activeBoletin.name,
+              section: activeBoletin.section,
+              level: activeBoletin.level,
+              legajo: legajoLabel,
+            },
+            summaryCards,
+            details,
+            attendanceDetail: attendanceDetailPairs,
+            trimesters: boletinSubjectsByTrimester.map((trimester) => ({
+              label: trimester.label,
+              subjects: trimester.subjects.map((subject) => ({
+                name: subject.name,
+                teacher: subject.teacher,
+                grade: subject.grade ?? "—",
+              })),
+            })),
+            footer: `Generado el ${generatedAt}`,
           }),
         fileName: suggestPdfFileName(title),
         options: {

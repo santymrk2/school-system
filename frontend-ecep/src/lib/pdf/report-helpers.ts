@@ -21,6 +21,33 @@ export type ReportRenderParams = {
   metadataTitle?: string;
 };
 
+export type BoletinSummaryCard = { label: string; value: string };
+
+export type BoletinReportTrimester = {
+  label: string;
+  subjects: {
+    name: string;
+    teacher?: string | null;
+    grade: string;
+  }[];
+};
+
+export type BoletinReportParams = {
+  title: string;
+  metadataTitle?: string;
+  student: {
+    name: string;
+    section: string;
+    level: string;
+    legajo: string;
+  };
+  summaryCards: BoletinSummaryCard[];
+  details: KeyValuePair[];
+  attendanceDetail?: KeyValuePair[] | null;
+  trimesters: BoletinReportTrimester[];
+  footer?: string;
+};
+
 const REPORT_MARGIN_X = 44;
 const REPORT_MARGIN_TOP = 52;
 const TABLE_FONT_SIZE = 9;
@@ -127,6 +154,238 @@ const renderKeyValueSection = (
   });
 
   return cardY + cardHeight + 12;
+};
+
+const renderSummaryCardsSection = (
+  doc: jsPDF,
+  cursorY: number,
+  cards: BoletinSummaryCard[],
+  contentWidth: number,
+) => {
+  if (!cards.length) {
+    return cursorY;
+  }
+
+  const cardGap = 16;
+  const cardWidth =
+    cards.length > 1
+      ? (contentWidth - cardGap * (cards.length - 1)) / cards.length
+      : contentWidth;
+  const cardHeight = 64;
+
+  cursorY = ensureCursorPosition(doc, cursorY, cardHeight + 12);
+  const cardsY = cursorY;
+
+  cards.forEach((card, index) => {
+    const cardX =
+      REPORT_MARGIN_X + index * (cardWidth + (cards.length > 1 ? cardGap : 0));
+
+    doc.setDrawColor(203, 213, 225);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(cardX, cardsY, cardWidth, cardHeight, 12, 12, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(card.label.toUpperCase(), cardX + 14, cardsY + 18);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(30, 41, 59);
+    doc.text(card.value, cardX + 14, cardsY + 42);
+  });
+
+  return cardsY + cardHeight + 18;
+};
+
+const getTrimesterCardHeight = (
+  doc: jsPDF,
+  trimester: BoletinReportTrimester,
+  contentWidth: number,
+) => {
+  const cardPaddingX = 18;
+  const cardPaddingY = 18;
+  const headerHeight = 18;
+  const gradeColumnWidth = 46;
+  const subjectTextWidth = contentWidth - cardPaddingX * 2 - gradeColumnWidth;
+  const lineHeight = 6.5;
+  let total = cardPaddingY * 2 + headerHeight;
+
+  if (!trimester.subjects.length) {
+    return total + 16;
+  }
+
+  trimester.subjects.forEach((subject, index) => {
+    const nameLines = doc.splitTextToSize(subject.name, subjectTextWidth);
+    total += nameLines.length * lineHeight;
+    if (subject.teacher) {
+      const teacherLines = doc.splitTextToSize(
+        `Docente: ${subject.teacher}`,
+        subjectTextWidth,
+      );
+      total += teacherLines.length * (lineHeight - 0.5);
+    }
+    total += lineHeight; // space for grade baseline
+    if (index < trimester.subjects.length - 1) {
+      total += 6;
+    }
+  });
+
+  return total;
+};
+
+const renderTrimesterCardsSection = (
+  doc: jsPDF,
+  cursorY: number,
+  trimesters: BoletinReportTrimester[],
+  contentWidth: number,
+) => {
+  if (!trimesters.length) {
+    cursorY = ensureCursorPosition(doc, cursorY, 64);
+    const afterTitleY = drawSectionTitle(
+      doc,
+      "Materias y calificaciones",
+      REPORT_MARGIN_X,
+      cursorY,
+    );
+
+    const cardHeight = 46;
+    const cardY = afterTitleY + 4;
+    doc.setDrawColor(203, 213, 225);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(
+      REPORT_MARGIN_X,
+      cardY,
+      contentWidth,
+      cardHeight,
+      12,
+      12,
+      "FD",
+    );
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      "No hay calificaciones registradas para este alumno.",
+      REPORT_MARGIN_X + 16,
+      cardY + 28,
+    );
+
+    return cardY + cardHeight + 16;
+  }
+
+  cursorY = ensureCursorPosition(doc, cursorY, 36);
+  let currentY = drawSectionTitle(
+    doc,
+    "Materias y calificaciones",
+    REPORT_MARGIN_X,
+    cursorY,
+  );
+  currentY += 4;
+
+  trimesters.forEach((trimester) => {
+    const cardHeight = getTrimesterCardHeight(doc, trimester, contentWidth);
+    currentY = ensureCursorPosition(doc, currentY, cardHeight + 12);
+
+    const cardX = REPORT_MARGIN_X;
+    const cardY = currentY;
+    const cardPaddingX = 18;
+    const cardPaddingY = 18;
+    const headerHeight = 18;
+    const gradeColumnWidth = 46;
+    const subjectTextWidth = contentWidth - cardPaddingX * 2 - gradeColumnWidth;
+    const lineHeight = 6.5;
+
+    doc.setDrawColor(203, 213, 225);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(cardX, cardY, contentWidth, cardHeight, 12, 12, "FD");
+
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(
+      cardX,
+      cardY,
+      contentWidth,
+      headerHeight + 12,
+      12,
+      12,
+      "F",
+    );
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(cardX, cardY, contentWidth, cardHeight, 12, 12, "D");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(30, 41, 59);
+    doc.text(trimester.label, cardX + cardPaddingX, cardY + cardPaddingY + 4);
+
+    let subjectY = cardY + cardPaddingY + headerHeight;
+    if (!trimester.subjects.length) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        "No hay calificaciones registradas para este trimestre.",
+        cardX + cardPaddingX,
+        subjectY + 10,
+      );
+      currentY = cardY + cardHeight + 16;
+      return;
+    }
+
+    trimester.subjects.forEach((subject, index) => {
+      const subjectTopY = subjectY + 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+
+      const nameLines = doc.splitTextToSize(
+        subject.name,
+        subjectTextWidth,
+      );
+      let textCursorY = subjectTopY;
+      nameLines.forEach((line) => {
+        doc.text(line, cardX + cardPaddingX, textCursorY);
+        textCursorY += lineHeight;
+      });
+
+      if (subject.teacher) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        const teacherLines = doc.splitTextToSize(
+          `Docente: ${subject.teacher}`,
+          subjectTextWidth,
+        );
+        teacherLines.forEach((line) => {
+          doc.text(line, cardX + cardPaddingX, textCursorY);
+          textCursorY += lineHeight - 0.5;
+        });
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text(subject.grade ?? "—", cardX + contentWidth - cardPaddingX, subjectTopY, {
+        align: "right",
+      });
+
+      subjectY = textCursorY + 4;
+      if (index < trimester.subjects.length - 1) {
+        doc.setDrawColor(226, 232, 240);
+        doc.line(
+          cardX + cardPaddingX,
+          subjectY,
+          cardX + contentWidth - cardPaddingX,
+          subjectY,
+        );
+        subjectY += 2;
+      }
+    });
+
+    currentY = cardY + cardHeight + 18;
+  });
+
+  return currentY;
 };
 
 const renderTableSection = (
@@ -240,6 +499,70 @@ export const renderInstitutionalReport = (doc: jsPDF, params: ReportRenderParams
       );
     }
   });
+
+  if (params.footer) {
+    cursorY = ensureCursorPosition(doc, cursorY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(params.footer, REPORT_MARGIN_X, cursorY + 8, {
+      maxWidth: contentWidth,
+    });
+  }
+};
+
+export const renderBoletinReport = (doc: jsPDF, params: BoletinReportParams) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const contentWidth = pageWidth - REPORT_MARGIN_X * 2;
+
+  doc.setProperties({
+    title: params.metadataTitle ?? params.title,
+    author: "Sistema escolar",
+    subject: "Reporte de boletín",
+  });
+
+  let cursorY = REPORT_MARGIN_TOP;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(15, 23, 42);
+  doc.text(params.title, REPORT_MARGIN_X, cursorY);
+
+  cursorY += 24;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(30, 41, 59);
+  doc.text(params.student.name, REPORT_MARGIN_X, cursorY);
+
+  cursorY += 10;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(100, 116, 139);
+  const detailLine = `${params.student.section} • Nivel ${params.student.level} • Legajo ${params.student.legajo}`;
+  doc.text(detailLine, REPORT_MARGIN_X, cursorY);
+
+  cursorY += 18;
+  doc.setTextColor(15, 23, 42);
+  cursorY = renderSummaryCardsSection(doc, cursorY, params.summaryCards, contentWidth);
+
+  cursorY = renderKeyValueSection(
+    doc,
+    cursorY,
+    "Información del alumno",
+    params.details,
+    contentWidth,
+  );
+
+  if (params.attendanceDetail && params.attendanceDetail.length) {
+    cursorY = renderKeyValueSection(
+      doc,
+      cursorY,
+      "Detalle de asistencia",
+      params.attendanceDetail,
+      contentWidth,
+    );
+  }
+
+  cursorY = renderTrimesterCardsSection(doc, cursorY, params.trimesters, contentWidth);
 
   if (params.footer) {
     cursorY = ensureCursorPosition(doc, cursorY);

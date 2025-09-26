@@ -468,67 +468,75 @@ export default function FamilyCalificacionesView({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {materiasSeccion.length ? (
-                        materiasSeccion.map((materia) => (
-                          <div
-                            key={materia.seccionMateriaId}
-                            className="rounded-lg border p-3"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-medium">{materia.nombre}</span>
-                              <Badge variant="secondary">
-                                {calificacionesAlumno.filter(
-                                  (cal) =>
-                                    (cal as any).seccionMateriaId ===
-                                    materia.seccionMateriaId,
-                                ).length}
-                                {" "}
-                                registro(s)
-                              </Badge>
-                            </div>
-                            <div className="mt-3 space-y-3 text-sm">
-                              {trimestresAlumno.map((tri) => {
-                                if (tri.id == null) return null;
-                                const trimestreEstado = getTrimestreEstado(tri);
-                                const esTrimestreCerrado =
-                                  trimestreEstado === "cerrado";
-                                const cal = esTrimestreCerrado
-                                  ? calificacionesMap.get(
-                                      `${materia.seccionMateriaId}-${tri.id}`,
-                                    )
-                                  : undefined;
-                                const badgeVariant =
-                                  esTrimestreCerrado && cal
-                                    ? "default"
-                                    : "outline";
-                                const badgeLabel = esTrimestreCerrado
-                                  ? formatNota(cal)
-                                  : "Pendiente";
-                                const observacionesTexto = esTrimestreCerrado
-                                  ? cal?.observaciones?.trim() ||
-                                    "Sin observaciones"
-                                  : "Las calificaciones estarán disponibles una vez que la dirección cierre el trimestre.";
-                                return (
-                                  <div
-                                    key={`${materia.seccionMateriaId}-${tri.id}`}
-                                    className="rounded-full border p-3"
-                                  >
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                      <span className="font-semibold">
-                                        {formatTrimestre(tri)}
-                                      </span>
-                                      <Badge variant={badgeVariant}>
-                                        {badgeLabel}
-                                      </Badge>
-                                    </div>
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                      {observacionesTexto}
-                                    </p>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {materiasSeccion.map((materia) => {
+                            const registrosMateria = calificacionesAlumno.filter(
+                              (cal) =>
+                                (cal as any).seccionMateriaId ===
+                                materia.seccionMateriaId,
+                            ).length;
+
+                            return (
+                              <Card key={materia.seccionMateriaId} className="border shadow-sm">
+                                <CardHeader className="space-y-1 pb-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <CardTitle className="text-base">
+                                      {materia.nombre}
+                                    </CardTitle>
+                                    <Badge variant="secondary" className="shrink-0">
+                                      {registrosMateria} registro
+                                      {registrosMateria === 1 ? "" : "s"}
+                                    </Badge>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))
+                                  <CardDescription className="text-xs">
+                                    Calificaciones por trimestre cerradas por la dirección.
+                                  </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3 text-sm">
+                                  {trimestresAlumno.map((tri) => {
+                                    if (tri.id == null) return null;
+                                    const trimestreEstado = getTrimestreEstado(tri);
+                                    const esTrimestreCerrado =
+                                      trimestreEstado === "cerrado";
+                                    const cal = esTrimestreCerrado
+                                      ? calificacionesMap.get(
+                                          `${materia.seccionMateriaId}-${tri.id}`,
+                                        )
+                                      : undefined;
+                                    const badgeVariant =
+                                      esTrimestreCerrado && cal
+                                        ? "default"
+                                        : "outline";
+                                    const badgeLabel = esTrimestreCerrado
+                                      ? formatNota(cal)
+                                      : "Pendiente";
+                                    const observacionesTexto = esTrimestreCerrado
+                                      ? cal?.observaciones?.trim() ||
+                                        "Sin observaciones"
+                                      : "Las calificaciones estarán disponibles una vez que la dirección cierre el trimestre.";
+
+                                    return (
+                                      <div
+                                        key={`${materia.seccionMateriaId}-${tri.id}`}
+                                        className="rounded-lg border bg-muted/30 p-3"
+                                      >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <span className="font-semibold">
+                                            {formatTrimestre(tri)}
+                                          </span>
+                                          <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+                                        </div>
+                                        <p className="mt-2 text-xs text-muted-foreground whitespace-pre-line">
+                                          {observacionesTexto}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
                       ) : (
                         <div className="text-sm text-muted-foreground">
                           No hay materias registradas para esta sección.

@@ -177,14 +177,12 @@ export default function AlumnoPerfilPage() {
     genero: DEFAULT_GENERO_VALUE,
     nacionalidad: "",
     domicilio: "",
-    telefono: "",
     celular: "",
     email: "",
   });
   const [alumnoDraft, setAlumnoDraft] = useState({
     fechaInscripcion: "",
     observacionesGenerales: "",
-    motivoRechazoBaja: "",
   });
   const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
@@ -436,19 +434,32 @@ export default function AlumnoPerfilPage() {
       genero: normalizeGenero(persona?.genero) || DEFAULT_GENERO_VALUE,
       nacionalidad: persona?.nacionalidad ?? "",
       domicilio: persona?.domicilio ?? "",
-      telefono: persona?.telefono ?? "",
       celular: persona?.celular ?? "",
       email: persona?.email ?? "",
     });
     setAlumnoDraft({
       fechaInscripcion: alumno?.fechaInscripcion ?? "",
       observacionesGenerales: alumno?.observacionesGenerales ?? "",
-      motivoRechazoBaja: alumno?.motivoRechazoBaja ?? "",
     });
-    setSelectedSeccionId(
-      seccionActual?.seccionId ? String(seccionActual.seccionId) : "",
-    );
-  }, [editOpen, persona, alumno, seccionActual]);
+    const currentSectionId = seccionActual?.seccionId
+      ? String(seccionActual.seccionId)
+      : "";
+    if (
+      currentSectionId &&
+      !sectionOptions.some((option) => option.id === currentSectionId)
+    ) {
+      setSelectedSeccionId("");
+    } else {
+      setSelectedSeccionId(currentSectionId);
+    }
+  }, [editOpen, persona, alumno, seccionActual, sectionOptions]);
+
+  useEffect(() => {
+    if (!editOpen) return;
+    if (!selectedSeccionId) return;
+    if (sectionOptions.some((option) => option.id === selectedSeccionId)) return;
+    setSelectedSeccionId("");
+  }, [editOpen, sectionOptions, selectedSeccionId]);
 
   useEffect(() => {
     if (!addFamilyOpen) return;
@@ -584,7 +595,6 @@ export default function AlumnoPerfilPage() {
         genero: personaDraft.genero || undefined,
         nacionalidad: personaDraft.nacionalidad || undefined,
         domicilio: personaDraft.domicilio || undefined,
-        telefono: personaDraft.telefono || undefined,
         celular: personaDraft.celular || undefined,
         email: personaDraft.email || undefined,
       };
@@ -655,8 +665,6 @@ export default function AlumnoPerfilPage() {
           fechaInscripcion: alumnoDraft.fechaInscripcion || undefined,
           observacionesGenerales:
             alumnoDraft.observacionesGenerales?.trim() || undefined,
-          motivoRechazoBaja:
-            alumnoDraft.motivoRechazoBaja?.trim() || undefined,
         });
       }
 
@@ -734,7 +742,6 @@ export default function AlumnoPerfilPage() {
           genero: personaDraft.genero || undefined,
           nacionalidad: personaBasePayload.nacionalidad,
           domicilio: personaBasePayload.domicilio,
-          telefono: personaBasePayload.telefono,
           celular: personaBasePayload.celular,
           email: personaBasePayload.email,
         } as PersonaDTO;
@@ -1063,18 +1070,6 @@ export default function AlumnoPerfilPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Teléfono</Label>
-                        <Input
-                          value={personaDraft.telefono}
-                          onChange={(e) =>
-                            setPersonaDraft((prev) => ({
-                              ...prev,
-                              telefono: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
                         <Label>Celular</Label>
                         <Input
                           value={personaDraft.celular}
@@ -1153,6 +1148,9 @@ export default function AlumnoPerfilPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Solo se muestran secciones del período escolar activo.
+                        </p>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -1164,19 +1162,6 @@ export default function AlumnoPerfilPage() {
                           setAlumnoDraft((prev) => ({
                             ...prev,
                             observacionesGenerales: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Motivo de rechazo/baja</Label>
-                      <Textarea
-                        rows={3}
-                        value={alumnoDraft.motivoRechazoBaja}
-                        onChange={(e) =>
-                          setAlumnoDraft((prev) => ({
-                            ...prev,
-                            motivoRechazoBaja: e.target.value,
                           }))
                         }
                       />
@@ -1254,11 +1239,9 @@ export default function AlumnoPerfilPage() {
                     <span className="font-medium">{persona?.email ?? "—"}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Teléfono: </span>
+                    <span className="text-muted-foreground">Celular: </span>
                     <span className="font-medium">
-                      {(persona as any)?.telefono ??
-                        (persona as any)?.celular ??
-                        "—"}
+                      {(persona as any)?.celular ?? "—"}
                     </span>
                   </div>
                 </div>

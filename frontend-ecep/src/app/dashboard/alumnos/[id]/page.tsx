@@ -1273,65 +1273,249 @@ export default function AlumnoPerfilPage() {
 
         {!loading && !error && alumno && (
           <div className="grid gap-4 md:grid-cols-2">
-            {/* Datos personales */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>Datos personales</CardTitle>
-                <CardDescription>Información básica y contacto</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">
-                    Nombre completo:{" "}
-                  </span>
-                  <span className="font-medium">{toNombre(persona)}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">DNI: </span>
-                    <span className="font-medium">
-                      {persona?.dni ?? (persona as any)?.documento ?? "—"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Fecha nac.: </span>
-                    <span className="font-medium">
-                      {(persona as any)?.fechaNacimiento ?? "—"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Género: </span>
-                    <span className="font-medium">
-                      {(persona as any)?.genero ?? "—"}
-                    </span>
-                  </div>
-                  <div>
+            <div className="space-y-4">
+              {/* Datos personales */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Datos personales</CardTitle>
+                  <CardDescription>Información básica y contacto</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-sm">
                     <span className="text-muted-foreground">
-                      Nacionalidad:{" "}
+                      Nombre completo:{" "}
                     </span>
+                    <span className="font-medium">{toNombre(persona)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">DNI: </span>
+                      <span className="font-medium">
+                        {persona?.dni ?? (persona as any)?.documento ?? "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Fecha nac.: </span>
+                      <span className="font-medium">
+                        {(persona as any)?.fechaNacimiento ?? "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Género: </span>
+                      <span className="font-medium">
+                        {(persona as any)?.genero ?? "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">
+                        Nacionalidad:{" "}
+                      </span>
+                      <span className="font-medium">
+                        {(persona as any)?.nacionalidad ?? "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Email: </span>
+                      <span className="font-medium">{persona?.email ?? "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Celular: </span>
+                      <span className="font-medium">
+                        {(persona as any)?.celular ?? "—"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Domicilio: </span>
                     <span className="font-medium">
-                      {(persona as any)?.nacionalidad ?? "—"}
+                      {(persona as any)?.domicilio ?? "—"}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Email: </span>
-                    <span className="font-medium">{persona?.email ?? "—"}</span>
+                </CardContent>
+              </Card>
+
+              {/* Acceso al sistema */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Acceso al sistema</CardTitle>
+                  <CardDescription>
+                    Gestioná las credenciales para que el alumno pueda iniciar
+                    sesión.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center md:justify-between">
+                    <div>
+                      {persona?.credencialesActivas ? (
+                        <>
+                          <div className="font-medium">{persona?.email}</div>
+                          <div className="text-muted-foreground">
+                            Roles:{" "}
+                            {persona?.roles && persona.roles.length > 0
+                              ? normalizeRoles(persona.roles)
+                                  .map((role) => displayRole(role))
+                                  .join(", ")
+                              : "Sin roles"}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-muted-foreground">
+                          El alumno todavía no tiene credenciales asignadas.
+                        </div>
+                      )}
+                    </div>
+                    {canManageProfile && (
+                      <div className="flex items-center gap-2">
+                        <Dialog
+                          open={credentialsDialogOpen}
+                          onOpenChange={setCredentialsDialogOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button>Gestionar acceso</Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>
+                                {persona?.credencialesActivas
+                                  ? "Actualizar acceso"
+                                  : "Crear acceso"}
+                              </DialogTitle>
+                              <DialogDescription>
+                                El email será el usuario de inicio de sesión.
+                                Para cambiar la contraseña ingresá y confirmá el
+                                nuevo valor.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Email</Label>
+                                <Input
+                                  type="email"
+                                  value={credentialsForm.email}
+                                  onChange={(e) =>
+                                    setCredentialsForm((prev) => ({
+                                      ...prev,
+                                      email: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Contraseña</Label>
+                                <Input
+                                  type="password"
+                                  value={credentialsForm.password}
+                                  placeholder={
+                                    persona?.credencialesActivas
+                                      ? "Ingresá una nueva contraseña"
+                                      : "Contraseña inicial"
+                                  }
+                                  onChange={(e) =>
+                                    setCredentialsForm((prev) => ({
+                                      ...prev,
+                                      password: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Confirmar contraseña</Label>
+                                <Input
+                                  type="password"
+                                  value={credentialsForm.confirmPassword}
+                                  onChange={(e) =>
+                                    setCredentialsForm((prev) => ({
+                                      ...prev,
+                                      confirmPassword: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                              {canEditRoles ? (
+                                <div className="space-y-2">
+                                  <Label>Roles del sistema</Label>
+                                  <div className="grid gap-2">
+                                    {studentRoleOptions.map((role) => {
+                                      const checked =
+                                        credentialsForm.roles.includes(role);
+                                      return (
+                                        <label
+                                          key={role}
+                                          className="flex items-center gap-2 text-sm text-muted-foreground"
+                                        >
+                                          <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(value) =>
+                                              setCredentialsForm((prev) => {
+                                                const isChecked = value === true;
+                                                const nextRoles = isChecked
+                                                  ? [...prev.roles, role]
+                                                  : prev.roles.filter(
+                                                      (r) => r !== role,
+                                                    );
+                                                return {
+                                                  ...prev,
+                                                  roles: normalizeRoles(
+                                                    nextRoles,
+                                                  ),
+                                                };
+                                              })
+                                            }
+                                          />
+                                          <span>{displayRole(role)}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Seleccioná qué permisos tendrá el alumno en el
+                                    sistema.
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  Solo el equipo directivo puede modificar los
+                                  roles asignados.
+                                </p>
+                              )}
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                variant="outline"
+                                onClick={() => setCredentialsDialogOpen(false)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                onClick={handleSaveCredentials}
+                                disabled={savingCredentials}
+                              >
+                                {savingCredentials && (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Guardar cambios
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                        {persona?.credencialesActivas && (
+                          <Button
+                            variant="outline"
+                            onClick={handleDisableCredentials}
+                            disabled={savingCredentials}
+                          >
+                            {savingCredentials && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Desactivar acceso
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Celular: </span>
-                    <span className="font-medium">
-                      {(persona as any)?.celular ?? "—"}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Domicilio: </span>
-                  <span className="font-medium">
-                    {(persona as any)?.domicilio ?? "—"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Estado académico (matrícula + sección actual) */}
             <Card>
@@ -1770,161 +1954,6 @@ export default function AlumnoPerfilPage() {
               </CardContent>
             </Card>
 
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-3">
-                <CardTitle>Acceso al sistema</CardTitle>
-                <CardDescription>
-                  Gestioná las credenciales para que el alumno pueda iniciar sesión.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center md:justify-between">
-                  <div>
-                    {persona?.credencialesActivas ? (
-                      <>
-                        <div className="font-medium">{persona?.email}</div>
-                        <div className="text-muted-foreground">
-                          Roles:{" "}
-                          {persona?.roles && persona.roles.length > 0
-                            ? normalizeRoles(persona.roles)
-                                .map((role) => displayRole(role))
-                                .join(", ")
-                            : "Sin roles"}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-muted-foreground">
-                        El alumno todavía no tiene credenciales asignadas.
-                      </div>
-                    )}
-                  </div>
-                  {canManageProfile && (
-                    <div className="flex items-center gap-2">
-                      <Dialog
-                        open={credentialsDialogOpen}
-                        onOpenChange={setCredentialsDialogOpen}
-                      >
-                        <DialogTrigger asChild>
-                          <Button>Gestionar acceso</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>
-                              {persona?.credencialesActivas
-                                ? "Actualizar acceso"
-                                : "Crear acceso"}
-                            </DialogTitle>
-                            <DialogDescription>
-                              El email será el usuario de inicio de sesión. Para cambiar la contraseña ingresá y confirmá el nuevo valor.
-                            </DialogDescription>
-                          </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input
-                              type="email"
-                              value={credentialsForm.email}
-                              onChange={(e) =>
-                                setCredentialsForm((prev) => ({
-                                  ...prev,
-                                  email: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Contraseña</Label>
-                            <Input
-                              type="password"
-                              value={credentialsForm.password}
-                              placeholder={
-                                persona?.credencialesActivas
-                                  ? "Ingresá una nueva contraseña"
-                                  : "Contraseña inicial"
-                              }
-                              onChange={(e) =>
-                                setCredentialsForm((prev) => ({
-                                  ...prev,
-                                  password: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Confirmar contraseña</Label>
-                            <Input
-                              type="password"
-                              value={credentialsForm.confirmPassword}
-                              onChange={(e) =>
-                                setCredentialsForm((prev) => ({
-                                  ...prev,
-                                  confirmPassword: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          {canEditRoles ? (
-                            <div className="space-y-2">
-                              <Label>Roles del sistema</Label>
-                              <div className="grid gap-2">
-                                {studentRoleOptions.map((role) => {
-                                  const checked = credentialsForm.roles.includes(role);
-                                  return (
-                                    <label
-                                      key={role}
-                                      className="flex items-center gap-2 text-sm text-muted-foreground"
-                                    >
-                                      <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(value) =>
-                                          setCredentialsForm((prev) => {
-                                            const isChecked = value === true;
-                                            const nextRoles = isChecked
-                                              ? [...prev.roles, role]
-                                              : prev.roles.filter((r) => r !== role);
-                                            return {
-                                              ...prev,
-                                              roles: normalizeRoles(nextRoles),
-                                            };
-                                          })
-                                        }
-                                      />
-                                      <span>{displayRole(role)}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Seleccioná qué permisos tendrá el alumno en el sistema.
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => setCredentialsDialogOpen(false)}
-                            disabled={savingCredentials}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            onClick={handleSaveCredentials}
-                            disabled={savingCredentials}
-                          >
-                            {savingCredentials && (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            )}
-                            Guardar acceso
-                          </Button>
-                        </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
       </div>

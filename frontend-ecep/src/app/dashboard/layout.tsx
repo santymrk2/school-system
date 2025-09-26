@@ -174,7 +174,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-4 lg:pr-0 mt-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-full inline-flex items-center justify-between gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <button
+                  id="dashboard-user-menu-trigger"
+                  className="w-full inline-flex items-center justify-between gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {getInitials(displayName)}
@@ -192,7 +195,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent side="top" align="end" className="w-60 p-3">
+              <DropdownMenuContent
+                side="top"
+                align="end"
+                className="w-60 p-3"
+                aria-labelledby="dashboard-user-menu-trigger"
+              >
                 <DropdownMenuLabel className="truncate">
                   {displayName}
                 </DropdownMenuLabel>

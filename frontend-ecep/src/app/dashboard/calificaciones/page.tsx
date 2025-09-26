@@ -53,9 +53,37 @@ export default function CalificacionesIndexPage() {
 
   const isAdmin = activeRole === UserRole.ADMIN;
 
+  const isTeacher = scope === "teacher";
+  const isStaff = scope === "staff";
+  const hasDocenteAccess = isTeacher || isStaff;
+
+  const primario = useMemo(
+    () => (secciones ?? []).filter(isPrimario),
+    [secciones],
+  );
+  const inicial = useMemo(
+    () => (secciones ?? []).filter(isInicial),
+    [secciones],
+  );
+
+  const primarioCount = primario.length;
+  const inicialCount = inicial.length;
+
+  const [tab, setTab] = useState<"primario" | "inicial">("primario");
+
+  useEffect(() => {
+    if (!hasDocenteAccess) return;
+    if (loading) return;
+    if (!primarioCount && inicialCount) {
+      setTab("inicial");
+    } else if (!inicialCount && primarioCount) {
+      setTab("primario");
+    }
+  }, [hasDocenteAccess, loading, primarioCount, inicialCount]);
+
   if (scope === "family" || scope === "student") {
     return (
-      
+
         <div className="p-4 md:p-8 space-y-6">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">
@@ -75,50 +103,27 @@ export default function CalificacionesIndexPage() {
             getPeriodoNombre={getPeriodoNombre}
           />
         </div>
-      
+
     );
   }
 
   if (isAdmin) {
     return (
-      
+
         <div className="p-6 text-sm">
           403 — El perfil de Administración no tiene acceso a Calificaciones.
         </div>
-      
+
     );
   }
 
-  const isTeacher = scope === "teacher";
-  const isStaff = scope === "staff";
-
-  if (!isTeacher && !isStaff) {
+  if (!hasDocenteAccess) {
     return (
-      
+
         <div className="p-6 text-sm">403 — No tenés acceso a calificaciones.</div>
-      
+
     );
   }
-
-  const primario = useMemo(
-    () => (secciones ?? []).filter(isPrimario),
-    [secciones],
-  );
-  const inicial = useMemo(
-    () => (secciones ?? []).filter(isInicial),
-    [secciones],
-  );
-
-  const [tab, setTab] = useState<"primario" | "inicial">("primario");
-
-  useEffect(() => {
-    if (loading) return;
-    if (!primario.length && inicial.length) {
-      setTab("inicial");
-    } else if (!inicial.length && primario.length) {
-      setTab("primario");
-    }
-  }, [loading, primario.length, inicial.length]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -126,10 +131,10 @@ export default function CalificacionesIndexPage() {
           <h2 className="text-3xl font-bold tracking-tight">Calificaciones</h2>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="outline">
-              Primario: {loading ? "—" : primario.length}
+              Primario: {loading ? "—" : primarioCount}
             </Badge>
             <Badge variant="outline">
-              Inicial: {loading ? "—" : inicial.length}
+              Inicial: {loading ? "—" : inicialCount}
             </Badge>
             {periodoNombre && (
               <Badge variant="outline">Período {periodoNombre}</Badge>

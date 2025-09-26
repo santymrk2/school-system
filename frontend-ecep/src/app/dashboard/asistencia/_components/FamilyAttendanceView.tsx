@@ -159,6 +159,7 @@ export function FamilyAttendanceView() {
       alumnos.find((al) => al.matriculaId === selectedMatriculaId) ?? null
     );
   }, [alumnos, selectedMatriculaId]);
+  const selectedAlumnoMatriculaId = alumnoSeleccionado?.matriculaId ?? null;
 
   useEffect(() => {
     setDetalles([]);
@@ -297,6 +298,17 @@ export function FamilyAttendanceView() {
     periodoLoading,
   ]);
 
+  const detallesDelAlumno = useMemo(() => {
+    if (selectedAlumnoMatriculaId == null) {
+      return [] as DetalleAsistenciaDTO[];
+    }
+
+    return detalles.filter((detalle) => {
+      if (detalle.matriculaId == null) return true;
+      return detalle.matriculaId === selectedAlumnoMatriculaId;
+    });
+  }, [detalles, selectedAlumnoMatriculaId]);
+
   const detallesEnPeriodo = useMemo(() => {
     const fromISO = periodoDateRange.fromISO;
     const toISO = periodoDateRange.toISO;
@@ -308,7 +320,7 @@ export function FamilyAttendanceView() {
     const bestByJornada = new Map<number, DetalleAsistenciaDTO>();
     const sinJornada: DetalleAsistenciaDTO[] = [];
 
-    for (const detalle of detalles) {
+    for (const detalle of detallesDelAlumno) {
       const jornada = detalle.jornadaId
         ? jornadas.get(detalle.jornadaId)
         : null;
@@ -348,7 +360,7 @@ export function FamilyAttendanceView() {
       getFecha(b).localeCompare(getFecha(a)),
     );
   }, [
-    detalles,
+    detallesDelAlumno,
     jornadas,
     periodoDateRange.fromISO,
     periodoDateRange.toISO,

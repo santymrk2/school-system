@@ -201,6 +201,19 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   }, [fecha]);
   const minDate = useMemo(() => new Date(`${minFecha}T00:00:00`), [minFecha]);
   const maxDate = useMemo(() => new Date(`${maxFecha}T00:00:00`), [maxFecha]);
+  const isDateWithinBounds = useCallback(
+    (date: Date) => {
+      if (Number.isNaN(date.getTime())) {
+        return false;
+      }
+      const iso = formatDateToISO(date);
+      if (iso < minFecha || iso > maxFecha) {
+        return false;
+      }
+      return true;
+    },
+    [minFecha, maxFecha],
+  );
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
     const base =
       selectedDate && isDateWithinBounds(selectedDate) ? selectedDate : minDate;
@@ -216,34 +229,6 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       return prev.getTime() === target.getTime() ? prev : target;
     });
   }, [open, selectedDate, isDateWithinBounds, minDate]);
-
-  const isDateWithinBounds = useCallback(
-    (date: Date) => {
-      if (Number.isNaN(date.getTime())) {
-        return false;
-      }
-      const iso = formatDateToISO(date);
-      if (iso < minFecha || iso > maxFecha) {
-        return false;
-      }
-      return true;
-    },
-    [minFecha, maxFecha],
-  );
-
-  const isDateWithinBounds = useCallback(
-    (date: Date) => {
-      if (Number.isNaN(date.getTime())) {
-        return false;
-      }
-      const iso = formatDateToISO(date);
-      if (iso < minFecha || iso > maxFecha) {
-        return false;
-      }
-      return true;
-    },
-    [minFecha, maxFecha],
-  );
 
   const isDisabledDate = useCallback(
     (date: Date) => {

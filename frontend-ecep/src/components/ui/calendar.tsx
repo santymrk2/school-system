@@ -27,6 +27,7 @@ type CalendarCaptionProps = CaptionProps & {
   maxDate?: Date;
   disableMonthDropdown?: boolean;
   disableYearDropdown?: boolean;
+  onMonthChange?: (month: Date) => void;
 };
 
 const monthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
@@ -35,6 +36,7 @@ function CalendarCaption({
   displayMonth,
   locale,
   goToMonth,
+  onMonthChange,
   minDate,
   maxDate,
   disableMonthDropdown,
@@ -117,8 +119,11 @@ function CalendarCaption({
   }, [currentYear, maxMonth, minMonth]);
 
   const canNavigate = React.useMemo(
-    () => typeof goToMonth === 'function' || typeof contextGoToMonth === 'function',
-    [contextGoToMonth, goToMonth]
+    () =>
+      typeof goToMonth === 'function' ||
+      typeof contextGoToMonth === 'function' ||
+      typeof onMonthChange === 'function',
+    [contextGoToMonth, goToMonth, onMonthChange]
   );
 
   const navigateToMonth = React.useCallback(
@@ -134,9 +139,14 @@ function CalendarCaption({
 
       if (typeof contextGoToMonth === 'function') {
         contextGoToMonth(targetDate);
+        return;
+      }
+
+      if (typeof onMonthChange === 'function') {
+        onMonthChange(targetDate);
       }
     },
-    [canNavigate, clampMonth, contextGoToMonth, goToMonth]
+    [canNavigate, clampMonth, contextGoToMonth, goToMonth, onMonthChange]
   );
 
   const handleMonthChange = React.useCallback(
@@ -208,17 +218,17 @@ function CalendarCaption({
   );
 
   return (
-    <div className="flex w-full items-center justify-between gap-2">
+    <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2">
       <button
         type="button"
-        className={navButtonClassName}
+        className={cn(navButtonClassName, 'justify-self-start')}
         onClick={handlePreviousMonth}
         aria-label="Mes anterior"
         disabled={isPreviousDisabled || !canNavigate}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
-      <div className="flex flex-col items-center gap-2 sm:flex-row">
+      <div className="flex flex-col items-center gap-2 justify-self-center sm:flex-row">
         {disableMonthDropdown ? (
           renderMonthLabel()
         ) : (
@@ -273,7 +283,7 @@ function CalendarCaption({
       </div>
       <button
         type="button"
-        className={navButtonClassName}
+        className={cn(navButtonClassName, 'justify-self-end')}
         onClick={handleNextMonth}
         aria-label="Mes siguiente"
         disabled={isNextDisabled || !canNavigate}
@@ -349,6 +359,7 @@ function Calendar({
             maxDate={maxDate}
             disableMonthDropdown={disableMonthDropdown}
             disableYearDropdown={disableYearDropdown}
+            onMonthChange={props.onMonthChange}
           />
         ),
         ...components,

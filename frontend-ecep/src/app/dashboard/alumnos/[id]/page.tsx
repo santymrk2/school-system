@@ -1675,7 +1675,7 @@ export default function AlumnoPerfilPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-center gap-2 md:justify-start md:place-self-center">
                             <Checkbox
                               id="add-convive"
                               checked={addConvive}

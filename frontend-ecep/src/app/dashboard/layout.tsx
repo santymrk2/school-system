@@ -3,7 +3,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { UserRole } from "@/types/api-generated";
 import { useRouter, usePathname } from "next/navigation";
-import { ChevronsUpDown, LogOut, School, X, Menu, Settings } from "lucide-react";
+import {
+  ChevronsUpDown,
+  LogOut,
+  School,
+  X,
+  Menu,
+  Settings,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,10 +48,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
 
   const userRoles = user?.roles;
-  const rolesNormalized = useMemo(
-    () => normalizeRoles(userRoles),
-    [userRoles],
-  );
+  const rolesNormalized = useMemo(() => normalizeRoles(userRoles), [userRoles]);
 
   const currentRole = selectedRole
     ? normalizeRole(selectedRole)
@@ -252,7 +256,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white dark:bg-background overflow-hidden">
         {/* Topbar solo en mobile/tablet */}
         <div className="lg:hidden sticky top-0 z-40 p-4 pb-0">
           <div className="h-12 flex items-center px-2">

@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (!role) return;
-    const item = MENU.find((i) => i.href === pathname);
+    const item = MENU.find((i) => isItemActive(pathname, i.href));
     if (item?.roles && !item.roles.includes(role)) {
       router.replace("/dashboard");
     }

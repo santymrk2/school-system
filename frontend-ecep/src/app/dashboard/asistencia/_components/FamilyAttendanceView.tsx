@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,7 +24,6 @@ import type {
 import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-generated";
 import { CheckCircle, X } from "lucide-react";
 import type { DayContentProps } from "react-day-picker";
-
 
 type AttendanceCategory = "present" | "absent";
 
@@ -90,19 +88,6 @@ function Donut({ percent }: { percent: number }) {
   );
 }
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return dateFormatter.format(parsed);
-}
-
 function parseISODateToDate(value?: string | null) {
   if (!value) return null;
   const parts = value.split("-");
@@ -136,18 +121,6 @@ function nivelLabel(nivel?: NivelAcademico | null) {
   if (nivel === NivelAcademicoEnum.PRIMARIO) return "Nivel primario";
   if (nivel === NivelAcademicoEnum.INICIAL) return "Nivel inicial";
   return String(nivel);
-}
-
-function estadoLabel(estado?: string | null) {
-  if (!estado) return "Sin dato";
-  return toAttendanceCategory(estado) === "present" ? "Presente" : "Ausente";
-}
-
-function estadoVariant(estado?: string | null) {
-  if (!estado) return "outline" as const;
-  return toAttendanceCategory(estado) === "present"
-    ? ("default" as const)
-    : ("destructive" as const);
 }
 
 export function FamilyAttendanceView() {
@@ -359,7 +332,6 @@ export function FamilyAttendanceView() {
     };
   }, [detallesEnPeriodo]);
 
-
   const historial = useMemo(() => {
     return detallesEnPeriodo
       .map((detalle) => {
@@ -498,21 +470,15 @@ export function FamilyAttendanceView() {
 
     return function DayContent({ date }: DayContentProps) {
       const category = calendarData.labelByTime.get(getKey(date));
-      const badge = category ? calendarDayBadge[category] : null;
 
       return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1 py-1">
+        <div className="flex h-full w-full flex-col items-center justify-center py-1">
           <span className="text-base font-semibold leading-none">
             {date.getDate()}
           </span>
-          {badge ? (
-            <span
-              className={cn(
-                "rounded px-1 text-[9px] font-semibold uppercase leading-3",
-                badge.className,
-              )}
-            >
-              {badge.text}
+          {category ? (
+            <span className="sr-only">
+              {category === "present" ? "Presente" : "Ausente"}
             </span>
           ) : null}
         </div>
@@ -544,8 +510,8 @@ export function FamilyAttendanceView() {
       <header className="space-y-2">
         <h3 className="text-2xl font-semibold tracking-tight">{titulo}</h3>
         <p className="text-sm text-muted-foreground">
-          Seleccioná un alumno para revisar su historial diario y el porcentaje
-          total de asistencias.
+          Seleccioná un alumno para revisar su porcentaje de asistencias y el
+          detalle en el calendario del período activo.
         </p>
       </header>
 
@@ -608,69 +574,21 @@ export function FamilyAttendanceView() {
                 )}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Historial diario</CardTitle>
-                <CardDescription>
-                  Registros de asistencias e inasistencias cargados por los
-                  docentes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {loadingDetalles && (
-                  <LoadingState label="Cargando historial…" className="h-32" />
-                )}
-
-                {!loadingDetalles && errorDetalles && (
-                  <div className="text-sm text-red-600">{errorDetalles}</div>
-                )}
-
-                {!loadingDetalles && !errorDetalles && !historial.length && (
-                  <div className="text-sm text-muted-foreground">
-                    Aún no hay asistencias registradas en el período consultado.
-                  </div>
-                )}
-
-                {!loadingDetalles && !errorDetalles && historial.length > 0 && (
-                  <div className="space-y-2">
-                    {historial.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded border p-3"
-                      >
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">
-                            {formatDate(item.fecha)}
-                          </div>
-                          {item.observacion && (
-                            <p className="text-xs text-muted-foreground">
-                              {item.observacion}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant={estadoVariant(item.estado)}>
-                          {estadoLabel(item.estado)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
           <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Calendario de asistencias</CardTitle>
-                <CardDescription>
-                  Visualizá rápidamente los días presentes y ausentes del
-                  período activo.
-                </CardDescription>
-              </CardHeader>
+            <CardHeader>
+              <CardTitle>Calendario de asistencias</CardTitle>
+              <CardDescription>
+                Visualizá rápidamente los días presentes y ausentes del
+                período activo.
+              </CardDescription>
+            </CardHeader>
             <CardContent>
               {loadingDetalles ? (
                 <LoadingState label="Cargando calendario…" className="h-64" />
+              ) : errorDetalles ? (
+                <div className="text-sm text-red-600">{errorDetalles}</div>
               ) : (
                 <div className="space-y-4">
                   <AttendanceCalendar

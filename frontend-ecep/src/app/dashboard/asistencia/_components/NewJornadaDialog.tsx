@@ -198,14 +198,24 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const minDate = useMemo(() => new Date(`${minFecha}T00:00:00`), [minFecha]);
   const maxDate = useMemo(() => new Date(`${maxFecha}T00:00:00`), [maxFecha]);
 
+  const isDateWithinBounds = useCallback(
+    (date: Date) => {
+      if (Number.isNaN(date.getTime())) {
+        return false;
+      }
+      const iso = formatDateToISO(date);
+      if (iso < minFecha || iso > maxFecha) {
+        return false;
+      }
+      return true;
+    },
+    [minFecha, maxFecha],
+  );
+
   const isDisabledDate = useCallback(
     (date: Date) => {
       const iso = formatDateToISO(date);
-      const year = date.getFullYear();
-      if (Number.isNaN(year) || year !== currentYear) {
-        return true;
-      }
-      if (iso < minFecha || iso > maxFecha) {
+      if (!isDateWithinBounds(date)) {
         return true;
       }
       if (isWeekend(iso)) {
@@ -213,16 +223,15 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
       }
       return busyDates.has(iso);
     },
-    [busyDates, currentYear, minFecha, maxFecha],
+    [busyDates, isDateWithinBounds],
   );
 
   const handleCalendarSelect = useCallback(
     (date: Date | undefined) => {
       if (!date) return;
       const iso = formatDateToISO(date);
-      const year = date.getFullYear();
-      if (Number.isNaN(year) || year !== currentYear) {
-        toast.warning("Solo se permiten fechas dentro del año actual.");
+      if (!isDateWithinBounds(date)) {
+        toast.warning("Seleccioná una fecha dentro del periodo permitido.");
         return;
       }
       const ok = setFechaWithValidation(iso, { showToast: true });
@@ -230,7 +239,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         setDatePickerOpen(false);
       }
     },
-    [currentYear, setFechaWithValidation],
+    [isDateWithinBounds, setFechaWithValidation],
   );
 
   const defaultTrigger = useMemo(
@@ -241,12 +250,6 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
   const handleCreate = async () => {
     try {
       setCreating(true);
-
-      const selectedYear = new Date(fecha).getFullYear();
-      if (Number.isNaN(selectedYear) || selectedYear !== currentYear) {
-        toast.warning("Solo se permiten fechas dentro del año actual.");
-        return;
-      }
 
       const validation = computeDateError(fecha);
       if (validation) {

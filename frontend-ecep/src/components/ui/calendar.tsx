@@ -134,12 +134,13 @@ function CalendarCaption({
 
       if (typeof goToMonth === 'function') {
         goToMonth(targetDate);
+      } else if (typeof contextGoToMonth === 'function') {
+        contextGoToMonth(targetDate);
         return;
       }
 
-      if (typeof contextGoToMonth === 'function') {
-        contextGoToMonth(targetDate);
-        return;
+      if (typeof onMonthChange === 'function') {
+        onMonthChange(targetDate);
       }
 
       if (typeof onMonthChange === 'function') {

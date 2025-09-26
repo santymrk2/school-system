@@ -20,7 +20,8 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
-import { Calendar, Plus } from "lucide-react";
+import { Calendar as AttendanceCalendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { asistencias, gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
@@ -37,7 +38,6 @@ import {
   getTrimestreInicio,
   TRIMESTRE_ESTADO_LABEL,
 } from "@/lib/trimestres";
-import { cn } from "@/lib/utils";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
@@ -59,6 +59,34 @@ function fmt(iso?: string) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = String(d.getFullYear());
   return `${dd}/${mm}/${yyyy}`;
+}
+
+function parseISODate(value?: string | null) {
+  if (!value) return null;
+  const normalized = String(value).slice(0, 10);
+  const [yearRaw, monthRaw, dayRaw] = normalized.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
+function formatISODate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 function alumnoDisplayName(row: any) {
   return (
@@ -122,6 +150,31 @@ export default function SeccionHistorialPage() {
 
   const [historial, setHistorial] = useState<AsistenciaDiaDTO[]>([]);
   const [resumen, setResumen] = useState<AsistenciaAlumnoResumenDTO[]>([]);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedResumen, setSelectedResumen] = useState<AsistenciaDiaDTO | null>(
+    null,
+  );
+  const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(undefined);
+
+  const asistenciaDateSet = useMemo(() => {
+    const set = new Set<string>();
+    historial.forEach((item) => {
+      if (item.fecha) {
+        set.add(String(item.fecha).slice(0, 10));
+      }
+    });
+    return set;
+  }, [historial]);
+
+  const asistenciaDates = useMemo(() => {
+    return Array.from(asistenciaDateSet)
+      .map((iso) => parseISODate(iso))
+      .filter(
+        (date): date is Date =>
+          date instanceof Date && !Number.isNaN(date.getTime()),
+      )
+      .sort((a, b) => a.getTime() - b.getTime());
+  }, [asistenciaDateSet]);
 
   const accessStatus = useMemo(
     () => {
@@ -235,6 +288,101 @@ export default function SeccionHistorialPage() {
     loadAll,
     accessStatus,
   ]);
+
+  useEffect(() => {
+    if (!historial.length) {
+      setSelectedDay(null);
+      setSelectedResumen(null);
+      setCalendarMonth(undefined);
+      return;
+    }
+
+    if (selectedResumen) {
+      const refreshed = historial.find((item) => item.id === selectedResumen.id);
+      if (refreshed) {
+        setSelectedResumen(refreshed);
+        if (!selectedDay && refreshed.fecha) {
+          const parsed = parseISODate(refreshed.fecha);
+          if (parsed) {
+            setSelectedDay(parsed);
+            setCalendarMonth((prev) => prev ?? parsed);
+          }
+        }
+        return;
+      }
+    }
+
+    const latest = [...historial]
+      .filter((item) => Boolean(item.fecha))
+      .sort((a, b) =>
+        String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")),
+      )[0];
+
+    if (latest && latest.fecha) {
+      const parsed = parseISODate(latest.fecha);
+      if (parsed) {
+        setSelectedDay(parsed);
+        setCalendarMonth((prev) => prev ?? parsed);
+      }
+      setSelectedResumen(latest);
+    }
+  }, [historial, selectedResumen, selectedDay]);
+
+  const openJornadaDetalle = useCallback(
+    async (fechaIso?: string | null) => {
+      if (!fechaIso) {
+        toast.error("No hay jornada creada para esa fecha.");
+        return;
+      }
+
+      try {
+        const res = await asistencias.jornadas.bySeccionFechaOne(
+          seccionId,
+          fechaIso,
+        );
+        const data: any = res.data;
+        let jornadaId: number | undefined;
+        if (Array.isArray(data)) {
+          jornadaId = data.sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]?.id;
+        } else {
+          jornadaId = data?.id;
+        }
+        if (!jornadaId) {
+          toast.error("No hay jornada creada para esa fecha.");
+          return;
+        }
+        router.push(`/dashboard/asistencia/jornada/${jornadaId}`);
+      } catch {
+        toast.error("No hay jornada creada para esa fecha.");
+      }
+    },
+    [router, seccionId],
+  );
+
+  const handleCalendarSelect = useCallback(
+    (date: Date | undefined) => {
+      if (!date) {
+        setSelectedDay(null);
+        setSelectedResumen(null);
+        return;
+      }
+
+      const iso = formatISODate(date);
+      if (!asistenciaDateSet.has(iso)) {
+        return;
+      }
+
+      const match = historial.find(
+        (item) => String(item.fecha ?? "").slice(0, 10) === iso,
+      );
+      if (match) {
+        setSelectedDay(date);
+        setSelectedResumen(match);
+        setCalendarMonth(date);
+      }
+    },
+    [asistenciaDateSet, historial],
+  );
 
   if (accessStatus === "admin") {
     return (
@@ -365,7 +513,7 @@ export default function SeccionHistorialPage() {
                               <div>
                                 <CardTitle className="flex flex-wrap items-center gap-2">
                                   <span className="flex items-center">
-                                    <Calendar className="h-5 w-5 mr-2" />
+                                    <CalendarIcon className="h-5 w-5 mr-2" />
                                     Jornadas del trimestre
                                   </span>
                                   <TrimestreEstadoBadge
@@ -409,7 +557,7 @@ export default function SeccionHistorialPage() {
                               )}
                             </CardHeader>
 
-                            <CardContent className="space-y-2">
+                            <CardContent className="space-y-4">
                               {!canEdit && (
                                 <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
                                   <AlertTitle>{estadoLabel}</AlertTitle>
@@ -418,70 +566,119 @@ export default function SeccionHistorialPage() {
                                   </AlertDescription>
                                 </Alert>
                               )}
-                              {historial.length === 0 && (
+                              {historial.length === 0 ? (
                                 <div className="text-sm text-muted-foreground">
                                   No hay registros en el trimestre seleccionado.
                                 </div>
-                              )}
-
-                              {historial.map((d) => (
-                                <button
-                                  key={d.fecha}
-                                  className={cn(
-                                    "w-full text-left",
-                                    !canEdit && "cursor-not-allowed opacity-60",
-                                  )}
-                                  disabled={!canEdit}
-                                  onClick={async () => {
-                                    if (!canEdit) return;
-                                    try {
-                                      const res =
-                                        await asistencias.jornadas.bySeccionFechaOne(
-                                          seccionId,
-                                          d.fecha,
-                                        );
-                                      const data: any = res.data;
-                                      let jId: number | undefined;
-                                      if (Array.isArray(data)) {
-                                        jId = data.sort(
-                                          (a, b) => (b.id ?? 0) - (a.id ?? 0),
-                                        )[0]?.id;
-                                      } else {
-                                        jId = data?.id;
+                              ) : (
+                                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                                  <div className="space-y-4">
+                                    <AttendanceCalendar
+                                      className="mx-auto w-full max-w-[38rem] rounded-lg border p-4 shadow-sm"
+                                      classNames={{
+                                        months: "flex flex-col gap-4",
+                                        month: "space-y-4",
+                                        table: "w-full border-collapse space-y-1",
+                                        head_row: "grid grid-cols-7 text-xs font-medium text-muted-foreground",
+                                        row: "grid grid-cols-7",
+                                        day: "m-1 flex h-12 w-12 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                                        day_selected:
+                                          "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
+                                        day_today:
+                                          "border border-primary/40 text-primary aria-selected:bg-primary/15 aria-selected:text-primary",
+                                      }}
+                                      mode="single"
+                                      selected={selectedDay ?? undefined}
+                                      onSelect={handleCalendarSelect}
+                                      month={calendarMonth}
+                                      defaultMonth={
+                                        selectedDay ??
+                                        asistenciaDates[asistenciaDates.length - 1] ??
+                                        new Date()
                                       }
-                                      if (!jId) {
-                                        toast.error(
-                                          "No hay jornada creada para esa fecha.",
-                                        );
-                                        return;
+                                      onMonthChange={(month) => setCalendarMonth(month)}
+                                      fromDate={
+                                        selectedRange?.from
+                                          ? parseISODate(selectedRange.from) ?? undefined
+                                          : undefined
                                       }
-                                      router.push(
-                                        `/dashboard/asistencia/jornada/${jId}`,
-                                      );
-                                    } catch {
-                                      toast.error(
-                                        "No hay jornada creada para esa fecha.",
-                                      );
-                                    }
-                                  }}
-                                  title={
-                                    canEdit
-                                      ? "Ver/editar detalle"
-                                      : "Trimestre no activo. Solo lectura"
-                                  }
-                                >
-                                  <div className="flex items-center justify-between border border-border rounded p-2 transition-colors hover:bg-muted">
-                                    <div className="flex items-center gap-3">
-                                      <Badge variant="outline">{fmt(d.fecha)}</Badge>
-                                      <span className="text-sm">
-                                        Presentes: <b>{d.presentes}</b> — Ausentes:{" "}
-                                        <b>{d.ausentes}</b> — %:{" "}
-                                        <b>{Math.round(d.porcentaje)}%</b>
-                                      </span>
-                                    </div>
+                                      toDate={
+                                        selectedRange?.to
+                                          ? parseISODate(selectedRange.to) ?? undefined
+                                          : undefined
+                                      }
+                                      modifiers={{
+                                        loaded: asistenciaDates,
+                                      }}
+                                      modifiersClassNames={{
+                                        loaded:
+                                          "bg-primary/15 text-primary aria-selected:bg-primary aria-selected:text-primary-foreground",
+                                      }}
+                                      disabled={(date) =>
+                                        !asistenciaDateSet.has(formatISODate(date))
+                                      }
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                      Seleccioná un día marcado para ver su resumen y
+                                      abrir la jornada correspondiente.
+                                    </p>
                                   </div>
-                                </button>
-                              ))}
+                                  <div className="space-y-3">
+                                    {selectedResumen ? (
+                                      <div className="space-y-4">
+                                        <div className="rounded-lg border p-4 space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium">
+                                              Fecha
+                                            </span>
+                                            <Badge variant="outline">
+                                              {fmt(selectedResumen.fecha)}
+                                            </Badge>
+                                          </div>
+                                          <div className="text-sm">
+                                            Presentes: <b>{selectedResumen.presentes}</b>
+                                          </div>
+                                          <div className="text-sm">
+                                            Ausentes: <b>{selectedResumen.ausentes}</b>
+                                          </div>
+                                          <div className="text-sm">
+                                            Llegadas tarde: <b>{selectedResumen.tarde}</b>
+                                          </div>
+                                          <div className="text-sm">
+                                            Retiros anticipados:{" "}
+                                            <b>{selectedResumen.retiroAnticipado}</b>
+                                          </div>
+                                          <div className="text-sm">
+                                            Total registrados: <b>{selectedResumen.total}</b>
+                                          </div>
+                                          <div className="text-sm">
+                                            Asistencia promedio:{" "}
+                                            <b>{Math.round(selectedResumen.porcentaje ?? 0)}%</b>
+                                          </div>
+                                        </div>
+                                        <Button
+                                          onClick={() =>
+                                            openJornadaDetalle(selectedResumen.fecha)
+                                          }
+                                          disabled={!canEdit}
+                                          title={
+                                            canEdit
+                                              ? "Ver/editar jornada"
+                                              : "Trimestre no activo. Solo lectura"
+                                          }
+                                        >
+                                          Ver jornada
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">
+                                        Seleccioná un día con registros para ver su
+                                        resumen.
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </CardContent>
                           </Card>
 

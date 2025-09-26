@@ -22,11 +22,11 @@ import type {
   TrimestreDTO,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
+import { formatPeriodoLabel, type PeriodoLabelResolver } from "@/lib/periodos";
 import {
-  formatPeriodoLabel,
-  type PeriodoLabelResolver,
-} from "@/lib/periodos";
-import { getTrimestreEstado, resolveTrimestrePeriodoId } from "@/lib/trimestres";
+  getTrimestreEstado,
+  resolveTrimestrePeriodoId,
+} from "@/lib/trimestres";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 interface FamilyCalificacionesViewProps {
@@ -42,7 +42,10 @@ interface MateriaResumen {
   nombre: string;
 }
 
-function resolveNivel(alumno: AlumnoLiteDTO | null, seccion: SeccionDTO | null) {
+function resolveNivel(
+  alumno: AlumnoLiteDTO | null,
+  seccion: SeccionDTO | null,
+) {
   if (alumno?.nivel) return alumno.nivel;
   if (seccion?.nivel) return seccion.nivel;
   const nombre = alumno?.seccionNombre ?? seccion?.nombre ?? "";
@@ -166,14 +169,24 @@ export default function FamilyCalificacionesView({
           calificacionesRes,
           informesRes,
         ] = await Promise.all([
-          gestionAcademica.secciones.list().catch(() => ({ data: [] as SeccionDTO[] })),
+          gestionAcademica.secciones
+            .list()
+            .catch(() => ({ data: [] as SeccionDTO[] })),
           gestionAcademica.seccionMaterias
             .list()
             .catch(() => ({ data: [] as SeccionMateriaDTO[] })),
-          gestionAcademica.materias.list().catch(() => ({ data: [] as MateriaDTO[] })),
-          calendario.trimestres.list().catch(() => ({ data: [] as TrimestreDTO[] })),
-          gestionAcademica.calificaciones.list().catch(() => ({ data: [] as CalificacionDTO[] })),
-          gestionAcademica.informes.list().catch(() => ({ data: [] as InformeInicialDTO[] })),
+          gestionAcademica.materias
+            .list()
+            .catch(() => ({ data: [] as MateriaDTO[] })),
+          calendario.trimestres
+            .list()
+            .catch(() => ({ data: [] as TrimestreDTO[] })),
+          gestionAcademica.calificaciones
+            .list()
+            .catch(() => ({ data: [] as CalificacionDTO[] })),
+          gestionAcademica.informes
+            .list()
+            .catch(() => ({ data: [] as InformeInicialDTO[] })),
         ]);
 
         if (!alive) return;
@@ -274,7 +287,8 @@ export default function FamilyCalificacionesView({
 
         const informesFiltrados = (informesRes.data ?? []).filter((inf) => {
           if (!matriculaIds.includes(inf.matriculaId ?? -1)) return false;
-          if (!allowedTrimestreIds || allowedTrimestreIds.size === 0) return true;
+          if (!allowedTrimestreIds || allowedTrimestreIds.size === 0)
+            return true;
           const triId =
             inf.trimestreId ??
             (inf as any).trimestreId ??
@@ -344,7 +358,10 @@ export default function FamilyCalificacionesView({
     >
       <TabsList className="w-full justify-start overflow-x-auto">
         {alumnos.map((alumno) => (
-          <TabsTrigger key={alumno.matriculaId} value={String(alumno.matriculaId)}>
+          <TabsTrigger
+            key={alumno.matriculaId}
+            value={String(alumno.matriculaId)}
+          >
             {alumno.nombreCompleto}
           </TabsTrigger>
         ))}
@@ -352,27 +369,27 @@ export default function FamilyCalificacionesView({
 
       {alumnos.map((alumno) => {
         const seccion = alumno.seccionId
-          ? seccionById.get(alumno.seccionId) ?? null
+          ? (seccionById.get(alumno.seccionId) ?? null)
           : null;
         const nivel = resolveNivel(alumno, seccion);
         const turno = formatTurnoLabel(seccion?.turno);
         const materiasSeccion = alumno.seccionId
-          ? materiasPorSeccion.get(alumno.seccionId) ?? []
+          ? (materiasPorSeccion.get(alumno.seccionId) ?? [])
           : [];
 
         const seccionPeriodoId = seccion
-          ? (seccion as any).periodoEscolarId ??
+          ? ((seccion as any).periodoEscolarId ??
             (seccion as any).periodoId ??
             (seccion as any).periodoEscolar?.id ??
-            null
+            null)
           : null;
         const basePorSeccion =
           typeof seccionPeriodoId === "number"
-            ? trimestresPorPeriodo.get(seccionPeriodoId) ?? []
+            ? (trimestresPorPeriodo.get(seccionPeriodoId) ?? [])
             : [];
         const basePorPeriodoActivo =
           activePeriodId != null
-            ? trimestresPorPeriodo.get(activePeriodId) ?? []
+            ? (trimestresPorPeriodo.get(activePeriodId) ?? [])
             : [];
         const trimestresAlumnoBase =
           basePorSeccion.length > 0 ? basePorSeccion : basePorPeriodoActivo;
@@ -444,13 +461,12 @@ export default function FamilyCalificacionesView({
                       {turno && <Badge variant="outline">Turno {turno}</Badge>}
                       {seccion?.periodoEscolarId && (
                         <Badge variant="outline">
-                          Período
-                          {" "}
+                          Período{" "}
                           {resolvePeriodoNombre(
                             seccion.periodoEscolarId,
-                            ((seccion as any)?.periodoEscolar ?? null) as
-                              | { anio?: number }
-                              | null,
+                            ((seccion as any)?.periodoEscolar ?? null) as {
+                              anio?: number;
+                            } | null,
                           )}
                         </Badge>
                       )}
@@ -470,32 +486,41 @@ export default function FamilyCalificacionesView({
                       {materiasSeccion.length ? (
                         <div className="grid gap-4 md:grid-cols-2">
                           {materiasSeccion.map((materia) => {
-                            const registrosMateria = calificacionesAlumno.filter(
-                              (cal) =>
-                                (cal as any).seccionMateriaId ===
-                                materia.seccionMateriaId,
-                            ).length;
+                            const registrosMateria =
+                              calificacionesAlumno.filter(
+                                (cal) =>
+                                  (cal as any).seccionMateriaId ===
+                                  materia.seccionMateriaId,
+                              ).length;
 
                             return (
-                              <Card key={materia.seccionMateriaId} className="border shadow-sm">
+                              <Card
+                                key={materia.seccionMateriaId}
+                                className="border shadow-sm"
+                              >
                                 <CardHeader className="space-y-1 pb-3">
                                   <div className="flex items-start justify-between gap-3">
                                     <CardTitle className="text-base">
                                       {materia.nombre}
                                     </CardTitle>
-                                    <Badge variant="secondary" className="shrink-0">
+                                    <Badge
+                                      variant="secondary"
+                                      className="shrink-0"
+                                    >
                                       {registrosMateria} registro
                                       {registrosMateria === 1 ? "" : "s"}
                                     </Badge>
                                   </div>
                                   <CardDescription className="text-xs">
-                                    Calificaciones por trimestre cerradas por la dirección.
+                                    Calificaciones por trimestre cerradas por la
+                                    dirección.
                                   </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3 text-sm">
                                   {trimestresAlumno.map((tri) => {
                                     if (tri.id == null) return null;
-                                    const trimestreEstado = getTrimestreEstado(tri);
+                                    const trimestreEstado =
+                                      getTrimestreEstado(tri);
                                     const esTrimestreCerrado =
                                       trimestreEstado === "cerrado";
                                     const cal = esTrimestreCerrado
@@ -510,10 +535,11 @@ export default function FamilyCalificacionesView({
                                     const badgeLabel = esTrimestreCerrado
                                       ? formatNota(cal)
                                       : "Pendiente";
-                                    const observacionesTexto = esTrimestreCerrado
-                                      ? cal?.observaciones?.trim() ||
-                                        "Sin observaciones"
-                                      : "Las calificaciones estarán disponibles una vez que la dirección cierre el trimestre.";
+                                    const observacionesTexto =
+                                      esTrimestreCerrado
+                                        ? cal?.observaciones?.trim() ||
+                                          "Sin observaciones"
+                                        : "Las calificaciones estarán disponibles una vez que la dirección cierre el trimestre.";
 
                                     return (
                                       <div
@@ -524,7 +550,9 @@ export default function FamilyCalificacionesView({
                                           <span className="font-semibold">
                                             {formatTrimestre(tri)}
                                           </span>
-                                          <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+                                          <Badge variant={badgeVariant}>
+                                            {badgeLabel}
+                                          </Badge>
                                         </div>
                                         <p className="mt-2 text-xs text-muted-foreground whitespace-pre-line">
                                           {observacionesTexto}
@@ -559,7 +587,7 @@ export default function FamilyCalificacionesView({
                         return (
                           <div
                             key={`informe-${tri.id}`}
-                            className="rounded-full border p-3"
+                            className="rounded-lg border p-3"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-semibold">
@@ -587,4 +615,3 @@ export default function FamilyCalificacionesView({
     </Tabs>
   );
 }
-

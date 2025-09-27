@@ -834,7 +834,7 @@ export default function SolicitudAdmisionDetailPage() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="aspirante" className="space-y-4">
-            <TabsList className="flex flex-wrap gap-2 overflow-x-auto">
+            <TabsList className="flex flex-wrap gap-2 overflow-x-auto md:overflow-visible">
               <TabsTrigger value="aspirante">Datos del aspirante</TabsTrigger>
               <TabsTrigger value="hogar">Condiciones del hogar</TabsTrigger>
               <TabsTrigger value="salud">Información de salud</TabsTrigger>

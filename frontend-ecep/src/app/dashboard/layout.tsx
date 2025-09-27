@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { UserRole } from "@/types/api-generated";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -46,11 +46,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [configOpen, setConfigOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStateRef = useRef<{
-    startX: number;
-    startCollapsed: boolean;
-  } | null>(null);
   const { logout, user, selectedRole, setSelectedRole, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -104,7 +99,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     logout();
   };
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const handleNavigationToggle = () => {
+    if (isDesktop) {
+      setIsCollapsed((prev) => !prev);
+      return;
+    }
+
+    setSidebarOpen((prev) => !prev);
+  };
 
   // ⭐ Agrupación dinámica por `group` preservando orden
   const groupedMenu = useMemo(() => {
@@ -116,58 +118,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
     return Array.from(map.entries()); // [groupKey, items][]
   }, [visibleMenu]);
-
-  const handlePointerMove = useCallback((event: PointerEvent) => {
-    const state = dragStateRef.current;
-    if (!state) return;
-
-    const delta = event.clientX - state.startX;
-    if (!state.startCollapsed && delta <= -20) {
-      setIsCollapsed(true);
-      dragStateRef.current = {
-        startX: event.clientX,
-        startCollapsed: true,
-      };
-    } else if (state.startCollapsed && delta >= 20) {
-      setIsCollapsed(false);
-      dragStateRef.current = {
-        startX: event.clientX,
-        startCollapsed: false,
-      };
-    }
-  }, []);
-
-  const handlePointerUp = useCallback(() => {
-    dragStateRef.current = null;
-    setIsDragging(false);
-    window.removeEventListener("pointermove", handlePointerMove);
-    window.removeEventListener("pointerup", handlePointerUp);
-    document.body.style.userSelect = "";
-  }, [handlePointerMove]);
-
-  const handlePointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) return;
-      event.preventDefault();
-      dragStateRef.current = {
-        startX: event.clientX,
-        startCollapsed: isCollapsed,
-      };
-      setIsDragging(true);
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-      document.body.style.userSelect = "none";
-    },
-    [handlePointerMove, handlePointerUp, isCollapsed],
-  );
-
-  useEffect(() => {
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      document.body.style.userSelect = "";
-    };
-  }, [handlePointerMove, handlePointerUp]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
@@ -199,6 +149,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, []);
 
   const isNavCollapsed = isDesktop && isCollapsed;
+  const isNavigationOpen = isDesktop ? !isNavCollapsed : sidebarOpen;
+  const NavigationToggleIcon = isNavigationOpen ? X : Menu;
+  const navigationToggleLabel = isDesktop
+    ? isNavCollapsed
+      ? "Expandir menú"
+      : "Colapsar menú"
+    : sidebarOpen
+      ? "Cerrar menú"
+      : "Abrir menú";
 
   return (
     <div className="flex h-screen bg-muted dark:bg-background">
@@ -234,14 +193,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleSidebar}
-              className="lg:hidden"
-            >
-              <X className="h-5 w-5" />
-            </Button>
           </div>
 
           {/* MENÚ por grupos + separador entre grupos */}
@@ -396,48 +347,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* Drag handle */}
-      <div className="group hidden lg:flex relative -ml-2 w-5 items-center justify-center z-30">
-        <span
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-y-2 -right-4 w-px translate-x-1/2 rounded-full bg-border transition-opacity duration-200",
-            isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-70",
-          )}
-        />
-        <button
-          type="button"
-          onPointerDown={handlePointerDown}
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Ajustar tamaño del panel lateral"
-          className={cn(
-            "absolute top-1/2 -right-4 flex h-7 w-7 -translate-y-1/2 translate-x-1/2 cursor-ew-resize items-center justify-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            isDragging ? "bg-muted/80" : "bg-transparent",
-          )}
-        >
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none h-3.5 w-3.5 rounded-full bg-card shadow-sm ring-1 ring-border transition-transform duration-300",
-              isNavCollapsed ? "scale-110" : "scale-100",
-            )}
-          />
-        </button>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col bg-white dark:bg-background overflow-hidden">
-        {/* Topbar solo en mobile/tablet */}
-        <div className="lg:hidden sticky top-0 z-40 p-4 pb-0">
+        {/* Botón de navegación principal */}
+        <div className="sticky top-0 z-40 p-4 pb-0">
           <div className="h-12 flex items-center px-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleSidebar}
-              aria-label="Abrir menú"
+              onClick={handleNavigationToggle}
+              aria-label={navigationToggleLabel}
             >
-              <Menu className="h-5 w-5" />
+              <NavigationToggleIcon className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -454,7 +375,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={toggleSidebar}
+          onClick={handleNavigationToggle}
         />
       )}
 

@@ -45,6 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{
     startX: number;
@@ -168,6 +169,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, [handlePointerMove, handlePointerUp]);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+
+    const updateIsDesktop = (matches: boolean) => {
+      setIsDesktop(matches);
+      if (!matches) {
+        setIsCollapsed(false);
+      }
+    };
+
+    updateIsDesktop(mediaQuery.matches);
+
+    const listener = (event: MediaQueryListEvent) => {
+      updateIsDesktop(event.matches);
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", listener);
+      return () => {
+        mediaQuery.removeEventListener("change", listener);
+      };
+    }
+
+    mediaQuery.addListener(listener);
+    return () => {
+      mediaQuery.removeListener(listener);
+    };
+  }, []);
+
+  const isNavCollapsed = isDesktop && isCollapsed;
+
   return (
     <div className="flex h-screen bg-muted dark:bg-background">
       {/* Sidebar */}
@@ -175,7 +207,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-background transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          isCollapsed ? "lg:w-20" : "lg:w-64",
+          isNavCollapsed ? "lg:w-20" : "lg:w-64",
         )}
       >
         <div className="flex flex-col h-full">
@@ -183,19 +215,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div
             className={cn(
               "flex items-center h-16 m-2",
-              isCollapsed ? "justify-center" : "justify-between px-4",
+              isNavCollapsed ? "justify-center" : "justify-between px-4",
             )}
           >
-            <div className={cn("flex items-center", isCollapsed ? "justify-center" : "")}>
+            <div className={cn("flex items-center", isNavCollapsed ? "justify-center" : "")}>
               <div
                 className={cn(
                   "bg-primary text-primary-foreground rounded-full p-2",
-                  isCollapsed ? "" : "mr-3",
+                  isNavCollapsed ? "" : "mr-3",
                 )}
               >
                 <School className="h-6 w-6" />
               </div>
-              {!isCollapsed && (
+              {!isNavCollapsed && (
                 <div>
                   <h1 className="text-lg font-bold">ECEP</h1>
                   <p className="text-xs text-muted-foreground">Sistema Escolar</p>
@@ -216,7 +248,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div
             className={cn(
               "flex-1 py-4 lg:pr-0",
-              isCollapsed ? "px-2 lg:pl-2" : "px-4 lg:pl-4",
+              isNavCollapsed ? "px-2 lg:pl-2" : "px-4 lg:pl-4",
             )}
           >
             <div className="flex h-full flex-col justify-center overflow-y-auto">
@@ -232,8 +264,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             variant="ghost"
                             className={cn(
                               "w-full rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5",
-                              isCollapsed
-                                ? "justify-center px-0"
+                              isNavCollapsed
+                                ? "justify-center px-3"
                                 : "justify-start",
                               active
                                 ? "bg-muted text-foreground hover:bg-muted font-medium"
@@ -244,10 +276,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <item.icon
                               className={cn(
                                 "h-5 w-5",
-                                !isCollapsed && "mr-3",
+                                !isNavCollapsed && "mr-3",
                               )}
                             />
-                            {isCollapsed ? (
+                            {isNavCollapsed ? (
                               <span className="sr-only">{item.label}</span>
                             ) : (
                               item.label
@@ -269,7 +301,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div
             className={cn(
               "mt-auto lg:pr-0",
-              isCollapsed ? "p-2" : "p-4",
+              isNavCollapsed ? "p-2" : "p-4",
             )}
           >
             <DropdownMenu>
@@ -278,19 +310,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   id="dashboard-user-menu-trigger"
                   className={cn(
                     "w-full inline-flex items-center gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                    isCollapsed ? "justify-center" : "justify-between",
+                    isNavCollapsed ? "justify-center" : "justify-between",
                   )}
                 >
                   <div
                     className={cn(
                       "flex items-center gap-3",
-                      isCollapsed && "justify-center",
+                      isNavCollapsed && "justify-center",
                     )}
                   >
                     <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {getInitials(displayName)}
                     </div>
-                    {!isCollapsed && (
+                    {!isNavCollapsed && (
                       <div className="text-left text-sm leading-tight">
                         <p className="font-medium truncate max-w-[9rem]">
                           {displayName}
@@ -301,7 +333,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       </div>
                     )}
                   </div>
-                  {!isCollapsed && (
+                  {!isNavCollapsed && (
                     <ChevronsUpDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   )}
                 </button>
@@ -388,7 +420,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             aria-hidden
             className={cn(
               "pointer-events-none h-3.5 w-3.5 rounded-full bg-card shadow-sm ring-1 ring-border transition-transform duration-300",
-              isCollapsed ? "scale-110" : "scale-100",
+              isNavCollapsed ? "scale-110" : "scale-100",
             )}
           />
         </button>

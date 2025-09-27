@@ -29,7 +29,17 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarDays, CircleCheck, Clock, FileText, RefreshCw, StickyNote, X, ArrowLeft } from "lucide-react";
+import {
+  Calendar,
+  CalendarDays,
+  CircleCheck,
+  Clock,
+  FileText,
+  RefreshCw,
+  StickyNote,
+  X,
+  ArrowLeft,
+} from "lucide-react";
 import * as DTO from "@/types/api-generated";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
@@ -335,8 +345,22 @@ export default function SolicitudAdmisionDetailPage() {
         return;
       }
 
+      let aspirante: SolicitudAspirante | undefined =
+        data.aspirante as SolicitudAspirante | undefined;
+      const aspiranteId = data.aspiranteId ?? aspirante?.id ?? null;
+
+      if (!aspirante && aspiranteId != null) {
+        try {
+          const aspiranteRes = await admisiones.aspirantes.byId(aspiranteId);
+          aspirante = aspiranteRes.data as SolicitudAspirante | undefined;
+        } catch (aspiranteErr) {
+          // eslint-disable-next-line no-console
+          console.error("No se pudo cargar el aspirante de la solicitud", aspiranteErr);
+        }
+      }
+
       let aspirantePersona: DTO.PersonaDTO | null = null;
-      const personaId = data.aspirante?.personaId;
+      const personaId = aspirante?.personaId ?? data.aspirante?.personaId;
       if (personaId != null) {
         try {
           const personasRes = await identidad.personasCore.getManyById([personaId]);
@@ -349,6 +373,7 @@ export default function SolicitudAdmisionDetailPage() {
 
       const enriched: SolicitudAdmisionItem = {
         ...data,
+        aspirante,
         aspirantePersona,
       };
 

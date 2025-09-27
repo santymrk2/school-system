@@ -377,6 +377,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div
           className={cn(
             "h-3 w-3 rounded-full bg-border transition-transform duration-300 transform translate-x-1/2",
+
             isCollapsed ? "scale-110" : "scale-100",
           )}
         />

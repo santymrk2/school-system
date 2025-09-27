@@ -321,7 +321,7 @@ export default function FamilyMateriasView({
       onValueChange={(value) => setSelectedMatriculaId(Number(value))}
       className="space-y-6"
     >
-      <TabsList className="w-full justify-start overflow-x-auto">
+      <TabsList className="w-full justify-start overflow-x-auto md:overflow-visible">
         {alumnos.map((alumno) => (
           <TabsTrigger key={alumno.matriculaId} value={String(alumno.matriculaId)}>
             {alumno.nombreCompleto}

@@ -556,7 +556,7 @@ export default function SeccionEvaluacionesPage() {
                 onValueChange={(value) => setSelectedTrimestreId(value)}
                 className="space-y-4"
               >
-                <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
+                <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible">
                   {trimestresDelPeriodo.map((tri, index) => {
                     const label =
                       tri.orden != null

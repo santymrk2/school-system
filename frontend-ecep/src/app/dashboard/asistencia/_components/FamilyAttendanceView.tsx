@@ -584,7 +584,7 @@ export function FamilyAttendanceView() {
           }}
           className="w-full"
         >
-          <TabsList className="flex flex-wrap gap-2 overflow-x-auto">
+          <TabsList className="flex flex-wrap gap-2 overflow-x-auto md:overflow-visible">
             {alumnos.map((al) => (
               <TabsTrigger
                 key={al.matriculaId}

@@ -617,7 +617,7 @@ export default function CierrePrimarioView({
                     onValueChange={(value) => setTriId(String(value))}
                     className="w-full"
                   >
-                    <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap">
+                    <TabsList className="flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible">
                       {triOpts.map((o) => (
                         <TabsTrigger key={o.id} value={String(o.id)}>
                           {o.label}

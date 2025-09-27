@@ -126,7 +126,7 @@ export function ConfiguracionDialog({
                 onValueChange={(value) => setActiveTab(value as ConfigTabValue)}
                 className="space-y-6"
               >
-                <TabsList className="w-full justify-start overflow-x-auto">
+                <TabsList className="w-full justify-start overflow-x-auto md:overflow-visible">
                   {availableTabs.map((tab) => (
                     <TabsTrigger
                       key={tab.value}

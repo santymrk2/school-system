@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 
 @RestController
@@ -18,11 +19,34 @@ import org.springframework.web.bind.annotation.*;
 @Validated
 public class SolicitudAdmisionController {
     private final SolicitudAdmisionService service;
-    @GetMapping public List<SolicitudAdmisionDTO> list(){ return service.findAll(); }
-    @GetMapping("/{id}") public SolicitudAdmisionDTO get(@PathVariable Long id){ return service.get(id); }
-    @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid SolicitudAdmisionDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
-    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid SolicitudAdmisionDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
-    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
+    @GetMapping
+    public List<SolicitudAdmisionDTO> list(
+            @RequestParam(name = "aspiranteId", required = false) String aspiranteIdParam) {
+        Long aspiranteId = parseLongOrNull(aspiranteIdParam);
+        return service.findAll(aspiranteId);
+    }
+
+    @GetMapping("/{id}")
+    public SolicitudAdmisionDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+
+    @PostMapping
+    public ResponseEntity<Long> create(@RequestBody @Valid SolicitudAdmisionDTO dto) {
+        return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid SolicitudAdmisionDTO dto) {
+        service.update(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/{id}/rechazar")
     public ResponseEntity<Void> rechazar(@PathVariable Long id, @RequestBody @Valid SolicitudAdmisionRechazoDTO dto) {
@@ -37,8 +61,8 @@ public class SolicitudAdmisionController {
     }
 
     @PostMapping("/{id}/reprogramar")
-    public ResponseEntity<Void> solicitarReprogramacion(@PathVariable Long id,
-            @RequestBody @Valid SolicitudAdmisionReprogramacionDTO dto) {
+    public ResponseEntity<Void> solicitarReprogramacion(
+            @PathVariable Long id, @RequestBody @Valid SolicitudAdmisionReprogramacionDTO dto) {
         service.solicitarReprogramacion(id, dto);
         return ResponseEntity.noContent().build();
     }
@@ -50,7 +74,8 @@ public class SolicitudAdmisionController {
     }
 
     @PostMapping("/{id}/entrevista")
-    public ResponseEntity<Void> registrarEntrevista(@PathVariable Long id, @RequestBody @Valid SolicitudAdmisionEntrevistaDTO dto) {
+    public ResponseEntity<Void> registrarEntrevista(
+            @PathVariable Long id, @RequestBody @Valid SolicitudAdmisionEntrevistaDTO dto) {
         service.registrarEntrevista(id, dto);
         return ResponseEntity.noContent().build();
     }
@@ -63,8 +88,22 @@ public class SolicitudAdmisionController {
 
     @PostMapping("/{id}/alta")
     public ResponseEntity<SolicitudAdmisionAltaResultDTO> darDeAlta(
-            @PathVariable Long id,
-            @RequestBody @Valid SolicitudAdmisionAltaDTO dto) {
+            @PathVariable Long id, @RequestBody @Valid SolicitudAdmisionAltaDTO dto) {
         return ResponseEntity.ok(service.darDeAlta(id, dto));
+    }
+
+    private Long parseLongOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(trimmed);
+        } catch (NumberFormatException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "aspiranteId inválido", ex);
+        }
     }
 }

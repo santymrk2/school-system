@@ -44,7 +44,6 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,10 +74,16 @@ public class SolicitudAdmisionService {
     private final EmailService emailService;
 
     public List<SolicitudAdmisionDTO> findAll() {
-        return repository.findAll(Sort.by(Sort.Direction.DESC, "dateCreated"))
-                .stream()
-                .map(this::toDto)
-                .toList();
+        return findAll(null);
+    }
+
+    public List<SolicitudAdmisionDTO> findAll(Long aspiranteId) {
+        List<SolicitudAdmision> solicitudes =
+                aspiranteId == null
+                        ? repository.findAll(SolicitudAdmisionRepository.DEFAULT_SORT)
+                        : repository.findAllByAspiranteId(aspiranteId, SolicitudAdmisionRepository.DEFAULT_SORT);
+
+        return solicitudes.stream().map(this::toDto).toList();
     }
 
     public SolicitudAdmisionDTO get(Long id) {

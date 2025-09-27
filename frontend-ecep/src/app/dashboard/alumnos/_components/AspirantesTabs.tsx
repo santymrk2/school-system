@@ -889,6 +889,15 @@ function SolicitudDetailDialog({
             )}
 
             <div className="flex flex-wrap gap-2 pt-2">
+              {estado === ESTADOS.PROGRAMADA && (
+                <Button
+                  variant="secondary"
+                  onClick={() => handleResultadoEntrevista(true)}
+                  disabled={loading}
+                >
+                  Marcar entrevista realizada
+                </Button>
+              )}
               {puedeDarDeAlta && (
                 <Button onClick={handleDarDeAlta}>Dar de alta</Button>
               )}

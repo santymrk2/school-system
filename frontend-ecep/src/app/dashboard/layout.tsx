@@ -247,8 +247,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* MENÚ por grupos + separador entre grupos */}
           <div
             className={cn(
-              "flex-1 py-4 lg:pr-0",
-              isNavCollapsed ? "px-2 lg:pl-2" : "px-4 lg:pl-4",
+              "flex-1 py-4",
+              isNavCollapsed ? "px-2 lg:px-2" : "px-4 lg:px-4",
             )}
           >
             <div className="flex h-full flex-col justify-center overflow-y-auto">
@@ -300,7 +300,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* PERFIL ABAJO + dropdown hacia arriba */}
           <div
             className={cn(
-              "mt-auto lg:pr-0",
+              "mt-auto",
               isNavCollapsed ? "p-2" : "p-4",
             )}
           >

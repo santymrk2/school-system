@@ -34,6 +34,18 @@ spring:
           min-idle: 0
         shutdown-timeout: 100ms
 
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
+
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
@@ -51,6 +63,12 @@ springdoc:
 jwt:
   secret: secretClaveMuySegura123456789012345678901234567890
   expiration: 86400000
+
+app:
+  notifications:
+    mail:
+      enabled: ${APP_NOTIFICATIONS_MAIL_ENABLED:true}
+      from: ${APP_NOTIFICATIONS_MAIL_FROM:notificaciones@ecep.edu.ar}
 
 logging:
   level:

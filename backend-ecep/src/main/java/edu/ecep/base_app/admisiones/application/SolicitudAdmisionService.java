@@ -26,12 +26,14 @@ import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepository;
 import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
 import edu.ecep.base_app.shared.exception.NotFoundException;
+import edu.ecep.base_app.shared.notification.EmailService;
 import edu.ecep.base_app.vidaescolar.application.MatriculaSeccionHistorialService;
 import edu.ecep.base_app.vidaescolar.application.MatriculaService;
 import edu.ecep.base_app.vidaescolar.domain.Matricula;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaRepository;
 import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaCreateDTO;
 import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaSeccionHistorialCreateDTO;
+import jakarta.mail.MessagingException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -43,6 +45,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
+import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,6 +72,7 @@ public class SolicitudAdmisionService {
     private final MatriculaSeccionHistorialService matriculaSeccionHistorialService;
     private final PeriodoEscolarRepository periodoEscolarRepository;
     private final SeccionRepository seccionRepository;
+    private final EmailService emailService;
 
     public List<SolicitudAdmisionDTO> findAll() {
         return repository.findAll(Sort.by(Sort.Direction.DESC, "dateCreated"))
@@ -431,7 +435,16 @@ public class SolicitudAdmisionService {
             log.info("[ADMISION][EMAIL-MISSING] subject={} body={} ", subject, body);
             return;
         }
-        log.info("[ADMISION][EMAIL] to={} subject={} body={} ", correo.get(), subject, body);
+        try {
+            emailService.sendPlainText(correo.get(), subject, body);
+            if (!Boolean.TRUE.equals(entity.getEmailConfirmacionEnviado())) {
+                entity.setEmailConfirmacionEnviado(true);
+                repository.save(entity);
+            }
+        } catch (MessagingException | MailException ex) {
+            log.error("[ADMISION][EMAIL-ERROR] to={} subject={} body={} error={}",
+                    correo.get(), subject, body, ex.getMessage(), ex);
+        }
     }
 
     private Optional<String> obtenerCorreoContacto(SolicitudAdmision entity) {

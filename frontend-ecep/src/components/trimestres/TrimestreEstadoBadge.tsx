@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 
 const CIRCLE_STYLES: Record<TrimestreEstado, string> = {
   activo:
-    "bg-secondary/20 text-secondary dark:bg-secondary/25 dark:text-secondary-foreground",
-  inactivo: "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground",
-  cerrado: "bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-300",
+    "bg-secondary/20 text-secondary dark:bg-secondary/25 dark:text-secondary",
+  inactivo:
+    "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground",
+  cerrado: "bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400",
 };
 
 export interface TrimestreEstadoBadgeProps {

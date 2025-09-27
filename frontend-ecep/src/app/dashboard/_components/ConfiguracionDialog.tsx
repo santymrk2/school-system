@@ -110,8 +110,8 @@ export function ConfiguracionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl overflow-hidden p-0 sm:max-h-[85vh]">
-        <div className="flex h-full max-h-[85vh] flex-col">
+      <DialogContent className="flex h-[80vh] w-full max-w-4xl overflow-hidden p-0">
+        <div className="flex h-full flex-col">
           <DialogHeader className="px-6 py-4">
             <DialogTitle>Configuración</DialogTitle>
             <DialogDescription>

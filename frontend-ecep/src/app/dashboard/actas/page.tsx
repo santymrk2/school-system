@@ -152,30 +152,10 @@ export default function AccidentesIndexPage() {
   const [firmandoId, setFirmandoId] = useState<number | null>(null);
   const [updatingFirmanteId, setUpdatingFirmanteId] = useState<number | null>(null);
 
-  if (isFamilyScope) {
-    return (
-      
-        <div className="p-4 md:p-8 space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-bold tracking-tight">
-              Actas de Accidentes
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Visualizá los registros vinculados a tus hijos.
-            </p>
-          </div>
-          <FamilyActasView
-            alumnos={hijos}
-            initialLoading={scopeLoading}
-            initialError={scopeError ? String(scopeError) : null}
-          />
-        </div>
-      
-    );
-  }
-
   // carga inicial: actas + secciones (para mapear alumno→sección vigente hoy)
   useEffect(() => {
+    if (isFamilyScope) return;
+
     let alive = true;
     (async () => {
       try {
@@ -201,9 +181,11 @@ export default function AccidentesIndexPage() {
     return () => {
       alive = false;
     };
-  }, [periodoEscolarId]);
+  }, [isFamilyScope, periodoEscolarId]);
 
   useEffect(() => {
+    if (isFamilyScope) return;
+
     let alive = true;
     (async () => {
       if (!personal.length) {
@@ -270,10 +252,12 @@ export default function AccidentesIndexPage() {
     return () => {
       alive = false;
     };
-  }, [personal]);
+  }, [isFamilyScope, personal]);
 
   // alumnoId -> nombre "Apellido, Nombre" (vía Alumno → Persona)
   useEffect(() => {
+    if (isFamilyScope) return;
+
     let alive = true;
     (async () => {
       const ids = Array.from(
@@ -306,10 +290,12 @@ export default function AccidentesIndexPage() {
     return () => {
       alive = false;
     };
-  }, [actas]);
+  }, [actas, isFamilyScope]);
 
   // alumnoId -> sección vigente HOY usando seccionesAlumnos.bySeccionId(seccionId, hoyISO)
   useEffect(() => {
+    if (isFamilyScope) return;
+
     let alive = true;
     (async () => {
       try {
@@ -353,7 +339,7 @@ export default function AccidentesIndexPage() {
     return () => {
       alive = false;
     };
-  }, [secciones, hoyISO]);
+  }, [hoyISO, isFamilyScope, secciones]);
 
   const personalInfoById = useMemo(() => {
     const map = new Map<number, { label: string; dni?: string | null }>();
@@ -719,9 +705,27 @@ export default function AccidentesIndexPage() {
     URL.revokeObjectURL(url);
   };
 
+  if (isFamilyScope) {
+    return (
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Actas de Accidentes</h2>
+          <p className="text-sm text-muted-foreground">
+            Visualizá los registros vinculados a tus hijos.
+          </p>
+        </div>
+        <FamilyActasView
+          alumnos={hijos}
+          initialLoading={scopeLoading}
+          initialError={scopeError ? String(scopeError) : null}
+        />
+      </div>
+    );
+  }
+
   if (noAccess) {
     return (
-      
+
         <div className="p-6 text-sm">
           403 — No tenés acceso a Actas de Accidentes.
         </div>

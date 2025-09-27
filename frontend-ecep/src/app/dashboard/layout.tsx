@@ -173,26 +173,41 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* LOGO ARRIBA */}
           <div
             className={cn(
-              "flex items-center h-16 m-2",
-              isNavCollapsed ? "justify-center" : "justify-between px-4",
+              "flex items-center h-16 m-2 px-2",
+              isDesktop ? "justify-between" : "justify-between px-4",
             )}
           >
-            <div className={cn("flex items-center", isNavCollapsed ? "justify-center" : "")}>
+            <div
+              className={cn(
+                "flex items-center",
+                isDesktop && isNavCollapsed ? "justify-center w-full" : "",
+              )}
+            >
               <div
                 className={cn(
                   "bg-primary text-primary-foreground rounded-full p-2",
-                  isNavCollapsed ? "" : "mr-3",
+                  !isDesktop && !isNavCollapsed ? "mr-3" : "",
                 )}
               >
                 <School className="h-6 w-6" />
               </div>
-              {!isNavCollapsed && (
+              {!isDesktop && !isNavCollapsed && (
                 <div>
                   <h1 className="text-lg font-bold">ECEP</h1>
                   <p className="text-xs text-muted-foreground">Sistema Escolar</p>
                 </div>
               )}
             </div>
+            {isDesktop && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNavigationToggle}
+                aria-label={navigationToggleLabel}
+              >
+                <NavigationToggleIcon className="h-5 w-5" />
+              </Button>
+            )}
           </div>
 
           {/* MENÚ por grupos + separador entre grupos */}
@@ -350,7 +365,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col bg-white dark:bg-background overflow-hidden">
         {/* Botón de navegación principal */}
-        <div className="sticky top-0 z-40 p-4 pb-0">
+        <div className="sticky top-0 z-40 p-4 pb-0 pl-0 lg:hidden">
           <div className="h-12 flex items-center px-2">
             <Button
               variant="ghost"
@@ -362,7 +377,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Button>
           </div>
         </div>
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 pl-0">
           <div className="rounded-xl bg-card text-card-foreground ring-1 ring-border overflow-hidden">
             <main className="scrollarea  h-[calc(100vh-6rem)] lg:h-[calc(107vh-6rem)] overflow-y-auto">
               {children}

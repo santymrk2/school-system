@@ -370,21 +370,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         role="separator"
         aria-orientation="vertical"
         className={cn(
-          "group hidden lg:flex relative -ml-2 w-5 cursor-ew-resize items-center justify-center transition-colors duration-300",
+          "group hidden lg:flex relative -ml-2 w-5 cursor-ew-resize items-center justify-center transition-colors duration-300 z-30",
           isDragging ? "bg-muted/80" : "bg-transparent",
         )}
       >
         <span
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2 rounded-full bg-border transition-opacity duration-200",
+            "pointer-events-none absolute inset-y-2 -right-4 w-px translate-x-1/2 rounded-full bg-border transition-opacity duration-200",
             isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-70",
           )}
         />
         <span
           aria-hidden
           className={cn(
-            "pointer-events-none h-3.5 w-3.5 rounded-full border border-border bg-background shadow-sm transition-transform duration-300",
+            "pointer-events-none absolute top-1/2 -right-4 h-3.5 w-3.5 -translate-y-1/2 translate-x-1/2 rounded-full bg-card shadow-sm ring-1 ring-border transition-transform duration-300",
             isCollapsed ? "scale-110" : "scale-100",
           )}
         />

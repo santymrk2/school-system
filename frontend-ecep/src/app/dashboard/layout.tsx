@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-background transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-background transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           isCollapsed ? "lg:w-20" : "lg:w-64",
         )}
@@ -370,11 +370,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         role="separator"
         aria-orientation="vertical"
         className={cn(
-          "hidden lg:flex w-2 cursor-ew-resize items-center justify-center",
+          "hidden lg:flex relative w-3 cursor-ew-resize items-center justify-center transition-colors duration-300 -ml-px",
           isDragging ? "bg-muted" : "bg-transparent",
         )}
       >
-        <div className="h-2 w-2 rounded-full bg-border" />
+        <div
+          className={cn(
+            "h-3 w-3 rounded-full bg-border transition-transform duration-300",
+            isCollapsed ? "scale-110" : "scale-100",
+          )}
+        />
       </div>
 
       {/* Main Content */}

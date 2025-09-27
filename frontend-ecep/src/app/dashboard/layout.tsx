@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import type React from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { UserRole } from "@/types/api-generated";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -43,6 +44,12 @@ const getInitials = (name: string | undefined | null) => {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef<{
+    startX: number;
+    startCollapsed: boolean;
+  } | null>(null);
   const { logout, user, selectedRole, setSelectedRole, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -109,23 +116,91 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return Array.from(map.entries()); // [groupKey, items][]
   }, [visibleMenu]);
 
+  const handlePointerMove = useCallback((event: PointerEvent) => {
+    const state = dragStateRef.current;
+    if (!state) return;
+
+    const delta = event.clientX - state.startX;
+    if (!state.startCollapsed && delta <= -20) {
+      setIsCollapsed(true);
+      dragStateRef.current = {
+        startX: event.clientX,
+        startCollapsed: true,
+      };
+    } else if (state.startCollapsed && delta >= 20) {
+      setIsCollapsed(false);
+      dragStateRef.current = {
+        startX: event.clientX,
+        startCollapsed: false,
+      };
+    }
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    dragStateRef.current = null;
+    setIsDragging(false);
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+    document.body.style.userSelect = "";
+  }, [handlePointerMove]);
+
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      dragStateRef.current = {
+        startX: event.clientX,
+        startCollapsed: isCollapsed,
+      };
+      setIsDragging(true);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      document.body.style.userSelect = "none";
+    },
+    [handlePointerMove, handlePointerUp, isCollapsed],
+  );
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      document.body.style.userSelect = "";
+    };
+  }, [handlePointerMove, handlePointerUp]);
+
   return (
     <div className="flex h-screen bg-muted dark:bg-background">
       {/* Sidebar */}
       <div
-        className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-64 bg-background transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-background transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          isCollapsed ? "lg:w-20" : "lg:w-64",
+        )}
       >
         <div className="flex flex-col h-full">
           {/* LOGO ARRIBA */}
-          <div className="flex items-center justify-between h-16 px-4 m-2 ">
-            <div className="flex items-center">
-              <div className="bg-primary text-primary-foreground rounded-full p-2 mr-3">
+          <div
+            className={cn(
+              "flex items-center h-16 m-2",
+              isCollapsed ? "justify-center" : "justify-between px-4",
+            )}
+          >
+            <div className={cn("flex items-center", isCollapsed ? "justify-center" : "")}>
+              <div
+                className={cn(
+                  "bg-primary text-primary-foreground rounded-full p-2",
+                  isCollapsed ? "" : "mr-3",
+                )}
+              >
                 <School className="h-6 w-6" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold">ECEP</h1>
-                <p className="text-xs text-muted-foreground">Sistema Escolar</p>
-              </div>
+              {!isCollapsed && (
+                <div>
+                  <h1 className="text-lg font-bold">ECEP</h1>
+                  <p className="text-xs text-muted-foreground">Sistema Escolar</p>
+                </div>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -138,7 +213,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* MENÚ por grupos + separador entre grupos */}
-          <div className="flex-1 px-4 lg:pr-0 lg:pl-4 py-4">
+          <div
+            className={cn(
+              "flex-1 py-4 lg:pr-0",
+              isCollapsed ? "px-2 lg:pl-2" : "px-4 lg:pl-4",
+            )}
+          >
             <div className="flex h-full flex-col justify-center overflow-y-auto">
               <nav className="space-y-1 py-2">
                 {groupedMenu.map(([groupKey, items], groupIndex) => (
@@ -151,15 +231,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             aria-current={active ? "page" : undefined}
                             variant="ghost"
                             className={cn(
-                              "w-full justify-start rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5",
+                              "w-full rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 my-0.5",
+                              isCollapsed
+                                ? "justify-center px-0"
+                                : "justify-start",
                               active
                                 ? "bg-muted text-foreground hover:bg-muted font-medium"
                                 : "hover:bg-muted hover:text-foreground",
                             )}
                             onClick={() => setSidebarOpen(false)}
                           >
-                            <item.icon className="h-5 w-5 mr-3" />
-                            {item.label}
+                            <item.icon
+                              className={cn(
+                                "h-5 w-5",
+                                !isCollapsed && "mr-3",
+                              )}
+                            />
+                            {isCollapsed ? (
+                              <span className="sr-only">{item.label}</span>
+                            ) : (
+                              item.label
+                            )}
                           </Button>
                         </Link>
                       );
@@ -174,27 +266,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* PERFIL ABAJO + dropdown hacia arriba */}
-          <div className="p-4 lg:pr-0 mt-auto">
+          <div
+            className={cn(
+              "mt-auto lg:pr-0",
+              isCollapsed ? "p-2" : "p-4",
+            )}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   id="dashboard-user-menu-trigger"
-                  className="w-full inline-flex items-center justify-between gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className={cn(
+                    "w-full inline-flex items-center gap-3 rounded-md p-2 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                    isCollapsed ? "justify-center" : "justify-between",
+                  )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "flex items-center gap-3",
+                      isCollapsed && "justify-center",
+                    )}
+                  >
                     <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {getInitials(displayName)}
                     </div>
-                    <div className="text-left text-sm leading-tight">
-                      <p className="font-medium truncate max-w-[9rem]">
-                        {displayName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {currentRole ? displayRole(currentRole) : "Sin rol"}
-                      </p>
-                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left text-sm leading-tight">
+                        <p className="font-medium truncate max-w-[9rem]">
+                          {displayName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {currentRole ? displayRole(currentRole) : "Sin rol"}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <ChevronsUpDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  {!isCollapsed && (
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  )}
                 </button>
               </DropdownMenuTrigger>
 
@@ -253,6 +362,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </DropdownMenu>
           </div>
         </div>
+      </div>
+
+      {/* Drag handle */}
+      <div
+        onPointerDown={handlePointerDown}
+        role="separator"
+        aria-orientation="vertical"
+        className={cn(
+          "hidden lg:flex w-2 cursor-ew-resize items-center justify-center",
+          isDragging ? "bg-muted" : "bg-transparent",
+        )}
+      >
+        <div className="h-2 w-2 rounded-full bg-border" />
       </div>
 
       {/* Main Content */}

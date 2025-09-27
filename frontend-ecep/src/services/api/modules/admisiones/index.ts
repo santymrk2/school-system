@@ -22,10 +22,13 @@ const aspiranteFamiliares = {
   delete: (id: number) => http.delete<void>(`/api/aspirante-familiar/${id}`),
 };
 
+const getSolicitudAdmisionById = (id: number) =>
+  http.get<DTO.SolicitudAdmisionDTO>(`/api/solicitudes-admision/${id}`);
+
 const solicitudesAdmision = {
   list: () => http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision"),
-  byId: (id: number) =>
-    http.get<DTO.SolicitudAdmisionDTO>("/api/solicitudes-admision/" + id),
+  getById: getSolicitudAdmisionById,
+  byId: getSolicitudAdmisionById,
   create: (body: Omit<DTO.SolicitudAdmisionDTO, "id">) =>
     http.post<number>("/api/solicitudes-admision", body),
   update: (id: number, body: Partial<DTO.SolicitudAdmisionDTO>) =>

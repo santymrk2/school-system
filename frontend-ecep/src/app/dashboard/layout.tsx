@@ -384,7 +384,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <span
           aria-hidden
           className={cn(
-            "pointer-events-none h-3.5 w-3.5 rounded-full border border-border bg-background shadow-sm transition-transform duration-300",
+            "pointer-events-none h-3.5 w-3.5 rounded-full bg-card shadow-sm ring-1 ring-border transition-transform duration-300",
             isCollapsed ? "scale-110" : "scale-100",
           )}
         />

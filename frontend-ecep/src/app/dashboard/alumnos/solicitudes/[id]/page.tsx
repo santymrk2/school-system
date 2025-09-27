@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
@@ -29,10 +29,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, CalendarDays, CircleCheck, Clock, FileText, Mail, Phone, RefreshCw, StickyNote, X, ArrowLeft } from "lucide-react";
+import { CalendarDays, CircleCheck, Clock, FileText, RefreshCw, StickyNote, X, ArrowLeft } from "lucide-react";
 import * as DTO from "@/types/api-generated";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -56,6 +57,21 @@ const formatCurso = (curso?: DTO.Curso | string | null) => {
     SEXTO: "6° Grado",
   };
   return base[String(curso)] ?? String(curso);
+};
+
+const formatTurno = (turno?: DTO.Turno | string | null) => {
+  if (!turno && turno !== 0) return "—";
+  const base: Record<string, string> = {
+    MANANA: "Mañana",
+    TARDE: "Tarde",
+  };
+  return base[String(turno)] ?? String(turno);
+};
+
+const formatBoolean = (value?: boolean | null) => {
+  if (value === true) return "Sí";
+  if (value === false) return "No";
+  return "—";
 };
 
 const formatDate = (value?: string | null) => {
@@ -102,12 +118,6 @@ const estadoBadge = (estado?: string | null) => {
   return <Badge variant="secondary">{estado?.trim() || "—"}</Badge>;
 };
 
-const availabilityLabel = (solicitud: DTO.SolicitudAdmisionDTO) => {
-  if (solicitud.disponibilidadCurso) return solicitud.disponibilidadCurso;
-  if (solicitud.cupoDisponible == null) return "Pendiente";
-  return solicitud.cupoDisponible ? "Disponible" : "Sin cupo";
-};
-
 type SolicitudAspirante = DTO.AspiranteDTO & {
   nombre?: string | null;
   apellido?: string | null;
@@ -119,6 +129,46 @@ type SolicitudAspirante = DTO.AspiranteDTO & {
 type SolicitudAdmisionItem = DTO.SolicitudAdmisionDTO & {
   aspirante?: SolicitudAspirante;
   aspirantePersona?: DTO.PersonaDTO | null;
+};
+
+type SolicitudFamiliarItem = DTO.AspiranteFamiliarDTO & {
+  persona?: DTO.PersonaDTO | null;
+};
+
+const formatParentesco = (value?: string | null) => {
+  if (!value) return "—";
+  const normalized = String(value).trim().toUpperCase();
+  const map: Record<string, string> = {
+    PADRE: "Padre",
+    MADRE: "Madre",
+    TUTOR: "Tutor/a",
+    OTRO: "Otro/a",
+  };
+  return map[normalized] ?? value;
+};
+
+const resolveFamiliarNombre = (familiar: SolicitudFamiliarItem) => {
+  const persona = familiar.persona;
+  const nombre = persona?.nombre ?? "";
+  const apellido = persona?.apellido ?? "";
+  const fullName = `${nombre} ${apellido}`.trim();
+  if (fullName) return fullName;
+  if (persona?.dni) return `Familiar DNI ${persona.dni}`;
+  return familiar.id != null ? `Familiar #${familiar.id}` : "Familiar";
+};
+
+const DetailItem = ({ label, value }: { label: string; value: ReactNode }) => {
+  const isEmpty =
+    value == null || (typeof value === "string" && value.trim().length === 0);
+  const content = isEmpty ? "—" : value;
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <div className="text-sm text-foreground whitespace-pre-line">{content}</div>
+    </div>
+  );
 };
 
 const resolveAspiranteNombre = (solicitud: SolicitudAdmisionItem) => {
@@ -204,6 +254,67 @@ export default function SolicitudAdmisionDetailPage() {
   const [decisionOpen, setDecisionOpen] = useState<DecisionKind>(null);
   const [altaOpen, setAltaOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [familiares, setFamiliares] = useState<SolicitudFamiliarItem[]>([]);
+  const [familiaresLoading, setFamiliaresLoading] = useState(false);
+  const [familiaresError, setFamiliaresError] = useState<string | null>(null);
+
+  const loadFamiliares = useCallback(async (aspiranteId: number) => {
+    setFamiliaresLoading(true);
+    setFamiliaresError(null);
+    try {
+      const res = await admisiones.aspiranteFamiliares.list();
+      const allFamiliares = res.data ?? [];
+      const relacionados = allFamiliares.filter(
+        (item) => item.aspiranteId === aspiranteId,
+      );
+      if (!relacionados.length) {
+        setFamiliares([]);
+        return;
+      }
+
+      const personaIds = relacionados
+        .map((item) => item.familiarId)
+        .filter((id): id is number => typeof id === "number");
+
+      let personasMap: Record<number, DTO.PersonaDTO> = {};
+      if (personaIds.length) {
+        try {
+          const personasRes = await identidad.personasCore.getManyById(personaIds);
+          const personas = personasRes.data ?? [];
+          personasMap = personas.reduce<Record<number, DTO.PersonaDTO>>(
+            (acc, persona) => {
+              if (persona?.id != null) {
+                acc[persona.id] = persona;
+              }
+              return acc;
+            },
+            {},
+          );
+        } catch (personaErr) {
+          // eslint-disable-next-line no-console
+          console.error(
+            "No se pudieron cargar las personas vinculadas al grupo familiar",
+            personaErr,
+          );
+        }
+      }
+
+      const enriched = relacionados.map<SolicitudFamiliarItem>((item) => ({
+        ...item,
+        persona: item.familiarId ? personasMap[item.familiarId] ?? null : null,
+      }));
+
+      setFamiliares(enriched);
+      setFamiliaresError(null);
+    } catch (err: any) {
+      setFamiliares([]);
+      setFamiliaresError(
+        err?.message ?? "No se pudieron cargar los datos de la familia.",
+      );
+    } finally {
+      setFamiliaresLoading(false);
+    }
+  }, []);
 
   const fetchSolicitud = useCallback(async () => {
     if (!Number.isFinite(solicitudId)) {
@@ -254,6 +365,17 @@ export default function SolicitudAdmisionDetailPage() {
   useEffect(() => {
     fetchSolicitud();
   }, [fetchSolicitud]);
+
+  useEffect(() => {
+    const aspiranteId = solicitud?.aspiranteId;
+    if (!aspiranteId) {
+      setFamiliares([]);
+      setFamiliaresError(null);
+      setFamiliaresLoading(false);
+      return;
+    }
+    loadFamiliares(aspiranteId);
+  }, [solicitud?.aspiranteId, loadFamiliares]);
 
   useEffect(() => {
     if (!solicitud) return;
@@ -679,43 +801,204 @@ export default function SolicitudAdmisionDetailPage() {
       )}
 
       <Card>
-        <CardContent className="space-y-6 pt-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <h2 className="font-semibold">Datos del aspirante</h2>
-              <p className="text-sm text-muted-foreground">
-                Curso solicitado: {formatCurso(solicitud.aspirante?.cursoSolicitado)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Disponibilidad: {availabilityLabel(solicitud)}
-              </p>
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" /> Fecha de solicitud: {formatDate(
-                  solicitud.fechaSolicitud,
-                )}
-              </p>
+        <CardHeader>
+          <CardTitle>Información del formulario</CardTitle>
+          <CardDescription>
+            Revisá los datos que la familia completó durante la postulación.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="aspirante" className="space-y-4">
+            <TabsList className="flex flex-wrap gap-2 overflow-x-auto">
+              <TabsTrigger value="aspirante">Datos del aspirante</TabsTrigger>
+              <TabsTrigger value="hogar">Condiciones del hogar</TabsTrigger>
+              <TabsTrigger value="salud">Información de salud</TabsTrigger>
+              <TabsTrigger value="familia">Grupo familiar</TabsTrigger>
+            </TabsList>
+
+            <TabsContent
+              value="aspirante"
+              className="space-y-4 focus-visible:outline-none"
+            >
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <DetailItem label="Nombre completo" value={aspiranteNombre} />
+                  <DetailItem label="DNI" value={aspiranteDni ?? "—"} />
+                  <DetailItem
+                    label="Fecha de nacimiento"
+                    value={formatDate(solicitud.aspirantePersona?.fechaNacimiento)}
+                  />
+                  <DetailItem
+                    label="Curso solicitado"
+                    value={formatCurso(solicitud.aspirante?.cursoSolicitado)}
+                  />
+                  <DetailItem
+                    label="Turno preferido"
+                    value={formatTurno(solicitud.aspirante?.turnoPreferido)}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <DetailItem
+                    label="Escuela actual"
+                    value={solicitud.aspirante?.escuelaActual}
+                  />
+                  <DetailItem
+                    label="Domicilio"
+                    value={solicitud.aspirantePersona?.domicilio}
+                  />
+                  <DetailItem
+                    label="Nacionalidad"
+                    value={solicitud.aspirantePersona?.nacionalidad}
+                  />
+                  <DetailItem label="Correo de contacto" value={aspiranteEmail} />
+                  <DetailItem label="Teléfono" value={aspiranteTelefono} />
+                </div>
+              </div>
               {solicitud.notasDireccion && (
-                <div className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
-                  {solicitud.notasDireccion}
+                <div className="rounded-md border bg-muted/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Notas de dirección
+                  </p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {solicitud.notasDireccion}
+                  </p>
                 </div>
               )}
-            </div>
-            <div className="space-y-2">
-              <h2 className="font-semibold">Contacto</h2>
-              <p className="text-sm flex items-center gap-2 text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                {aspiranteEmail}
-              </p>
-              <p className="text-sm flex items-center gap-2 text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                {aspiranteTelefono}
-              </p>
-              {aspiranteDni && (
-                <p className="text-sm text-muted-foreground">DNI: {aspiranteDni}</p>
-              )}
-            </div>
-          </div>
+            </TabsContent>
 
+            <TabsContent
+              value="hogar"
+              className="space-y-4 focus-visible:outline-none"
+            >
+              <DetailItem
+                label="Tipo de conectividad a Internet"
+                value={solicitud.aspirante?.conectividadInternet}
+              />
+              <DetailItem
+                label="Dispositivos disponibles para la escolaridad"
+                value={solicitud.aspirante?.dispositivosDisponibles}
+              />
+              <DetailItem
+                label="Idiomas hablados en el hogar"
+                value={solicitud.aspirante?.idiomasHabladosHogar}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="salud"
+              className="space-y-4 focus-visible:outline-none"
+            >
+              <DetailItem
+                label="Enfermedades o alergias"
+                value={solicitud.aspirante?.enfermedadesAlergias}
+              />
+              <DetailItem
+                label="Medicación habitual"
+                value={solicitud.aspirante?.medicacionHabitual}
+              />
+              <DetailItem
+                label="Limitaciones físicas o neurológicas"
+                value={solicitud.aspirante?.limitacionesFisicas}
+              />
+              <DetailItem
+                label="Tratamientos terapéuticos en curso"
+                value={solicitud.aspirante?.tratamientosTerapeuticos}
+              />
+              <DetailItem
+                label="Uso de ayudas de movilidad"
+                value={formatBoolean(solicitud.aspirante?.usoAyudasMovilidad)}
+              />
+              <DetailItem
+                label="Cobertura médica"
+                value={solicitud.aspirante?.coberturaMedica}
+              />
+              <DetailItem
+                label="Observaciones adicionales"
+                value={solicitud.aspirante?.observacionesSalud}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="familia"
+              className="space-y-4 focus-visible:outline-none"
+            >
+              {familiaresLoading ? (
+                <LoadingState
+                  label="Cargando datos de la familia…"
+                  className="h-32"
+                  iconClassName="h-5 w-5"
+                />
+              ) : familiaresError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Error al cargar la familia</AlertTitle>
+                  <AlertDescription>{familiaresError}</AlertDescription>
+                </Alert>
+              ) : familiares.length ? (
+                <div className="space-y-4">
+                  {familiares.map((familiar) => (
+                    <div
+                      key={familiar.id ?? `${familiar.aspiranteId}-${familiar.familiarId}`}
+                      className="space-y-4 rounded-lg border p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {resolveFamiliarNombre(familiar)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatParentesco(familiar.parentesco)}
+                          </p>
+                        </div>
+                        {familiar.convive != null && (
+                          <Badge
+                            variant={familiar.convive ? "default" : "outline"}
+                            className="text-xs"
+                          >
+                            {familiar.convive ? "Convive" : "No convive"}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <DetailItem
+                          label="DNI"
+                          value={familiar.persona?.dni}
+                        />
+                        <DetailItem
+                          label="Fecha de nacimiento"
+                          value={formatDate(familiar.persona?.fechaNacimiento)}
+                        />
+                        <DetailItem
+                          label="Teléfono"
+                          value={familiar.persona?.telefono}
+                        />
+                        <DetailItem
+                          label="Celular"
+                          value={familiar.persona?.celular}
+                        />
+                        <DetailItem
+                          label="Correo electrónico"
+                          value={familiar.persona?.email}
+                        />
+                        <DetailItem
+                          label="Domicilio"
+                          value={familiar.persona?.domicilio}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No hay familiares registrados para esta solicitud.
+                </p>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <h2 className="font-semibold">Entrevista</h2>

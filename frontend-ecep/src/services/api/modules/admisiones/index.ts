@@ -25,8 +25,14 @@ const aspiranteFamiliares = {
 const getSolicitudAdmisionById = (id: number) =>
   http.get<DTO.SolicitudAdmisionDTO>(`/api/solicitudes-admision/${id}`);
 
+const fetchSolicitudesAdmision = (params?: { aspiranteId?: number | null }) =>
+  http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision", {
+    params:
+      params?.aspiranteId != null ? { aspiranteId: params.aspiranteId } : undefined,
+  });
+
 const solicitudesAdmision = {
-  list: () => http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision"),
+  list: fetchSolicitudesAdmision,
   getById: getSolicitudAdmisionById,
   byId: getSolicitudAdmisionById,
   create: (body: Omit<DTO.SolicitudAdmisionDTO, "id">) =>
@@ -35,9 +41,7 @@ const solicitudesAdmision = {
     http.put<void>("/api/solicitudes-admision/" + id, body),
   delete: (id: number) => http.delete<void>("/api/solicitudes-admision/" + id),
   byAspiranteId: (aspiranteId: number) =>
-    http.get<DTO.SolicitudAdmisionDTO[]>("/api/solicitudes-admision", {
-      params: { aspiranteId },
-    }),
+    fetchSolicitudesAdmision({ aspiranteId }),
   rechazar: (id: number, body: DTO.SolicitudAdmisionRechazoDTO) =>
     http.post<void>(`/api/solicitudes-admision/${id}/rechazar`, body),
   programar: (id: number, body: DTO.SolicitudAdmisionProgramarDTO) =>

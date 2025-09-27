@@ -376,9 +376,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <div
           className={cn(
-            "h-3 w-3 rounded-full bg-border transition-transform duration-300 transform translate-x-[calc(50%+1px)]",
+            "pointer-events-none absolute left-full top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-border transition-transform duration-300",
             isCollapsed ? "scale-110" : "scale-100",
           )}
+          style={{
+            "--tw-translate-x": "calc(1rem - 50%)",
+          } as React.CSSProperties}
         />
       </div>
 

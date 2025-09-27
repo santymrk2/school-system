@@ -370,13 +370,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         role="separator"
         aria-orientation="vertical"
         className={cn(
-          "hidden lg:flex relative w-3 cursor-ew-resize items-center justify-center transition-colors duration-300 -ml-px",
+          "hidden lg:flex relative w-6 -ml-3 pr-2 cursor-ew-resize items-center justify-end transition-colors duration-300",
           isDragging ? "bg-muted" : "bg-transparent",
         )}
       >
         <div
           className={cn(
-            "h-3 w-3 rounded-full bg-border transition-transform duration-300",
+            "h-3 w-3 rounded-full bg-border transition-transform duration-300 transform translate-x-1/2",
+
             isCollapsed ? "scale-110" : "scale-100",
           )}
         />

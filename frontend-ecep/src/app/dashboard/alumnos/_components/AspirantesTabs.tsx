@@ -433,8 +433,6 @@ export default function AspirantesTab({ searchTerm }: Props) {
   );
 }
 
-}
-
 type AltaModalProps = {
   open: boolean;
   solicitud: SolicitudAdmisionItem;

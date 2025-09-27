@@ -175,30 +175,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             className={cn(
               "flex items-center h-16 m-2 px-2",
               isDesktop ? "justify-between" : "justify-between px-4",
+              isDesktop && isNavCollapsed ? "justify-center" : "",
             )}
           >
-            <div
-              className={cn(
-                "flex items-center",
-                isDesktop && isNavCollapsed ? "justify-center w-full" : "",
-              )}
-            >
-              <div
-                className={cn(
-                  "bg-primary text-primary-foreground rounded-full p-2",
-                  !isDesktop && !isNavCollapsed ? "mr-3" : "",
-                )}
-              >
-                <School className="h-6 w-6" />
-              </div>
-              {!isDesktop && !isNavCollapsed && (
-                <div>
-                  <h1 className="text-lg font-bold">ECEP</h1>
-                  <p className="text-xs text-muted-foreground">Sistema Escolar</p>
-                </div>
-              )}
-            </div>
-            {isDesktop && (
+            {isDesktop && isNavCollapsed ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -207,6 +187,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 <NavigationToggleIcon className="h-5 w-5" />
               </Button>
+            ) : (
+              <>
+                <div className="flex items-center">
+                  <div
+                    className={cn(
+                      "bg-primary text-primary-foreground rounded-full p-2",
+                      !isDesktop ? "mr-3" : "",
+                    )}
+                  >
+                    <School className="h-6 w-6" />
+                  </div>
+                  {!isDesktop && !isNavCollapsed && (
+                    <div>
+                      <h1 className="text-lg font-bold">ECEP</h1>
+                      <p className="text-xs text-muted-foreground">Sistema Escolar</p>
+                    </div>
+                  )}
+                </div>
+                {isDesktop && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNavigationToggle}
+                    aria-label={navigationToggleLabel}
+                  >
+                    <NavigationToggleIcon className="h-5 w-5" />
+                  </Button>
+                )}
+              </>
             )}
           </div>
 
@@ -363,7 +372,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-background overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white dark:bg-background overflow-y-hidden">
         {/* Botón de navegación principal */}
         <div className="sticky top-0 z-40 p-4 pb-0 pl-0 lg:hidden">
           <div className="h-12 flex items-center px-2">

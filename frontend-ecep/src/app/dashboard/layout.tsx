@@ -370,18 +370,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         role="separator"
         aria-orientation="vertical"
         className={cn(
-          "hidden lg:flex relative w-6 -ml-3 pl-2 cursor-ew-resize items-center justify-end transition-colors duration-300",
-          isDragging ? "bg-muted" : "bg-transparent",
+          "group hidden lg:flex relative -ml-2 w-5 cursor-ew-resize items-center justify-center transition-colors duration-300",
+          isDragging ? "bg-muted/80" : "bg-transparent",
         )}
       >
-        <div
+        <span
+          aria-hidden
           className={cn(
-            "pointer-events-none absolute left-full top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-border transition-transform duration-300",
+            "pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2 rounded-full bg-border transition-opacity duration-200",
+            isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-70",
+          )}
+        />
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none h-3.5 w-3.5 rounded-full border border-border bg-background shadow-sm transition-transform duration-300",
             isCollapsed ? "scale-110" : "scale-100",
           )}
-          style={{
-            "--tw-translate-x": "calc(1rem - 50%)",
-          } as React.CSSProperties}
         />
       </div>
 

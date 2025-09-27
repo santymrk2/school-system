@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, CalendarDays, CheckCircle, Clock, FileText, Mail, Phone, RefreshCw, StickyNote, X, ArrowLeft } from "lucide-react";
+import { Calendar, CalendarDays, CircleCheck, Clock, FileText, Mail, Phone, RefreshCw, StickyNote, X, ArrowLeft } from "lucide-react";
 import * as DTO from "@/types/api-generated";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
@@ -87,7 +87,7 @@ const estadoBadge = (estado?: string | null) => {
   if (e === ESTADOS.ENTREVISTA_REALIZADA || e === ESTADOS.ACEPTADA) {
     return (
       <Badge variant="default" className="gap-1">
-        <CheckCircle className="h-3 w-3" />
+        <CircleCheck className="h-3 w-3" />
         {e === ESTADOS.ACEPTADA ? "Aceptada" : "Entrevista"}
       </Badge>
     );
@@ -955,7 +955,7 @@ function Timeline({ items }: { items: TimelineItem[] }) {
                 className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm ${TIMELINE_VARIANTS[item.status]}`}
               >
                 {item.status === "done" ? (
-                  <CheckCircle className="h-4 w-4" />
+                  <CircleCheck className="h-4 w-4" />
                 ) : item.status === "current" ? (
                   <Clock className="h-4 w-4" />
                 ) : item.status === "skipped" ? (

@@ -22,7 +22,7 @@ import type {
   NivelAcademico,
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum, UserRole } from "@/types/api-generated";
-import { CheckCircle, X } from "lucide-react";
+import { CircleCheck, X } from "lucide-react";
 import type { DayContentProps } from "react-day-picker";
 
 type AttendanceCategory = "present" | "absent";
@@ -621,7 +621,7 @@ export function FamilyAttendanceView() {
                     </div>
                     <div className="flex-1 space-y-3 text-sm">
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-secondary" />
+                        <CircleCheck className="h-4 w-4 text-secondary" />
                         <span className="font-medium">
                           Presentes: {resumen.presentes}
                         </span>

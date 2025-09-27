@@ -9,7 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, X } from "lucide-react";
+import { CircleCheck, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAsistenciasData } from "@/hooks/useAsistenciasData";
 
@@ -87,7 +87,7 @@ export default function VistaConsultaAlumno() {
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-secondary" />
+              <CircleCheck className="h-4 w-4 text-secondary" />
               <span>{presentes} presentes</span>
             </div>
             <div className="flex items-center gap-2">

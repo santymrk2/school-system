@@ -18,7 +18,7 @@ import {
   Ambulance,
   Bell,
   TrendingUp,
-  CheckCircle,
+  CircleCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -97,7 +97,7 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold">{stats?.docentesActivos}</div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-blue-600 inline-flex items-center">
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                  <CircleCheck className="h-3 w-3 mr-1" />
                   con asignación vigente
                 </span>
               </p>

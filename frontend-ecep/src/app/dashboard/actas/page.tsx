@@ -24,7 +24,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   Search,
   FileText,
-  CheckCircle,
+  CircleCheck,
   AlertTriangle,
   Eye,
   Download,
@@ -855,7 +855,7 @@ export default function AccidentesIndexPage() {
               <CardTitle className="text-sm font-medium">
                 Actas firmadas
               </CardTitle>
-              <CheckCircle className="h-4 w-4 text-secondary" />
+              <CircleCheck className="h-4 w-4 text-secondary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-secondary">

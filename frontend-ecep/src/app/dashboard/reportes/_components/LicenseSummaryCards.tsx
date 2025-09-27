@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Clock, FileText, Users } from "lucide-react";
+import { CircleCheck, Clock, FileText, Users } from "lucide-react";
 
 const CARD_DESCRIPTIONS = {
   personal: "Total de docentes y personal administrativo con legajo activo.",
@@ -35,7 +35,7 @@ export function LicenseSummaryCards({
     },
     {
       title: "Activos",
-      icon: CheckCircle,
+      icon: CircleCheck,
       value: activos,
       description: CARD_DESCRIPTIONS.activos,
       iconClassName: "text-primary",

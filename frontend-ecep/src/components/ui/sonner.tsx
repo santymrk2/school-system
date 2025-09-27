@@ -2,6 +2,7 @@
 
 import { useTheme } from 'next-themes';
 import { Toaster as Sonner } from 'sonner';
+import { CircleCheck } from 'lucide-react';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -21,6 +22,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
             'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
           cancelButton:
             'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
+        },
+        icons: {
+          success: <CircleCheck className="h-5 w-5 text-primary" />,
         },
       }}
       {...props}

@@ -41,7 +41,7 @@ import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   Calendar,
-  CheckCircle,
+  CircleCheck,
   DollarSign,
   Download,
   FileText,
@@ -1257,7 +1257,7 @@ export default function PagosPage() {
                               )
                             }
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" /> Acreditar
+                            <CircleCheck className="mr-2 h-4 w-4" /> Acreditar
                           </Button>
                           <Button
                             size="sm"

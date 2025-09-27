@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, CheckCircle, Clock, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
+import { Calendar, CircleCheck, Clock, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import * as DTO from "@/types/api-generated";
 import { admisiones, gestionAcademica, identidad } from "@/services/api/modules";
 
@@ -79,7 +79,7 @@ const estadoBadge = (estado?: string | null) => {
   if (e === ESTADOS.ENTREVISTA_REALIZADA || e === ESTADOS.ACEPTADA) {
     return (
       <Badge variant="default" className="gap-1">
-        <CheckCircle className="h-3 w-3" /> {e === ESTADOS.ACEPTADA ? "Aceptada" : "Entrevista"}
+        <CircleCheck className="h-3 w-3" /> {e === ESTADOS.ACEPTADA ? "Aceptada" : "Entrevista"}
       </Badge>
     );
   }

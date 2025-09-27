@@ -112,7 +112,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  CheckCircle,
+  CircleCheck,
   Clock,
   Eye,
   FileText,
@@ -484,7 +484,7 @@ function getSituacionBadge(situacion?: string | null) {
   if (normalized === "activo") {
     return (
     <Badge variant="default">
-        <CheckCircle className="mr-1 h-3 w-3" /> Activo
+        <CircleCheck className="mr-1 h-3 w-3" /> Activo
       </Badge>
     );
   }

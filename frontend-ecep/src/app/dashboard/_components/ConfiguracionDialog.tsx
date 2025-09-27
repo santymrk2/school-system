@@ -27,7 +27,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
-import { calendario } from "@/services/api/modules";
+import { calendario, notificaciones } from "@/services/api/modules";
+import type { MailSettingsUpdatePayload } from "@/services/api/modules/notificaciones/mail";
 import { triggerCalendarRefresh } from "@/hooks/useCalendarRefresh";
 
 import type { PeriodoEscolarDTO, TrimestreDTO } from "@/types/api-generated";
@@ -74,7 +75,7 @@ export function ConfiguracionDialog({
   roles,
 }: ConfiguracionDialogProps) {
   const tieneDireccion = roles.includes(UserRole.DIRECTOR);
-  type ConfigTabValue = "general" | "trimestres" | "periodo";
+  type ConfigTabValue = "general" | "trimestres" | "periodo" | "notificaciones";
   interface ConfigTab {
     value: ConfigTabValue;
     label: string;
@@ -86,6 +87,7 @@ export function ConfiguracionDialog({
       tabs.push(
         { value: "trimestres", label: "Trimestres" },
         { value: "periodo", label: "Período escolar" },
+        { value: "notificaciones", label: "Notificaciones" },
       );
     }
     return tabs;
@@ -173,6 +175,16 @@ export function ConfiguracionDialog({
                     )}
                   </TabsContent>
                 )}
+
+                {tieneDireccion && (
+                  <TabsContent value="notificaciones" className="space-y-6">
+                    {currentRole === UserRole.DIRECTOR ? (
+                      <CorreoNotificacionesConfig open={open && activeTab === "notificaciones"} />
+                    ) : (
+                      renderDireccionRoleMessage("notificaciones por correo")
+                    )}
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
           </ScrollArea>
@@ -207,6 +219,297 @@ function AparienciaConfig() {
         disabled={!mounted}
       />
     </div>
+  );
+}
+
+function CorreoNotificacionesConfig({ open }: { open: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+  const [passwordSet, setPasswordSet] = useState(false);
+  const [form, setForm] = useState({
+    host: "",
+    port: "",
+    auth: true,
+    starttls: false,
+    username: "",
+    password: "",
+    from: "",
+    enabled: true,
+  });
+
+  const loadSettings = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await notificaciones.mail.getConfig();
+      const data = response.data;
+      setForm({
+        host: data?.host ?? "",
+        port: data?.port ? String(data.port) : "",
+        auth: data?.auth ?? true,
+        starttls: data?.starttls ?? false,
+        username: data?.username ?? "",
+        password: "",
+        from: data?.from ?? "",
+        enabled: data?.enabled ?? true,
+      });
+      setPasswordSet(Boolean(data?.passwordSet));
+      setPasswordChanged(false);
+    } catch (error) {
+      toast.error(resolveErrorMessage(error, "No se pudo cargar la configuración de correo"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      loadSettings();
+    }
+  }, [open, loadSettings]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleToggleChange = (field: "auth" | "starttls" | "enabled", value: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPasswordChanged(true);
+    setForm((prev) => ({
+      ...prev,
+      password: value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    const trimmedHost = form.host.trim();
+    const hasPortInput = form.port.length > 0;
+    const portNumber = hasPortInput ? Number(form.port) : null;
+
+    if (hasPortInput && Number.isNaN(portNumber)) {
+      toast.error("Ingresá un puerto válido");
+      return;
+    }
+
+    if (portNumber !== null && (portNumber <= 0 || portNumber > 65535)) {
+      toast.error("El puerto debe estar entre 1 y 65535");
+      return;
+    }
+
+    if (form.enabled) {
+      if (!trimmedHost) {
+        toast.error("Ingresá el servidor SMTP");
+        return;
+      }
+      if (portNumber === null) {
+        toast.error("Ingresá un puerto válido");
+        return;
+      }
+    }
+
+    if (form.enabled && form.auth && !form.username.trim()) {
+      toast.error("Ingresá el usuario SMTP cuando la autenticación está habilitada");
+      return;
+    }
+
+    const payload: MailSettingsUpdatePayload = {
+      host: trimmedHost || null,
+      port: portNumber,
+      auth: form.auth,
+      starttls: form.starttls,
+      username: form.auth ? form.username.trim() || null : null,
+      enabled: form.enabled,
+      from: form.from.trim() || null,
+    };
+
+    if (passwordChanged) {
+      payload.password = form.password.length ? form.password : "";
+    }
+
+    try {
+      setSaving(true);
+      await notificaciones.mail.updateConfig(payload);
+      toast.success("Configuración de correo actualizada correctamente");
+      if (passwordChanged) {
+        const hasPassword = form.password.length > 0;
+        setPasswordSet(hasPassword);
+        setForm((prev) => ({
+          ...prev,
+          password: "",
+        }));
+      }
+      setPasswordChanged(false);
+    } catch (error) {
+      toast.error(resolveErrorMessage(error, "No se pudo guardar la configuración"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Correo saliente</CardTitle>
+        <CardDescription>
+          Definí las credenciales SMTP que se utilizarán para enviar notificaciones
+          institucionales.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {loading ? (
+          <LoadingState message="Cargando configuración de correo..." />
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                <Input
+                  id="smtp-host"
+                  value={form.host}
+                  onChange={(event) => handleInputChange("host", event.target.value)}
+                  placeholder="smtp.ejemplo.com"
+                  disabled={loading || saving}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtp-port">Puerto</Label>
+                <Input
+                  id="smtp-port"
+                  inputMode="numeric"
+                  value={form.port}
+                  onChange={(event) =>
+                    handleInputChange("port", event.target.value.replace(/[^0-9]/g, ""))
+                  }
+                  placeholder="587"
+                  disabled={loading || saving}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="smtp-username">Usuario</Label>
+                <Input
+                  id="smtp-username"
+                  value={form.username}
+                  onChange={(event) => handleInputChange("username", event.target.value)}
+                  placeholder="notificaciones@institucion.edu"
+                  disabled={loading || saving || !form.auth}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se utilizará únicamente si la autenticación SMTP está habilitada.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtp-password">Contraseña</Label>
+                <Input
+                  id="smtp-password"
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => handlePasswordChange(event.target.value)}
+                  placeholder={passwordSet && !passwordChanged ? "••••••••" : ""}
+                  disabled={loading || saving || !form.auth}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {passwordSet && !passwordChanged
+                    ? "Dejá el campo vacío para conservar la contraseña actual."
+                    : "Guardá los cambios para actualizar la contraseña."}
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex items-center justify-between rounded-md border p-4">
+                <div>
+                  <p className="text-sm font-medium">Autenticación SMTP</p>
+                  <p className="text-xs text-muted-foreground">
+                    Activala si el servidor requiere usuario y contraseña.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.auth}
+                  onCheckedChange={(checked) => handleToggleChange("auth", checked)}
+                  disabled={loading || saving}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border p-4">
+                <div>
+                  <p className="text-sm font-medium">STARTTLS</p>
+                  <p className="text-xs text-muted-foreground">
+                    Recomendado para conexiones seguras en el puerto 587.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.starttls}
+                  onCheckedChange={(checked) => handleToggleChange("starttls", checked)}
+                  disabled={loading || saving}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-4">
+              <div>
+                <p className="text-sm font-medium">Habilitar envíos</p>
+                <p className="text-xs text-muted-foreground">
+                  Podés desactivar los correos temporariamente sin perder la configuración.
+                </p>
+              </div>
+              <Switch
+                checked={form.enabled}
+                onCheckedChange={(checked) => handleToggleChange("enabled", checked)}
+                disabled={loading || saving}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="smtp-from">Remitente</Label>
+              <Input
+                id="smtp-from"
+                value={form.from}
+                onChange={(event) => handleInputChange("from", event.target.value)}
+                placeholder="notificaciones@institucion.edu"
+                disabled={loading || saving}
+              />
+              <p className="text-xs text-muted-foreground">
+                Dirección que verán las familias al recibir un correo. Si se deja vacío se
+                utilizará el valor por defecto de la plataforma.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => loadSettings()}
+                disabled={loading || saving}
+              >
+                Recargar
+              </Button>
+              <Button onClick={handleSubmit} disabled={loading || saving}>
+                {saving ? (
+                  <>
+                    Guardando
+                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                  </>
+                ) : (
+                  "Guardar"
+                )}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

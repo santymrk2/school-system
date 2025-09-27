@@ -16,6 +16,29 @@ Lombok must be supported by your IDE. For IntelliJ install the Lombok plugin and
 
 After starting the application it is accessible under `localhost:8080`.
 
+### Configuración de correo saliente
+
+Las notificaciones por email usan `JavaMailSender`. Para que los envíos
+funcionen es necesario definir las siguientes propiedades (directamente en
+`application.yml`, en un `application-<perfil>.yml` o a través de variables de
+entorno):
+
+| Propiedad                                 | Variable de entorno                | Descripción |
+|-------------------------------------------|------------------------------------|-------------|
+| `spring.mail.host`                        | `SPRING_MAIL_HOST`                 | Host o IP del servidor SMTP. |
+| `spring.mail.port`                        | `SPRING_MAIL_PORT`                 | Puerto del servidor SMTP. |
+| `spring.mail.username` / `spring.mail.password` | `SPRING_MAIL_USERNAME` / `SPRING_MAIL_PASSWORD` | Credenciales de autenticación si el servidor lo requiere. |
+| `spring.mail.properties.mail.smtp.auth`   | `SPRING_MAIL_SMTP_AUTH`            | Debe ser `true` si el servidor exige autenticación. |
+| `spring.mail.properties.mail.smtp.starttls.enable` | `SPRING_MAIL_SMTP_STARTTLS_ENABLE` | Activar `true` cuando el servidor requiera STARTTLS. |
+| `app.notifications.mail.from`             | `APP_NOTIFICATIONS_MAIL_FROM`      | Dirección de correo que aparecerá como remitente. |
+| `app.notifications.mail.enabled`          | `APP_NOTIFICATIONS_MAIL_ENABLED`   | Mantener en `true` para habilitar los envíos. |
+
+En entornos de desarrollo se puede utilizar un servidor de pruebas como
+[MailHog](https://github.com/mailhog/MailHog) configurando `SPRING_MAIL_HOST`
+en `localhost` y `SPRING_MAIL_PORT` en el puerto expuesto por MailHog. Con la
+bandera `APP_NOTIFICATIONS_MAIL_ENABLED=false` la aplicación mantiene la
+lógica del flujo pero solo registra en logs que el envío está deshabilitado.
+
 ## Build
 
 The application can be built using the following command:

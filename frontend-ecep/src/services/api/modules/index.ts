@@ -5,4 +5,5 @@ export { comunicacion } from "./comunicacion";
 export { finanzas } from "./finanzas";
 export { gestionAcademica } from "./gestionacademica";
 export { identidad } from "./identidad";
+export { notificaciones } from "./notificaciones";
 export { vidaEscolar } from "./vidaescolar";

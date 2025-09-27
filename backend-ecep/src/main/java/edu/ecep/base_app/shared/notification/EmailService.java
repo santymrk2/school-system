@@ -96,4 +96,5 @@ public class EmailService {
         String configuredFrom = settings.from();
         return StringUtils.hasText(configuredFrom) ? configuredFrom : defaultFrom;
     }
+
 }

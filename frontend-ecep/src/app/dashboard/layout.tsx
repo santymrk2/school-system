@@ -365,15 +365,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Drag handle */}
-      <div
-        onPointerDown={handlePointerDown}
-        role="separator"
-        aria-orientation="vertical"
-        className={cn(
-          "group hidden lg:flex relative -ml-2 w-5 cursor-ew-resize items-center justify-center transition-colors duration-300 z-30",
-          isDragging ? "bg-muted/80" : "bg-transparent",
-        )}
-      >
+      <div className="group hidden lg:flex relative -ml-2 w-5 items-center justify-center z-30">
         <span
           aria-hidden
           className={cn(
@@ -381,13 +373,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-70",
           )}
         />
-        <span
-          aria-hidden
+        <button
+          type="button"
+          onPointerDown={handlePointerDown}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ajustar tamaño del panel lateral"
           className={cn(
-            "pointer-events-none absolute top-1/2 -right-4 h-3.5 w-3.5 -translate-y-1/2 translate-x-1/2 rounded-full bg-card shadow-sm ring-1 ring-border transition-transform duration-300",
-            isCollapsed ? "scale-110" : "scale-100",
+            "absolute top-1/2 -right-4 flex h-7 w-7 -translate-y-1/2 translate-x-1/2 cursor-ew-resize items-center justify-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            isDragging ? "bg-muted/80" : "bg-transparent",
           )}
-        />
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none h-3.5 w-3.5 rounded-full bg-card shadow-sm ring-1 ring-border transition-transform duration-300",
+              isCollapsed ? "scale-110" : "scale-100",
+            )}
+          />
+        </button>
       </div>
 
       {/* Main Content */}

@@ -57,7 +57,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import type * as DTO from "@/types/api-generated";
+import * as DTO from "@/types/api-generated";
 import { admisiones, gestionAcademica, identidad } from "@/services/api/modules";
 
 const ESTADOS = {

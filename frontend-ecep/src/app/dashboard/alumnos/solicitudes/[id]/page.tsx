@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -244,7 +245,7 @@ export default function SolicitudAdmisionDetailPage() {
       setComentariosEntrevista(enriched.comentariosEntrevista ?? "");
     } catch (err: any) {
       setSolicitud(null);
-      setError(err?.message ?? "No se pudo obtener la solicitud");
+      setError(err?.message ?? "No se pudo obtener la solicitud.");
     } finally {
       setLoading(false);
     }
@@ -589,15 +590,15 @@ export default function SolicitudAdmisionDetailPage() {
   if (error) {
     return (
       <div className="space-y-4 p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Error al cargar la solicitud</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={fetchSolicitud}>Reintentar</Button>
-          </CardContent>
-        </Card>
+        <Alert variant="destructive">
+          <AlertTitle>Error al cargar la solicitud</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            {error}
+            <Button type="button" variant="outline" size="sm" onClick={fetchSolicitud}>
+              Reintentar
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

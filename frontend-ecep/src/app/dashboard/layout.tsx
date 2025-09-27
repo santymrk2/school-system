@@ -201,7 +201,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   {!isDesktop && !isNavCollapsed && (
                     <div>
                       <h1 className="text-lg font-bold">ECEP</h1>
-                      <p className="text-xs text-muted-foreground">Sistema Escolar</p>
+                      <p className="text-xs text-muted-foreground">
+                        Sistema Escolar
+                      </p>
                     </div>
                   )}
                 </div>
@@ -273,12 +275,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* PERFIL ABAJO + dropdown hacia arriba */}
-          <div
-            className={cn(
-              "mt-auto",
-              isNavCollapsed ? "p-2" : "p-4",
-            )}
-          >
+          <div className={cn("mt-auto", isNavCollapsed ? "p-2" : "p-4")}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -386,7 +383,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Button>
           </div>
         </div>
-        <div className="flex-1 p-4 pl-0">
+        <div className="flex-1 p-4 pl-1">
           <div className="rounded-xl bg-card text-card-foreground ring-1 ring-border overflow-hidden">
             <main className="scrollarea  h-[calc(100vh-6rem)] lg:h-[calc(107vh-6rem)] overflow-y-auto">
               {children}

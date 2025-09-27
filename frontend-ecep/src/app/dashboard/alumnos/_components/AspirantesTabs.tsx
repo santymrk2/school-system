@@ -178,6 +178,15 @@ const resolveAspiranteTelefono = (solicitud: SolicitudAdmisionItem) => {
   );
 };
 
+const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
+  const estadoActual = normalizeEstado(solicitud.estado);
+  return (
+    Boolean(solicitud.entrevistaRealizada) ||
+    estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
+    estadoActual === ESTADOS.ACEPTADA
+  );
+};
+
 function useSolicitudesAdmision(query: string) {
   const [data, setData] = useState<SolicitudAdmisionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -364,11 +373,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
               const nombre = resolveAspiranteNombre(row);
               const opciones = row.fechasPropuestas ?? [];
               const cantidadPropuestas = row.cantidadPropuestasEnviadas ?? 0;
-              const estadoActual = normalizeEstado(row.estado);
-              const puedeDarDeAlta =
-                Boolean(row.entrevistaRealizada) ||
-                estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
-                estadoActual === ESTADOS.ACEPTADA;
+              const puedeDarDeAlta = puedeDarDeAltaSolicitud(row);
               return (
                 <Card key={row.id} className="flex flex-col">
                   <CardHeader className="pb-3">
@@ -724,10 +729,7 @@ function SolicitudDetailDialog({
   const puedeDecidir = estado === ESTADOS.ENTREVISTA_REALIZADA;
   const puedeRechazar = estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA || estado === ESTADOS.PROGRAMADA;
   const puedeProgramar = estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA;
-  const puedeDarDeAlta =
-    Boolean(solicitud.entrevistaRealizada) ||
-    estado === ESTADOS.ENTREVISTA_REALIZADA ||
-    estado === ESTADOS.ACEPTADA;
+  const puedeDarDeAlta = puedeDarDeAltaSolicitud(solicitud);
 
   const handleDarDeAlta = () => {
     onAlta(solicitud);

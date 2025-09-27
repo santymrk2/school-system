@@ -171,6 +171,23 @@ type ConfirmOption = { fecha: string; horario?: string };
 
 type DecisionKind = "aceptar" | "rechazar" | null;
 
+type TimelineStatus = "done" | "current" | "upcoming" | "skipped";
+
+type TimelineKey =
+  | "received"
+  | "proposal"
+  | "confirmation"
+  | "interview"
+  | "decision";
+
+type TimelineItem = {
+  key: TimelineKey;
+  title: string;
+  description: string;
+  status: TimelineStatus;
+  date?: string | null;
+};
+
 export default function SolicitudAdmisionDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -262,6 +279,135 @@ export default function SolicitudAdmisionDetailPage() {
       fecha,
       horario: solicitud.rangosHorariosPropuestos?.[index] ?? "",
     }));
+  }, [solicitud]);
+
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    if (!solicitud) return [];
+
+    const estadoActual = normalizeEstado(solicitud.estado);
+    const propuestasEnviadas =
+      solicitud.cantidadPropuestasEnviadas ??
+      (solicitud.fechasPropuestas && solicitud.fechasPropuestas.length > 0
+        ? 1
+        : 0);
+    const hasProposal =
+      (solicitud.fechasPropuestas?.length ?? 0) > 0 ||
+      estadoActual === ESTADOS.PROGRAMADA ||
+      estadoActual === ESTADOS.PROPUESTA;
+    const hasConfirmation = Boolean(solicitud.fechaEntrevistaConfirmada);
+    const interviewDone =
+      Boolean(solicitud.entrevistaRealizada) ||
+      estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
+      estadoActual === ESTADOS.ACEPTADA ||
+      estadoActual === ESTADOS.RECHAZADA;
+    const decisionTaken =
+      estadoActual === ESTADOS.ACEPTADA || estadoActual === ESTADOS.RECHAZADA;
+    const rechazada = estadoActual === ESTADOS.RECHAZADA;
+    let currentKey: TimelineKey = "proposal";
+    if (decisionTaken) {
+      currentKey = "decision";
+    } else if (interviewDone) {
+      currentKey = "decision";
+    } else if (hasConfirmation) {
+      currentKey = "interview";
+    } else if (hasProposal) {
+      currentKey = "confirmation";
+    } else {
+      currentKey = "proposal";
+    }
+
+    const proposalDescription = hasProposal
+      ? propuestasEnviadas > 1
+        ? `Se enviaron ${propuestasEnviadas} propuestas a la familia.`
+        : "Se envió una propuesta de entrevista a la familia."
+      : decisionTaken && rechazada
+      ? "La solicitud fue rechazada antes de enviar una propuesta."
+      : "Definí fechas y documentación para enviar a la familia.";
+
+    const confirmationDescription = hasConfirmation
+      ? "La familia confirmó la fecha de la entrevista."
+      : decisionTaken
+      ? "La solicitud se resolvió sin registrar una confirmación."
+      : hasProposal
+      ? "Esperamos la confirmación de la familia."
+      : "Una vez que envíes la propuesta, registrá la respuesta de la familia.";
+
+    const interviewDescription = interviewDone
+      ? "Se registró el resultado de la entrevista."
+      : decisionTaken
+      ? "La solicitud se resolvió sin realizar entrevista."
+      : hasConfirmation
+      ? "Después de la entrevista, registrá si se realizó y agregá comentarios."
+      : "Aguardamos la confirmación de fecha para realizar la entrevista.";
+
+    const decisionDescription = decisionTaken
+      ? rechazada
+        ? "La solicitud fue rechazada."
+        : "La solicitud fue aceptada. Generá el alta cuando corresponda."
+      : interviewDone
+      ? "Definí si la solicitud será aceptada o rechazada."
+      : "Registrá el resultado de la entrevista para habilitar la decisión final.";
+
+    const steps: Array<Omit<TimelineItem, "status">> = [
+      {
+        key: "received",
+        title: "Solicitud recibida",
+        description:
+          "La familia completó el formulario y la solicitud está disponible para revisión.",
+        date: solicitud.fechaSolicitud,
+      },
+      {
+        key: "proposal",
+        title: "Propuesta de entrevista",
+        description: proposalDescription,
+        date:
+          solicitud.fechasPropuestas?.[solicitud.fechasPropuestas.length - 1] ??
+          null,
+      },
+      {
+        key: "confirmation",
+        title: "Confirmación de la familia",
+        description: confirmationDescription,
+        date: solicitud.fechaEntrevistaConfirmada ?? solicitud.fechaRespuestaFamilia,
+      },
+      {
+        key: "interview",
+        title: "Entrevista",
+        description: interviewDescription,
+      },
+      {
+        key: "decision",
+        title: "Decisión final",
+        description: decisionDescription,
+      },
+    ];
+
+    return steps.map((step, index) => {
+      const completed =
+        step.key === "received" ||
+        (step.key === "proposal" && hasProposal) ||
+        (step.key === "confirmation" && hasConfirmation) ||
+        (step.key === "interview" && interviewDone) ||
+        (step.key === "decision" && decisionTaken);
+      const skipped =
+        decisionTaken && !completed && step.key !== "decision" && index > 0;
+
+      let status: TimelineStatus;
+      if (completed) {
+        status = "done";
+      } else if (skipped) {
+        status = "skipped";
+      } else if (step.key === currentKey) {
+        status = "current";
+      } else {
+        status = "upcoming";
+      }
+
+      return {
+        ...step,
+        status,
+      };
+    });
   }, [solicitud]);
 
   const cantidadPropuestas = solicitud?.cantidadPropuestasEnviadas ?? 0;
@@ -517,6 +663,20 @@ export default function SolicitudAdmisionDetailPage() {
         </p>
       </div>
 
+      {timelineItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Línea de tiempo de la solicitud</CardTitle>
+            <CardDescription>
+              Revisá el recorrido de la solicitud y los próximos pasos sugeridos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Timeline items={timelineItems} />
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -769,6 +929,72 @@ export default function SolicitudAdmisionDetailPage() {
         }}
       />
     </div>
+  );
+}
+
+const TIMELINE_VARIANTS: Record<TimelineStatus, string> = {
+  done: "border-primary bg-primary text-primary-foreground",
+  current: "border-primary bg-background text-primary",
+  upcoming: "border-muted-foreground/40 bg-background text-muted-foreground",
+  skipped: "border-muted-foreground/40 bg-muted text-muted-foreground",
+};
+
+function Timeline({ items }: { items: TimelineItem[] }) {
+  if (!items.length) return null;
+
+  return (
+    <ol className="space-y-6 py-6">
+      {items.map((item, index) => {
+        const isLast = index === items.length - 1;
+
+        return (
+          <li key={item.key} className="flex gap-4">
+            <div className="flex flex-col items-center">
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm ${TIMELINE_VARIANTS[item.status]}`}
+              >
+                {item.status === "done" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : item.status === "current" ? (
+                  <Clock className="h-4 w-4" />
+                ) : item.status === "skipped" ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+                )}
+              </span>
+              {!isLast && (
+                <span
+                  className="mt-1 h-full w-px flex-1 bg-border"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <div className="flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold">{item.title}</h3>
+                {item.date && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(item.date)}
+                  </span>
+                )}
+                {item.status === "current" && (
+                  <Badge variant="outline" className="text-[10px] uppercase">
+                    En curso
+                  </Badge>
+                )}
+                {item.status === "skipped" && (
+                  <Badge variant="secondary" className="text-[10px] uppercase">
+                    No aplica
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">{item.description}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

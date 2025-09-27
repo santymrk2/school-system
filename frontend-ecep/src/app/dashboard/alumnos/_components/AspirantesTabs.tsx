@@ -335,6 +335,22 @@ export default function AspirantesTab({ searchTerm }: Props) {
     }
   }, [detailOpen, selected]);
 
+  useEffect(() => {
+    if (!detailOpen || !selected) return;
+    const next = solicitudes.find((item) => item.id === selected.id);
+    if (next && next !== selected) {
+      setSelected(next);
+    }
+  }, [detailOpen, selected, solicitudes]);
+
+  useEffect(() => {
+    if (!altaOpen || !altaSolicitud) return;
+    const next = solicitudes.find((item) => item.id === altaSolicitud.id);
+    if (next && next !== altaSolicitud) {
+      setAltaSolicitud(next);
+    }
+  }, [altaOpen, altaSolicitud, solicitudes]);
+
   if (loading) {
     return <LoadingState label="Cargando solicitudes…" />;
   }

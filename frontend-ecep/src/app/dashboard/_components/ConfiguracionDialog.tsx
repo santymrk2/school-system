@@ -768,15 +768,7 @@ function DireccionConfig({
 
     const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
     const estadoPrevio = previo ? getTrimestreEstado(previo) : null;
-    const hayOtroActivo = trimestresOrdenados.some(
-      (t) => t.id !== tri.id && getTrimestreEstado(t) === "activo",
-    );
-
     if (estado === "activo") {
-      if (hayOtroActivo) {
-        toast.error("Cerrá el trimestre activo antes de abrir otro");
-        return;
-      }
       if (previo && estadoPrevio !== "cerrado") {
         toast.error(
           `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`,
@@ -889,18 +881,13 @@ function DireccionConfig({
           const previo = idx > 0 ? trimestresOrdenados[idx - 1] : undefined;
           const estado = getTrimestreEstado(tri);
           const estadoPrevio = previo ? getTrimestreEstado(previo) : null;
-          const hayOtroActivo = trimestresOrdenados.some(
-            (t) => t.id !== tri.id && getTrimestreEstado(t) === "activo",
-          );
           const draft = drafts[tri.id] ?? { inicio: "", fin: "" };
           const activarDisabledReason =
             estado === "activo"
               ? "Este trimestre ya está activo."
-              : hayOtroActivo
-                ? "Cerrá el trimestre activo antes de abrir otro."
-                : previo && estadoPrevio !== "cerrado"
-                  ? `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`
-                  : null;
+              : previo && estadoPrevio !== "cerrado"
+                ? `Primero debés cerrar el trimestre ${previo.orden ?? "anterior"}`
+                : null;
           const activarDisabled =
             loading ||
             togglingTrimestreId === tri.id ||

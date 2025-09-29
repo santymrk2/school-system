@@ -25,7 +25,6 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { calendario, notificaciones } from "@/services/api/modules";
 import type { MailSettingsUpdatePayload } from "@/services/api/modules/notificaciones/mail";
@@ -111,45 +110,60 @@ export function ConfiguracionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[80vh] w-full max-w-4xl overflow-hidden p-0">
-        <div className="flex h-full flex-col">
-          <DialogHeader className="px-6 py-4">
-            <DialogTitle>Configuración</DialogTitle>
-            <DialogDescription>
-              Administrá las preferencias disponibles para tu rol actual.
-            </DialogDescription>
-          </DialogHeader>
-
-          <ScrollArea className="flex-1 px-6 pb-6">
-            <div className="space-y-6 pr-2">
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as ConfigTabValue)}
-                className="space-y-6"
-              >
-                <TabsList className="w-full justify-start overflow-x-auto md:overflow-visible">
-                  {availableTabs.map((tab) => (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      className="px-6"
-                    >
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-
-                <TabsContent value="general" className="space-y-6">
-                  <AparienciaConfig />
-                  {!tieneDireccion && (
-                    <p className="text-sm text-muted-foreground">
-                      No hay configuraciones adicionales disponibles para tu rol
-                      actual.
-                    </p>
+        <div className="flex h-full w-full flex-col md:flex-row">
+          <div className="flex flex-shrink-0 flex-col gap-4 border-b bg-muted/40 p-4 md:h-full md:w-64 md:border-b-0 md:border-r md:p-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Secciones
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Elegí qué aspecto de la plataforma querés configurar.
+              </p>
+            </div>
+            <nav className="flex flex-wrap gap-2 md:flex-1 md:flex-col md:gap-1">
+              {availableTabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setActiveTab(tab.value)}
+                  className={cn(
+                    "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors md:w-full",
+                    activeTab === tab.value
+                      ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
-                </TabsContent>
+                  aria-current={activeTab === tab.value ? "page" : undefined}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-                {tieneDireccion && (
-                  <TabsContent value="trimestres" className="space-y-6">
+          <div className="flex flex-1 flex-col">
+            <DialogHeader className="border-b px-6 py-4">
+              <DialogTitle>Configuración</DialogTitle>
+              <DialogDescription>
+                Administrá las preferencias disponibles para tu rol actual.
+              </DialogDescription>
+            </DialogHeader>
+
+            <ScrollArea className="flex-1 px-6 pb-6">
+              <div className="space-y-6 pr-2">
+                {activeTab === "general" && (
+                  <>
+                    <AparienciaConfig />
+                    {!tieneDireccion && (
+                      <p className="text-sm text-muted-foreground">
+                        No hay configuraciones adicionales disponibles para tu rol
+                        actual.
+                      </p>
+                    )}
+                  </>
+                )}
+
+                {activeTab === "trimestres" && tieneDireccion && (
+                  <div className="space-y-6">
                     {currentRole === UserRole.DIRECTOR ? (
                       <DireccionConfig
                         open={open && activeTab === "trimestres"}
@@ -159,11 +173,11 @@ export function ConfiguracionDialog({
                     ) : (
                       renderDireccionRoleMessage("trimestres")
                     )}
-                  </TabsContent>
+                  </div>
                 )}
 
-                {tieneDireccion && (
-                  <TabsContent value="periodo" className="space-y-6">
+                {activeTab === "periodo" && tieneDireccion && (
+                  <div className="space-y-6">
                     {currentRole === UserRole.DIRECTOR ? (
                       <DireccionConfig
                         open={open && activeTab === "periodo"}
@@ -173,21 +187,21 @@ export function ConfiguracionDialog({
                     ) : (
                       renderDireccionRoleMessage("períodos escolares")
                     )}
-                  </TabsContent>
+                  </div>
                 )}
 
-                {tieneDireccion && (
-                  <TabsContent value="notificaciones" className="space-y-6">
+                {activeTab === "notificaciones" && tieneDireccion && (
+                  <div className="space-y-6">
                     {currentRole === UserRole.DIRECTOR ? (
                       <CorreoNotificacionesConfig open={open && activeTab === "notificaciones"} />
                     ) : (
                       renderDireccionRoleMessage("notificaciones por correo")
                     )}
-                  </TabsContent>
+                  </div>
                 )}
-              </Tabs>
-            </div>
-          </ScrollArea>
+              </div>
+            </ScrollArea>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

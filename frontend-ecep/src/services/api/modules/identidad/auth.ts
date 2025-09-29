@@ -7,3 +7,6 @@ export const login = (email: string, password: string) =>
 export const logout = () => http.post("/api/auth/logout");
 
 export const me = () => http.get<DTO.PersonaResumenDTO>("/api/auth/me");
+
+export const checkEmail = (email: string) =>
+  http.post<{ exists: boolean }>("/api/auth/check-email", { email });

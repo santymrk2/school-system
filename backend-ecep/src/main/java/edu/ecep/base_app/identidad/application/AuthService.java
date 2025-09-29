@@ -30,12 +30,17 @@ public class AuthService {
 
     public AuthResponse login(String email, String password) {
         Persona persona = personaRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Credenciales inválidas"));
+                .orElseThrow(() -> new UsernameNotFoundException("No existe un usuario registrado con ese correo electrónico"));
         if (persona.getPassword() == null || !passwordEncoder.matches(password, persona.getPassword())) {
-            throw new BadCredentialsException("Credenciales inválidas");
+            throw new BadCredentialsException("La contraseña ingresada es incorrecta");
         }
         String token = jwtService.generateToken(persona);
         return AuthResponse.fromPersona(token, persona);
+    }
+
+    public void ensureEmailExists(String email) {
+        personaRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("No existe un usuario registrado con ese correo electrónico"));
     }
 
     public AuthResponse register(PersonaCreateDTO request) {

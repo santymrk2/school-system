@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import axios from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeRoles } from "@/lib/auth-roles";
 import { UserRole } from "@/types/api-generated";
+import { identidad } from "@/services/api/modules";
 
 export default function LoginPage() {
   const { user, login, logout, loading, selectedRole, setSelectedRole } =
@@ -43,7 +45,23 @@ export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isValidEmail, setIsValidEmail] = useState(false);
-  const [loginError, setLoginError] = useState("");
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError(error)) {
+      const message =
+        (typeof error.response?.data?.message === "string" &&
+          error.response?.data?.message) ||
+        (typeof error.response?.data?.error === "string" &&
+          error.response?.data?.error) ||
+        error.message;
+      return message || fallback;
+    }
+    if (error instanceof Error) {
+      return error.message || fallback;
+    }
+    return fallback;
+  };
 
   // ---- roles normalizados del usuario (si ya está logueado) ----
   const userRoles = user?.roles;
@@ -72,9 +90,24 @@ export default function LoginPage() {
   }, [loading, user, roles, selectedRole, setSelectedRole, router]);
 
   // ---- handlers ----
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsValidEmail(true);
+    if (isCheckingEmail) return;
+
+    setIsCheckingEmail(true);
+
+    try {
+      await identidad.checkEmail(email);
+      setIsValidEmail(true);
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "No pudimos verificar el correo electrónico",
+      );
+      toast.error(message);
+    } finally {
+      setIsCheckingEmail(false);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -82,21 +115,22 @@ export default function LoginPage() {
     if (isLoggingIn) return;
 
     setIsLoggingIn(true);
-    setLoginError("");
 
     try {
-      const success = await login(email, password);
-      if (!success) {
-        toast.error("Email o contraseña incorrectos");
-        setLoginError("Email o contraseña incorrectos");
-      }
+      await login(email, password);
       // Redirecciones las maneja AuthContext + useEffect superior
-    } catch {
-      toast.error("Error al iniciar sesión");
-      setLoginError("Error al iniciar sesión");
+    } catch (error) {
+      const message = getErrorMessage(error, "Error al iniciar sesión");
+      toast.error(message);
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  const handleGoBackToEmail = () => {
+    setIsValidEmail(false);
+    setPassword("");
+    setShowPassword(false);
   };
 
   // ---- UI de carga / estados especiales ----
@@ -175,6 +209,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
+                    disabled={isValidEmail}
                     required
                   />
                 </div>
@@ -212,15 +247,31 @@ export default function LoginPage() {
                     </p>
                   </div>
 
-                  {loginError && (
-                    <p className="text-sm text-destructive">{loginError}</p>
-                  )}
+                  <div className="flex justify-start">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleGoBackToEmail}
+                      disabled={isLoggingIn}
+                    >
+                      Volver
+                    </Button>
+                  </div>
                 </>
               )}
 
-              <Button type="submit" className="w-full" disabled={isLoggingIn}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  (!isValidEmail && isCheckingEmail) ||
+                  (isValidEmail && isLoggingIn)
+                }
+              >
                 {!isValidEmail
-                  ? "Continuar"
+                  ? isCheckingEmail
+                    ? "Verificando..."
+                    : "Continuar"
                   : isLoggingIn
                     ? "Ingresando..."
                     : "Ingresar"}

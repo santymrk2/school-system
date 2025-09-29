@@ -1,4 +1,4 @@
-import { login, logout, me } from "./auth";
+import { login, logout, me, checkEmail } from "./auth";
 import {
   alumnos,
   familiares,
@@ -12,6 +12,7 @@ export const identidad = {
   login,
   logout,
   me,
+  checkEmail,
   alumnos,
   familiares,
   alumnoFamiliares,
@@ -26,6 +27,7 @@ export {
   login,
   logout,
   me,
+  checkEmail,
   alumnos,
   familiares,
   alumnoFamiliares,

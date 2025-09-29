@@ -9,6 +9,7 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
+import axios from "axios";
 import { useRouter, usePathname } from "next/navigation";
 import { identidad } from "@/services/api/modules";
 import type { PersonaResumenDTO, AuthResponse } from "@/types/api-generated";
@@ -95,7 +96,7 @@ interface AuthContextProps {
   loading: boolean;
 
   // sesión
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 
   // autorización
@@ -108,7 +109,7 @@ interface AuthContextProps {
 const AuthCtx = createContext<AuthContextProps>({
   user: null,
   loading: true,
-  login: async () => false,
+  login: async () => {},
   logout: () => {},
   roles: [],
   selectedRole: null,
@@ -240,7 +241,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
       if (normalized.length === 0) {
         // Sin roles: quedate en login; podés mostrar un toast desde la página
-        return true;
+        return;
       }
 
       if (normalized.length === 1) {
@@ -251,9 +252,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
         router.replace("/select-rol"); // ya logueado
       }
 
-      return true;
-    } catch {
-      return false;
+      return;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message =
+          (typeof error.response?.data?.message === "string" &&
+            error.response?.data?.message) ||
+          error.message ||
+          "Error al iniciar sesión";
+        throw new Error(message);
+      }
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Error al iniciar sesión");
     }
   };
 

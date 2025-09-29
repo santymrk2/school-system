@@ -1,6 +1,7 @@
 package edu.ecep.base_app.identidad.presentation.rest;
 
 import edu.ecep.base_app.identidad.presentation.dto.AuthResponse;
+import edu.ecep.base_app.identidad.presentation.dto.EmailCheckRequest;
 import edu.ecep.base_app.identidad.presentation.dto.LoginRequest;
 import edu.ecep.base_app.identidad.presentation.dto.PersonaCreateDTO;
 import edu.ecep.base_app.identidad.presentation.dto.PersonaResumenDTO;
@@ -50,6 +51,12 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
+    }
+
+    @PostMapping("/check-email")
+    public ResponseEntity<Map<String, Object>> checkEmail(@RequestBody @Validated EmailCheckRequest request) {
+        authService.ensureEmailExists(request.getEmail());
+        return ResponseEntity.ok(Map.of("exists", Boolean.TRUE));
     }
 
     @PostMapping("/register")

@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Calendar,
   CalendarDays,
@@ -139,6 +138,9 @@ type SolicitudAspirante = DTO.AspiranteDTO & {
 type SolicitudAdmisionItem = DTO.SolicitudAdmisionDTO & {
   aspirante?: SolicitudAspirante;
   aspirantePersona?: DTO.PersonaDTO | null;
+  matriculaId?: number | null;
+  alumnoId?: number | null;
+  altaGenerada?: boolean | null;
 };
 
 type SolicitudFamiliarItem = DTO.AspiranteFamiliarDTO & {
@@ -209,12 +211,29 @@ const resolveAspiranteTelefono = (solicitud: SolicitudAdmisionItem) => {
   );
 };
 
+const resolveAltaGenerada = (solicitud: Partial<SolicitudAdmisionItem>) => {
+  const candidate = solicitud as Record<string, unknown> | undefined;
+  if (!candidate) return false;
+  if (candidate.altaGenerada != null) {
+    return Boolean(candidate.altaGenerada);
+  }
+  const matriculaId = candidate.matriculaId as number | null | undefined;
+  const alumnoId = candidate.alumnoId as number | null | undefined;
+  const flags = [
+    matriculaId,
+    alumnoId,
+    (candidate as any)?.tieneAltaGenerada,
+    (candidate as any)?.altaRegistrada,
+  ];
+  return flags.some((value) => Boolean(value));
+};
+
 const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
   const estadoActual = normalizeEstado(solicitud.estado);
   return (
     Boolean(solicitud.entrevistaRealizada) ||
     estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
-    estadoActual === ESTADOS.ACEPTADA
+    (estadoActual === ESTADOS.ACEPTADA && !resolveAltaGenerada(solicitud))
   );
 };
 
@@ -222,8 +241,6 @@ type ScheduleFormState = {
   fechas: string[];
   documentos: string;
   adjuntos: string[];
-  cupoDisponible: boolean | null;
-  disponibilidad: string;
   horarios: string[];
   aclaraciones: string;
 };
@@ -263,6 +280,7 @@ export default function SolicitudAdmisionDetailPage() {
   const [confirmDateOpen, setConfirmDateOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState<DecisionKind>(null);
   const [altaOpen, setAltaOpen] = useState(false);
+  const [altaRegistrada, setAltaRegistrada] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [familiares, setFamiliares] = useState<SolicitudFamiliarItem[]>([]);
   const [familiaresLoading, setFamiliaresLoading] = useState(false);
@@ -377,7 +395,20 @@ export default function SolicitudAdmisionDetailPage() {
         aspirantePersona,
       };
 
-      setSolicitud(enriched);
+      const altaFromApi = resolveAltaGenerada(enriched);
+      setSolicitud((prev) => {
+        const previousAlta = resolveAltaGenerada(prev ?? undefined);
+        const computedAlta = altaFromApi || previousAlta;
+        const previousMatricula = (prev as any)?.matriculaId ?? null;
+        const previousAlumno = (prev as any)?.alumnoId ?? null;
+        return {
+          ...enriched,
+          altaGenerada: computedAlta,
+          matriculaId: (enriched as any)?.matriculaId ?? previousMatricula,
+          alumnoId: (enriched as any)?.alumnoId ?? previousAlumno,
+        };
+      });
+      setAltaRegistrada((prev) => altaFromApi || prev);
       setComentariosEntrevista(enriched.comentariosEntrevista ?? "");
     } catch (err: any) {
       setSolicitud(null);
@@ -559,7 +590,9 @@ export default function SolicitudAdmisionDetailPage() {
   }, [solicitud]);
 
   const cantidadPropuestas = solicitud?.cantidadPropuestasEnviadas ?? 0;
-  const puedeDarDeAlta = solicitud ? puedeDarDeAltaSolicitud(solicitud) : false;
+  const puedeDarDeAlta = solicitud
+    ? puedeDarDeAltaSolicitud(solicitud) && !altaRegistrada
+    : false;
   const estado = solicitud ? normalizeEstado(solicitud.estado) : null;
   const puedeMostrarComentariosEntrevista = Boolean(
     solicitud?.fechaEntrevistaConfirmada,
@@ -569,9 +602,10 @@ export default function SolicitudAdmisionDetailPage() {
   const puedeProgramar =
     estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA;
   const puedeRechazar =
-    estado === ESTADOS.PENDIENTE ||
-    estado === ESTADOS.PROPUESTA ||
-    estado === ESTADOS.PROGRAMADA;
+    !altaRegistrada &&
+    (estado === ESTADOS.PENDIENTE ||
+      estado === ESTADOS.PROPUESTA ||
+      estado === ESTADOS.PROGRAMADA);
   const puedeDecidir = estado === ESTADOS.ENTREVISTA_REALIZADA;
 
   const handleRechazo = async (motivo: string) => {
@@ -610,7 +644,7 @@ export default function SolicitudAdmisionDetailPage() {
       return;
     }
     if (horarios.some((horario) => !horario)) {
-      toast.error("Completá el rango horario para cada fecha propuesta");
+      toast.error("Seleccioná el horario para cada fecha propuesta");
       return;
     }
 
@@ -620,9 +654,6 @@ export default function SolicitudAdmisionDetailPage() {
         fechasPropuestas: fechas,
         documentosRequeridos: form.documentos || undefined,
         adjuntosInformativos: form.adjuntos.length ? form.adjuntos : undefined,
-        cupoDisponible:
-          form.cupoDisponible === null ? undefined : form.cupoDisponible,
-        disponibilidadCurso: form.disponibilidad.trim() || undefined,
         rangosHorarios: horarios,
         aclaracionesDireccion: form.aclaraciones.trim() || undefined,
       });
@@ -676,22 +707,6 @@ export default function SolicitudAdmisionDetailPage() {
       }
     } catch (err: any) {
       toast.error(err?.message ?? "No se pudo actualizar la entrevista");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleGuardarComentarios = async () => {
-    if (!solicitud) return;
-    try {
-      setActionLoading(true);
-      await admisiones.solicitudesAdmision.registrarEntrevista(solicitud.id, {
-        comentarios: comentariosEntrevista.trim() || undefined,
-      });
-      toast.success("Comentarios guardados");
-      fetchSolicitud();
-    } catch (err: any) {
-      toast.error(err?.message ?? "No se pudieron guardar los comentarios");
     } finally {
       setActionLoading(false);
     }
@@ -1104,21 +1119,11 @@ export default function SolicitudAdmisionDetailPage() {
               <h2 className="font-semibold">Comentarios de la entrevista</h2>
               <Textarea
                 value={comentariosEntrevista}
-                onChange={(e) => setComentariosEntrevista(e.target.value)}
                 rows={4}
+                readOnly
+                disabled
                 placeholder="Notas internas sobre la entrevista"
               />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleGuardarComentarios}
-                  disabled={actionLoading}
-                >
-                  Guardar comentarios
-                </Button>
-              </div>
             </div>
           )}
         </CardContent>
@@ -1232,8 +1237,19 @@ export default function SolicitudAdmisionDetailPage() {
         open={altaOpen}
         solicitud={solicitud}
         onOpenChange={setAltaOpen}
-        onSuccess={() => {
+        onSuccess={(result) => {
           setAltaOpen(false);
+          setAltaRegistrada(true);
+          setSolicitud((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  altaGenerada: true,
+                  matriculaId: result?.matriculaId ?? (prev as any)?.matriculaId ?? null,
+                  alumnoId: result?.alumnoId ?? (prev as any)?.alumnoId ?? null,
+                }
+              : prev,
+          );
           fetchSolicitud();
         }}
       />
@@ -1307,6 +1323,15 @@ function Timeline({ items }: { items: TimelineItem[] }) {
   );
 }
 
+const normalizeHorario = (value?: string | null) => {
+  if (!value) return "";
+  const match = String(value).match(/(\d{1,2}:\d{2})/);
+  if (!match) return "";
+  const [hours, minutes] = match[1].split(":");
+  const hh = hours.padStart(2, "0");
+  return `${hh}:${minutes}`;
+};
+
 function ScheduleModal({
   open,
   onOpenChange,
@@ -1323,10 +1348,6 @@ function ScheduleModal({
   const [fechas, setFechas] = useState<string[]>(["", "", ""]);
   const [documentos, setDocumentos] = useState(solicitud.documentosRequeridos ?? "");
   const [adjuntos, setAdjuntos] = useState<string[]>(solicitud.adjuntosInformativos ?? []);
-  const [cupo, setCupo] = useState<boolean | null>(solicitud.cupoDisponible ?? null);
-  const [disponibilidad, setDisponibilidad] = useState<string>(
-    solicitud.disponibilidadCurso ?? "",
-  );
   const [horarios, setHorarios] = useState<string[]>(["", "", ""]);
   const [aclaraciones, setAclaraciones] = useState<string>(
     solicitud.aclaracionesPropuesta ?? "",
@@ -1340,9 +1361,9 @@ function ScheduleModal({
         solicitud.fechasPropuestas?.[2] ?? "",
       ]);
       setHorarios([
-        solicitud.rangosHorariosPropuestos?.[0] ?? "",
-        solicitud.rangosHorariosPropuestos?.[1] ?? "",
-        solicitud.rangosHorariosPropuestos?.[2] ?? "",
+        normalizeHorario(solicitud.rangosHorariosPropuestos?.[0]),
+        normalizeHorario(solicitud.rangosHorariosPropuestos?.[1]),
+        normalizeHorario(solicitud.rangosHorariosPropuestos?.[2]),
       ]);
     } else {
       setFechas(["", "", ""]);
@@ -1350,8 +1371,6 @@ function ScheduleModal({
     }
     setDocumentos(solicitud.documentosRequeridos ?? "");
     setAdjuntos(solicitud.adjuntosInformativos ?? []);
-    setCupo(solicitud.cupoDisponible ?? null);
-    setDisponibilidad(solicitud.disponibilidadCurso ?? "");
     setAclaraciones(solicitud.aclaracionesPropuesta ?? "");
   }, [open, solicitud]);
 
@@ -1400,7 +1419,7 @@ function ScheduleModal({
                   Horario {idx + 1}
                 </label>
                 <Input
-                  placeholder="09:00 - 11:00"
+                  type="time"
                   value={horarios[idx]}
                   onChange={(e) => {
                     const next = [...horarios];
@@ -1436,17 +1455,6 @@ function ScheduleModal({
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Comentario sobre disponibilidad
-            </label>
-            <Input
-              value={disponibilidad}
-              onChange={(e) => setDisponibilidad(e.target.value)}
-              placeholder="Disponible, sujeto a vacante, etc."
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
               Aclaraciones para la familia
             </label>
             <Textarea
@@ -1455,17 +1463,6 @@ function ScheduleModal({
               rows={3}
               placeholder="Ej: Traer libreta sanitaria, ingresar por secretaría, etc."
             />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="cupo"
-              checked={cupo === true}
-              onCheckedChange={(checked) => setCupo(checked ? true : false)}
-            />
-            <label htmlFor="cupo" className="text-sm text-muted-foreground">
-              Confirmar que hay cupo disponible
-            </label>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -1482,8 +1479,6 @@ function ScheduleModal({
                   fechas,
                   documentos,
                   adjuntos,
-                  cupoDisponible: cupo,
-                  disponibilidad,
                   horarios,
                   aclaraciones,
                 })

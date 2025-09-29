@@ -114,6 +114,9 @@ type SolicitudAspirante = DTO.AspiranteDTO & {
 type SolicitudAdmisionItem = DTO.SolicitudAdmisionDTO & {
   aspirante?: SolicitudAspirante;
   aspirantePersona?: DTO.PersonaDTO | null;
+  matriculaId?: number | null;
+  alumnoId?: number | null;
+  altaGenerada?: boolean | null;
 };
 
 const resolveAspiranteNombre = (solicitud: SolicitudAdmisionItem) => {
@@ -144,12 +147,29 @@ const resolveAspiranteTelefono = (solicitud: SolicitudAdmisionItem) => {
   );
 };
 
+const resolveAltaGenerada = (solicitud: Partial<SolicitudAdmisionItem>) => {
+  const candidate = solicitud as Record<string, unknown> | undefined;
+  if (!candidate) return false;
+  if (candidate.altaGenerada != null) {
+    return Boolean(candidate.altaGenerada);
+  }
+  const matriculaId = candidate.matriculaId as number | null | undefined;
+  const alumnoId = candidate.alumnoId as number | null | undefined;
+  const flags = [
+    matriculaId,
+    alumnoId,
+    (candidate as any)?.tieneAltaGenerada,
+    (candidate as any)?.altaRegistrada,
+  ];
+  return flags.some((value) => Boolean(value));
+};
+
 const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
   const estadoActual = normalizeEstado(solicitud.estado);
   return (
     Boolean(solicitud.entrevistaRealizada) ||
     estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
-    estadoActual === ESTADOS.ACEPTADA
+    (estadoActual === ESTADOS.ACEPTADA && !resolveAltaGenerada(solicitud))
   );
 };
 
@@ -194,6 +214,9 @@ function useSolicitudesAdmision(query: string) {
           item.aspirante?.personaId != null
             ? personaById.get(item.aspirante.personaId) ?? null
             : null,
+        altaGenerada: resolveAltaGenerada(item),
+        matriculaId: (item as any)?.matriculaId ?? null,
+        alumnoId: (item as any)?.alumnoId ?? null,
       }));
 
       setData(enriched);
@@ -249,11 +272,24 @@ export default function AspirantesTab({ searchTerm }: Props) {
   const [altaOpen, setAltaOpen] = useState(false);
   const [altaSolicitud, setAltaSolicitud] = useState<SolicitudAdmisionItem | null>(null);
   const [page, setPage] = useState(0);
+  const [altasRegistradas, setAltasRegistradas] = useState<Set<number>>(new Set());
   const pageSize = 6;
 
   useEffect(() => {
     setPage(0);
   }, [searchTerm]);
+
+  useEffect(() => {
+    setAltasRegistradas((prev) => {
+      const next = new Set(prev);
+      solicitudes.forEach((item) => {
+        if (item.id != null && resolveAltaGenerada(item)) {
+          next.add(item.id);
+        }
+      });
+      return next;
+    });
+  }, [solicitudes]);
 
   useEffect(() => {
     if (page * pageSize >= solicitudes.length && page > 0) {
@@ -316,7 +352,10 @@ export default function AspirantesTab({ searchTerm }: Props) {
             {currentSolicitudes.map((row) => {
               const nombre = resolveAspiranteNombre(row);
               const cantidadPropuestas = row.cantidadPropuestasEnviadas ?? 0;
-              const puedeDarDeAlta = puedeDarDeAltaSolicitud(row);
+              const altaGenerada =
+                (row.id != null && altasRegistradas.has(row.id)) ||
+                resolveAltaGenerada(row);
+              const puedeDarDeAlta = !altaGenerada && puedeDarDeAltaSolicitud(row);
               return (
                 <Card key={row.id} className="flex flex-col">
                   <CardHeader className="pb-3">
@@ -424,6 +463,14 @@ export default function AspirantesTab({ searchTerm }: Props) {
             }
           }}
           onSuccess={() => {
+            const solicitudId = altaSolicitud?.id;
+            if (solicitudId != null) {
+              setAltasRegistradas((prev) => {
+                const next = new Set(prev);
+                next.add(solicitudId);
+                return next;
+              });
+            }
             refetch();
             setAltaSolicitud(null);
           }}
@@ -437,7 +484,7 @@ type AltaModalProps = {
   open: boolean;
   solicitud: SolicitudAdmisionItem;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (result: DTO.SolicitudAdmisionAltaResultDTO | null) => void;
 };
 
 function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps) {
@@ -445,7 +492,6 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
   const [seccionesLoading, setSeccionesLoading] = useState(false);
   const [seccionesError, setSeccionesError] = useState<string | null>(null);
   const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
-  const [turno, setTurno] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   const aspiranteNombre = resolveAspiranteNombre(solicitud);
@@ -456,12 +502,10 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
       setSecciones([]);
       setSeccionesError(null);
       setSelectedSeccionId("");
-      setTurno("");
       return;
     }
 
     const initialTurno = turnoPreferido ? String(turnoPreferido) : "";
-    setTurno(initialTurno);
     setSelectedSeccionId("");
     setSeccionesLoading(true);
     setSeccionesError(null);
@@ -499,14 +543,6 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
     })();
   }, [open, solicitud.id, turnoPreferido]);
 
-  useEffect(() => {
-    if (!open || turno) return;
-    const seccion = secciones.find((sec) => String(sec.id) === selectedSeccionId);
-    if (seccion?.turno) {
-      setTurno(String(seccion.turno));
-    }
-  }, [open, selectedSeccionId, secciones, turno]);
-
   const formatTurnoLabel = (value?: string | null) => {
     if (!value) return "";
     const normalized = String(value).trim().toUpperCase();
@@ -527,8 +563,6 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
     return base || `Sección #${seccion.id}`;
   };
 
-  const selectedSeccion = secciones.find((sec) => String(sec.id) === selectedSeccionId);
-
   const handleSubmit = async () => {
     if (!selectedSeccionId) {
       toast.error("Seleccioná una sección para el alta");
@@ -536,12 +570,11 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
     }
     setSaving(true);
     try {
-      await admisiones.solicitudesAdmision.alta(solicitud.id, {
+      const res = await admisiones.solicitudesAdmision.alta(solicitud.id, {
         seccionId: Number(selectedSeccionId),
-        turno: turno ? (turno as DTO.Turno) : undefined,
       });
       toast.success("Alumno dado de alta correctamente");
-      onSuccess();
+      onSuccess(res.data ?? null);
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error?.message ?? "No se pudo completar el alta");
@@ -556,7 +589,7 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
         <DialogHeader>
           <DialogTitle>Dar de alta — {aspiranteNombre}</DialogTitle>
           <DialogDescription>
-            Migrá la solicitud a un alumno matriculado. Ajustá la sección y el turno antes de confirmar.
+            Migrá la solicitud a un alumno matriculado. Seleccioná la sección destino antes de confirmar.
           </DialogDescription>
         </DialogHeader>
 
@@ -604,24 +637,6 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
             {!seccionesLoading && !secciones.length && !seccionesError && (
               <p className="text-xs text-muted-foreground">
                 No hay secciones disponibles para matricular en este momento.
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Turno</Label>
-            <Select value={turno} onValueChange={setTurno}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccioná el turno" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={DTO.Turno.MANANA}>Mañana</SelectItem>
-                <SelectItem value={DTO.Turno.TARDE}>Tarde</SelectItem>
-              </SelectContent>
-            </Select>
-            {selectedSeccion?.turno && (
-              <p className="text-xs text-muted-foreground">
-                Turno sugerido por la sección: {formatTurnoLabel(selectedSeccion.turno)}
               </p>
             )}
           </div>

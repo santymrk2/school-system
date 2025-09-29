@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -72,6 +72,14 @@ const initialFormData: PostulacionFormData = {
   coberturaMedica: "",
   observacionesAdicionalesSalud: "",
   familiares: [],
+};
+
+const completionMessages = {
+  title: "¡Gracias por completar la postulación!",
+  body:
+    "Gracias por inscribirte en nuestra comunidad educativa. En breve recibirás un correo electrónico con los próximos pasos e información relevante.",
+  reminder:
+    "Te invitamos a mantenerte atento a tu bandeja de entrada y revisar tu carpeta de correo no deseado.",
 };
 
 type FamiliarRecordDTO = DTO.FamiliarDTO & { ocupacion?: string | null };
@@ -169,6 +177,7 @@ export default function PostulacionPage() {
   const [familiarAuthError, setFamiliarAuthError] = useState<string | null>(
     null,
   );
+  const [submissionCompleted, setSubmissionCompleted] = useState(false);
   const activePromptRef = useRef<FamiliarPromptInfo | null>(null);
 
   useEffect(() => {
@@ -853,6 +862,7 @@ export default function PostulacionPage() {
 
       toast.success("Postulación enviada con éxito.");
 
+      setSubmissionCompleted(true);
       setFormData({ ...initialFormData, familiares: [] });
       setAspirantePersonaPreview(null);
       setLastLookupDni("");
@@ -864,6 +874,46 @@ export default function PostulacionPage() {
       toast.error(`Error al enviar: ${err?.message ?? "No se pudo enviar"}`);
     }
   };
+
+  if (submissionCompleted) {
+    return (
+      <div className="min-h-screen bg-background dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <Button variant="outline" asChild>
+            <Link href="/">Volver</Link>
+          </Button>
+          <Card className="text-center">
+            <CardHeader className="space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <CardTitle className="text-2xl font-semibold">
+                {completionMessages.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-muted-foreground">
+              <p>{completionMessages.body}</p>
+              <p>{completionMessages.reminder}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <Button asChild>
+                  <Link href="/">Ir al inicio</Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSubmissionCompleted(false);
+                    setCurrentStep(1);
+                  }}
+                >
+                  Enviar una nueva postulación
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const renderStep = () => {
     switch (currentStep) {

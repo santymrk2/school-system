@@ -185,13 +185,26 @@ export default function LoginPage() {
 
         {/* Formulario de login */}
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center text-foreground">
-              Iniciar Sesión
-            </CardTitle>
-            <CardDescription className="text-center">
-              Ingrese sus credenciales para acceder al sistema
-            </CardDescription>
+          <CardHeader className="space-y-4">
+            {isValidEmail && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleGoBackToEmail}
+                disabled={isLoggingIn}
+                className="self-start"
+              >
+                Volver
+              </Button>
+            )}
+            <div className="space-y-2 text-center">
+              <CardTitle className="text-2xl text-center text-foreground">
+                Iniciar Sesión
+              </CardTitle>
+              <CardDescription className="text-center">
+                Ingrese sus credenciales para acceder al sistema
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <form
@@ -247,16 +260,6 @@ export default function LoginPage() {
                     </p>
                   </div>
 
-                  <div className="flex justify-start">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleGoBackToEmail}
-                      disabled={isLoggingIn}
-                    >
-                      Volver
-                    </Button>
-                  </div>
                 </>
               )}
 

@@ -229,7 +229,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
           >
             <div className="flex h-full flex-col justify-center overflow-y-auto">
-              <nav className="space-y-1 py-2">
+              <nav className="space-y-1 py-2 pl-1">
                 {groupedMenu.map(([groupKey, items], groupIndex) => (
                   <div key={groupKey} className="space-y-1">
                     {items.map((item, index) => {

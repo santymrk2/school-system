@@ -619,6 +619,7 @@ export default function PostulacionPage() {
     let ok = true;
     let missingRequired = false;
     let invalidBirthDate = false;
+    const dniRegistrado = Boolean(aspirantePersonaPreview?.id);
     for (const f of fields) {
       if (!formData[f as keyof typeof formData]) {
         newErrors[f] = true;
@@ -629,6 +630,10 @@ export default function PostulacionPage() {
     const dniValue = formatDni(formData.dni ?? "");
     const dniInvalid = !dniValue || dniValue.length < 7 || dniValue.length > 10;
     if (dniInvalid) {
+      newErrors.dni = true;
+      ok = false;
+    }
+    if (dniRegistrado) {
       newErrors.dni = true;
       ok = false;
     }
@@ -648,6 +653,9 @@ export default function PostulacionPage() {
           ? "La fecha de nacimiento debe ser al menos dos años anterior a hoy."
           : null,
         dniInvalid ? "El DNI debe tener entre 7 y 10 dígitos." : null,
+        dniRegistrado
+          ? "El DNI ingresado ya se encuentra registrado en el sistema."
+          : null,
       ]
         .filter(Boolean)
         .join(" ");
@@ -923,7 +931,7 @@ export default function PostulacionPage() {
             formData={formData}
             handleInputChange={handleInputChange}
             errors={errors}
-            personaDetectadaId={formData.personaId ?? aspirantePersonaPreview?.id ?? null}
+            dniRegistrado={Boolean(aspirantePersonaPreview?.id)}
             dniLookupLoading={dniLookupLoading}
           />
         );

@@ -29,7 +29,7 @@ interface Props {
     options?: { errorKeys?: string | string[] },
   ) => void;
   errors: Record<string, boolean>;
-  personaDetectadaId?: number | null;
+  dniRegistrado?: boolean;
   dniLookupLoading?: boolean;
 }
 
@@ -37,9 +37,14 @@ export function Step1({
   formData,
   handleInputChange,
   errors,
-  personaDetectadaId,
+  dniRegistrado,
   dniLookupLoading,
 }: Props) {
+  const helperTextClassName = cn(
+    "mt-1 text-xs min-h-[16px]",
+    dniLookupLoading || !dniRegistrado ? "text-muted-foreground" : "text-destructive",
+  );
+
   return (
     <div className="space-y-4">
       {/* Título del paso */}
@@ -91,11 +96,11 @@ export function Step1({
             aria-invalid={errors.dni || undefined}
             className={cn(errors.dni && "border-destructive")}
           />
-          <div className="mt-1 text-xs text-muted-foreground min-h-[16px]">
+          <div className={helperTextClassName}>
             {dniLookupLoading
               ? "Verificando DNI…"
-              : personaDetectadaId
-                ? `Persona existente detectada (ID #${personaDetectadaId}).`
+              : dniRegistrado
+                ? "DNI no válido."
                 : ""}
           </div>
         </div>

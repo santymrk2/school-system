@@ -791,6 +791,8 @@ export interface SolicitudAdmisionDTO {
   fechaLimiteRespuesta?: ISODate;
   fechaRespuestaFamilia?: ISODate;
   fechaEntrevistaConfirmada?: ISODate;
+  horarioEntrevistaConfirmado?: string;
+  opcionEntrevistaSeleccionada?: number;
   entrevistaRealizada?: boolean;
   emailConfirmacionEnviado?: boolean;
   documentosRequeridos?: string;
@@ -820,6 +822,8 @@ export interface SolicitudAdmisionRechazoDTO {
 
 export interface SolicitudAdmisionSeleccionDTO {
   fechaSeleccionada: ISODate;
+  opcionSeleccionada?: number;
+  horarioSeleccionado?: string;
 }
 
 export interface SolicitudAdmisionEntrevistaDTO {
@@ -845,6 +849,38 @@ export interface SolicitudAdmisionAltaResultDTO {
   alumnoId?: number;
   matriculaId?: number;
   seccionId?: number;
+}
+
+export interface SolicitudAdmisionPortalOpcionDTO {
+  indice: number;
+  fecha?: ISODate;
+  horario?: string;
+  etiqueta?: string;
+}
+
+export interface SolicitudAdmisionPortalDTO {
+  solicitudId?: number;
+  aspirante?: string;
+  correoReferencia?: string;
+  disponibilidadCurso?: string;
+  cupoDisponible?: boolean;
+  opciones?: SolicitudAdmisionPortalOpcionDTO[];
+  permiteSolicitarReprogramacion: boolean;
+  reprogramacionSolicitada: boolean;
+  respuestaRegistrada: boolean;
+  fechaSeleccionada?: ISODate;
+  horarioSeleccionado?: string;
+  opcionSeleccionada?: number;
+  aclaracionesDireccion?: string;
+  documentosRequeridos?: string;
+  adjuntosInformativos?: string[];
+  fechaLimiteRespuesta?: ISODate;
+  notasDireccion?: string;
+}
+
+export interface SolicitudAdmisionPortalSeleccionDTO {
+  opcion: "OPCION_1" | "OPCION_2" | "OPCION_3" | "NO_DISPONIBLE";
+  comentario?: string;
 }
 
 export interface SolicitudBajaAlumnoCreateDTO {

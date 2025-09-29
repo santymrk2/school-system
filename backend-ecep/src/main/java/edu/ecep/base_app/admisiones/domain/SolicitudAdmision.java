@@ -67,6 +67,15 @@ public class SolicitudAdmision extends BaseEntity{
     @Column(length = 100)
     private String propuestaHorario3;
 
+    @Column(length = 100)
+    private String horarioEntrevistaConfirmado;
+
+    @Column
+    private Integer opcionEntrevistaSeleccionada;
+
+    @Column(length = 120, unique = true)
+    private String portalTokenSeleccion;
+
     @Column(length = 2000)
     private String propuestaNotas;
 

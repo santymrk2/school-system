@@ -66,6 +66,8 @@ public class SecurityConfig {
                                 "/api/auth/**"
                         ).permitAll()
 
+                        .requestMatchers("/api/public/**").permitAll()
+
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         .requestMatchers(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
@@ -28,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Calendar,
   CalendarDays,
@@ -1332,6 +1334,11 @@ const normalizeHorario = (value?: string | null) => {
   return `${hh}:${minutes}`;
 };
 
+const SCHEDULE_SLOT_COUNT = 2;
+
+const createEmptySlots = () =>
+  Array.from({ length: SCHEDULE_SLOT_COUNT }, () => "");
+
 function ScheduleModal({
   open,
   onOpenChange,
@@ -1345,29 +1352,30 @@ function ScheduleModal({
   onSubmit: (values: ScheduleFormState) => void;
   solicitud: DTO.SolicitudAdmisionDTO;
 }) {
-  const [fechas, setFechas] = useState<string[]>(["", "", ""]);
+  const [fechas, setFechas] = useState<string[]>(createEmptySlots());
   const [documentos, setDocumentos] = useState(solicitud.documentosRequeridos ?? "");
   const [adjuntos, setAdjuntos] = useState<string[]>(solicitud.adjuntosInformativos ?? []);
-  const [horarios, setHorarios] = useState<string[]>(["", "", ""]);
+  const [horarios, setHorarios] = useState<string[]>(createEmptySlots());
   const [aclaraciones, setAclaraciones] = useState<string>(
     solicitud.aclaracionesPropuesta ?? "",
   );
+  const today = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 
   useEffect(() => {
     if (open) {
-      setFechas([
-        solicitud.fechasPropuestas?.[0] ?? "",
-        solicitud.fechasPropuestas?.[1] ?? "",
-        solicitud.fechasPropuestas?.[2] ?? "",
-      ]);
-      setHorarios([
-        normalizeHorario(solicitud.rangosHorariosPropuestos?.[0]),
-        normalizeHorario(solicitud.rangosHorariosPropuestos?.[1]),
-        normalizeHorario(solicitud.rangosHorariosPropuestos?.[2]),
-      ]);
+      setFechas(
+        Array.from({ length: SCHEDULE_SLOT_COUNT }, (_, index) =>
+          solicitud.fechasPropuestas?.[index] ?? "",
+        ),
+      );
+      setHorarios(
+        Array.from({ length: SCHEDULE_SLOT_COUNT }, (_, index) =>
+          normalizeHorario(solicitud.rangosHorariosPropuestos?.[index]),
+        ),
+      );
     } else {
-      setFechas(["", "", ""]);
-      setHorarios(["", "", ""]);
+      setFechas(createEmptySlots());
+      setHorarios(createEmptySlots());
     }
     setDocumentos(solicitud.documentosRequeridos ?? "");
     setAdjuntos(solicitud.adjuntosInformativos ?? []);
@@ -1400,18 +1408,18 @@ function ScheduleModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {fechas.map((value, idx) => (
               <div key={idx} className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">
                   Fecha {idx + 1}
                 </label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={value}
-                  onChange={(e) => {
+                  min={today}
+                  onChange={(nextValue) => {
                     const next = [...fechas];
-                    next[idx] = e.target.value;
+                    next[idx] = nextValue ?? "";
                     setFechas(next);
                   }}
                 />

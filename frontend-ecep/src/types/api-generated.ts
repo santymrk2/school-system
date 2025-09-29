@@ -843,6 +843,8 @@ export interface SolicitudAdmisionDecisionDTO {
 export interface SolicitudAdmisionAltaDTO {
   seccionId?: number;
   turno?: Turno;
+  periodoEscolarId?: number;
+  autoAsignarSiguientePeriodo?: boolean;
 }
 
 export interface SolicitudAdmisionAltaResultDTO {

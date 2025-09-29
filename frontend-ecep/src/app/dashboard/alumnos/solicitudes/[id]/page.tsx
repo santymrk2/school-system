@@ -14,7 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Label } from "@/components/ui/label";
 import {
   Calendar,
   CalendarDays,
@@ -45,6 +53,7 @@ import * as DTO from "@/types/api-generated";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -127,6 +136,20 @@ const estadoBadge = (estado?: string | null) => {
     );
   }
   return <Badge variant="secondary">{estado?.trim() || "—"}</Badge>;
+};
+
+const getPeriodoOrderValue = (periodo?: DTO.PeriodoEscolarDTO | null) => {
+  if (!periodo) return 0;
+  if (typeof periodo.anio === "number") return periodo.anio;
+  if (periodo.fechaInicio) {
+    const year = Number(String(periodo.fechaInicio).slice(0, 4));
+    if (!Number.isNaN(year)) return year;
+  }
+  if (periodo.fechaFin) {
+    const year = Number(String(periodo.fechaFin).slice(0, 4));
+    if (!Number.isNaN(year)) return year;
+  }
+  return typeof periodo.id === "number" ? periodo.id : 0;
 };
 
 type SolicitudAspirante = DTO.AspiranteDTO & {
@@ -232,11 +255,7 @@ const resolveAltaGenerada = (solicitud: Partial<SolicitudAdmisionItem>) => {
 
 const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
   const estadoActual = normalizeEstado(solicitud.estado);
-  return (
-    Boolean(solicitud.entrevistaRealizada) ||
-    estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
-    (estadoActual === ESTADOS.ACEPTADA && !resolveAltaGenerada(solicitud))
-  );
+  return estadoActual === ESTADOS.ACEPTADA && !resolveAltaGenerada(solicitud);
 };
 
 type ScheduleFormState = {
@@ -248,6 +267,11 @@ type ScheduleFormState = {
 };
 
 type ConfirmOption = { fecha: string; horario?: string };
+
+type ConfirmDatePayload = {
+  fecha: string;
+  horario?: string;
+};
 
 type DecisionKind = "aceptar" | "rechazar" | null;
 
@@ -287,6 +311,14 @@ export default function SolicitudAdmisionDetailPage() {
   const [familiares, setFamiliares] = useState<SolicitudFamiliarItem[]>([]);
   const [familiaresLoading, setFamiliaresLoading] = useState(false);
   const [familiaresError, setFamiliaresError] = useState<string | null>(null);
+  const { periodos: periodosEscolares } = useActivePeriod({ tickMidnight: false });
+  const [altaPromptOpen, setAltaPromptOpen] = useState(false);
+  const [pendingAutoAlta, setPendingAutoAlta] = useState({
+    active: false,
+    observedMaxOrder: 0,
+  });
+  const [altaDefaultPeriodoId, setAltaDefaultPeriodoId] = useState<number | null>(null);
+  const [altaDefaultAutoNext, setAltaDefaultAutoNext] = useState(false);
 
   const loadFamiliares = useCallback(async (aspiranteId: number) => {
     setFamiliaresLoading(true);
@@ -453,6 +485,31 @@ export default function SolicitudAdmisionDetailPage() {
     }
   }, [solicitud]);
 
+  useEffect(() => {
+    if (!pendingAutoAlta.active) return;
+    if (!periodosEscolares || !periodosEscolares.length) return;
+    if (altaOpen) return;
+    const currentMaxOrder = periodosEscolares.reduce(
+      (max, periodo) => Math.max(max, getPeriodoOrderValue(periodo)),
+      0,
+    );
+    if (currentMaxOrder > pendingAutoAlta.observedMaxOrder) {
+      const sorted = [...periodosEscolares].sort(
+        (a, b) => getPeriodoOrderValue(a) - getPeriodoOrderValue(b),
+      );
+      const newest = sorted[sorted.length - 1];
+      if (newest?.id != null) {
+        setPendingAutoAlta({ active: false, observedMaxOrder: currentMaxOrder });
+        setAltaDefaultPeriodoId(newest.id);
+        setAltaDefaultAutoNext(false);
+        toast.info(
+          "Se creó un nuevo período lectivo. Completá el alta pendiente de esta solicitud.",
+        );
+        setAltaOpen(true);
+      }
+    }
+  }, [altaOpen, pendingAutoAlta, periodosEscolares]);
+
   const propuestasDetalladas: ConfirmOption[] = useMemo(() => {
     if (!solicitud) return [];
     const propuestas = solicitud.fechasPropuestas ?? [];
@@ -499,35 +556,35 @@ export default function SolicitudAdmisionDetailPage() {
 
     const proposalDescription = hasProposal
       ? propuestasEnviadas > 1
-        ? `Se enviaron ${propuestasEnviadas} propuestas a la familia.`
-        : "Se envió una propuesta de entrevista a la familia."
+        ? `Se registraron ${propuestasEnviadas} propuestas enviadas por correo.`
+        : "Se cargó una propuesta para coordinar la entrevista."
       : decisionTaken && rechazada
       ? "La solicitud fue rechazada antes de enviar una propuesta."
-      : "Definí fechas y documentación para enviar a la familia.";
+      : "Definí las fechas y la documentación a compartir con la familia.";
 
     const confirmationDescription = hasConfirmation
-      ? "La familia confirmó la fecha de la entrevista."
+      ? "Registraste la fecha pactada con la familia."
       : decisionTaken
       ? "La solicitud se resolvió sin registrar una confirmación."
       : hasProposal
-      ? "Esperamos la confirmación de la familia."
-      : "Una vez que envíes la propuesta, registrá la respuesta de la familia.";
+      ? "Esperamos la respuesta por correo para actualizar la fecha acordada."
+      : "Una vez que tengas la propuesta, registrá la fecha confirmada.";
 
     const interviewDescription = interviewDone
       ? "Se registró el resultado de la entrevista."
       : decisionTaken
       ? "La solicitud se resolvió sin realizar entrevista."
       : hasConfirmation
-      ? "Después de la entrevista, registrá si se realizó y agregá comentarios."
-      : "Aguardamos la confirmación de fecha para realizar la entrevista.";
+      ? "Después de la entrevista, registrá si se realizó y agregá comentarios internos."
+      : "Aguardamos la confirmación de la familia para realizar la entrevista.";
 
     const decisionDescription = decisionTaken
       ? rechazada
         ? "La solicitud fue rechazada."
         : "La solicitud fue aceptada. Generá el alta cuando corresponda."
-      : interviewDone
+      : hasConfirmation
       ? "Definí si la solicitud será aceptada o rechazada."
-      : "Registrá el resultado de la entrevista para habilitar la decisión final.";
+      : "Registrá la fecha confirmada para habilitar la decisión final.";
 
     const steps: Array<Omit<TimelineItem, "status">> = [
       {
@@ -608,7 +665,11 @@ export default function SolicitudAdmisionDetailPage() {
     (estado === ESTADOS.PENDIENTE ||
       estado === ESTADOS.PROPUESTA ||
       estado === ESTADOS.PROGRAMADA);
-  const puedeDecidir = estado === ESTADOS.ENTREVISTA_REALIZADA;
+  const tieneEntrevistaConfirmada = Boolean(solicitud?.fechaEntrevistaConfirmada);
+  const puedeDecidir =
+    tieneEntrevistaConfirmada &&
+    estado !== ESTADOS.RECHAZADA &&
+    estado !== ESTADOS.ACEPTADA;
 
   const handleRechazo = async (motivo: string) => {
     if (!solicitud) return;
@@ -645,11 +706,6 @@ export default function SolicitudAdmisionDetailPage() {
       toast.error("Ingresá al menos una fecha propuesta");
       return;
     }
-    if (horarios.some((horario) => !horario)) {
-      toast.error("Seleccioná el horario para cada fecha propuesta");
-      return;
-    }
-
     try {
       setActionLoading(true);
       await admisiones.solicitudesAdmision.programar(solicitud.id, {
@@ -669,17 +725,25 @@ export default function SolicitudAdmisionDetailPage() {
     }
   };
 
-  const handleConfirmarFecha = async (fecha: string) => {
+  const handleConfirmarFecha = async ({ fecha, horario }: ConfirmDatePayload) => {
     if (!solicitud) return;
-    const indice = propuestasDetalladas.findIndex((option) => option.fecha === fecha);
-    const horarioSeleccionado =
-      indice >= 0 ? propuestasDetalladas[indice].horario || undefined : undefined;
+    const fechaSeleccionada = fecha?.trim();
+    if (!fechaSeleccionada) {
+      toast.error("Ingresá la fecha confirmada");
+      return;
+    }
+    const horarioNormalizado = horario ? normalizeHorario(horario) : "";
+    const indice = propuestasDetalladas.findIndex(
+      (option) =>
+        option.fecha === fechaSeleccionada &&
+        normalizeHorario(option.horario) === horarioNormalizado,
+    );
     try {
       setActionLoading(true);
       await admisiones.solicitudesAdmision.confirmarFecha(solicitud.id, {
-        fechaSeleccionada: fecha,
+        fechaSeleccionada,
         opcionSeleccionada: indice >= 0 ? indice + 1 : undefined,
-        horarioSeleccionado,
+        horarioSeleccionado: horarioNormalizado || undefined,
       });
       toast.success("Fecha de entrevista confirmada");
       setConfirmDateOpen(false);
@@ -730,6 +794,11 @@ export default function SolicitudAdmisionDetailPage() {
       toast.success(aceptar ? "Solicitud aceptada" : "Solicitud rechazada");
       setDecisionOpen(null);
       fetchSolicitud();
+      if (aceptar) {
+        setAltaPromptOpen(true);
+      } else {
+        setAltaPromptOpen(false);
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "No se pudo registrar la decisión");
     } finally {
@@ -1153,7 +1222,18 @@ export default function SolicitudAdmisionDetailPage() {
             Actualizá el estado de la solicitud según el avance con la familia.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent className="flex flex-col gap-3">
+          {pendingAutoAlta.active && (
+            <Alert>
+              <AlertTitle>Alta pendiente para el próximo período</AlertTitle>
+              <AlertDescription>
+                Te avisaremos cuando se cree un nuevo período lectivo para completar la
+                asignación.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex flex-wrap gap-2">
           {estado === ESTADOS.PROGRAMADA && (
             <Button
               variant="secondary"
@@ -1209,6 +1289,7 @@ export default function SolicitudAdmisionDetailPage() {
               </Button>
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
 
@@ -1250,13 +1331,48 @@ export default function SolicitudAdmisionDetailPage() {
         onSubmit={handleResultadoEntrevista}
       />
 
+      <AltaPromptDialog
+        open={altaPromptOpen}
+        onCancel={() => setAltaPromptOpen(false)}
+        onConfirm={() => {
+          setAltaPromptOpen(false);
+          setAltaDefaultPeriodoId(null);
+          setAltaDefaultAutoNext(false);
+          setAltaOpen(true);
+        }}
+      />
+
       <AltaModal
         open={altaOpen}
         solicitud={solicitud}
-        onOpenChange={setAltaOpen}
+        defaultPeriodoId={altaDefaultPeriodoId ?? undefined}
+        defaultAutoNext={altaDefaultAutoNext}
+        onOpenChange={(open) => {
+          setAltaOpen(open);
+          if (!open) {
+            setAltaDefaultPeriodoId(null);
+            setAltaDefaultAutoNext(false);
+          }
+        }}
+        onAutoAssignNextRequest={({ currentMaxOrder }) => {
+          setPendingAutoAlta({ active: true, observedMaxOrder: currentMaxOrder });
+          setAltaDefaultPeriodoId(null);
+          setAltaDefaultAutoNext(true);
+          setAltaOpen(false);
+          setAltaPromptOpen(false);
+        }}
+        onAutoAssignNextCancelled={() => {
+          setPendingAutoAlta((prev) =>
+            prev.active ? { active: false, observedMaxOrder: prev.observedMaxOrder } : prev,
+          );
+          setAltaDefaultAutoNext(false);
+        }}
         onSuccess={(result) => {
           setAltaOpen(false);
           setAltaRegistrada(true);
+          setPendingAutoAlta({ active: false, observedMaxOrder: 0 });
+          setAltaDefaultPeriodoId(null);
+          setAltaDefaultAutoNext(false);
           setSolicitud((prev) =>
             prev
               ? {
@@ -1423,6 +1539,10 @@ function ScheduleModal({
             </div>
           )}
 
+          <p className="text-xs text-muted-foreground">
+            El correo le pide a la familia que responda confirmando el horario que prefieran.
+          </p>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {fechas.map((value, idx) => (
               <div key={idx} className="space-y-1">
@@ -1508,7 +1628,7 @@ function ScheduleModal({
               }
               disabled={loading}
             >
-              Guardar y notificar
+              Guardar propuesta
             </Button>
           </div>
         </div>
@@ -1583,15 +1703,23 @@ function ConfirmDateModal({
   onOpenChange: (open: boolean) => void;
   options: ConfirmOption[];
   loading: boolean;
-  onSubmit: (fecha: string) => void;
+  onSubmit: (payload: ConfirmDatePayload) => void;
 }) {
-  const [seleccion, setSeleccion] = useState("");
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>("");
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState<string>("");
 
   useEffect(() => {
     if (open) {
-      setSeleccion(options?.[0]?.fecha ?? "");
+      const first = options?.[0];
+      setFechaSeleccionada(first?.fecha ?? "");
+      setHorarioSeleccionado(first?.horario ? normalizeHorario(first.horario) : "");
     }
   }, [open, options]);
+
+  const handleUseOption = (option: ConfirmOption) => {
+    setFechaSeleccionada(option.fecha ?? "");
+    setHorarioSeleccionado(option.horario ? normalizeHorario(option.horario) : "");
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1601,37 +1729,74 @@ function ConfirmDateModal({
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Seleccioná cuál de las fechas propuestas eligió la familia.
+            Registrá la fecha acordada con la familia. Podés ajustar la propuesta si
+            confirmaron otro día u horario por correo.
           </p>
-          <div className="space-y-2">
-            {(options ?? []).map((option) => (
-              <label key={option.fecha} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="fecha-confirmada"
-                  value={option.fecha}
-                  checked={seleccion === option.fecha}
-                  onChange={(e) => setSeleccion(e.target.value)}
-                />
-                <span>
-                  {formatDate(option.fecha)}
-                  {option.horario ? ` · ${option.horario}` : ""}
-                </span>
-              </label>
-            ))}
-            {!options.length && (
-              <p className="text-sm text-red-500">
-                No hay fechas propuestas. Volvé a programar antes de confirmar.
+
+          {options?.length ? (
+            <div className="space-y-2 rounded-md border p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Propuestas enviadas
               </p>
-            )}
+              <div className="space-y-2">
+                {options.map((option, index) => (
+                  <div
+                    key={`${option.fecha}-${option.horario ?? index}`}
+                    className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-3 py-2"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {formatDate(option.fecha)}
+                        {option.horario ? ` · ${option.horario}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Opción {index + 1}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUseOption(option)}
+                    >
+                      Usar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No hay propuestas registradas. Ingresá manualmente la fecha acordada con la
+              familia.
+            </p>
+          )}
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Fecha confirmada</Label>
+            <DatePicker
+              value={fechaSeleccionada}
+              onChange={(value) => setFechaSeleccionada(value ?? "")}
+            />
           </div>
+
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">Horario acordado</Label>
+            <Input
+              type="time"
+              value={horarioSeleccionado}
+              onChange={(event) => setHorarioSeleccionado(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Dejalo vacío si sólo definieron la fecha.
+            </p>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
             <Button
-              onClick={() => seleccion && onSubmit(seleccion)}
-              disabled={loading || !seleccion}
+              onClick={() => onSubmit({ fecha: fechaSeleccionada, horario: horarioSeleccionado })}
+              disabled={loading || !fechaSeleccionada}
             >
               Guardar
             </Button>
@@ -1674,7 +1839,7 @@ function DecisionModal({
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {aceptar
-              ? "Se marcará la solicitud como aceptada. No se enviará correo automático."
+              ? "Se marcará la solicitud como aceptada. Luego podrás decidir si dar de alta ahora."
               : "Detalle el motivo (opcional) para incluir en el correo de rechazo."}
           </p>
           {!aceptar && (
@@ -1744,5 +1909,44 @@ function InterviewPromptDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+function AltaPromptDialog({
+  open,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) {
+          onCancel();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>¿Querés dar de alta ahora?</DialogTitle>
+          <DialogDescription>
+            Podés asignar la solicitud a una sección y período lectivo inmediatamente o hacerlo más
+            tarde desde este mismo detalle.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Más tarde
+          </Button>
+          <Button type="button" onClick={onConfirm}>
+            Elegir período y sección
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

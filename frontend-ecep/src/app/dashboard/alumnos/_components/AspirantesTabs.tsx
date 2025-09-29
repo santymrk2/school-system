@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import {
 import { Calendar, CircleCheck, Clock, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import * as DTO from "@/types/api-generated";
 import { admisiones, gestionAcademica, identidad } from "@/services/api/modules";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -485,23 +487,72 @@ type AltaModalProps = {
   solicitud: SolicitudAdmisionItem;
   onOpenChange: (open: boolean) => void;
   onSuccess: (result: DTO.SolicitudAdmisionAltaResultDTO | null) => void;
+  defaultPeriodoId?: number | null;
+  defaultAutoNext?: boolean;
+  onAutoAssignNextRequest?: (info: { currentMaxOrder: number }) => void;
+  onAutoAssignNextCancelled?: () => void;
 };
 
-function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps) {
+const AUTO_NEXT_VALUE = "auto-next";
+
+const getPeriodoOrderValue = (periodo?: DTO.PeriodoEscolarDTO | null) => {
+  if (!periodo) return 0;
+  if (typeof periodo.anio === "number") return periodo.anio;
+  if (periodo.fechaInicio) {
+    const year = Number(String(periodo.fechaInicio).slice(0, 4));
+    if (!Number.isNaN(year)) return year;
+  }
+  if (periodo.fechaFin) {
+    const year = Number(String(periodo.fechaFin).slice(0, 4));
+    if (!Number.isNaN(year)) return year;
+  }
+  return typeof periodo.id === "number" ? periodo.id : 0;
+};
+
+function AltaModal({
+  open,
+  solicitud,
+  onOpenChange,
+  onSuccess,
+  defaultPeriodoId,
+  defaultAutoNext,
+  onAutoAssignNextRequest,
+  onAutoAssignNextCancelled,
+}: AltaModalProps) {
   const [secciones, setSecciones] = useState<DTO.SeccionDTO[]>([]);
   const [seccionesLoading, setSeccionesLoading] = useState(false);
   const [seccionesError, setSeccionesError] = useState<string | null>(null);
   const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
+  const [selectedPeriodoValue, setSelectedPeriodoValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   const aspiranteNombre = resolveAspiranteNombre(solicitud);
   const turnoPreferido = solicitud.aspirante?.turnoPreferido ?? null;
+  const { periodos, periodoEscolarId: activePeriodoId, getPeriodoNombre } = useActivePeriod({
+    tickMidnight: false,
+  });
+
+  const periodOptions = useMemo(
+    () =>
+      (periodos ?? [])
+        .map((periodo) => {
+          if (periodo.id == null) return null;
+          return {
+            value: String(periodo.id),
+            label: getPeriodoNombre(periodo.id, periodo) ?? `Período #${periodo.id}`,
+            order: getPeriodoOrderValue(periodo),
+          };
+        })
+        .filter((opt): opt is { value: string; label: string; order: number } => Boolean(opt)),
+    [periodos, getPeriodoNombre],
+  );
 
   useEffect(() => {
     if (!open) {
       setSecciones([]);
       setSeccionesError(null);
       setSelectedSeccionId("");
+      setSelectedPeriodoValue("");
       return;
     }
 
@@ -515,7 +566,7 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
         const res = await gestionAcademica.secciones.list();
         const data = res.data ?? [];
         setSecciones(data);
-        let preselected: string | null = null;
+        let preselectedSeccion: string | null = null;
         if (initialTurno) {
           const matching = data.find(
             (sec) =>
@@ -524,14 +575,14 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
                 .toUpperCase() === initialTurno,
           );
           if (matching?.id != null) {
-            preselected = String(matching.id);
+            preselectedSeccion = String(matching.id);
           }
         }
-        if (!preselected && data.length === 1 && data[0].id != null) {
-          preselected = String(data[0].id);
+        if (!preselectedSeccion && data.length === 1 && data[0].id != null) {
+          preselectedSeccion = String(data[0].id);
         }
-        if (preselected) {
-          setSelectedSeccionId(preselected);
+        if (preselectedSeccion) {
+          setSelectedSeccionId(preselectedSeccion);
         }
       } catch (error: any) {
         setSeccionesError(
@@ -542,6 +593,48 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
       }
     })();
   }, [open, solicitud.id, turnoPreferido]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (defaultAutoNext) {
+      setSelectedPeriodoValue(AUTO_NEXT_VALUE);
+      setSelectedSeccionId("");
+      return;
+    }
+    if (defaultPeriodoId) {
+      setSelectedPeriodoValue(String(defaultPeriodoId));
+      return;
+    }
+    if (activePeriodoId) {
+      setSelectedPeriodoValue(String(activePeriodoId));
+      return;
+    }
+    const firstOption = periodOptions[0];
+    if (firstOption) {
+      setSelectedPeriodoValue(firstOption.value);
+    }
+  }, [open, defaultPeriodoId, defaultAutoNext, activePeriodoId, periodOptions]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!selectedPeriodoValue || selectedPeriodoValue === AUTO_NEXT_VALUE) {
+      setSelectedSeccionId("");
+      return;
+    }
+    const matching = secciones.filter(
+      (sec) => String(sec.periodoEscolarId ?? "") === selectedPeriodoValue,
+    );
+    if (matching.length === 1 && matching[0].id != null) {
+      setSelectedSeccionId(String(matching[0].id));
+      return;
+    }
+    if (
+      selectedSeccionId &&
+      !matching.some((sec) => String(sec.id) === selectedSeccionId)
+    ) {
+      setSelectedSeccionId("");
+    }
+  }, [open, selectedPeriodoValue, secciones, selectedSeccionId]);
 
   const formatTurnoLabel = (value?: string | null) => {
     if (!value) return "";
@@ -563,7 +656,41 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
     return base || `Sección #${seccion.id}`;
   };
 
+  const filteredSecciones = useMemo(() => {
+    if (!selectedPeriodoValue || selectedPeriodoValue === AUTO_NEXT_VALUE) {
+      return secciones;
+    }
+    return secciones.filter(
+      (sec) => String(sec.periodoEscolarId ?? "") === selectedPeriodoValue,
+    );
+  }, [secciones, selectedPeriodoValue]);
+
+  const handlePeriodoChange = (value: string) => {
+    setSelectedPeriodoValue(value);
+    if (value !== AUTO_NEXT_VALUE) {
+      onAutoAssignNextCancelled?.();
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!selectedPeriodoValue) {
+      toast.error("Seleccioná el período lectivo para el alta");
+      return;
+    }
+
+    if (selectedPeriodoValue === AUTO_NEXT_VALUE) {
+      const currentMaxOrder = periodOptions.reduce(
+        (max, option) => Math.max(max, option.order),
+        0,
+      );
+      onAutoAssignNextRequest?.({ currentMaxOrder });
+      toast.info(
+        "Cuando se cree el próximo período lectivo te vamos a avisar para completar el alta.",
+      );
+      onOpenChange(false);
+      return;
+    }
+
     if (!selectedSeccionId) {
       toast.error("Seleccioná una sección para el alta");
       return;
@@ -572,7 +699,10 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
     try {
       const res = await admisiones.solicitudesAdmision.alta(solicitud.id, {
         seccionId: Number(selectedSeccionId),
+        periodoEscolarId: Number(selectedPeriodoValue),
+        autoAsignarSiguientePeriodo: false,
       });
+      onAutoAssignNextCancelled?.();
       toast.success("Alumno dado de alta correctamente");
       onSuccess(res.data ?? null);
       onOpenChange(false);
@@ -609,36 +739,80 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Sección destino</Label>
+            <Label className="text-sm font-medium">Período lectivo</Label>
             <Select
-              value={selectedSeccionId}
-              onValueChange={setSelectedSeccionId}
-              disabled={seccionesLoading || !secciones.length}
+              value={selectedPeriodoValue}
+              onValueChange={handlePeriodoChange}
+              disabled={saving}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccioná la sección" />
+                <SelectValue placeholder="Seleccioná el período" />
               </SelectTrigger>
               <SelectContent>
-                {secciones.map((sec) => (
-                  <SelectItem key={sec.id} value={String(sec.id)}>
-                    {formatSeccionLabel(sec)}
+                {periodOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
+                <SelectItem value={AUTO_NEXT_VALUE}>
+                  Asignar automáticamente al próximo período disponible
+                </SelectItem>
               </SelectContent>
             </Select>
-            {seccionesLoading && (
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" /> Cargando secciones…
-              </p>
-            )}
-            {seccionesError && (
-              <p className="text-xs text-destructive">{seccionesError}</p>
-            )}
-            {!seccionesLoading && !secciones.length && !seccionesError && (
+            {!periodOptions.length && (
               <p className="text-xs text-muted-foreground">
-                No hay secciones disponibles para matricular en este momento.
+                Todavía no hay períodos creados en el calendario escolar.
               </p>
             )}
+          </div>
+
+          {selectedPeriodoValue === AUTO_NEXT_VALUE ? (
+            <Alert>
+              <AlertTitle>Alta pendiente</AlertTitle>
+              <AlertDescription>
+                Guardaremos esta solicitud para completarla cuando se cree el próximo
+                período lectivo. Te avisaremos para seleccionar la sección correspondiente.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Sección destino</Label>
+              <Select
+                value={selectedSeccionId}
+                onValueChange={setSelectedSeccionId}
+                disabled={seccionesLoading || !filteredSecciones.length}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccioná la sección" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSecciones.map((sec) => (
+                    <SelectItem key={sec.id} value={String(sec.id)}>
+                      {formatSeccionLabel(sec)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {seccionesLoading && (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Cargando secciones…
+                </p>
+              )}
+              {seccionesError && (
+                <p className="text-xs text-destructive">{seccionesError}</p>
+              )}
+              {!seccionesLoading && !filteredSecciones.length && !seccionesError && (
+                <p className="text-xs text-muted-foreground">
+                  No hay secciones disponibles para el período seleccionado.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Recordá verificar que la sección corresponda al período lectivo elegido.
+            </p>
           </div>
         </div>
 
@@ -651,7 +825,15 @@ function AltaModal({ open, solicitud, onOpenChange, onSuccess }: AltaModalProps)
           >
             Cancelar
           </Button>
-          <Button type="button" onClick={handleSubmit} disabled={saving || !selectedSeccionId}>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={
+              saving ||
+              (!selectedPeriodoValue && !defaultAutoNext) ||
+              (selectedPeriodoValue !== AUTO_NEXT_VALUE && !selectedSeccionId)
+            }
+          >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar alta
           </Button>
         </DialogFooter>

@@ -23,4 +23,7 @@ public interface SolicitudAdmisionRepository extends JpaRepository<SolicitudAdmi
     @Override
     @EntityGraph(attributePaths = {"aspirante", "aspirante.persona"})
     Optional<SolicitudAdmision> findById(Long id);
+
+    @EntityGraph(attributePaths = {"aspirante", "aspirante.persona", "aspirante.familiares", "aspirante.familiares.familiar", "aspirante.familiares.familiar.persona"})
+    Optional<SolicitudAdmision> findByPortalTokenSeleccion(String portalTokenSeleccion);
 }

@@ -8,6 +8,9 @@ import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionAltaResult
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionDecisionDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionEntrevistaDTO;
+import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionPortalDTO;
+import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionPortalOpcionDTO;
+import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionPortalSeleccionDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionProgramarDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionRechazoDTO;
 import edu.ecep.base_app.admisiones.presentation.dto.SolicitudAdmisionReprogramacionDTO;
@@ -36,17 +39,22 @@ import edu.ecep.base_app.vidaescolar.presentation.dto.MatriculaSeccionHistorialC
 import jakarta.mail.MessagingException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 
 @Service
@@ -72,6 +80,9 @@ public class SolicitudAdmisionService {
     private final PeriodoEscolarRepository periodoEscolarRepository;
     private final SeccionRepository seccionRepository;
     private final EmailService emailService;
+
+    @Value("${app.portal.admissions-base-url:http://localhost:3000/entrevista}")
+    private String portalBaseUrl;
 
     public List<SolicitudAdmisionDTO> findAll() {
         return findAll(null);
@@ -129,6 +140,9 @@ public class SolicitudAdmisionService {
         entity.setReprogramacionSolicitada(false);
         entity.setComentarioReprogramacion(null);
         entity.setCantidadPropuestasEnviadas(0);
+        entity.setHorarioEntrevistaConfirmado(null);
+        entity.setOpcionEntrevistaSeleccionada(null);
+        entity.setPortalTokenSeleccion(null);
         repository.save(entity);
 
         enviarCorreo(entity, "Estado de tu solicitud",
@@ -187,40 +201,144 @@ public class SolicitudAdmisionService {
         entity.setFechaEntrevista(null);
         entity.setFechaRespuestaFamilia(null);
         entity.setReprogramacionSolicitada(false);
+        entity.setComentarioReprogramacion(null);
+        entity.setHorarioEntrevistaConfirmado(null);
+        entity.setOpcionEntrevistaSeleccionada(null);
         if (entity.getCantidadPropuestasEnviadas() == null) {
             entity.setCantidadPropuestasEnviadas(0);
         }
         entity.setCantidadPropuestasEnviadas(entity.getCantidadPropuestasEnviadas() + 1);
         entity.setPuedeSolicitarReprogramacion(entity.getCantidadPropuestasEnviadas() <= 1);
+        entity.setPortalTokenSeleccion(generarTokenSeleccion(entity));
         repository.save(entity);
 
-        enviarCorreo(entity, "Propuesta de entrevista",
-                construirMensajePropuesta(entity));
+        enviarCorreoPropuesta(entity);
+    }
+
+    private void enviarCorreoPropuesta(SolicitudAdmision entity) {
+        String enlacePortal = construirEnlacePortal(entity);
+        String body = construirMensajePropuestaHtml(entity, enlacePortal);
+        enviarCorreo(entity, "Propuesta de entrevista", body, true);
+    }
+
+    private String construirEnlacePortal(SolicitudAdmision entity) {
+        if (entity == null) {
+            return null;
+        }
+        String token = entity.getPortalTokenSeleccion();
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+
+        String base = portalBaseUrl;
+        if (base == null || base.isBlank()) {
+            base = "http://localhost:3000/entrevista";
+        }
+
+        StringBuilder enlace = new StringBuilder(base);
+        if (base.contains("?")) {
+            if (!base.endsWith("?") && !base.endsWith("&")) {
+                enlace.append("&");
+            }
+        } else {
+            enlace.append("?");
+        }
+        enlace.append("token=").append(token);
+        obtenerCorreoContacto(entity)
+                .filter(correo -> correo != null && !correo.isBlank())
+                .ifPresent(correo -> enlace.append("&email=")
+                        .append(URLEncoder.encode(correo, StandardCharsets.UTF_8)));
+        return enlace.toString();
+    }
+
+    private String generarTokenSeleccion(SolicitudAdmision entity) {
+        String token;
+        do {
+            token = UUID.randomUUID().toString();
+        } while (repository.findByPortalTokenSeleccion(token)
+                .filter(existing -> entity.getId() == null || !existing.getId().equals(entity.getId()))
+                .isPresent());
+        return token;
     }
 
     @Transactional
     public void confirmarFecha(Long id, SolicitudAdmisionSeleccionDTO dto) {
         SolicitudAdmision entity = repository.findById(id).orElseThrow(NotFoundException::new);
-        entity.setFechaEntrevista(dto.getFechaSeleccionada());
-        entity.setFechaRespuestaFamilia(LocalDate.now());
-        entity.setEstado(ESTADO_PROGRAMADA);
-        entity.setPuedeSolicitarReprogramacion(false);
-        entity.setReprogramacionSolicitada(false);
-        repository.save(entity);
+        Integer opcionSeleccionada = dto.getOpcionSeleccionada();
+        if (opcionSeleccionada == null && dto.getFechaSeleccionada() != null) {
+            opcionSeleccionada = resolverIndicePorFecha(entity, dto.getFechaSeleccionada());
+        }
+        String horarioSeleccionado = dto.getHorarioSeleccionado();
+        if (horarioSeleccionado == null && opcionSeleccionada != null) {
+            horarioSeleccionado = obtenerHorarioPorIndice(entity, opcionSeleccionada);
+        }
+
+        registrarConfirmacion(entity, dto.getFechaSeleccionada(), opcionSeleccionada, horarioSeleccionado);
 
         enviarCorreo(entity, "Entrevista confirmada",
-                "La entrevista fue confirmada para el " +
-                        formatDate(dto.getFechaSeleccionada()) + ". ¡Te esperamos!");
+                construirMensajeConfirmacion(dto.getFechaSeleccionada(), horarioSeleccionado));
+    }
+
+    public SolicitudAdmisionPortalDTO obtenerDetallePortal(String token, String email) {
+        SolicitudAdmision entity = repository.findByPortalTokenSeleccion(token)
+                .orElseThrow(NotFoundException::new);
+        validarAccesoPortal(entity, email);
+        return construirPortalDTO(entity);
+    }
+
+    @Transactional
+    public SolicitudAdmisionPortalDTO responderDesdePortal(
+            String token, SolicitudAdmisionPortalSeleccionDTO dto, String email) {
+        if (dto == null || dto.getOpcion() == null) {
+            throw new IllegalArgumentException("Debe seleccionar una opción válida");
+        }
+        SolicitudAdmision entity = repository.findByPortalTokenSeleccion(token)
+                .orElseThrow(NotFoundException::new);
+        validarAccesoPortal(entity, email);
+
+        boolean yaRespondida = entity.getFechaEntrevista() != null
+                || Boolean.TRUE.equals(entity.getReprogramacionSolicitada());
+        if (yaRespondida) {
+            log.info("Solicitud {} ya registra una respuesta previa desde el portal", entity.getId());
+            return construirPortalDTO(entity);
+        }
+
+        SolicitudAdmisionPortalSeleccionDTO.Respuesta opcion = dto.getOpcion();
+        if (opcion == SolicitudAdmisionPortalSeleccionDTO.Respuesta.NO_DISPONIBLE) {
+            if (!Boolean.TRUE.equals(entity.getPuedeSolicitarReprogramacion())) {
+                throw new IllegalStateException("Ya no es posible solicitar nuevas fechas para esta entrevista");
+            }
+            String comentario = dto.getComentario();
+            if (comentario == null || comentario.isBlank()) {
+                comentario = "La familia indicó desde el portal que no está disponible en las fechas propuestas.";
+            }
+            registrarReprogramacion(entity, comentario);
+            log.info("Solicitud {} solicitó nuevas fechas desde el portal", entity.getId());
+        } else {
+            int indice = switch (opcion) {
+                case OPCION_1 -> 1;
+                case OPCION_2 -> 2;
+                case OPCION_3 -> 3;
+                default -> throw new IllegalArgumentException("Opción inválida");
+            };
+            LocalDate fecha = obtenerFechaPorIndice(entity, indice);
+            if (fecha == null) {
+                throw new IllegalStateException("La opción seleccionada ya no está disponible");
+            }
+            String horario = obtenerHorarioPorIndice(entity, indice);
+            registrarConfirmacion(entity, fecha, indice, horario);
+            enviarCorreo(entity, "Entrevista confirmada",
+                    construirMensajeConfirmacion(fecha, horario));
+            log.info("Solicitud {} confirmó la opción {} desde el portal", entity.getId(), indice);
+        }
+
+        return construirPortalDTO(entity);
     }
 
     @Transactional
     public void solicitarReprogramacion(Long id, SolicitudAdmisionReprogramacionDTO dto) {
         SolicitudAdmision entity = repository.findById(id).orElseThrow(NotFoundException::new);
-        entity.setReprogramacionSolicitada(true);
-        entity.setPuedeSolicitarReprogramacion(false);
-        entity.setComentarioReprogramacion(dto.getComentario());
-        entity.setEstado(ESTADO_PROPUESTA);
-        repository.save(entity);
+        registrarReprogramacion(entity, dto.getComentario());
         log.info("Solicitud {} pidió nuevas fechas", id);
     }
 
@@ -392,6 +510,8 @@ public class SolicitudAdmisionService {
             dto.setCupoDisponible(entity.getCupoDisponible());
         }
         dto.setFechaEntrevistaConfirmada(entity.getFechaEntrevista());
+        dto.setHorarioEntrevistaConfirmado(entity.getHorarioEntrevistaConfirmado());
+        dto.setOpcionEntrevistaSeleccionada(entity.getOpcionEntrevistaSeleccionada());
         if (dto.getFechasPropuestas() == null || dto.getFechasPropuestas().isEmpty()) {
             dto.setFechasPropuestas(mapper.toFechaList(entity));
         }
@@ -435,13 +555,21 @@ public class SolicitudAdmisionService {
     }
 
     private void enviarCorreo(SolicitudAdmision entity, String subject, String body) {
+        enviarCorreo(entity, subject, body, false);
+    }
+
+    private void enviarCorreo(SolicitudAdmision entity, String subject, String body, boolean html) {
         Optional<String> correo = obtenerCorreoContacto(entity);
         if (correo.isEmpty()) {
             log.info("[ADMISION][EMAIL-MISSING] subject={} body={} ", subject, body);
             return;
         }
         try {
-            emailService.sendPlainText(correo.get(), subject, body);
+            if (html) {
+                emailService.sendHtml(correo.get(), subject, body);
+            } else {
+                emailService.sendPlainText(correo.get(), subject, body);
+            }
             if (!Boolean.TRUE.equals(entity.getEmailConfirmacionEnviado())) {
                 entity.setEmailConfirmacionEnviado(true);
                 repository.save(entity);
@@ -449,6 +577,26 @@ public class SolicitudAdmisionService {
         } catch (MessagingException | MailException ex) {
             log.error("[ADMISION][EMAIL-ERROR] to={} subject={} body={} error={}",
                     correo.get(), subject, body, ex.getMessage(), ex);
+        }
+    }
+
+    private void validarAccesoPortal(SolicitudAdmision entity, String email) {
+        if (entity == null) {
+            throw new NotFoundException();
+        }
+        Optional<String> correo = obtenerCorreoContacto(entity);
+        if (correo.isEmpty()) {
+            return;
+        }
+        if (!StringUtils.hasText(email)) {
+            log.warn("[ADMISION][PORTAL-ACCESS] acceso rechazado por falta de email para la solicitud {}", entity.getId());
+            throw new NotFoundException();
+        }
+        String correoNormalizado = correo.get().trim();
+        String emailNormalizado = email.trim();
+        if (!correoNormalizado.equalsIgnoreCase(emailNormalizado)) {
+            log.warn("[ADMISION][PORTAL-ACCESS] email {} no coincide con el contacto registrado para la solicitud {}", emailNormalizado, entity.getId());
+            throw new NotFoundException();
         }
     }
 
@@ -493,33 +641,196 @@ public class SolicitudAdmisionService {
         return null;
     }
 
-    private String construirMensajePropuesta(SolicitudAdmision entity) {
+    private String construirMensajePropuestaHtml(SolicitudAdmision entity, String enlacePortal) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Hola, te proponemos las siguientes opciones de entrevista:\n");
+        sb.append("<p>Hola, te proponemos las siguientes opciones de entrevista:</p>");
         List<String> opciones = formatoOpcionesEntrevista(entity);
-        for (int i = 0; i < opciones.size(); i++) {
-            sb.append(" - Opción ").append(i + 1).append(": ").append(opciones.get(i)).append("\n");
+        if (!opciones.isEmpty()) {
+            sb.append("<ol>");
+            for (int i = 0; i < opciones.size(); i++) {
+                sb.append("<li><strong>Opción ")
+                        .append(i + 1)
+                        .append("</strong>: ")
+                        .append(opciones.get(i))
+                        .append("</li>");
+            }
+            sb.append("</ol>");
         }
+
         if (Boolean.TRUE.equals(entity.getPuedeSolicitarReprogramacion())) {
-            sb.append("Si ninguna fecha se ajusta podés elegir 'Pedir otras fechas' y dejarnos un comentario.\n");
+            sb.append("<p>Si ninguna fecha se ajusta podés elegir <em>No estoy disponible</em> para que la dirección proponga nuevos horarios.</p>");
         }
+
         if (entity.getDocumentosRequeridos() != null && !entity.getDocumentosRequeridos().isBlank()) {
-            sb.append("Documentación para revisar: ").append(entity.getDocumentosRequeridos()).append("\n");
+            sb.append("<p><strong>Documentación para revisar:</strong> ")
+                    .append(entity.getDocumentosRequeridos())
+                    .append("</p>");
         }
+
         List<String> adjuntos = mapper.splitAdjuntos(entity.getAdjuntosInformativos());
         if (!adjuntos.isEmpty()) {
-            sb.append("Material adicional:\n");
-            adjuntos.forEach(link -> sb.append("   • ").append(link).append("\n"));
+            sb.append("<p><strong>Material adicional:</strong></p><ul>");
+            adjuntos.forEach(link -> sb.append("<li><a href=\"")
+                    .append(link)
+                    .append("\">")
+                    .append(link)
+                    .append("</a></li>"));
+            sb.append("</ul>");
         }
+
         if (entity.getPropuestaNotas() != null && !entity.getPropuestaNotas().isBlank()) {
-            sb.append("Notas de la dirección: ").append(entity.getPropuestaNotas()).append("\n");
+            sb.append("<p><strong>Notas de la dirección:</strong> ")
+                    .append(entity.getPropuestaNotas())
+                    .append("</p>");
         }
+
         if (entity.getFechaLimiteRespuesta() != null) {
-            sb.append("Respondé antes del ")
+            sb.append("<p>Respondé antes del ")
                     .append(formatDate(entity.getFechaLimiteRespuesta()))
-                    .append(".\n");
+                    .append(".</p>");
         }
-        sb.append("Podés confirmar la opción elegida desde los botones del correo.");
+
+        if (enlacePortal != null && !enlacePortal.isBlank()) {
+            sb.append("<p style=\"margin:24px 0;\"><a href=\"")
+                    .append(enlacePortal)
+                    .append("\" style=\"background-color:#1d4ed8;color:#ffffff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;\">Elegir fecha de entrevista</a></p>");
+            sb.append("<p>Si el botón no funciona, copiá y pegá este enlace en tu navegador:<br/><a href=\"")
+                    .append(enlacePortal)
+                    .append("\">")
+                    .append(enlacePortal)
+                    .append("</a></p>");
+        }
+
+        sb.append("<p>¡Gracias por tu interés en la escuela!</p>");
+        return sb.toString();
+    }
+
+    private SolicitudAdmisionPortalDTO construirPortalDTO(SolicitudAdmision entity) {
+        String aspiranteNombre = Optional.ofNullable(entity.getAspirante())
+                .map(Aspirante::getPersona)
+                .map(this::nombreCompleto)
+                .orElse("Aspirante");
+        Optional<String> correo = obtenerCorreoContacto(entity);
+        List<SolicitudAdmisionPortalOpcionDTO> opciones = new ArrayList<>();
+        List<String> etiquetas = formatoOpcionesEntrevista(entity);
+        for (int i = 0; i < etiquetas.size(); i++) {
+            int indice = i + 1;
+            opciones.add(SolicitudAdmisionPortalOpcionDTO.builder()
+                    .indice(indice)
+                    .fecha(obtenerFechaPorIndice(entity, indice))
+                    .horario(obtenerHorarioPorIndice(entity, indice))
+                    .etiqueta(etiquetas.get(i))
+                    .build());
+        }
+
+        boolean reprogramacionSolicitada = Boolean.TRUE.equals(entity.getReprogramacionSolicitada());
+        boolean respuestaRegistrada = entity.getFechaEntrevista() != null || reprogramacionSolicitada;
+
+        return SolicitudAdmisionPortalDTO.builder()
+                .solicitudId(entity.getId())
+                .aspirante(aspiranteNombre)
+                .correoReferencia(correo.orElse(null))
+                .disponibilidadCurso(entity.getDisponibilidadCurso())
+                .cupoDisponible(entity.getCupoDisponible())
+                .opciones(opciones)
+                .permiteSolicitarReprogramacion(Boolean.TRUE.equals(entity.getPuedeSolicitarReprogramacion()))
+                .reprogramacionSolicitada(reprogramacionSolicitada)
+                .respuestaRegistrada(respuestaRegistrada)
+                .fechaSeleccionada(entity.getFechaEntrevista())
+                .horarioSeleccionado(entity.getHorarioEntrevistaConfirmado())
+                .opcionSeleccionada(entity.getOpcionEntrevistaSeleccionada())
+                .aclaracionesDireccion(entity.getPropuestaNotas())
+                .documentosRequeridos(entity.getDocumentosRequeridos())
+                .adjuntosInformativos(mapper.splitAdjuntos(entity.getAdjuntosInformativos()))
+                .fechaLimiteRespuesta(entity.getFechaLimiteRespuesta())
+                .notasDireccion(entity.getNotasDireccion())
+                .build();
+    }
+
+    private String nombreCompleto(Persona persona) {
+        if (persona == null) {
+            return "";
+        }
+        String nombre = persona.getNombre() == null ? "" : persona.getNombre().trim();
+        String apellido = persona.getApellido() == null ? "" : persona.getApellido().trim();
+        return (nombre + " " + apellido).trim();
+    }
+
+    private void registrarConfirmacion(
+            SolicitudAdmision entity,
+            LocalDate fechaSeleccionada,
+            Integer opcionSeleccionada,
+            String horarioSeleccionado) {
+        entity.setFechaEntrevista(fechaSeleccionada);
+        entity.setHorarioEntrevistaConfirmado(horarioSeleccionado);
+        entity.setOpcionEntrevistaSeleccionada(opcionSeleccionada);
+        entity.setFechaRespuestaFamilia(LocalDate.now());
+        entity.setEstado(ESTADO_PROGRAMADA);
+        entity.setPuedeSolicitarReprogramacion(false);
+        entity.setReprogramacionSolicitada(false);
+        entity.setComentarioReprogramacion(null);
+        repository.save(entity);
+    }
+
+    private void registrarReprogramacion(SolicitudAdmision entity, String comentario) {
+        entity.setReprogramacionSolicitada(true);
+        entity.setPuedeSolicitarReprogramacion(false);
+        entity.setComentarioReprogramacion(comentario);
+        entity.setEstado(ESTADO_PROPUESTA);
+        entity.setFechaEntrevista(null);
+        entity.setHorarioEntrevistaConfirmado(null);
+        entity.setOpcionEntrevistaSeleccionada(null);
+        entity.setFechaRespuestaFamilia(LocalDate.now());
+        repository.save(entity);
+    }
+
+    private Integer resolverIndicePorFecha(SolicitudAdmision entity, LocalDate fecha) {
+        if (entity == null || fecha == null) {
+            return null;
+        }
+        if (fecha.equals(entity.getPropuestaFecha1())) {
+            return 1;
+        }
+        if (fecha.equals(entity.getPropuestaFecha2())) {
+            return 2;
+        }
+        if (fecha.equals(entity.getPropuestaFecha3())) {
+            return 3;
+        }
+        return null;
+    }
+
+    private LocalDate obtenerFechaPorIndice(SolicitudAdmision entity, int indice) {
+        return switch (indice) {
+            case 1 -> entity.getPropuestaFecha1();
+            case 2 -> entity.getPropuestaFecha2();
+            case 3 -> entity.getPropuestaFecha3();
+            default -> null;
+        };
+    }
+
+    private String obtenerHorarioPorIndice(SolicitudAdmision entity, Integer indice) {
+        if (entity == null || indice == null) {
+            return null;
+        }
+        return switch (indice) {
+            case 1 -> entity.getPropuestaHorario1();
+            case 2 -> entity.getPropuestaHorario2();
+            case 3 -> entity.getPropuestaHorario3();
+            default -> null;
+        };
+    }
+
+    private String construirMensajeConfirmacion(LocalDate fecha, String horario) {
+        if (fecha == null) {
+            return "La entrevista fue confirmada. ¡Te esperamos!";
+        }
+        StringBuilder sb = new StringBuilder("La entrevista fue confirmada para el ")
+                .append(formatDate(fecha));
+        if (horario != null && !horario.isBlank()) {
+            sb.append(" (" ).append(horario).append(")");
+        }
+        sb.append(". ¡Te esperamos!");
         return sb.toString();
     }
 

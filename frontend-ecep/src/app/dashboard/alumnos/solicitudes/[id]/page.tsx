@@ -669,10 +669,15 @@ export default function SolicitudAdmisionDetailPage() {
 
   const handleConfirmarFecha = async (fecha: string) => {
     if (!solicitud) return;
+    const indice = propuestasDetalladas.findIndex((option) => option.fecha === fecha);
+    const horarioSeleccionado =
+      indice >= 0 ? propuestasDetalladas[indice].horario || undefined : undefined;
     try {
       setActionLoading(true);
       await admisiones.solicitudesAdmision.confirmarFecha(solicitud.id, {
         fechaSeleccionada: fecha,
+        opcionSeleccionada: indice >= 0 ? indice + 1 : undefined,
+        horarioSeleccionado,
       });
       toast.success("Fecha de entrevista confirmada");
       setConfirmDateOpen(false);
@@ -1048,6 +1053,16 @@ export default function SolicitudAdmisionDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Fecha confirmada: {formatDate(solicitud.fechaEntrevistaConfirmada)}
               </p>
+              {solicitud.horarioEntrevistaConfirmado && (
+                <p className="text-sm text-muted-foreground">
+                  Horario confirmado: {solicitud.horarioEntrevistaConfirmado}
+                </p>
+              )}
+              {solicitud.opcionEntrevistaSeleccionada && (
+                <p className="text-sm text-muted-foreground">
+                  Opción elegida: Opción {solicitud.opcionEntrevistaSeleccionada}
+                </p>
+              )}
               <div className="space-y-2 rounded-md border p-3">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">
                   Propuestas enviadas

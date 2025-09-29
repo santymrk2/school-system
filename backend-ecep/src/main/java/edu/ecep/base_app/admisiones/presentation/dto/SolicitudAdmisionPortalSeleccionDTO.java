@@ -1,7 +1,6 @@
 package edu.ecep.base_app.admisiones.presentation.dto;
 
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,9 +8,15 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class SolicitudAdmisionSeleccionDTO {
+public class SolicitudAdmisionPortalSeleccionDTO {
     @NotNull
-    private LocalDate fechaSeleccionada;
-    private Integer opcionSeleccionada;
-    private String horarioSeleccionado;
+    private Respuesta opcion;
+    private String comentario;
+
+    public enum Respuesta {
+        OPCION_1,
+        OPCION_2,
+        OPCION_3,
+        NO_DISPONIBLE
+    }
 }

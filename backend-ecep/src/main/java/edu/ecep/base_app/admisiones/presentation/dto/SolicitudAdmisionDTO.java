@@ -29,6 +29,8 @@ public class SolicitudAdmisionDTO {
     private LocalDate fechaLimiteRespuesta;
     private LocalDate fechaRespuestaFamilia;
     private LocalDate fechaEntrevistaConfirmada;
+    private String horarioEntrevistaConfirmado;
+    private Integer opcionEntrevistaSeleccionada;
 
     private Boolean entrevistaRealizada;
     private Boolean emailConfirmacionEnviado;

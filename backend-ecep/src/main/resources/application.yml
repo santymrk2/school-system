@@ -69,6 +69,8 @@ app:
     mail:
       enabled: ${APP_NOTIFICATIONS_MAIL_ENABLED:true}
       from: ${APP_NOTIFICATIONS_MAIL_FROM:notificaciones@ecep.edu.ar}
+  portal:
+    admissions-base-url: ${APP_PORTAL_ADMISSIONS_BASE_URL:http://localhost:3000/entrevista}
 
 logging:
   level:

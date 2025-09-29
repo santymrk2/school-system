@@ -32,6 +32,17 @@ public class EmailService {
 
     public void sendPlainText(@NonNull String to, @NonNull String subject, @NonNull String body)
             throws MessagingException, MailException {
+        sendMessage(to, subject, body, false);
+    }
+
+    public void sendHtml(@NonNull String to, @NonNull String subject, @NonNull String body)
+            throws MessagingException, MailException {
+        sendMessage(to, subject, body, true);
+    }
+
+    public void sendMessage(
+            @NonNull String to, @NonNull String subject, @NonNull String body, boolean html)
+            throws MessagingException, MailException {
         if (!StringUtils.hasText(to)) {
             throw new IllegalArgumentException("El destinatario del correo es obligatorio");
         }
@@ -40,7 +51,7 @@ public class EmailService {
         boolean notificationsEnabled =
                 configuredSettings.enabled() != null ? configuredSettings.enabled() : defaultEnabled;
         if (!notificationsEnabled) {
-            log.info("[EMAIL][DISABLED] to={} subject={}", to, subject);
+            log.info("[EMAIL][DISABLED] to={} subject={} body={}", to, subject, body);
             return;
         }
 
@@ -51,7 +62,7 @@ public class EmailService {
         var helper = new MimeMessageHelper(message, false, StandardCharsets.UTF_8.name());
         helper.setTo(to);
         helper.setSubject(subject);
-        helper.setText(body, false);
+        helper.setText(body, html);
         if (StringUtils.hasText(fromAddress)) {
             helper.setFrom(fromAddress);
         }

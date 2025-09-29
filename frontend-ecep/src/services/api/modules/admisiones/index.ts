@@ -63,10 +63,33 @@ const solicitudesAdmision = {
     ),
 };
 
+const portal = {
+  detalle: (token: string, email?: string | null) =>
+    http.get<DTO.SolicitudAdmisionPortalDTO>(
+      `/api/public/solicitudes-admision/entrevista/${token}`,
+      {
+        params: email ? { email } : undefined,
+      },
+    ),
+  seleccionar: (
+    token: string,
+    body: DTO.SolicitudAdmisionPortalSeleccionDTO,
+    email?: string | null,
+  ) =>
+    http.post<DTO.SolicitudAdmisionPortalDTO>(
+      `/api/public/solicitudes-admision/entrevista/${token}/seleccionar`,
+      body,
+      {
+        params: email ? { email } : undefined,
+      },
+    ),
+};
+
 export const admisiones = {
   aspirantes,
   aspiranteFamiliares,
   solicitudesAdmision,
+  portal,
 };
 
-export { aspirantes, aspiranteFamiliares, solicitudesAdmision };
+export { aspirantes, aspiranteFamiliares, solicitudesAdmision, portal };

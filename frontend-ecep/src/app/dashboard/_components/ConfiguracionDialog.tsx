@@ -81,12 +81,12 @@ export function ConfiguracionDialog({
   }
 
   const availableTabs = useMemo<ConfigTab[]>(() => {
-    const tabs: ConfigTab[] = [{ value: "general", label: "General" }];
+    const tabs: ConfigTab[] = [{ value: "general", label: "Apariencia" }];
     if (tieneDireccion) {
       tabs.push(
         { value: "trimestres", label: "Trimestres" },
         { value: "periodo", label: "Período escolar" },
-        { value: "notificaciones", label: "Notificaciones" },
+        { value: "notificaciones", label: "Correo Electronico" },
       );
     }
     return tabs;
@@ -111,15 +111,13 @@ export function ConfiguracionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[80vh] w-full max-w-4xl overflow-hidden p-0">
         <div className="flex h-full w-full flex-col md:flex-row">
-          <div className="flex flex-shrink-0 flex-col gap-4 border-b bg-muted/40 p-4 md:h-full md:w-64 md:border-b-0 md:border-r md:p-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Secciones
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Elegí qué aspecto de la plataforma querés configurar.
-              </p>
-            </div>
+          <div className="flex flex-shrink-0 flex-col gap-4 border-b bg-muted/40  md:h-full md:w-64 md:border-b-0 md:border-r md:p-2">
+            <DialogHeader className="border-b px-6 py-4">
+              <DialogTitle>Configuración</DialogTitle>
+              <DialogDescription>
+                Preferencias disponibles para tu rol actual.
+              </DialogDescription>
+            </DialogHeader>
             <nav className="flex flex-wrap gap-2 md:flex-1 md:flex-col md:gap-1">
               {availableTabs.map((tab) => (
                 <button
@@ -141,22 +139,15 @@ export function ConfiguracionDialog({
           </div>
 
           <div className="flex flex-1 flex-col">
-            <DialogHeader className="border-b px-6 py-4">
-              <DialogTitle>Configuración</DialogTitle>
-              <DialogDescription>
-                Administrá las preferencias disponibles para tu rol actual.
-              </DialogDescription>
-            </DialogHeader>
-
-            <ScrollArea className="flex-1 px-6 pb-6">
+            <ScrollArea className="flex-1 p-6">
               <div className="space-y-6 pr-2">
                 {activeTab === "general" && (
                   <>
                     <AparienciaConfig />
                     {!tieneDireccion && (
                       <p className="text-sm text-muted-foreground">
-                        No hay configuraciones adicionales disponibles para tu rol
-                        actual.
+                        No hay configuraciones adicionales disponibles para tu
+                        rol actual.
                       </p>
                     )}
                   </>
@@ -193,7 +184,9 @@ export function ConfiguracionDialog({
                 {activeTab === "notificaciones" && tieneDireccion && (
                   <div className="space-y-6">
                     {currentRole === UserRole.DIRECTOR ? (
-                      <CorreoNotificacionesConfig open={open && activeTab === "notificaciones"} />
+                      <CorreoNotificacionesConfig
+                        open={open && activeTab === "notificaciones"}
+                      />
                     ) : (
                       renderDireccionRoleMessage("notificaciones por correo")
                     )}
@@ -219,7 +212,7 @@ function AparienciaConfig() {
   const isDarkMode = mounted ? resolvedTheme === "dark" : false;
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between p-4 ">
       <div className="space-y-1">
         <p className="text-sm font-medium leading-none">Modo oscuro</p>
         <p className="text-sm text-muted-foreground">
@@ -270,7 +263,12 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
       setPasswordSet(Boolean(data?.passwordSet));
       setPasswordChanged(false);
     } catch (error) {
-      toast.error(resolveErrorMessage(error, "No se pudo cargar la configuración de correo"));
+      toast.error(
+        resolveErrorMessage(
+          error,
+          "No se pudo cargar la configuración de correo",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -289,7 +287,10 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
     }));
   };
 
-  const handleToggleChange = (field: "auth" | "starttls" | "enabled", value: boolean) => {
+  const handleToggleChange = (
+    field: "auth" | "starttls" | "enabled",
+    value: boolean,
+  ) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
@@ -331,7 +332,9 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
     }
 
     if (form.enabled && form.auth && !form.username.trim()) {
-      toast.error("Ingresá el usuario SMTP cuando la autenticación está habilitada");
+      toast.error(
+        "Ingresá el usuario SMTP cuando la autenticación está habilitada",
+      );
       return;
     }
 
@@ -363,7 +366,9 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
       }
       setPasswordChanged(false);
     } catch (error) {
-      toast.error(resolveErrorMessage(error, "No se pudo guardar la configuración"));
+      toast.error(
+        resolveErrorMessage(error, "No se pudo guardar la configuración"),
+      );
     } finally {
       setSaving(false);
     }
@@ -374,8 +379,8 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
       <CardHeader>
         <CardTitle>Correo saliente</CardTitle>
         <CardDescription>
-          Definí las credenciales SMTP que se utilizarán para enviar notificaciones
-          institucionales.
+          Definí las credenciales SMTP que se utilizarán para enviar
+          notificaciones institucionales.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -389,7 +394,9 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
                 <Input
                   id="smtp-host"
                   value={form.host}
-                  onChange={(event) => handleInputChange("host", event.target.value)}
+                  onChange={(event) =>
+                    handleInputChange("host", event.target.value)
+                  }
                   placeholder="smtp.ejemplo.com"
                   disabled={loading || saving}
                 />
@@ -401,7 +408,10 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
                   inputMode="numeric"
                   value={form.port}
                   onChange={(event) =>
-                    handleInputChange("port", event.target.value.replace(/[^0-9]/g, ""))
+                    handleInputChange(
+                      "port",
+                      event.target.value.replace(/[^0-9]/g, ""),
+                    )
                   }
                   placeholder="587"
                   disabled={loading || saving}
@@ -415,12 +425,15 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
                 <Input
                   id="smtp-username"
                   value={form.username}
-                  onChange={(event) => handleInputChange("username", event.target.value)}
+                  onChange={(event) =>
+                    handleInputChange("username", event.target.value)
+                  }
                   placeholder="notificaciones@institucion.edu"
                   disabled={loading || saving || !form.auth}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se utilizará únicamente si la autenticación SMTP está habilitada.
+                  Se utilizará únicamente si la autenticación SMTP está
+                  habilitada.
                 </p>
               </div>
               <div className="space-y-2">
@@ -430,7 +443,9 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
                   type="password"
                   value={form.password}
                   onChange={(event) => handlePasswordChange(event.target.value)}
-                  placeholder={passwordSet && !passwordChanged ? "••••••••" : ""}
+                  placeholder={
+                    passwordSet && !passwordChanged ? "••••••••" : ""
+                  }
                   disabled={loading || saving || !form.auth}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -453,7 +468,9 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
                 </div>
                 <Switch
                   checked={form.auth}
-                  onCheckedChange={(checked) => handleToggleChange("auth", checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleChange("auth", checked)
+                  }
                   disabled={loading || saving}
                 />
               </div>
@@ -466,7 +483,9 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
                 </div>
                 <Switch
                   checked={form.starttls}
-                  onCheckedChange={(checked) => handleToggleChange("starttls", checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleChange("starttls", checked)
+                  }
                   disabled={loading || saving}
                 />
               </div>
@@ -476,12 +495,15 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
               <div>
                 <p className="text-sm font-medium">Habilitar envíos</p>
                 <p className="text-xs text-muted-foreground">
-                  Podés desactivar los correos temporariamente sin perder la configuración.
+                  Podés desactivar los correos temporariamente sin perder la
+                  configuración.
                 </p>
               </div>
               <Switch
                 checked={form.enabled}
-                onCheckedChange={(checked) => handleToggleChange("enabled", checked)}
+                onCheckedChange={(checked) =>
+                  handleToggleChange("enabled", checked)
+                }
                 disabled={loading || saving}
               />
             </div>
@@ -491,13 +513,15 @@ function CorreoNotificacionesConfig({ open }: { open: boolean }) {
               <Input
                 id="smtp-from"
                 value={form.from}
-                onChange={(event) => handleInputChange("from", event.target.value)}
+                onChange={(event) =>
+                  handleInputChange("from", event.target.value)
+                }
                 placeholder="notificaciones@institucion.edu"
                 disabled={loading || saving}
               />
               <p className="text-xs text-muted-foreground">
-                Dirección que verán las familias al recibir un correo. Si se deja vacío se
-                utilizará el valor por defecto de la plataforma.
+                Dirección que verán las familias al recibir un correo. Si se
+                deja vacío se utilizará el valor por defecto de la plataforma.
               </p>
             </div>
 

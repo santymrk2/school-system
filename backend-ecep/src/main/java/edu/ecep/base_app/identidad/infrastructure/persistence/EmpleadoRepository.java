@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
@@ -15,6 +16,7 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
     boolean existsByPersonaId(Long id);
     Optional<Empleado> findByLegajoIgnoreCase(String legajo);
     Optional<Empleado> findByCuil(String cuil);
+    List<Empleado> findByRolEmpleado(RolEmpleado rolEmpleado);
 
     @Query("""
         select e

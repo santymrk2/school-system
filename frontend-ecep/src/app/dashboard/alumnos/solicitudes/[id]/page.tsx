@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { format } from "date-fns";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
@@ -50,6 +49,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import * as DTO from "@/types/api-generated";
+import { format } from "date-fns";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -98,7 +98,44 @@ const formatDate = (value?: string | null) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString();
+  try {
+    return format(date, "dd/MM/yyyy");
+  } catch (err) {
+    return date.toLocaleDateString();
+  }
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  try {
+    return format(date, "dd/MM/yyyy HH:mm");
+  } catch (err) {
+    return date.toLocaleString();
+  }
+};
+
+const formatDateWithTime = (
+  dateValue?: string | null,
+  timeValue?: string | null,
+) => {
+  const normalizedTime = timeValue?.trim();
+  if (dateValue) {
+    const parsed = new Date(dateValue);
+    if (!Number.isNaN(parsed.getTime())) {
+      const hasExplicitTime =
+        parsed.getHours() !== 0 ||
+        parsed.getMinutes() !== 0 ||
+        /T\d{2}:\d{2}/.test(String(dateValue));
+      if (hasExplicitTime) {
+        return formatDateTime(dateValue);
+      }
+    }
+    const base = formatDate(dateValue);
+    return normalizedTime ? `${base} · ${normalizedTime}` : base;
+  }
+  return normalizedTime ?? "—";
 };
 
 const normalizeEstado = (estado?: string | null) =>
@@ -268,11 +305,6 @@ type ScheduleFormState = {
 
 type ConfirmOption = { fecha: string; horario?: string };
 
-type ConfirmDatePayload = {
-  fecha: string;
-  horario?: string;
-};
-
 type DecisionKind = "aceptar" | "rechazar" | null;
 
 type TimelineStatus = "done" | "current" | "upcoming" | "skipped";
@@ -290,6 +322,7 @@ type TimelineItem = {
   description: string;
   status: TimelineStatus;
   date?: string | null;
+  dateLabel?: string | null;
 };
 
 export default function SolicitudAdmisionDetailPage() {
@@ -303,7 +336,6 @@ export default function SolicitudAdmisionDetailPage() {
   const [promptInterviewOpen, setPromptInterviewOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [confirmDateOpen, setConfirmDateOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState<DecisionKind>(null);
   const [altaOpen, setAltaOpen] = useState(false);
   const [altaRegistrada, setAltaRegistrada] = useState(false);
@@ -586,6 +618,11 @@ export default function SolicitudAdmisionDetailPage() {
       ? "Definí si la solicitud será aceptada o rechazada."
       : "Registrá la fecha confirmada para habilitar la decisión final.";
 
+    const confirmedDateLabel = formatDateWithTime(
+      solicitud.fechaEntrevistaConfirmada,
+      solicitud.horarioEntrevistaConfirmado,
+    );
+
     const steps: Array<Omit<TimelineItem, "status">> = [
       {
         key: "received",
@@ -607,6 +644,7 @@ export default function SolicitudAdmisionDetailPage() {
         title: "Confirmación de la familia",
         description: confirmationDescription,
         date: solicitud.fechaEntrevistaConfirmada ?? solicitud.fechaRespuestaFamilia,
+        dateLabel: confirmedDateLabel,
       },
       {
         key: "interview",
@@ -656,8 +694,6 @@ export default function SolicitudAdmisionDetailPage() {
   const puedeMostrarComentariosEntrevista = Boolean(
     solicitud?.fechaEntrevistaConfirmada,
   );
-  const puedeConfirmar =
-    estado === ESTADOS.PROPUESTA && (solicitud?.fechasPropuestas?.length ?? 0) > 0;
   const puedeProgramar =
     estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA;
   const puedeRechazar =
@@ -720,36 +756,6 @@ export default function SolicitudAdmisionDetailPage() {
       fetchSolicitud();
     } catch (err: any) {
       toast.error(err?.message ?? "No se pudo programar la entrevista");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleConfirmarFecha = async ({ fecha, horario }: ConfirmDatePayload) => {
-    if (!solicitud) return;
-    const fechaSeleccionada = fecha?.trim();
-    if (!fechaSeleccionada) {
-      toast.error("Ingresá la fecha confirmada");
-      return;
-    }
-    const horarioNormalizado = horario ? normalizeHorario(horario) : "";
-    const indice = propuestasDetalladas.findIndex(
-      (option) =>
-        option.fecha === fechaSeleccionada &&
-        normalizeHorario(option.horario) === horarioNormalizado,
-    );
-    try {
-      setActionLoading(true);
-      await admisiones.solicitudesAdmision.confirmarFecha(solicitud.id, {
-        fechaSeleccionada,
-        opcionSeleccionada: indice >= 0 ? indice + 1 : undefined,
-        horarioSeleccionado: horarioNormalizado || undefined,
-      });
-      toast.success("Fecha de entrevista confirmada");
-      setConfirmDateOpen(false);
-      fetchSolicitud();
-    } catch (err: any) {
-      toast.error(err?.message ?? "No se pudo registrar la fecha");
     } finally {
       setActionLoading(false);
     }
@@ -1122,13 +1128,11 @@ export default function SolicitudAdmisionDetailPage() {
                 Respuesta límite: {formatDate(solicitud.fechaLimiteRespuesta)}
               </p>
               <p className="text-sm text-muted-foreground">
-                Fecha confirmada: {formatDate(solicitud.fechaEntrevistaConfirmada)}
+                Fecha confirmada: {formatDateWithTime(
+                  solicitud.fechaEntrevistaConfirmada,
+                  solicitud.horarioEntrevistaConfirmado,
+                )}
               </p>
-              {solicitud.horarioEntrevistaConfirmado && (
-                <p className="text-sm text-muted-foreground">
-                  Horario confirmado: {solicitud.horarioEntrevistaConfirmado}
-                </p>
-              )}
               {solicitud.opcionEntrevistaSeleccionada && (
                 <p className="text-sm text-muted-foreground">
                   Opción elegida: Opción {solicitud.opcionEntrevistaSeleccionada}
@@ -1257,15 +1261,6 @@ export default function SolicitudAdmisionDetailPage() {
               Programar entrevista
             </Button>
           )}
-          {puedeConfirmar && (
-            <Button
-              variant="outline"
-              onClick={() => setConfirmDateOpen(true)}
-              disabled={actionLoading}
-            >
-              Registrar fecha confirmada
-            </Button>
-          )}
           {puedeRechazar && (
             <Button
               variant="destructive"
@@ -1306,14 +1301,6 @@ export default function SolicitudAdmisionDetailPage() {
         loading={actionLoading}
         solicitud={solicitud}
         onSubmit={handleProgramar}
-      />
-
-      <ConfirmDateModal
-        open={confirmDateOpen}
-        onOpenChange={setConfirmDateOpen}
-        options={propuestasDetalladas}
-        loading={actionLoading}
-        onSubmit={handleConfirmarFecha}
       />
 
       <DecisionModal
@@ -1431,9 +1418,9 @@ function Timeline({ items }: { items: TimelineItem[] }) {
             <div className="flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-semibold">{item.title}</h3>
-                {item.date && (
+                {(item.dateLabel || item.date) && (
                   <span className="text-xs text-muted-foreground">
-                    {formatDate(item.date)}
+                    {item.dateLabel ?? formatDate(item.date)}
                   </span>
                 )}
                 {item.status === "current" && (
@@ -1684,121 +1671,6 @@ function RejectModal({
               disabled={loading}
             >
               Rechazar
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ConfirmDateModal({
-  open,
-  onOpenChange,
-  options,
-  loading,
-  onSubmit,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  options: ConfirmOption[];
-  loading: boolean;
-  onSubmit: (payload: ConfirmDatePayload) => void;
-}) {
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>("");
-  const [horarioSeleccionado, setHorarioSeleccionado] = useState<string>("");
-
-  useEffect(() => {
-    if (open) {
-      const first = options?.[0];
-      setFechaSeleccionada(first?.fecha ?? "");
-      setHorarioSeleccionado(first?.horario ? normalizeHorario(first.horario) : "");
-    }
-  }, [open, options]);
-
-  const handleUseOption = (option: ConfirmOption) => {
-    setFechaSeleccionada(option.fecha ?? "");
-    setHorarioSeleccionado(option.horario ? normalizeHorario(option.horario) : "");
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Registrar fecha confirmada</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Registrá la fecha acordada con la familia. Podés ajustar la propuesta si
-            confirmaron otro día u horario por correo.
-          </p>
-
-          {options?.length ? (
-            <div className="space-y-2 rounded-md border p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Propuestas enviadas
-              </p>
-              <div className="space-y-2">
-                {options.map((option, index) => (
-                  <div
-                    key={`${option.fecha}-${option.horario ?? index}`}
-                    className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {formatDate(option.fecha)}
-                        {option.horario ? ` · ${option.horario}` : ""}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Opción {index + 1}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleUseOption(option)}
-                    >
-                      Usar
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              No hay propuestas registradas. Ingresá manualmente la fecha acordada con la
-              familia.
-            </p>
-          )}
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Fecha confirmada</Label>
-            <DatePicker
-              value={fechaSeleccionada}
-              onChange={(value) => setFechaSeleccionada(value ?? "")}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-sm font-medium">Horario acordado</Label>
-            <Input
-              type="time"
-              value={horarioSeleccionado}
-              onChange={(event) => setHorarioSeleccionado(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Dejalo vacío si sólo definieron la fecha.
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => onSubmit({ fecha: fechaSeleccionada, horario: horarioSeleccionado })}
-              disabled={loading || !fechaSeleccionada}
-            >
-              Guardar
             </Button>
           </div>
         </div>

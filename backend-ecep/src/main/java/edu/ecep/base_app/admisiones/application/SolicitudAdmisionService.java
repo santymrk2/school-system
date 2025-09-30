@@ -23,10 +23,13 @@ import edu.ecep.base_app.gestionacademica.infrastructure.persistence.SeccionRepo
 import edu.ecep.base_app.identidad.application.AlumnoService;
 import edu.ecep.base_app.identidad.domain.Alumno;
 import edu.ecep.base_app.identidad.domain.AlumnoFamiliar;
+import edu.ecep.base_app.identidad.domain.Empleado;
 import edu.ecep.base_app.identidad.domain.Familiar;
 import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.identidad.domain.enums.RolEmpleado;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoRepository;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepository;
+import edu.ecep.base_app.identidad.infrastructure.persistence.EmpleadoRepository;
 import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
 import edu.ecep.base_app.shared.exception.NotFoundException;
 import edu.ecep.base_app.shared.notification.EmailService;
@@ -43,6 +46,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -79,6 +83,7 @@ public class SolicitudAdmisionService {
     private final MatriculaSeccionHistorialService matriculaSeccionHistorialService;
     private final PeriodoEscolarRepository periodoEscolarRepository;
     private final SeccionRepository seccionRepository;
+    private final EmpleadoRepository empleadoRepository;
     private final EmailService emailService;
 
     @Value("${app.portal.admissions-base-url:http://localhost:3000/entrevista}")
@@ -770,6 +775,68 @@ public class SolicitudAdmisionService {
         entity.setReprogramacionSolicitada(false);
         entity.setComentarioReprogramacion(null);
         repository.save(entity);
+        notificarDireccionConfirmacion(entity);
+    }
+
+    private void notificarDireccionConfirmacion(SolicitudAdmision entity) {
+        if (entity == null) {
+            return;
+        }
+        if (entity.getFechaEntrevista() == null) {
+            return;
+        }
+
+        List<Empleado> responsables = empleadoRepository.findByRolEmpleado(RolEmpleado.DIRECCION);
+        if (responsables == null || responsables.isEmpty()) {
+            log.info("[ADMISION][NOTIFY] No hay destinatarios configurados para notificar la solicitud {}", entity.getId());
+            return;
+        }
+
+        Set<String> destinatarios = new LinkedHashSet<>();
+        for (Empleado empleado : responsables) {
+            if (empleado == null) {
+                continue;
+            }
+            Persona persona = empleado.getPersona();
+            String correo = correoPrincipal(persona);
+            if (correo != null && !correo.isBlank()) {
+                destinatarios.add(correo);
+            }
+        }
+
+        if (destinatarios.isEmpty()) {
+            log.info("[ADMISION][NOTIFY] No se encontraron correos válidos para notificar la solicitud {}", entity.getId());
+            return;
+        }
+
+        String aspirante = nombreCompleto(entity.getAspirante() != null ? entity.getAspirante().getPersona() : null);
+        String fecha = formatDate(entity.getFechaEntrevista());
+        String horario = entity.getHorarioEntrevistaConfirmado();
+        String subject = "Entrevista confirmada" +
+                (StringUtils.hasText(aspirante) ? " - " + aspirante : "");
+
+        StringBuilder body = new StringBuilder("La familia confirmó la entrevista");
+        if (StringUtils.hasText(aspirante)) {
+            body.append(" de ").append(aspirante);
+        }
+        if (StringUtils.hasText(fecha)) {
+            body.append(" para el ").append(fecha);
+        }
+        if (StringUtils.hasText(horario)) {
+            body.append(" (").append(horario).append(")");
+        }
+        body.append(".\n\n");
+        body.append("Solicitud #").append(entity.getId()).append(".");
+        body.append("\nPodés registrar el resultado desde el panel de solicitudes de admisión.");
+
+        for (String destinatario : destinatarios) {
+            try {
+                emailService.sendPlainText(destinatario, subject, body.toString());
+            } catch (MessagingException | MailException ex) {
+                log.error("[ADMISION][EMAIL-ERROR] No se pudo notificar a {} sobre la solicitud {}: {}",
+                        destinatario, entity.getId(), ex.getMessage(), ex);
+            }
+        }
     }
 
     private void registrarReprogramacion(SolicitudAdmision entity, String comentario) {

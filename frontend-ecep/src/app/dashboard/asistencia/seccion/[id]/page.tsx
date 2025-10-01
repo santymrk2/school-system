@@ -17,7 +17,14 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Calendar as AttendanceCalendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Percent,
+  Plus,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { asistencias, gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
@@ -182,6 +189,41 @@ export default function SeccionHistorialPage() {
   const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(
     undefined,
   );
+
+  const selectedResumenPercent = useMemo(
+    () => Math.round(selectedResumen?.porcentaje ?? 0),
+    [selectedResumen],
+  );
+
+  const selectedResumenStats = useMemo(() => {
+    if (!selectedResumen) return [];
+    return [
+      {
+        label: "Presentes",
+        value: selectedResumen.presentes,
+        icon: CheckCircle2,
+        accent: "text-emerald-500",
+      },
+      {
+        label: "Ausentes",
+        value: selectedResumen.ausentes,
+        icon: XCircle,
+        accent: "text-destructive",
+      },
+      {
+        label: "Total registrados",
+        value: selectedResumen.total,
+        icon: Users,
+        accent: "text-blue-500",
+      },
+      {
+        label: "Asistencia promedio",
+        value: `${selectedResumenPercent}%`,
+        icon: Percent,
+        accent: "text-violet-500",
+      },
+    ];
+  }, [selectedResumen, selectedResumenPercent]);
 
   const asistenciaDateSet = useMemo(() => {
     const set = new Set<string>();
@@ -633,45 +675,48 @@ export default function SeccionHistorialPage() {
                                 <div className="space-y-3">
                                   {selectedResumen ? (
                                     <div className="space-y-4">
-                                      <div className="rounded-lg border p-4 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-sm font-medium">
-                                            Fecha
-                                          </span>
-                                          <Badge variant="outline">
+                                      <div className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-3">
+                                          <div>
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                              Resumen del día
+                                            </p>
+                                            <p className="text-base font-semibold text-foreground">
+                                              {fmt(selectedResumen.fecha)}
+                                            </p>
+                                          </div>
+                                          <Badge variant="secondary" className="px-3 py-1 text-sm">
                                             {fmt(selectedResumen.fecha)}
                                           </Badge>
                                         </div>
-                                        <div className="text-sm">
-                                          Presentes:{" "}
-                                          <b>{selectedResumen.presentes}</b>
-                                        </div>
-                                        <div className="text-sm">
-                                          Ausentes:{" "}
-                                          <b>{selectedResumen.ausentes}</b>
-                                        </div>
-                                        <div className="text-sm">
-                                          Llegadas tarde:{" "}
-                                          <b>{selectedResumen.tarde}</b>
-                                        </div>
-                                        <div className="text-sm">
-                                          Retiros anticipados:{" "}
-                                          <b>
-                                            {selectedResumen.retiroAnticipado}
-                                          </b>
-                                        </div>
-                                        <div className="text-sm">
-                                          Total registrados:{" "}
-                                          <b>{selectedResumen.total}</b>
-                                        </div>
-                                        <div className="text-sm">
-                                          Asistencia promedio:{" "}
-                                          <b>
-                                            {Math.round(
-                                              selectedResumen.porcentaje ?? 0,
+                                        <div className="space-y-4 px-4 py-5">
+                                          <div className="grid gap-3 sm:grid-cols-2">
+                                            {selectedResumenStats.map(
+                                              ({ label, value, icon: Icon, accent }) => (
+                                                <div
+                                                  key={label}
+                                                  className="rounded-lg border bg-background/70 p-3 shadow-sm"
+                                                >
+                                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    <Icon className={`h-4 w-4 ${accent}`} />
+                                                    <span>{label}</span>
+                                                  </div>
+                                                  <p className="mt-2 text-lg font-semibold text-foreground">
+                                                    {value}
+                                                  </p>
+                                                </div>
+                                              ),
                                             )}
-                                            %
-                                          </b>
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                              <span>Asistencia promedio</span>
+                                              <span className="text-sm font-semibold text-foreground">
+                                                {selectedResumenPercent}%
+                                              </span>
+                                            </div>
+                                            <Progress value={selectedResumenPercent} className="h-2" />
+                                          </div>
                                         </div>
                                       </div>
                                       <Button
@@ -686,14 +731,23 @@ export default function SeccionHistorialPage() {
                                             ? "Ver/editar jornada"
                                             : "Trimestre no activo. Solo lectura"
                                         }
+                                        className="w-full md:w-auto"
                                       >
                                         Ver jornada
                                       </Button>
                                     </div>
                                   ) : (
-                                    <div className="text-sm text-muted-foreground">
-                                      Seleccioná un día con registros para ver
-                                      su resumen.
+                                    <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                                      <CalendarIcon className="h-8 w-8" />
+                                      <div className="space-y-1">
+                                        <p className="text-sm font-medium text-foreground">
+                                          Sin jornada seleccionada
+                                        </p>
+                                        <p>
+                                          Seleccioná un día con registros para ver
+                                          su resumen.
+                                        </p>
+                                      </div>
                                     </div>
                                   )}
                                 </div>

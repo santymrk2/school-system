@@ -79,6 +79,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     private final AspiranteRepository aspiranteRepository;
     private final AspiranteFamiliarRepository aspiranteFamiliarRepository;
     private final SolicitudAdmisionRepository solicitudAdmisionRepository;
+    private final LicenciaRepository licenciaRepository;
+    private final ActaAccidenteRepository actaAccidenteRepository;
 
     @Override
     @Transactional
@@ -135,6 +137,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         );
 
         Map<String, Empleado> docentes = ensureDocentes(docenteSeeds);
+        crearLicenciasDemostracion(docentes);
 
         List<PersonaSeed> primario1AStudents = List.of(
                 alumno("Agustina", "Cabrera", "61010001", "Marcos", "Cabrera", "41010001", RolVinculo.PADRE, true),
@@ -484,7 +487,10 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
 
         Aspirante aspirante1 = crearAspiranteConFamiliar(new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001", RolVinculo.MADRE, false));
         Aspirante aspirante2 = crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega", "47000002", "Eliana", "Vega", "33000002", RolVinculo.MADRE, false));
-        crearSolicitudesDemostracion(aspirante1, aspirante2);
+        Aspirante aspirante3 = crearAspiranteConFamiliar(new PersonaSeed("Lola", "Ferreyra", "47000003", "Gonzalo", "Ferreyra", "33000003", RolVinculo.PADRE, true));
+        crearSolicitudesDemostracion(aspirante1, aspirante2, aspirante3);
+
+        crearActasAccidenteDemostracion(docentes, datosSecciones2025, datosSecciones2024);
 
         ensureSingleActivePeriod(periodo2025);
 
@@ -1193,7 +1199,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         ensureVinculoAspiranteFamiliar(a, f, rol, seed.convive());
         return a;
     }
-    private void crearSolicitudesDemostracion(Aspirante aspirantePendiente, Aspirante aspiranteProgramado) {
+    private void crearSolicitudesDemostracion(Aspirante aspirantePendiente, Aspirante aspiranteProgramado, Aspirante aspiranteAceptado) {
         if (aspirantePendiente != null) {
             crearSolicitudAdmision(aspirantePendiente, solicitud -> {
                 LocalDate hoy = LocalDate.now();
@@ -1201,12 +1207,20 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                 solicitud.setPropuestaFecha1(hoy.plusDays(7));
                 solicitud.setPropuestaFecha2(hoy.plusDays(9));
                 solicitud.setPropuestaFecha3(hoy.plusDays(11));
+                solicitud.setPropuestaHorario1("08:30 - 09:15");
+                solicitud.setPropuestaHorario2("10:00 - 10:45");
+                solicitud.setPropuestaHorario3("14:00 - 14:45");
                 solicitud.setFechaLimiteRespuesta(hoy.plusDays(15));
                 solicitud.setCupoDisponible(true);
                 solicitud.setDisponibilidadCurso("Vacante disponible");
                 solicitud.setDocumentosRequeridos("DNI del alumno y familia\nCertificado de nacimiento");
                 solicitud.setAdjuntosInformativos("https://institucion.example/plan.pdf||https://institucion.example/normativa.pdf");
+                solicitud.setPropuestaNotas("Se sugiere asistir con ambos referentes familiares.");
                 solicitud.setEmailConfirmacionEnviado(true);
+                solicitud.setCantidadPropuestasEnviadas(1);
+                solicitud.setPuedeSolicitarReprogramacion(true);
+                solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                solicitud.setAutorizadoComunicacionesEmail(true);
             });
         }
 
@@ -1217,15 +1231,56 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                 solicitud.setPropuestaFecha1(hoy.plusDays(-5));
                 solicitud.setPropuestaFecha2(hoy.plusDays(-3));
                 solicitud.setPropuestaFecha3(hoy.plusDays(-1));
+                solicitud.setPropuestaHorario1("09:00 - 09:30");
+                solicitud.setPropuestaHorario2("11:00 - 11:30");
+                solicitud.setPropuestaHorario3("16:00 - 16:30");
                 solicitud.setFechaLimiteRespuesta(hoy.minusDays(10));
                 solicitud.setFechaRespuestaFamilia(hoy.minusDays(9));
                 solicitud.setFechaEntrevista(hoy.plusDays(2));
+                solicitud.setHorarioEntrevistaConfirmado("11:00 - 11:30");
+                solicitud.setOpcionEntrevistaSeleccionada(2);
                 solicitud.setCupoDisponible(true);
                 solicitud.setDisponibilidadCurso("Entrevista programada");
                 solicitud.setDocumentosRequeridos("Carpeta médica\nBoletín escolar");
                 solicitud.setAdjuntosInformativos("https://institucion.example/proyecto.pdf");
+                solicitud.setPropuestaNotas("Familia confirmó asistencia a la opción 2.");
                 solicitud.setNotasDireccion("Familia solicitó entrevista vespertina.");
                 solicitud.setEmailConfirmacionEnviado(true);
+                solicitud.setCantidadPropuestasEnviadas(1);
+                solicitud.setPuedeSolicitarReprogramacion(false);
+                solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                solicitud.setAutorizadoComunicacionesEmail(true);
+            });
+        }
+
+        if (aspiranteAceptado != null) {
+            crearSolicitudAdmision(aspiranteAceptado, solicitud -> {
+                LocalDate hoy = LocalDate.now();
+                solicitud.setEstado("ACEPTADA");
+                solicitud.setPropuestaFecha1(hoy.minusDays(40));
+                solicitud.setPropuestaFecha2(hoy.minusDays(38));
+                solicitud.setPropuestaFecha3(hoy.minusDays(35));
+                solicitud.setPropuestaHorario1("08:45 - 09:15");
+                solicitud.setPropuestaHorario2("10:15 - 10:45");
+                solicitud.setPropuestaHorario3("13:30 - 14:00");
+                solicitud.setFechaLimiteRespuesta(hoy.minusDays(32));
+                solicitud.setFechaRespuestaFamilia(hoy.minusDays(31));
+                solicitud.setFechaEntrevista(hoy.minusDays(28));
+                solicitud.setHorarioEntrevistaConfirmado("10:15 - 10:45");
+                solicitud.setOpcionEntrevistaSeleccionada(2);
+                solicitud.setEntrevistaRealizada(true);
+                solicitud.setCupoDisponible(false);
+                solicitud.setDisponibilidadCurso("Vacante asignada");
+                solicitud.setDocumentosRequeridos("Documentación presentada");
+                solicitud.setAdjuntosInformativos("https://institucion.example/bienvenida.pdf");
+                solicitud.setNotasDireccion("Familia aceptada y matriculación en proceso.");
+                solicitud.setComentariosEntrevista("Se observan fortalezas socioemocionales destacadas.");
+                solicitud.setEmailConfirmacionEnviado(true);
+                solicitud.setCantidadPropuestasEnviadas(2);
+                solicitud.setPuedeSolicitarReprogramacion(false);
+                solicitud.setReprogramacionSolicitada(false);
+                solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                solicitud.setAutorizadoComunicacionesEmail(true);
             });
         }
     }
@@ -1256,6 +1311,122 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             af.setConvive(viveCon);
             aspiranteFamiliarRepository.save(af);
         }
+    }
+
+    // =========================================================================
+    // IDENTIDAD: LICENCIAS DE EMPLEADOS
+    // =========================================================================
+
+    private void crearLicenciasDemostracion(Map<String, Empleado> docentes) {
+        if (docentes == null || docentes.isEmpty()) {
+            return;
+        }
+
+        crearLicenciaDemo(docentes.get("DOC_PRI_4A"), "Enfermedad", LocalDate.now().minusDays(3), LocalDate.now().plusDays(2),
+                true, 24, "Reposo por indicación médica", "Presentó certificado emitido por su obra social.");
+        crearLicenciaDemo(docentes.get("DOC_EDFIS"), "Capacitación", LocalDate.now().plusDays(5), LocalDate.now().plusDays(7),
+                false, 12, "Participación en jornada de perfeccionamiento", "Requiere cobertura temporal de clases.");
+        crearLicenciaDemo(docentes.get("DOC_MUSICA"), "Día de estudio", LocalDate.now().minusDays(15), null,
+                true, 6, "Evaluación de posgrado", "Licencia de medio día autorizada por dirección.");
+    }
+
+    private void crearLicenciaDemo(Empleado empleado, String tipo, LocalDate desde, LocalDate hasta,
+                                   boolean justificada, Integer horas, String motivo, String observaciones) {
+        if (empleado == null) {
+            return;
+        }
+        boolean existe = licenciaRepository.findByEmpleadoId(empleado.getId()).stream()
+                .anyMatch(l -> Objects.equals(l.getTipoLicencia(), tipo)
+                        && Objects.equals(l.getFechaInicio(), desde)
+                        && Objects.equals(l.getFechaFin(), hasta));
+        if (existe) {
+            return;
+        }
+
+        Licencia licencia = new Licencia();
+        licencia.setEmpleado(empleado);
+        licencia.setTipoLicencia(tipo);
+        licencia.setFechaInicio(desde);
+        licencia.setFechaFin(hasta);
+        licencia.setJustificada(justificada);
+        licencia.setHorasAusencia(horas);
+        licencia.setMotivo(motivo);
+        licencia.setObservaciones(observaciones);
+        licenciaRepository.save(licencia);
+    }
+
+    // =========================================================================
+    // VIDA ESCOLAR: ACTAS DE ACCIDENTE
+    // =========================================================================
+
+    @SafeVarargs
+    private void crearActasAccidenteDemostracion(Map<String, Empleado> docentes, List<SeccionData>... secciones) {
+        List<Alumno> alumnos = Stream.ofNullable(secciones)
+                .flatMap(Arrays::stream)
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .flatMap(data -> data.matriculas().stream())
+                .map(Matricula::getAlumno)
+                .filter(Objects::nonNull)
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toCollection(LinkedHashSet::new),
+                        ArrayList::new));
+
+        if (alumnos.isEmpty() || docentes == null || docentes.isEmpty()) {
+            return;
+        }
+
+        Alumno alumno1 = alumnos.get(0);
+        Alumno alumno2 = alumnos.size() > 1 ? alumnos.get(1) : alumno1;
+        Alumno alumno3 = alumnos.size() > 2 ? alumnos.get(2) : alumno1;
+
+        crearActaAccidenteDemo(alumno1, docentes.get("DOC_PRI_1A"), null,
+                LocalDate.now().minusDays(4), LocalTime.of(10, 15),
+                "Patio central", "El alumno tropezó mientras jugaba y sufrió raspón en la rodilla.",
+                "Se limpió la zona y se notificó a la familia.", EstadoActaAccidente.BORRADOR, "admin@example.com");
+
+        crearActaAccidenteDemo(alumno2, docentes.get("DOC_PRI_2B"), docentes.get("DOC_TUTOR"),
+                LocalDate.now().minusDays(12), LocalTime.of(8, 45),
+                "Aula 2B", "Durante actividad de arte se golpeó la mano con una tijera sin filo.",
+                "Se aplicó hielo y se completó formulario de seguro escolar.", EstadoActaAccidente.CERRADA,
+                "docente@example.com");
+
+        crearActaAccidenteDemo(alumno3, docentes.get("DOC_EDFIS"), docentes.get("DOC_PRI_4A"),
+                LocalDate.now().minusDays(30), LocalTime.of(11, 30),
+                "Gimnasio", "Resbaló en clase de educación física y se torció levemente el tobillo izquierdo.",
+                "Se inmovilizó el pie, se informó a dirección y se derivó a control médico.",
+                EstadoActaAccidente.FIRMADA, "tic@example.com");
+    }
+
+    private void crearActaAccidenteDemo(Alumno alumno, Empleado informante, Empleado firmante,
+                                        LocalDate fecha, LocalTime hora, String lugar,
+                                        String descripcion, String acciones,
+                                        EstadoActaAccidente estado, String creadoPor) {
+        if (alumno == null || informante == null || fecha == null || hora == null || lugar == null || descripcion == null) {
+            return;
+        }
+
+        boolean existe = actaAccidenteRepository.findAll().stream()
+                .anyMatch(acta -> acta.getAlumno() != null
+                        && Objects.equals(acta.getAlumno().getId(), alumno.getId())
+                        && Objects.equals(acta.getFechaSuceso(), fecha)
+                        && Objects.equals(acta.getHoraSuceso(), hora));
+        if (existe) {
+            return;
+        }
+
+        ActaAccidente acta = new ActaAccidente();
+        acta.setAlumno(alumno);
+        acta.setInformante(informante);
+        acta.setFirmante(firmante);
+        acta.setFechaSuceso(fecha);
+        acta.setHoraSuceso(hora);
+        acta.setLugar(lugar);
+        acta.setDescripcion(descripcion);
+        acta.setAcciones(acciones);
+        acta.setEstado(estado != null ? estado : EstadoActaAccidente.BORRADOR);
+        acta.setCreadoPor(creadoPor);
+        actaAccidenteRepository.save(acta);
     }
 
     // =========================================================================

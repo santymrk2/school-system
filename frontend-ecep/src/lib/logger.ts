@@ -76,12 +76,14 @@ const createConsoleLogger = (
   };
 };
 
-const loadPino = (): ((options?: Record<string, unknown>) => AppLogger) | null => {
+type PinoModule = typeof import("pino");
+
+const loadPino = (): PinoModule | null => {
   try {
     // eslint-disable-next-line no-new-func
     const loader = Function(
       "try { return typeof require === 'function' ? require('pino') : null; } catch (error) { return null; }",
-    ) as () => ((options?: Record<string, unknown>) => AppLogger) | null;
+    ) as () => PinoModule | null;
     return loader();
   } catch (_error) {
     return null;
@@ -105,71 +107,55 @@ const buildOptions = () => ({
 
 const factory = loadPino();
 
-type NodeWritable = import("node:stream").Writable;
-
-const resolveVectorStream = (): NodeWritable | null => {
-  if (isBrowser || !factory) return null;
+const resolveVectorTransport = () => {
+  if (!factory || isBrowser || typeof factory.transport !== "function") {
+    return null;
+  }
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-    const { Writable } = require("node:stream") as typeof import("node:stream");
+    const path = require("node:path") as typeof import("node:path");
 
-    const endpoint =
-      process.env.VECTOR_HTTP_ENDPOINT ?? "http://localhost:9000/logs";
+    const transportPath = path.resolve(
+      process.cwd(),
+      "src/lib/vector-transport.cjs",
+    );
 
-    const mirrorToStdout = (payload: string) => {
-      if (typeof process === "undefined" || !process.stdout) {
-        return;
-      }
-
-      try {
-        process.stdout.write(payload);
-      } catch (stdoutError) {
-        consoleMethods.warn?.("STDOUT mirror error", stdoutError);
-      }
-    };
-
-    const sendToVector = async (payload: string) => {
-      try {
-        await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
+    return factory.transport({
+      targets: [
+        {
+          target: transportPath,
+          level: defaultLevel,
+          options: {
+            endpoint:
+              process.env.VECTOR_HTTP_ENDPOINT ??
+              "http://localhost:9000/logs",
+            headers: {
+              "content-type": "application/json",
+            },
           },
-          body: payload,
-        });
-      } catch (error) {
-        consoleMethods.error?.("Vector transport error", error);
-      }
-    };
-
-    return new Writable({
-      write(chunk: unknown, _encoding, callback) {
-        const payload =
-          typeof chunk === "string"
-            ? chunk
-            : chunk instanceof Buffer
-            ? chunk.toString("utf8")
-            : JSON.stringify(chunk);
-
-        mirrorToStdout(payload);
-
-        void sendToVector(payload).finally(() => callback());
-      },
+        },
+      ],
     });
   } catch (error) {
-    consoleMethods.warn?.("Falling back to stdout logger", error);
+    consoleMethods.warn?.("Vector transport unavailable", error);
     return null;
   }
 };
 
-const vectorStream = resolveVectorStream();
+const vectorTransport = resolveVectorTransport();
 
-const baseLogger = factory
-  ? vectorStream
-    ? factory(buildOptions(), vectorStream)
-    : factory(buildOptions())
-  : createConsoleLogger();
+let baseLogger: AppLogger;
+
+if (!factory) {
+  baseLogger = createConsoleLogger();
+} else if (isBrowser) {
+  baseLogger = factory(buildOptions());
+} else if (vectorTransport) {
+  baseLogger = factory(buildOptions(), vectorTransport);
+} else {
+  baseLogger = createConsoleLogger();
+}
 
 export const logger: AppLogger = baseLogger;
 

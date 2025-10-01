@@ -5,7 +5,6 @@
     <springProperty scope="context" name="ENVIRONMENT" source="APP_ENV" defaultValue="dev" />
 
     <include resource="org/springframework/boot/logging/logback/defaults.xml" />
-    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
 
     <appender name="VECTOR" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
         <destination>${VECTOR_HOST}:${VECTOR_PORT}</destination>
@@ -24,7 +23,6 @@
     </appender>
 
     <root level="INFO">
-        <appender-ref ref="CONSOLE" />
         <appender-ref ref="ASYNC_VECTOR" />
     </root>
 </configuration>

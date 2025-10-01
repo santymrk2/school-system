@@ -5,6 +5,7 @@
     <springProperty scope="context" name="ENVIRONMENT" source="APP_ENV" defaultValue="dev" />
 
     <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
     <appender name="VECTOR" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
         <destination>${VECTOR_HOST}:${VECTOR_PORT}</destination>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">

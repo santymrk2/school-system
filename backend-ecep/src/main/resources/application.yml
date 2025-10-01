@@ -74,5 +74,6 @@ app:
 
 logging:
   level:
-    io.lettuce.core: DEBUG  # Para debug de Redis en desarrollo
-    org.springframework.data.redis: DEBUG
+    root: INFO
+    io.lettuce.core: ${APP_LOG_LEVEL_LETTUCE:WARN}
+    org.springframework.data.redis: ${APP_LOG_LEVEL_SPRING_REDIS:WARN}

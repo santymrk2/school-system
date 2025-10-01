@@ -7,7 +7,7 @@ utilizado para desacoplar el almacenamiento de logs de los servicios principales
 
 1. El frontend (Node.js) serializa cada evento con Pino y lo reenvía desde un _worker_ dedicado (via `pino.transport`) a Vector a través de HTTP (`http://vector:9000/logs`).
 2. El backend Spring Boot publica sus logs estructurados mediante un _appender_ TCP asíncrono (`vector:6000`) sin escribir a `stdout`.
-3. Vector también se conecta al socket de Docker para capturar los logs estándar de los contenedores de infraestructura listados en `vector.toml`.
+3. Vector también se conecta al socket de Docker para capturar los logs estándar de los contenedores de infraestructura listados en `vector.yaml`.
 4. Si Vector detecta payloads JSON (incluyendo los recibidos por red) los normaliza y enriquece con metadatos del contenedor o del emisor.
 5. El resultado se envía a:
    - Un archivo local (`observability/logs/application.log`) para retención.
@@ -24,7 +24,7 @@ Los orígenes `remote_http` y `remote_tcp` reciben eventos directamente del fron
 Los logs enviados por el backend incluyen metadatos como `logger`, `thread` y `@timestamp`. Vector los renombra para
 mantener un esquema uniforme con el resto de eventos.
 
-Si agregas nuevos servicios solo tienes que incorporarlos a la lista `include_containers` dentro de `vector.toml`.
+Si agregas nuevos servicios solo tienes que incorporarlos a la lista `include_containers` dentro de `vector.yaml`.
 
 ## Visualización de los logs
 
@@ -60,6 +60,12 @@ Los archivos generados dentro de `observability/logs` se ignoran en Git para evi
 
 Esta arquitectura **centraliza** los logs y delega el I/O en transportes remotos asíncronos. El frontend ejecuta el
 `transport` de Pino en un hilo independiente y el backend usa un `AsyncAppender` que escribe únicamente hacia Vector,
-liberando a ambos procesos del trabajo de E/S y evitando duplicar salidas en consola. El formateo mínimo requerido
-continúa ocurriendo en cada servicio (no es posible evitarlo sin dejar de registrar información), pero la transmisión y
-almacenamiento se realizan fuera de los contenedores de aplicación.
+liberando a ambos procesos del trabajo de E/S y evitando duplicar salidas en consola. Además:
+
+- El frontend limita su nivel por defecto a `info` (puede elevarse via `NEXT_PUBLIC_LOG_LEVEL` cuando se requiera), lo que
+  reduce la serialización innecesaria de eventos verbosos.
+- El backend mantiene los paquetes de Redis en `WARN` por defecto (`APP_LOG_LEVEL_LETTUCE` y `APP_LOG_LEVEL_SPRING_REDIS`
+  permiten subir el nivel puntualmente) para que la ingesta normal no sature la aplicación.
+
+El formateo mínimo requerido continúa ocurriendo en cada servicio (no es posible evitarlo sin dejar de registrar
+información), pero la transmisión y almacenamiento se realizan fuera de los contenedores de aplicación.

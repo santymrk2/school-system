@@ -152,26 +152,28 @@ const resolveAspiranteTelefono = (solicitud: SolicitudAdmisionItem) => {
 const resolveAltaGenerada = (solicitud: Partial<SolicitudAdmisionItem>) => {
   const candidate = solicitud as Record<string, unknown> | undefined;
   if (!candidate) return false;
-  if (candidate.altaGenerada != null) {
-    return Boolean(candidate.altaGenerada);
+  const altaFlag = candidate.altaGenerada as boolean | null | undefined;
+  if (altaFlag != null) {
+    return Boolean(altaFlag);
   }
-  const matriculaId = candidate.matriculaId as number | null | undefined;
   const alumnoId = candidate.alumnoId as number | null | undefined;
-  const flags = [
-    matriculaId,
-    alumnoId,
-    (candidate as any)?.tieneAltaGenerada,
-    (candidate as any)?.altaRegistrada,
-  ];
+  const matriculaId = candidate.matriculaId as number | null | undefined;
+  if (alumnoId != null || matriculaId != null) {
+    return Boolean(alumnoId ?? matriculaId);
+  }
+  const flags = [(candidate as any)?.tieneAltaGenerada, (candidate as any)?.altaRegistrada];
   return flags.some((value) => Boolean(value));
 };
 
 const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
+  if (resolveAltaGenerada(solicitud)) {
+    return false;
+  }
   const estadoActual = normalizeEstado(solicitud.estado);
   return (
     Boolean(solicitud.entrevistaRealizada) ||
     estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
-    (estadoActual === ESTADOS.ACEPTADA && !resolveAltaGenerada(solicitud))
+    estadoActual === ESTADOS.ACEPTADA
   );
 };
 
@@ -210,16 +212,19 @@ function useSolicitudesAdmision(query: string) {
         }
       }
 
-      const enriched: SolicitudAdmisionItem[] = solicitudes.map((item) => ({
-        ...item,
-        aspirantePersona:
-          item.aspirante?.personaId != null
-            ? personaById.get(item.aspirante.personaId) ?? null
-            : null,
-        altaGenerada: resolveAltaGenerada(item),
-        matriculaId: (item as any)?.matriculaId ?? null,
-        alumnoId: (item as any)?.alumnoId ?? null,
-      }));
+      const enriched: SolicitudAdmisionItem[] = solicitudes.map((item) => {
+        const altaGenerada = resolveAltaGenerada(item);
+        return {
+          ...item,
+          aspirantePersona:
+            item.aspirante?.personaId != null
+              ? personaById.get(item.aspirante.personaId) ?? null
+              : null,
+          altaGenerada,
+          matriculaId: item.matriculaId ?? null,
+          alumnoId: item.alumnoId ?? null,
+        };
+      });
 
       setData(enriched);
     } catch (e) {
@@ -306,6 +311,10 @@ export default function AspirantesTab({ searchTerm }: Props) {
   const currentSolicitudes = solicitudes.slice(startIndex, endIndex);
 
   const openAlta = (row: SolicitudAdmisionItem) => {
+    if (resolveAltaGenerada(row)) {
+      toast.error("La solicitud ya fue dada de alta anteriormente.");
+      return;
+    }
     setAltaSolicitud(row);
     setAltaOpen(true);
   };

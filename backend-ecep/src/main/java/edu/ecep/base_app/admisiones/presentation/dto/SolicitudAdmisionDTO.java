@@ -44,4 +44,8 @@ public class SolicitudAdmisionDTO {
     private Boolean reprogramacionSolicitada;
     private String comentarioReprogramacion;
     private Integer cantidadPropuestasEnviadas;
+
+    private Long alumnoId;
+    private Long matriculaId;
+    private Boolean altaGenerada;
 }

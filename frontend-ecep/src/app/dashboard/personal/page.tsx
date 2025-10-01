@@ -4193,7 +4193,7 @@ export default function PersonalPage() {
                             ) : null}
                           </div>
                         </div>
-                        {item.secciones.length > 0 && (
+                        {(item.secciones.length > 0 || item.materias.length > 0) && (
                           <div className="flex flex-wrap gap-2">
                             {(() => {
                               const materiasPorSeccion = new Map<
@@ -4207,12 +4207,71 @@ export default function PersonalPage() {
                                 materiasPorSeccion.set(materia.seccionId, list);
                               }
 
-                              return item.secciones.map((seccion) => {
+                              const titularSecciones = item.secciones.filter(
+                                (seccion) =>
+                                  seccion.rol === RolSeccion.MAESTRO_TITULAR,
+                              );
+                              const titularIds = new Set(
+                                titularSecciones.map((seccion) => seccion.seccionId),
+                              );
+
+                              const otrasSeccionesMap = new Map<
+                                number,
+                                { label: string; nivel?: string | null }
+                              >();
+
+                              item.secciones
+                                .filter(
+                                  (seccion) =>
+                                    seccion.rol !== RolSeccion.MAESTRO_TITULAR &&
+                                    !titularIds.has(seccion.seccionId),
+                                )
+                                .forEach((seccion) => {
+                                  otrasSeccionesMap.set(seccion.seccionId, {
+                                    label: getSeccionDisplayName(seccion.label),
+                                    nivel: seccion.nivel ?? null,
+                                  });
+                                });
+
+                              materiasPorSeccion.forEach((_materias, seccionId) => {
+                                if (titularIds.has(seccionId)) {
+                                  return;
+                                }
+                                if (!otrasSeccionesMap.has(seccionId)) {
+                                  const firstMateria = _materias[0];
+                                  otrasSeccionesMap.set(seccionId, {
+                                    label: getSeccionDisplayName(
+                                      firstMateria?.seccionLabel,
+                                    ),
+                                  });
+                                }
+                              });
+
+                              const badgeEntries = [
+                                ...titularSecciones.map((seccion) => ({
+                                  seccionId: seccion.seccionId,
+                                  label: getSeccionDisplayName(seccion.label),
+                                  nivel: seccion.nivel ?? null,
+                                  variant: "secondary" as const,
+                                })),
+                                ...Array.from(otrasSeccionesMap.entries()).map(
+                                  ([seccionId, info]) => ({
+                                    seccionId,
+                                    label: info.label,
+                                    nivel: info.nivel ?? undefined,
+                                    variant: "outline" as const,
+                                  }),
+                                ),
+                              ];
+
+                              return badgeEntries.map((entry) => {
                                 const materiasAsignadas =
-                                  materiasPorSeccion.get(seccion.seccionId) ?? [];
+                                  materiasPorSeccion.get(entry.seccionId) ?? [];
                                 const seccionNombre =
-                                  getSeccionDisplayName(seccion.label);
-                                const badgeKey = `seccion-${empleadoId}-${seccion.seccionId}`;
+                                  entry.label?.length
+                                    ? entry.label
+                                    : `Sección #${entry.seccionId}`;
+                                const badgeKey = `seccion-${empleadoId}-${entry.seccionId}-${entry.variant}`;
                                 const contenidoMaterias = materiasAsignadas.length ? (
                                   <ul className="space-y-1 text-sm text-muted-foreground">
                                     {materiasAsignadas.map((materia) => (
@@ -4237,7 +4296,7 @@ export default function PersonalPage() {
                                   <Popover key={badgeKey}>
                                     <PopoverTrigger asChild>
                                       <Badge
-                                        variant="secondary"
+                                        variant={entry.variant}
                                         className="flex cursor-pointer items-center gap-1"
                                         role="button"
                                         tabIndex={0}
@@ -4256,9 +4315,9 @@ export default function PersonalPage() {
                                         <p className="text-sm font-semibold text-foreground">
                                           {seccionNombre || "Sección sin nombre"}
                                         </p>
-                                        {seccion.nivel ? (
+                                        {entry.nivel ? (
                                           <p className="text-xs text-muted-foreground">
-                                            {formatNivel(seccion.nivel)}
+                                            {formatNivel(entry.nivel)}
                                           </p>
                                         ) : null}
                                       </div>

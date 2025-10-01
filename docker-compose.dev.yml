@@ -45,8 +45,6 @@ services:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_PROFILES_ACTIVE: dev
-      VECTOR_LOG_HOST: vector
-      VECTOR_LOG_TCP_PORT: 6000
       APP_ENV: dev
     volumes:
       - ./backend-ecep:/app
@@ -55,8 +53,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      vector:
-        condition: service_started
     restart: on-failure
 
   frontend:
@@ -72,10 +68,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
       #NEXT_PUBLIC_API_URL: https://api.ecep.dpdns.org
-      VECTOR_HTTP_ENDPOINT: http://vector:9000/logs
     depends_on:
-      vector:
-        condition: service_started
       backend:
         condition: service_started
   cloudflared:
@@ -96,22 +89,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-
-  vector:
-    image: timberio/vector:0.40.X-debian
-    container_name: vector-dev
-    environment:
-      - VECTOR_CONFIG=/etc/vector/vector.yaml
-    volumes:
-      - ./observability/vector.yaml:/etc/vector/vector.yaml:ro
-      - ./observability/logs:/var/log/vector
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports:
-      - "8686:8686"
-      - "9598:9598"
-      - "9000:9000"
-      - "6000:6000"
-    restart: unless-stopped
 
 volumes:
   pgdata:

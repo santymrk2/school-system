@@ -14,15 +14,13 @@ sources:
   remote_http:
     type: http_server
     address: 0.0.0.0:9000
-    encoding:
-      codec: json
+    encoding: json
     path: /logs
 
   remote_tcp:
     type: tcp
     address: 0.0.0.0:6000
-    decoding:
-      codec: json
+    decoding: json
     framing:
       method: newline_delimited
 
@@ -110,6 +108,6 @@ sinks:
     address: 0.0.0.0:9598
 
 api:
-  enable: true
+  enabled: true
   address: 0.0.0.0:8686
   playground: false

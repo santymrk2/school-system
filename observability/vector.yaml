@@ -1,0 +1,115 @@
+# Vector configuration for aggregating application logs
+# Receives logs directly from Docker containers and normalizes Pino structured output.
+
+sources:
+  docker_logs:
+    type: docker_logs
+    include_containers:
+      - cloudflared
+      - redis-dev
+      - postgres-dev
+    auto_partial_merge: true
+    docker_host: unix:///var/run/docker.sock
+
+  remote_http:
+    type: http_server
+    address: 0.0.0.0:9000
+    encoding:
+      codec: json
+    path: /logs
+
+  remote_tcp:
+    type: tcp
+    address: 0.0.0.0:6000
+    decoding:
+      codec: json
+    framing:
+      method: newline_delimited
+
+transforms:
+  normalize_logs:
+    type: remap
+    inputs:
+      - docker_logs
+      - remote_http
+      - remote_tcp
+    # Extract JSON payloads produced by Pino (or plain text if parsing fails)
+    # and enrich events with container level metadata.
+    source: |
+      .container_name = .container_name
+      .service = .labels."com.docker.compose.service"
+      .environment = "dev"
+
+      structured, err = parse_json(.message)
+      if err == null && is_object(structured) {
+        . = merge(., structured)
+        del(.message)
+      } else {
+        .message = tostring(.message)
+
+        spring_match, spring_err = parse_regex(.message, r'^(?P<timestamp>[^ ]+) +(?P<level>[A-Z]+) +(?P<pid>\d+) +--- +\[(?P<thread>[^\]]+)\] +(?P<logger>[^ ]+) +: +(?P<text>.*)$')
+        if spring_err == null {
+          timestamp, ts_err = parse_timestamp(spring_match.timestamp, format: "%+")
+          if ts_err == null {
+            .timestamp = timestamp
+          }
+          .level = downcase(spring_match.level)
+          .logger = spring_match.logger
+          .thread = spring_match.thread
+          .message = spring_match.text
+        }
+      }
+
+      if exists(."@timestamp") {
+        timestamp, logstash_ts_err = parse_timestamp(."@timestamp", format: "%+")
+        if logstash_ts_err == null {
+          .timestamp = timestamp
+        }
+        del(."@timestamp")
+      }
+
+      if exists(.logger_name) {
+        .logger = .logger_name
+        del(.logger_name)
+      }
+
+      if exists(.thread_name) {
+        .thread = .thread_name
+        del(.thread_name)
+      }
+
+      if exists(.level) {
+        if is_integer(.level) {
+          .level_value = .level
+          del(.level)
+        } else if is_string(.level) {
+          .level = downcase(.level)
+        }
+      }
+
+sinks:
+  log_file:
+    type: file
+    inputs:
+      - normalize_logs
+    path: /var/log/vector/application.log
+    encoding:
+      codec: json
+
+  console:
+    type: console
+    inputs:
+      - normalize_logs
+    encoding:
+      codec: json
+
+  prom_exporter:
+    type: prometheus_exporter
+    inputs:
+      - normalize_logs
+    address: 0.0.0.0:9598
+
+api:
+  enable: true
+  address: 0.0.0.0:8686
+  playground: false

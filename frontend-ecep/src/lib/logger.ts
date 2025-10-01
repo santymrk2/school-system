@@ -43,9 +43,10 @@ const consoleMethods: Record<ConsoleMethod, (...args: unknown[]) => void> = {
     : () => undefined,
 };
 
-const defaultLevel =
-  process.env.NEXT_PUBLIC_LOG_LEVEL ??
-  (process.env.NODE_ENV === "development" ? "debug" : "info");
+// Default to "info" so the frontend avoids producing debug logs unless
+// explicitly requested through NEXT_PUBLIC_LOG_LEVEL. This keeps the log
+// volume low because Vector handles aggregation downstream.
+const defaultLevel = process.env.NEXT_PUBLIC_LOG_LEVEL ?? "info";
 
 const createConsoleLogger = (
   bindings: LogBindings = {},

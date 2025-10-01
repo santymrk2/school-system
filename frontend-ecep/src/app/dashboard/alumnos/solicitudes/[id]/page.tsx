@@ -37,6 +37,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { logger } from "@/lib/logger";
+
+const solicitudLogger = logger.child({ module: "dashboard-alumnos-solicitud" });
+
+const logSolicitudError = (error: unknown, message?: string) => {
+  if (message) {
+    solicitudLogger.error({ err: error }, message);
+  } else {
+    solicitudLogger.error({ err: error });
+  }
+};
 import {
   Calendar,
   CalendarDays,
@@ -391,10 +402,9 @@ export default function SolicitudAdmisionDetailPage() {
             {},
           );
         } catch (personaErr) {
-          // eslint-disable-next-line no-console
-          console.error(
-            "No se pudieron cargar las personas vinculadas al grupo familiar",
+          logSolicitudError(
             personaErr,
+            "No se pudieron cargar las personas vinculadas al grupo familiar",
           );
         }
       }
@@ -444,8 +454,10 @@ export default function SolicitudAdmisionDetailPage() {
           const aspiranteRes = await admisiones.aspirantes.byId(aspiranteId);
           aspirante = aspiranteRes.data as SolicitudAspirante | undefined;
         } catch (aspiranteErr) {
-          // eslint-disable-next-line no-console
-          console.error("No se pudo cargar el aspirante de la solicitud", aspiranteErr);
+          logSolicitudError(
+            aspiranteErr,
+            "No se pudo cargar el aspirante de la solicitud",
+          );
         }
       }
 
@@ -456,8 +468,10 @@ export default function SolicitudAdmisionDetailPage() {
           const personasRes = await identidad.personasCore.getManyById([personaId]);
           aspirantePersona = personasRes.data?.[0] ?? null;
         } catch (personaErr) {
-          // eslint-disable-next-line no-console
-          console.error("No se pudieron cargar los datos de la persona", personaErr);
+          logSolicitudError(
+            personaErr,
+            "No se pudieron cargar los datos de la persona",
+          );
         }
       }
 

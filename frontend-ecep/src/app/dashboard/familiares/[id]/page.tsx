@@ -33,6 +33,17 @@ import { formatDni } from "@/lib/form-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import { identidad } from "@/services/api/modules";
+import { logger } from "@/lib/logger";
+
+const familiaresLogger = logger.child({ module: "dashboard-familiares" });
+
+const logFamiliaresError = (error: unknown, message?: string) => {
+  if (message) {
+    familiaresLogger.error({ err: error }, message);
+  } else {
+    familiaresLogger.error({ err: error });
+  }
+};
 import type {
   AlumnoFamiliarDTO,
   AlumnoLiteDTO,
@@ -128,7 +139,10 @@ export default function FamiliarPerfilPage() {
               await identidad.personasCore.getById(familiarData.personaId)
             ).data ?? null;
           } catch (error) {
-            console.error("No se pudo obtener la persona del familiar", error);
+            logFamiliaresError(
+              error,
+              "No se pudo obtener la persona del familiar",
+            );
           }
           if (!personaData) {
             const fallbackPersona: PersonaDTO = { id: familiarData.personaId };
@@ -146,9 +160,9 @@ export default function FamiliarPerfilPage() {
             (link: any) => link.familiarId === familiarId,
           ) as AlumnoFamiliarDTO[];
         } catch (linksError) {
-          console.error(
-            "No se pudieron obtener los vínculos del familiar",
+          logFamiliaresError(
             linksError,
+            "No se pudieron obtener los vínculos del familiar",
           );
         }
         if (!alive) return;
@@ -159,9 +173,9 @@ export default function FamiliarPerfilPage() {
           const { data } = await identidad.familiaresAlumnos.byFamiliarId(familiarId);
           alumnosData = (data ?? []) as AlumnoLiteDTO[];
         } catch (alumnosError) {
-          console.error(
-            "No se pudieron obtener los alumnos vinculados",
+          logFamiliaresError(
             alumnosError,
+            "No se pudieron obtener los alumnos vinculados",
           );
         }
         if (!alive) return;
@@ -169,7 +183,7 @@ export default function FamiliarPerfilPage() {
 
       } catch (fetchError: any) {
         if (!alive) return;
-        console.error(fetchError);
+        logFamiliaresError(fetchError);
         setError(fetchError?.message ?? "No pudimos cargar la información del familiar");
       } finally {
         if (alive) setLoading(false);
@@ -248,7 +262,7 @@ export default function FamiliarPerfilPage() {
       setEditOpen(false);
       setReloadKey((value) => value + 1);
     } catch (error: any) {
-      console.error(error);
+      logFamiliaresError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??
@@ -324,7 +338,7 @@ export default function FamiliarPerfilPage() {
         ),
       });
     } catch (error: any) {
-      console.error(error);
+      logFamiliaresError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??

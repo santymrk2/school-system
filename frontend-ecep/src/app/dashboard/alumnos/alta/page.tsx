@@ -36,6 +36,17 @@ import {
 } from "@/lib/genero";
 import { Loader2 } from "lucide-react";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { logger } from "@/lib/logger";
+
+const alumnosAltaLogger = logger.child({ module: "dashboard-alumnos-alta" });
+
+const logAltaError = (error: unknown, message?: string) => {
+  if (message) {
+    alumnosAltaLogger.error({ err: error }, message);
+  } else {
+    alumnosAltaLogger.error({ err: error });
+  }
+};
 
 const emptyPersona: PersonaForm = {
   nombre: "",
@@ -122,7 +133,7 @@ export default function AltaAlumnoPage() {
         });
         setSecciones(data);
       } catch (error) {
-        console.error(error);
+        logAltaError(error);
       }
     })();
   }, [activePeriodId]);
@@ -146,7 +157,7 @@ export default function AltaAlumnoPage() {
         email: data.email ?? "",
       });
     } catch (error: any) {
-      console.error(error);
+      logAltaError(error);
     }
   };
 
@@ -179,7 +190,7 @@ export default function AltaAlumnoPage() {
             setPersonaPreview(null);
             setLastLookupDni(dni);
           } else {
-            console.error(error);
+            logAltaError(error);
           }
         }
       } finally {

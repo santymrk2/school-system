@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { logger } from "@/lib/logger";
+
 export const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export const http = axios.create({
@@ -19,6 +21,8 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+const apiLogger = logger.child({ module: "api/http" });
+
 // DEBUG (solo si NEXT_PUBLIC_DEBUG)
 if (process.env.NEXT_PUBLIC_DEBUG) {
   http.interceptors.response.use(
@@ -30,15 +34,17 @@ if (process.env.NEXT_PUBLIC_DEBUG) {
       const url = (res.config && res.config.url) || "";
       // @ts-ignore
       const params = res.config && res.config.params;
-      // eslint-disable-next-line no-console
-      console.log(
-        "[API]",
-        method,
-        url,
-        params ? { params } : "",
-        "→",
-        res.status,
-        Array.isArray(res.data) ? "(items: " + res.data.length + ")" : res.data,
+      apiLogger.debug(
+        {
+          method,
+          url,
+          params: params || undefined,
+          status: res.status,
+          data: Array.isArray(res.data)
+            ? { type: "array", length: res.data.length }
+            : res.data,
+        },
+        "API response",
       );
       return res;
     },
@@ -46,15 +52,16 @@ if (process.env.NEXT_PUBLIC_DEBUG) {
       const cfg = err && err.config;
       const method = cfg && cfg.method ? cfg.method.toUpperCase() : "";
       const url = (cfg && cfg.url) || "";
-      // eslint-disable-next-line no-console
-      console.error(
-        "[API][ERR]",
-        method,
-        url,
-        cfg && cfg.params ? { params: cfg.params } : "",
-        "→",
-        err?.response?.status,
-        err?.response?.data ?? err?.message,
+      apiLogger.error(
+        {
+          err,
+          method,
+          url,
+          params: cfg && cfg.params ? cfg.params : undefined,
+          status: err?.response?.status,
+          data: err?.response?.data ?? err?.message,
+        },
+        "API response error",
       );
       return Promise.reject(err);
     },

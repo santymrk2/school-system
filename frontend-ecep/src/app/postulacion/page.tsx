@@ -12,6 +12,17 @@ import { admisiones, identidad } from "@/services/api/modules"; // ← módulos 
 import { BASE } from "@/services/api/http";
 import * as DTO from "@/types/api-generated";
 import { isBirthDateValid } from "@/lib/form-utils";
+import { logger } from "@/lib/logger";
+
+const postulacionLogger = logger.child({ module: "postulacion" });
+
+const logPostulacionError = (error: unknown, message?: string) => {
+  if (message) {
+    postulacionLogger.error({ err: error }, message);
+  } else {
+    postulacionLogger.error({ err: error });
+  }
+};
 
 import { Step1 } from "./Step1";
 import { Step2 } from "./Step2";
@@ -264,7 +275,7 @@ export default function PostulacionPage() {
           setFormData((prev) => ({ ...prev, personaId: null }));
           setLastLookupDni(dni);
         } else {
-          console.error(error);
+          logPostulacionError(error);
         }
       } finally {
         if (!cancelled) setDniLookupLoading(false);
@@ -336,7 +347,7 @@ export default function PostulacionPage() {
           if (error?.response?.status === 404) {
             familiarLookupState.current[index] = { dni, status: "notfound" };
           } else {
-            console.error(error);
+            logPostulacionError(error);
             familiarLookupState.current[index] = { dni, status: "notfound" };
           }
         }
@@ -878,7 +889,7 @@ export default function PostulacionPage() {
       setErrors({});
       setCurrentStep(1);
     } catch (err: any) {
-      console.error(err);
+      logPostulacionError(err);
       toast.error(`Error al enviar: ${err?.message ?? "No se pudo enviar"}`);
     }
   };

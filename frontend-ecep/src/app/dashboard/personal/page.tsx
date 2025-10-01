@@ -78,6 +78,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { logger } from "@/lib/logger";
+
+const personalLogger = logger.child({ module: "dashboard-personal" });
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -474,7 +477,7 @@ async function safeRequest<T>(
     const res = await promise;
     return (res.data ?? fallback) as T;
   } catch (error) {
-    console.error(label, error);
+    personalLogger.error({ err: error }, label);
     return fallback;
   }
 }
@@ -1017,6 +1020,14 @@ export default function PersonalPage() {
   const mountedRef = useRef(false);
   const searchRef = useRef<string>("");
   const currentPageRef = useRef(1);
+
+  const reportError = useCallback((error: unknown, message?: string) => {
+    if (message) {
+      personalLogger.error({ err: error }, message);
+    } else {
+      personalLogger.error({ err: error });
+    }
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1745,7 +1756,7 @@ export default function PersonalPage() {
         setTotalItems(Math.max(0, pageInfo.totalElements));
         searchRef.current = searchValue;
       } catch (error) {
-        console.error("Error cargando personal", error);
+        reportError(error, "Error cargando personal");
         if (!mountedRef.current) return;
         setLoadError("No se pudo obtener la información del personal.");
         setPersonal([]);
@@ -2240,7 +2251,7 @@ export default function PersonalPage() {
         toast.success("Asignaciones actualizadas correctamente");
         await refreshData();
       } catch (error: any) {
-        console.error("Error al guardar asignaciones", error);
+        reportError(error, "Error al guardar asignaciones");
         const description =
           error?.response?.data?.message ??
           error?.message ??
@@ -2811,7 +2822,7 @@ export default function PersonalPage() {
           description: "Guardá el formulario para confirmar los cambios.",
         });
       } catch (error: any) {
-        console.error("Error al subir foto de perfil", error);
+        reportError(error, "Error al subir foto de perfil");
         const description =
           error?.response?.data?.message ??
           error?.message ??
@@ -2853,7 +2864,7 @@ export default function PersonalPage() {
           description: "Recordá guardar los cambios del legajo.",
         });
       } catch (error: any) {
-        console.error("Error al subir foto de perfil", error);
+        reportError(error, "Error al subir foto de perfil");
         const description =
           error?.response?.data?.message ??
           error?.message ??
@@ -3207,9 +3218,9 @@ export default function PersonalPage() {
             try {
               await identidad.empleados.delete(empleadoId);
             } catch (deleteError) {
-              console.error(
-                "No se pudo revertir el empleado tras un error en las asignaciones",
+              reportError(
                 deleteError,
+                "No se pudo revertir el empleado tras un error en las asignaciones",
               );
             }
           }
@@ -3236,7 +3247,7 @@ export default function PersonalPage() {
         setCreateDialogOpen(false);
         await refreshData();
       } catch (error: any) {
-        console.error("Error al crear personal", error);
+        reportError(error, "Error al crear personal");
         const description =
           error?.response?.data?.message ??
           error?.message ??
@@ -3529,7 +3540,7 @@ export default function PersonalPage() {
           try {
             await identidad.formaciones.delete(id);
           } catch (formacionDeleteError: any) {
-            console.error("Error al eliminar formación", formacionDeleteError);
+            reportError(formacionDeleteError, "Error al eliminar formación");
             const description =
               formacionDeleteError?.response?.data?.message ??
               formacionDeleteError?.message ??
@@ -3551,7 +3562,7 @@ export default function PersonalPage() {
               fechaFin: formacion.fechaFin,
             });
           } catch (formacionUpdateError: any) {
-            console.error("Error al actualizar formación", formacionUpdateError);
+            reportError(formacionUpdateError, "Error al actualizar formación");
             const description =
               formacionUpdateError?.response?.data?.message ??
               formacionUpdateError?.message ??
@@ -3572,7 +3583,7 @@ export default function PersonalPage() {
               fechaFin: formacion.fechaFin ?? null,
             });
           } catch (formacionCreateError: any) {
-            console.error("Error al crear formación", formacionCreateError);
+            reportError(formacionCreateError, "Error al crear formación");
             const description =
               formacionCreateError?.response?.data?.message ??
               formacionCreateError?.message ??
@@ -3591,7 +3602,7 @@ export default function PersonalPage() {
             existingMaterias: editMateriaDetails,
           });
         } catch (assignmentError: any) {
-          console.error("Error al actualizar asignaciones", assignmentError);
+          reportError(assignmentError, "Error al actualizar asignaciones");
           const description =
             assignmentError?.response?.data?.message ??
             assignmentError?.message ??
@@ -3604,7 +3615,7 @@ export default function PersonalPage() {
         setEditDialogOpen(false);
         await refreshData();
       } catch (error: any) {
-        console.error("Error al actualizar personal", error);
+        reportError(error, "Error al actualizar personal");
         const description =
           error?.response?.data?.message ??
           error?.message ??
@@ -3691,7 +3702,7 @@ export default function PersonalPage() {
         setLicenseDialogOpen(false);
         await refreshData();
       } catch (error: any) {
-        console.error("Error al registrar licencia", error);
+        reportError(error, "Error al registrar licencia");
         const description =
           error?.response?.data?.message ??
           error?.message ??
@@ -3787,7 +3798,7 @@ export default function PersonalPage() {
       setAccessDialogOpen(false);
       await refreshData();
     } catch (error: any) {
-      console.error(error);
+      reportError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??

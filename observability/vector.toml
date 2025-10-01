@@ -97,4 +97,4 @@ address = "0.0.0.0:9598"
 [api]
 enable = true
 address = "0.0.0.0:8686"
-playground.enable = false
+playground = false

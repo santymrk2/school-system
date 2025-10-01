@@ -57,6 +57,17 @@ import {
   toDateOrNull,
   withinRange,
 } from "./utils";
+import { logger } from "@/lib/logger";
+
+const reportesLogger = logger.child({ module: "dashboard-reportes" });
+
+const logReportesError = (error: unknown, message?: string) => {
+  if (message) {
+    reportesLogger.error({ err: error }, message);
+  } else {
+    reportesLogger.error({ err: error });
+  }
+};
 
 export default function ReportesPage() {
   const { hasRole, loading, user } = useAuth();
@@ -185,7 +196,10 @@ export default function ReportesPage() {
               if (!alive) return;
               alumnosBySeccion.set(sec.id, data ?? []);
             } catch (error) {
-              console.error("No se pudo cargar alumnos de la sección", sec.id, error);
+              logReportesError(
+                error,
+                `No se pudo cargar alumnos de la sección ${sec.id}`,
+              );
               if (!alive) return;
               alumnosBySeccion.set(sec.id, []);
             }
@@ -330,7 +344,7 @@ export default function ReportesPage() {
         setBoletinSections(orderedSections);
       } catch (error: any) {
         if (!alive) return;
-        console.error("Error cargando boletines", error);
+        logReportesError(error, "Error cargando boletines");
         setBoletinSections([]);
         setBoletinError(
           error?.response?.data?.message ??
@@ -723,7 +737,7 @@ export default function ReportesPage() {
           enLicencia,
         });
       } catch (error) {
-        console.error("Error cargando empleados", error);
+        logReportesError(error, "Error cargando empleados");
         setEmpleadoMap({});
         setPersonalSummary({ total: 0, activos: 0, enLicencia: 0 });
       }
@@ -883,7 +897,7 @@ export default function ReportesPage() {
         setAttendanceSummaries(summaries);
       } catch (error: any) {
         if (!alive) return;
-        console.error("Error cargando asistencia", error);
+        logReportesError(error, "Error cargando asistencia");
         setAttendanceError(
           error?.response?.data?.message ??
             error?.message ??
@@ -936,7 +950,7 @@ export default function ReportesPage() {
         setLicenses((res.data ?? []) as LicenciaDTO[]);
       } catch (error: any) {
         if (!alive) return;
-        console.error("Error cargando licencias", error);
+        logReportesError(error, "Error cargando licencias");
         setLicenseError(
           error?.response?.data?.message ??
             error?.message ??
@@ -1183,7 +1197,7 @@ export default function ReportesPage() {
         setActaRegistros(registros);
       } catch (error: any) {
         if (!alive) return;
-        console.error("Error cargando actas", error);
+        logReportesError(error, "Error cargando actas");
         setActaErrorMsg(
           error?.response?.data?.message ??
             error?.message ??

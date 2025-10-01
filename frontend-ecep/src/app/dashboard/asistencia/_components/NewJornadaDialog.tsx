@@ -24,6 +24,17 @@ import {
   isFechaDentroDeTrimestre,
 } from "@/lib/trimestres";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+
+const jornadaLogger = logger.child({ module: "asistencia-new-jornada" });
+
+const logJornadaError = (error: unknown, message?: string) => {
+  if (message) {
+    jornadaLogger.error({ err: error }, message);
+  } else {
+    jornadaLogger.error({ err: error });
+  }
+};
 
 type Props = {
   seccion: SeccionDTO;
@@ -168,9 +179,9 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
         }
         setBusyDates(incoming);
       } catch (err) {
-        console.error(
-          "[NewJornadaDialog] No se pudo cargar jornadas previas",
+        logJornadaError(
           err,
+          "[NewJornadaDialog] No se pudo cargar jornadas previas",
         );
       }
     })();

@@ -45,6 +45,19 @@ import { toast } from "sonner";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { logger } from "@/lib/logger";
+
+const cierrePrimarioLogger = logger.child({
+  module: "calificaciones-cierre-primario",
+});
+
+const logCierrePrimarioError = (error: unknown, message?: string) => {
+  if (message) {
+    cierrePrimarioLogger.error({ err: error }, message);
+  } else {
+    cierrePrimarioLogger.error({ err: error });
+  }
+};
 
 const CONCEPTOS = Object.values(CalificacionConceptual).filter(
   (value): value is CalificacionConceptual => typeof value === "string",
@@ -388,9 +401,9 @@ export default function CierrePrimarioView({
           setPromediosExamenes(averages);
         }
       } catch (err) {
-        console.error(
-          "[CierrePrimarioView] No se pudieron calcular los promedios de exámenes",
+        logCierrePrimarioError(
           err,
+          "[CierrePrimarioView] No se pudieron calcular los promedios de exámenes",
         );
         if (alive) {
           setPromediosExamenes({});
@@ -481,9 +494,9 @@ export default function CierrePrimarioView({
           setAttendanceByMatricula(map);
         }
       } catch (error) {
-        console.error(
-          "[CierrePrimarioView] No se pudo obtener el resumen de asistencia",
+        logCierrePrimarioError(
           error,
+          "[CierrePrimarioView] No se pudo obtener el resumen de asistencia",
         );
         if (alive) {
           setAttendanceByMatricula({});
@@ -555,7 +568,7 @@ export default function CierrePrimarioView({
       setCalifs(all ?? []);
       toast.success("Calificaciones guardadas.");
     } catch (e: any) {
-      console.error(e);
+      logCierrePrimarioError(e);
       toast.error(e?.response?.data?.message ?? "No se pudo guardar.");
     } finally {
       setSaving(false);

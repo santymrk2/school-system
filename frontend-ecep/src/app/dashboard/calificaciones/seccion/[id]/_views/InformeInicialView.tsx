@@ -22,6 +22,19 @@ import {
 } from "@/lib/trimestres";
 import { toast } from "sonner";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
+import { logger } from "@/lib/logger";
+
+const informeInicialLogger = logger.child({
+  module: "calificaciones-informe-inicial",
+});
+
+const logInformeInicialError = (error: unknown, message?: string) => {
+  if (message) {
+    informeInicialLogger.error({ err: error }, message);
+  } else {
+    informeInicialLogger.error({ err: error });
+  }
+};
 
 export default function InformeInicialView({
   seccionId,
@@ -175,7 +188,7 @@ function TrimestreInformeTile({
       onUpsert({ ...existing, descripcion: (desc ?? "").trim() });
       setOpen(false);
     } catch (e: any) {
-      console.error(e);
+      logInformeInicialError(e);
       toast.error(
         e?.response?.data?.message ??
           "Tu backend aún no expone UPDATE para informes. Pedilo o habilítalo.",

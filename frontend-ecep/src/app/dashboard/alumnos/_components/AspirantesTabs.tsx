@@ -27,6 +27,17 @@ import { Calendar, CircleCheck, Clock, ChevronLeft, ChevronRight, Loader2, X } f
 import * as DTO from "@/types/api-generated";
 import { admisiones, gestionAcademica, identidad } from "@/services/api/modules";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { logger } from "@/lib/logger";
+
+const aspirantesLogger = logger.child({ module: "dashboard-aspirantes-tabs" });
+
+const logAspirantesError = (error: unknown, message?: string) => {
+  if (message) {
+    aspirantesLogger.error({ err: error }, message);
+  } else {
+    aspirantesLogger.error({ err: error });
+  }
+};
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -204,10 +215,9 @@ function useSolicitudesAdmision(query: string) {
           const personas = personasRes.data ?? [];
           personaById = new Map(personas.map((persona) => [persona.id, persona]));
         } catch (personaErr) {
-          // eslint-disable-next-line no-console
-          console.error(
-            "No se pudieron cargar los datos de las personas asociadas a las solicitudes",
+          logAspirantesError(
             personaErr,
+            "No se pudieron cargar los datos de las personas asociadas a las solicitudes",
           );
         }
       }

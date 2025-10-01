@@ -38,6 +38,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+
+const actasLogger = logger.child({ module: "actas-new-acta-dialog" });
+
+const logActasError = (error: unknown, message?: string) => {
+  if (message) {
+    actasLogger.error({ err: error }, message);
+  } else {
+    actasLogger.error({ err: error });
+  }
+};
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const min2DaysISO = () => {
@@ -368,7 +379,7 @@ export default function NewActaDialog({
       onOpenChange(false);
       onCreated?.();
     } catch (e: any) {
-      console.error("Error creando acta", e?.response?.data ?? e);
+      logActasError(e, "Error creando acta");
       toast.error(
         e?.response?.data?.message ?? e?.message ?? "No se pudo crear el acta.",
       );

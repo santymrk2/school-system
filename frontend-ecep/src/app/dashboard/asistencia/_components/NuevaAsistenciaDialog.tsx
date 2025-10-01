@@ -34,6 +34,17 @@ import {
   getTrimestreInicio,
   isFechaDentroDeTrimestre,
 } from "@/lib/trimestres";
+import { logger } from "@/lib/logger";
+
+const asistenciaLogger = logger.child({ module: "asistencia-nueva-dialog" });
+
+const logAsistenciaError = (error: unknown, message?: string) => {
+  if (message) {
+    asistenciaLogger.error({ err: error }, message);
+  } else {
+    asistenciaLogger.error({ err: error });
+  }
+};
 
 function fmt(d?: string | null) {
   if (!d) return "";
@@ -115,9 +126,9 @@ export default function NuevaAsistenciaDialog({
         }
         setBusyDates(incoming);
       } catch (err) {
-        console.error(
-          "[NuevaAsistenciaDialog] No se pudieron cargar jornadas previas",
+        logAsistenciaError(
           err,
+          "[NuevaAsistenciaDialog] No se pudieron cargar jornadas previas",
         );
       }
     })();

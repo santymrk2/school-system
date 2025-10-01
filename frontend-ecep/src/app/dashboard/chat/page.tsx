@@ -22,6 +22,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import type { ChatMessageDTO, PersonaResumenDTO } from "@/types/api-generated";
 import useChatSocket from "@/hooks/useChatSocket";
 import { useSearchParams } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 dayjs.extend(relativeTime);
 
@@ -61,6 +62,7 @@ const getPersonaEmail = (persona: PersonaResumenDTO | null | undefined) =>
   persona?.email ?? "Sin email";
 
 export default function ChatComponent() {
+  const chatLogger = logger.child({ module: "dashboard-chat" });
   const [activeChats, setActiveChats] = useState<PersonaResumenDTO[]>([]);
   const [openChatDialog, setOpenChatDialog] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -118,7 +120,7 @@ export default function ChatComponent() {
         setUnreadCounts(unreadRes.data ?? {});
       } catch (err) {
         if (process.env.NODE_ENV === "development") {
-          console.error("Error al cargar chats", err);
+          chatLogger.error({ err }, "Error al cargar chats");
         }
       }
     };
@@ -144,7 +146,7 @@ export default function ChatComponent() {
         })
         .catch((error) => {
           if (process.env.NODE_ENV === "development") {
-            console.error("Error al buscar personas", error);
+            chatLogger.error({ err: error }, "Error al buscar personas");
           }
         });
     }, 300);
@@ -176,7 +178,10 @@ export default function ChatComponent() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error("No pudimos cargar la persona del mensaje", error);
+          chatLogger.error(
+            { err: error },
+            "No pudimos cargar la persona del mensaje",
+          );
         }
       }
     })();
@@ -206,7 +211,7 @@ export default function ChatComponent() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error("No se pudo marcar como leído", error);
+          chatLogger.error({ err: error }, "No se pudo marcar como leído");
         }
       }
     })();
@@ -304,7 +309,7 @@ export default function ChatComponent() {
         await openChat(data);
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error("No se pudo abrir el chat solicitado", error);
+          chatLogger.error({ err: error }, "No se pudo abrir el chat solicitado");
         }
       }
     })();

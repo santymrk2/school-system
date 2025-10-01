@@ -38,6 +38,17 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
+import { logger } from "@/lib/logger";
+
+const alumnosLogger = logger.child({ module: "dashboard-alumnos-detalle" });
+
+const logAlumnoError = (error: unknown, message?: string) => {
+  if (message) {
+    alumnosLogger.error({ err: error }, message);
+  } else {
+    alumnosLogger.error({ err: error });
+  }
+};
 import { useAuth } from "@/hooks/useAuth";
 import { formatDni } from "@/lib/form-utils";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
@@ -304,7 +315,10 @@ export default function AlumnoPerfilPage() {
           try {
             p = (await identidad.personasCore.getById(a.personaId)).data ?? null;
           } catch (personaError) {
-            console.error("No se pudo obtener la persona del alumno", personaError);
+            logAlumnoError(
+              personaError,
+              "No se pudo obtener la persona del alumno",
+            );
           }
           if (!p) {
             const fallbackPersona: PersonaDTO = {
@@ -331,7 +345,7 @@ export default function AlumnoPerfilPage() {
           setSeccionesMap(map);
           setSeccionesList(secciones);
         } catch (error) {
-          console.error(error);
+          logAlumnoError(error);
           seccionMapLocal = null;
           if (!alive) return;
           setSeccionesMap(new Map<number, SeccionDTO>());
@@ -346,7 +360,7 @@ export default function AlumnoPerfilPage() {
             (m: any) => m.alumnoId === alumnoId,
           );
         } catch (error) {
-          console.error(error);
+          logAlumnoError(error);
           mats = [];
         }
         if (!alive) return;
@@ -378,7 +392,7 @@ export default function AlumnoPerfilPage() {
               } as HistorialVM;
             });
         } catch (error) {
-          console.error(error);
+          logAlumnoError(error);
           hist = [];
         }
         if (!alive) return;
@@ -413,7 +427,7 @@ export default function AlumnoPerfilPage() {
                   _persona: fp,
                 } as FamiliarConVinculo;
               } catch (error) {
-                console.error(error);
+                logAlumnoError(error);
                 return null;
               }
             }),
@@ -425,7 +439,7 @@ export default function AlumnoPerfilPage() {
             return acc;
           }, []);
         } catch (error) {
-          console.error(error);
+          logAlumnoError(error);
           fams = [];
         }
         if (!alive) return;
@@ -554,7 +568,7 @@ export default function AlumnoPerfilPage() {
         if (!alive) return;
         setFamiliaresCatalog(data ?? []);
       } catch (error) {
-        console.error(error);
+        logAlumnoError(error);
         if (!alive) return;
         setFamiliaresCatalog([]);
       }
@@ -613,7 +627,7 @@ export default function AlumnoPerfilPage() {
           setAddPersonaId(null);
           setAddFamiliarId(null);
         } else {
-          console.error(error);
+          logAlumnoError(error);
           setAddPersonaId(null);
           setAddFamiliarId(null);
         }
@@ -822,7 +836,7 @@ export default function AlumnoPerfilPage() {
       setEditOpen(false);
       setReloadKey((value) => value + 1);
     } catch (error: any) {
-      console.error(error);
+      logAlumnoError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??
@@ -898,7 +912,7 @@ export default function AlumnoPerfilPage() {
         ),
       });
     } catch (error: any) {
-      console.error(error);
+      logAlumnoError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??
@@ -928,7 +942,7 @@ export default function AlumnoPerfilPage() {
         roles: normalizeRoles(refreshed?.roles ?? []),
       });
     } catch (error: any) {
-      console.error(error);
+      logAlumnoError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??
@@ -1024,7 +1038,7 @@ export default function AlumnoPerfilPage() {
       setAddFamilyOpen(false);
       setReloadKey((value) => value + 1);
     } catch (error: any) {
-      console.error(error);
+      logAlumnoError(error);
       toast.error(
         error?.response?.data?.message ??
           error?.message ??

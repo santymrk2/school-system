@@ -29,12 +29,44 @@ import {
   getTrimestreEstado,
   isFechaDentroDeTrimestre,
 } from "@/lib/trimestres";
+import { logger } from "@/lib/logger";
 
 const DBG = !!process.env.NEXT_PUBLIC_DEBUG;
-const dlog = (...a: any[]) => DBG && console.log("[VistaDocente]", ...a);
-const dgrp = (title: string) =>
-  DBG ? console.groupCollapsed(`[VistaDocente] ${title}`) : null;
-const dgrpEnd = () => (DBG ? console.groupEnd() : null);
+const vistaLogger = logger.child({ module: "VistaDocente" });
+
+const dlog = (...args: any[]) => {
+  if (!DBG) return;
+  if (!args.length) return;
+
+  const [first, ...rest] = args;
+
+  if (typeof first === "string") {
+    if (!rest.length) {
+      vistaLogger.debug(first);
+      return;
+    }
+
+    if (rest.length === 1 && typeof rest[0] === "object") {
+      vistaLogger.debug(rest[0] as Record<string, unknown>, first);
+      return;
+    }
+
+    vistaLogger.debug({ details: rest }, first);
+    return;
+  }
+
+  vistaLogger.debug({ details: args }, "VistaDocente log");
+};
+
+const dgrp = (title: string) => {
+  if (!DBG) return;
+  vistaLogger.debug({ group: title, phase: "start" }, title);
+};
+
+const dgrpEnd = () => {
+  if (!DBG) return;
+  vistaLogger.debug({ phase: "end" }, "VistaDocente group end");
+};
 
 function fmt(iso?: string) {
   if (!iso) return "—";
@@ -133,7 +165,7 @@ export default function VistaDocente() {
         return next;
       });
     } catch (err) {
-      console.error("[VistaDocente] openHistorial error", err);
+      vistaLogger.error({ err }, "openHistorial error");
     } finally {
       dgrpEnd();
     }
@@ -227,9 +259,9 @@ export default function VistaDocente() {
                                       seccionId: sec.id,
                                     });
                                   } catch (e) {
-                                    console.error(
-                                      "[VistaDocente] loadDetallesByJornada error",
-                                      e,
+                                    vistaLogger.error(
+                                      { err: e, jornadaId: j.id },
+                                      "loadDetallesByJornada error",
                                     );
                                   } finally {
                                     dgrpEnd();
@@ -269,9 +301,9 @@ export default function VistaDocente() {
                         });
                         return rows;
                       } catch (e) {
-                        console.error(
-                          "[VistaDocente] loadAlumnosSeccion error",
-                          e,
+                        vistaLogger.error(
+                          { err: e, seccionId: sec.id },
+                          "loadAlumnosSeccion error",
                         );
                         return [];
                       }

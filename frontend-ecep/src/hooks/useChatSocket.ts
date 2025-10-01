@@ -7,6 +7,22 @@ import type { ChatMessageDTO } from "@/types/api-generated";
 import { useAuth } from "./useAuth";
 import { comunicacion } from "@/services/api/modules";
 import { BASE as HTTP_BASE } from "@/services/api/http";
+import { logger } from "@/lib/logger";
+
+const socketLogger = logger.child({ module: "useChatSocket" });
+const debugEnabled = Boolean(process.env.NEXT_PUBLIC_DEBUG);
+
+const debugLog = (
+  message: string,
+  payload?: Record<string, unknown>,
+) => {
+  if (!debugEnabled) return;
+  if (payload) {
+    socketLogger.debug(payload, message);
+  } else {
+    socketLogger.debug(message);
+  }
+};
 
 const sanitizeBaseUrl = (value?: string | null) => {
   if (!value) return "";
@@ -57,8 +73,8 @@ const resolveSocketBase = (): string[] => {
     ].filter(Boolean) as string[];
   }
 
-  console.warn(
-    "[useChatSocket] No se pudo resolver la URL base del API; usando cadena vacía.",
+  socketLogger.warn(
+    "No se pudo resolver la URL base del API; usando cadena vacía.",
   );
   return [];
 };
@@ -204,7 +220,7 @@ export default function useChatSocket() {
       return;
 
     setConnectionStatus("connecting");
-    console.log("🔌 Intentando conectar WebSocket...");
+    socketLogger.info("🔌 Intentando conectar WebSocket…");
 
     const token = getAuthToken()?.trim() || null;
     const baseCandidates = resolveSocketBase();
@@ -225,9 +241,7 @@ export default function useChatSocket() {
     }
 
     if (!endpoints) {
-      console.warn(
-        "[useChatSocket] La URL base calculada para el socket es inválida.",
-      );
+      socketLogger.warn("La URL base calculada para el socket es inválida.");
       setConnected(false);
       setConnectionStatus("disconnected");
       return;
@@ -248,9 +262,9 @@ export default function useChatSocket() {
         withCredentials: true,
       } as any);
     } catch (error) {
-      console.error(
-        `[useChatSocket] Error creando la conexión SockJS (${baseUrl}):`,
-        error,
+      socketLogger.error(
+        { err: error, baseUrl },
+        "Error creando la conexión SockJS",
       );
 
       const NativeWebSocket =
@@ -262,8 +276,8 @@ export default function useChatSocket() {
           : undefined;
 
       if (!NativeWebSocket) {
-        console.warn(
-          "[useChatSocket] WebSocket API no disponible para usar fallback nativo.",
+        socketLogger.warn(
+          "WebSocket API no disponible para usar fallback nativo.",
         );
         setConnected(false);
         setConnectionStatus("disconnected");
@@ -273,13 +287,13 @@ export default function useChatSocket() {
 
       try {
         socket = new NativeWebSocket(webSocketUrl);
-        console.info(
-          "[useChatSocket] SockJS falló; usando WebSocket nativo como fallback.",
+        socketLogger.info(
+          "SockJS falló; usando WebSocket nativo como fallback.",
         );
       } catch (wsError) {
-        console.error(
-          "[useChatSocket] Error creando la conexión WebSocket nativa:",
-          wsError,
+        socketLogger.error(
+          { err: wsError },
+          "Error creando la conexión WebSocket nativa",
         );
         setConnected(false);
         setConnectionStatus("disconnected");
@@ -291,13 +305,13 @@ export default function useChatSocket() {
     const stompClient = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 1000,
-      debug: (str) => console.log("STOMP:", str),
+      debug: (str) => debugLog("STOMP", { frame: str }),
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     stompClient.onConnect = (frame) => {
-      console.log("✅ WebSocket conectado. Frame:", frame);
-      console.log("🛎 Suscribiéndome a /user/queue/messages");
+      socketLogger.info({ frame }, "✅ WebSocket conectado");
+      socketLogger.info("🛎 Suscribiéndome a /user/queue/messages");
       setConnected(true);
       setConnectionStatus("connected");
       connectingRef.current = false;
@@ -307,7 +321,7 @@ export default function useChatSocket() {
         stompClient.subscribe("/user/queue/messages", (message) => {
           if (!message.body) return;
           const msg = normalizeMessage(JSON.parse(message.body));
-          console.log("📥 Mensaje recibido del backend:", msg);
+          debugLog("📥 Mensaje recibido del backend", { message: msg });
 
           const senderId = Number(msg.emisorId ?? 0);
           if (senderId) {
@@ -351,7 +365,7 @@ export default function useChatSocket() {
       subscriptions.current.push(
         stompClient.subscribe("/user/queue/ack", (msg) => {
           if (!msg.body) return;
-          console.log("🔔 ACK recibido:", msg.body);
+          debugLog("🔔 ACK recibido", { body: msg.body });
           const ackMessage: ChatMessageDTO = JSON.parse(msg.body);
           // Aquí actualizas tu array de mensajes reemplazando
           // el optimista (id < 0) por el que vino del servidor:
@@ -389,7 +403,7 @@ export default function useChatSocket() {
             );
           } catch (error) {
             if (process.env.NODE_ENV === "development") {
-              console.error("Error procesando read receipt", error);
+              socketLogger.error({ err: error }, "Error procesando read receipt");
             }
           }
         }),
@@ -412,7 +426,7 @@ export default function useChatSocket() {
             }));
           } catch (error) {
             if (process.env.NODE_ENV === "development") {
-              console.error("Error procesando estado online", error);
+              socketLogger.error({ err: error }, "Error procesando estado online");
             }
           }
         }),
@@ -463,7 +477,7 @@ export default function useChatSocket() {
             typingTimeouts.current.set(senderId, timeout);
           } catch (error) {
             if (process.env.NODE_ENV === "development") {
-              console.error("Error procesando evento typing", error);
+              socketLogger.error({ err: error }, "Error procesando evento typing");
             }
           }
         }),
@@ -472,23 +486,26 @@ export default function useChatSocket() {
       // Suscripción a errores
       subscriptions.current.push(
         stompClient.subscribe("/user/queue/errors", (message) => {
-          console.error("⚠️ Error desde el servidor:", message.body);
+          socketLogger.error(
+            { body: message.body },
+            "⚠️ Error desde el servidor",
+          );
         }),
       );
     };
 
     stompClient.onStompError = (frame) => {
-      console.error("STOMP Error:", frame);
+      socketLogger.error({ frame }, "STOMP Error");
       connectingRef.current = false;
     };
 
     stompClient.onWebSocketError = (event) => {
-      console.error("[useChatSocket] Error en el WebSocket:", event);
+      socketLogger.error({ event }, "Error en el WebSocket");
       connectingRef.current = false;
     };
 
     stompClient.onWebSocketClose = () => {
-      console.warn("❌ WebSocket desconectado");
+      socketLogger.warn("❌ WebSocket desconectado");
       setConnected(false);
       setConnectionStatus("disconnected");
       connectingRef.current = false;
@@ -503,7 +520,7 @@ export default function useChatSocket() {
     try {
       stompClient.activate();
     } catch (error) {
-      console.error("[useChatSocket] No se pudo activar el cliente STOMP:", error);
+      socketLogger.error({ err: error }, "No se pudo activar el cliente STOMP");
       connectingRef.current = false;
       setConnected(false);
       setConnectionStatus("disconnected");
@@ -519,7 +536,7 @@ export default function useChatSocket() {
       const result = currentClient.deactivate();
       if (result && typeof (result as Promise<void>).catch === "function") {
         (result as Promise<void>).catch((error) =>
-          console.error("[useChatSocket] Error al desconectar STOMP:", error),
+        socketLogger.error({ err: error }, "Error al desconectar STOMP"),
         );
       }
     }
@@ -541,7 +558,7 @@ export default function useChatSocket() {
 
   const sendMessage = (receptorId: number, contenido: string) => {
     if (!client.current || !connected) {
-      console.warn("⚠️ No se pudo enviar, WebSocket no conectado");
+      socketLogger.warn("⚠️ No se pudo enviar, WebSocket no conectado");
       return false;
     }
 
@@ -560,7 +577,7 @@ export default function useChatSocket() {
 
     // 3) Publicar por STOMP
     const payload = { receptorId, contenido };
-    console.log("📤 Enviando mensaje:", payload);
+    debugLog("📤 Enviando mensaje", { payload });
     client.current.publish({
       destination: "/app/chat.send",
       body: JSON.stringify(payload),
@@ -614,14 +631,16 @@ export default function useChatSocket() {
       });
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("Error al obtener estado en línea", error);
+        socketLogger.error({ err: error }, "Error al obtener estado en línea");
       }
     }
   }, []);
 
   const markRead = useCallback(async (otherUserId: number) => {
     try {
-      console.log("📡 Marcando mensajes como leídos de usuario:", otherUserId);
+      debugLog("📡 Marcando mensajes como leídos de usuario", {
+        otherUserId,
+      });
       await comunicacion.chat.markRead(otherUserId);
 
       setMessages((prev) =>
@@ -630,18 +649,18 @@ export default function useChatSocket() {
         ),
       );
     } catch (err) {
-      console.error("Error al marcar mensajes como leídos:", err);
+      socketLogger.error({ err }, "Error al marcar mensajes como leídos");
     }
   }, []);
 
   // 🔹 Cargar historial desde la API
   const loadHistory = useCallback(async (otherUserId: number) => {
     try {
-      console.log("📡 Cargando historial de usuario:", otherUserId);
+      debugLog("📡 Cargando historial de usuario", { otherUserId });
       const { data } = await comunicacion.chat.history(otherUserId);
       setMessages(data.map(normalizeMessage));
     } catch (err) {
-      console.error("Error al cargar historial:", err);
+      socketLogger.error({ err }, "Error al cargar historial");
       setMessages([]); // Evitar que queden mensajes viejos si falla
     }
   }, []);

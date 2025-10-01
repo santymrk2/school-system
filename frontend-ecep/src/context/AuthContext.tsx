@@ -15,8 +15,10 @@ import { identidad } from "@/services/api/modules";
 import type { PersonaResumenDTO, AuthResponse } from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import { normalizeRole, normalizeRoles } from "@/lib/auth-roles"; // asegúrate de tener este helper
+import { logger } from "@/lib/logger";
 
 const SELECTED_ROLE_KEY = "selectedRole";
+const authLogger = logger.child({ module: "AuthContext" });
 
 // Extrae los roles sin importar si vienen como roles[], userRoles[] o authorities[]
 function extractRawRoles(userLike: any): string[] {
@@ -171,8 +173,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
       const { data } = await identidad.me();
       const patched = patchUserRoles(data);
       if (process.env.NODE_ENV === "development") {
-        console.log("[ME] payload crudo:", data);
-        console.log("[ME] roles (patched):", patched.roles);
+        authLogger.debug({ data }, "[ME] payload crudo");
+        authLogger.debug({ roles: patched.roles }, "[ME] roles (patched)");
       }
       setUser(patched);
 
@@ -233,7 +235,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
       const me = await identidad.me();
       const patched = patchUserRoles(me.data);
       if (process.env.NODE_ENV === "development") {
-        console.log("[LOGIN→ME] roles (patched):", patched.roles);
+        authLogger.debug({ roles: patched.roles }, "[LOGIN→ME] roles (patched)");
       }
       setUser(patched);
 

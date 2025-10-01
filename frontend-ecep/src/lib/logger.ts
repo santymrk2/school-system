@@ -76,12 +76,14 @@ const createConsoleLogger = (
   };
 };
 
-const loadPino = (): ((options?: Record<string, unknown>) => AppLogger) | null => {
+type PinoModule = typeof import("pino");
+
+const loadPino = (): PinoModule | null => {
   try {
     // eslint-disable-next-line no-new-func
     const loader = Function(
       "try { return typeof require === 'function' ? require('pino') : null; } catch (error) { return null; }",
-    ) as () => ((options?: Record<string, unknown>) => AppLogger) | null;
+    ) as () => PinoModule | null;
     return loader();
   } catch (_error) {
     return null;
@@ -105,7 +107,55 @@ const buildOptions = () => ({
 
 const factory = loadPino();
 
-const baseLogger = factory ? factory(buildOptions()) : createConsoleLogger();
+const resolveVectorTransport = () => {
+  if (!factory || isBrowser || typeof factory.transport !== "function") {
+    return null;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+    const path = require("node:path") as typeof import("node:path");
+
+    const transportPath = path.resolve(
+      process.cwd(),
+      "src/lib/vector-transport.cjs",
+    );
+
+    return factory.transport({
+      targets: [
+        {
+          target: transportPath,
+          level: defaultLevel,
+          options: {
+            endpoint:
+              process.env.VECTOR_HTTP_ENDPOINT ??
+              "http://localhost:9000/logs",
+            headers: {
+              "content-type": "application/json",
+            },
+          },
+        },
+      ],
+    });
+  } catch (error) {
+    consoleMethods.warn?.("Vector transport unavailable", error);
+    return null;
+  }
+};
+
+const vectorTransport = resolveVectorTransport();
+
+let baseLogger: AppLogger;
+
+if (!factory) {
+  baseLogger = createConsoleLogger();
+} else if (isBrowser) {
+  baseLogger = factory(buildOptions());
+} else if (vectorTransport) {
+  baseLogger = factory(buildOptions(), vectorTransport);
+} else {
+  baseLogger = createConsoleLogger();
+}
 
 export const logger: AppLogger = baseLogger;
 

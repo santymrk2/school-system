@@ -12,7 +12,6 @@ import type {
   EvaluacionDTO,
 } from "@/types/api-generated";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
-import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 import { TrimestreEstadoBadge } from "@/components/trimestres/TrimestreEstadoBadge";
 import {
   TRIMESTRE_ESTADO_LABEL,
@@ -382,7 +381,6 @@ export default function SeccionEvaluacionesPage() {
               {evaluaciones.length === 1 ? "examen" : "exámenes"}
             </Badge>
           </div>
-          <ActiveTrimestreBadge className="mt-2" />
         </div>
         <div className="flex items-center gap-2">
           {/* Filtro materia */}
@@ -647,6 +645,7 @@ export default function SeccionEvaluacionesPage() {
                                     (e as any).fecha,
                                   );
                                   const tema = (e as any).tema ?? "Evaluación";
+                                  const observaciones = (e as any).observaciones;
                                   return (
                                     <div
                                       key={e.id}
@@ -697,26 +696,16 @@ export default function SeccionEvaluacionesPage() {
                                           </Button>
                                         </div>
                                       </div>
-                                      <div className="space-y-2 text-xs text-muted-foreground">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <span>
-                                            Creado el{" "}
-                                            {formatFecha((e as any).fecha)}
-                                          </span>
-                                          <span>
-                                            Tiempo estimado:{" "}
-                                            {(e as any).duracion}
-                                          </span>
-                                          {Boolean(
-                                            (e as any).observaciones,
-                                          ) && (
+                                      {observaciones && (
+                                        <div className="space-y-2 text-xs text-muted-foreground">
+                                          <div className="flex flex-wrap items-center gap-2">
                                             <span>
                                               Observaciones:{" "}
-                                              {(e as any).observaciones}
+                                              {observaciones}
                                             </span>
-                                          )}
+                                          </div>
                                         </div>
-                                      </div>
+                                      )}
                                     </div>
                                   );
                                 })

@@ -25,7 +25,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ActiveTrimestreBadge } from "@/app/dashboard/_components/ActiveTrimestreBadge";
 import FamilyEvaluationsView from "@/app/dashboard/evaluaciones/_components/FamilyEvaluationsView";
 
 function isPrimario(s: SeccionDTO): boolean {
@@ -186,7 +185,6 @@ export default function EvaluacionesIndexPage() {
                 Consultá calificaciones y observaciones de las materias
                 cursadas.
               </p>
-              <ActiveTrimestreBadge className="mt-2" />
             </div>
           </div>
 
@@ -222,7 +220,6 @@ export default function EvaluacionesIndexPage() {
               <Badge variant="outline">Primario</Badge>
               <Badge variant="outline">Período {periodoNombre ?? "—"}</Badge>
             </div>
-            <ActiveTrimestreBadge className="mt-2" />
           </div>
         </div>
 

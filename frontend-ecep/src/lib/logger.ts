@@ -45,7 +45,7 @@ const consoleMethods: Record<ConsoleMethod, (...args: unknown[]) => void> = {
 
 // Default to "info" so the frontend avoids producing debug logs unless
 // explicitly requested through NEXT_PUBLIC_LOG_LEVEL. This keeps the log
-// volume low because Vector handles aggregation downstream.
+// volume manageable in both the browser and the Node.js runtime.
 const defaultLevel = process.env.NEXT_PUBLIC_LOG_LEVEL ?? "info";
 
 const createConsoleLogger = (
@@ -108,54 +108,12 @@ const buildOptions = () => ({
 
 const factory = loadPino();
 
-const resolveVectorTransport = () => {
-  if (!factory || isBrowser || typeof factory.transport !== "function") {
-    return null;
-  }
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-    const path = require("node:path") as typeof import("node:path");
-
-    const transportPath = path.resolve(
-      process.cwd(),
-      "src/lib/vector-transport.cjs",
-    );
-
-    return factory.transport({
-      targets: [
-        {
-          target: transportPath,
-          level: defaultLevel,
-          options: {
-            endpoint:
-              process.env.VECTOR_HTTP_ENDPOINT ??
-              "http://localhost:9000/logs",
-            headers: {
-              "content-type": "application/json",
-            },
-          },
-        },
-      ],
-    });
-  } catch (error) {
-    consoleMethods.warn?.("Vector transport unavailable", error);
-    return null;
-  }
-};
-
-const vectorTransport = resolveVectorTransport();
-
 let baseLogger: AppLogger;
 
 if (!factory) {
   baseLogger = createConsoleLogger();
-} else if (isBrowser) {
-  baseLogger = factory(buildOptions());
-} else if (vectorTransport) {
-  baseLogger = factory(buildOptions(), vectorTransport);
 } else {
-  baseLogger = createConsoleLogger();
+  baseLogger = factory(buildOptions());
 }
 
 export const logger: AppLogger = baseLogger;

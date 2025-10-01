@@ -391,6 +391,11 @@ public class SolicitudAdmisionService {
     public SolicitudAdmisionAltaResultDTO darDeAlta(Long id, SolicitudAdmisionAltaDTO dto) {
         SolicitudAdmision solicitud = repository.findById(id).orElseThrow(NotFoundException::new);
 
+        if (Boolean.TRUE.equals(dto.getAutoAsignarSiguientePeriodo())) {
+            throw new IllegalArgumentException(
+                    "La autoasignación del próximo período lectivo todavía no está disponible.");
+        }
+
         if (!ESTADO_ENTREVISTA_REALIZADA.equalsIgnoreCase(solicitud.getEstado())
                 && !ESTADO_ACEPTADA.equalsIgnoreCase(solicitud.getEstado())) {
             throw new IllegalStateException("La solicitud debe tener la entrevista realizada para dar el alta");
@@ -426,26 +431,38 @@ public class SolicitudAdmisionService {
 
         migrarFamiliaresAspirante(aspirante, alumno);
 
-        var periodoActivo = periodoEscolarRepository.findByActivoTrue().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No hay un período escolar activo"));
+        var periodoDestino = Optional.ofNullable(dto.getPeriodoEscolarId())
+                .map(periodoId -> periodoEscolarRepository.findById(periodoId)
+                        .orElseThrow(() -> new NotFoundException("Período escolar no encontrado")))
+                .orElseGet(() -> periodoEscolarRepository.findByActivoTrue().stream()
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("No hay un período escolar activo")));
 
-        Matricula matricula = matriculaRepository
-                .findByAlumnoIdAndPeriodoEscolarId(alumnoId, periodoActivo.getId())
-                .orElse(null);
-
-        Long matriculaId;
-        if (matricula == null) {
-            matriculaId = matriculaService.create(new MatriculaCreateDTO(alumnoId, periodoActivo.getId()));
-            matricula = matriculaRepository.findById(matriculaId)
-                    .orElseThrow(() -> new NotFoundException("Matrícula no creada"));
-        } else {
-            matriculaId = matricula.getId();
+        if (!periodoDestino.isActivo()) {
+            throw new IllegalArgumentException("El período lectivo seleccionado no se encuentra activo");
         }
+
+        boolean matriculaExistente = matriculaRepository
+                .existsByAlumnoIdAndPeriodoEscolarId(alumnoId, periodoDestino.getId());
+        if (matriculaExistente) {
+            throw new IllegalStateException(
+                    "La persona ya cuenta con una matrícula activa en el período lectivo seleccionado");
+        }
+
+        Long matriculaId = matriculaService.create(new MatriculaCreateDTO(alumnoId, periodoDestino.getId()));
 
         Long seccionId = null;
         if (dto.getSeccionId() != null) {
             var seccion = seccionRepository.findById(dto.getSeccionId())
                     .orElseThrow(() -> new NotFoundException("Sección no encontrada"));
+            if (!seccion.isActivo()) {
+                throw new IllegalArgumentException("La sección seleccionada no se encuentra activa");
+            }
+            var periodoSeccion = seccion.getPeriodoEscolar();
+            if (periodoSeccion != null && !Objects.equals(periodoSeccion.getId(), periodoDestino.getId())) {
+                throw new IllegalArgumentException(
+                        "La sección seleccionada pertenece a otro período lectivo");
+            }
             seccionId = seccion.getId();
             matriculaSeccionHistorialService.asignar(new MatriculaSeccionHistorialCreateDTO(
                     matriculaId,
@@ -546,6 +563,36 @@ public class SolicitudAdmisionService {
         }
         if (dto.getFechaSolicitud() == null) {
             dto.setFechaSolicitud(entity.getDateCreated());
+        }
+
+        Long alumnoId = dto.getAlumnoId();
+        if (alumnoId == null || dto.getMatriculaId() == null || dto.getAltaGenerada() == null) {
+            Aspirante aspirante = entity.getAspirante();
+            Persona persona = aspirante != null ? aspirante.getPersona() : null;
+            Long personaId = persona != null ? persona.getId() : null;
+            if (personaId != null) {
+                Optional<Alumno> alumnoOpt = alumnoRepository.findByPersonaId(personaId);
+                if (alumnoOpt.isPresent()) {
+                    Alumno alumno = alumnoOpt.get();
+                    if (alumnoId == null) {
+                        alumnoId = alumno.getId();
+                        dto.setAlumnoId(alumnoId);
+                    }
+                }
+            }
+        }
+
+        if (alumnoId != null && dto.getMatriculaId() == null) {
+            List<Matricula> matriculas = matriculaRepository.findByAlumnoId(alumnoId);
+            matriculas.stream()
+                    .filter(Objects::nonNull)
+                    .filter(Matricula::isActivo)
+                    .findFirst()
+                    .ifPresent(m -> dto.setMatriculaId(m.getId()));
+        }
+
+        if (dto.getAltaGenerada() == null) {
+            dto.setAltaGenerada(dto.getAlumnoId() != null && dto.getMatriculaId() != null);
         }
     }
 

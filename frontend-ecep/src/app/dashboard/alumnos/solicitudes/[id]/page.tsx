@@ -276,23 +276,29 @@ const resolveAspiranteTelefono = (solicitud: SolicitudAdmisionItem) => {
 const resolveAltaGenerada = (solicitud: Partial<SolicitudAdmisionItem>) => {
   const candidate = solicitud as Record<string, unknown> | undefined;
   if (!candidate) return false;
-  if (candidate.altaGenerada != null) {
-    return Boolean(candidate.altaGenerada);
+  const altaFlag = candidate.altaGenerada as boolean | null | undefined;
+  if (altaFlag != null) {
+    return Boolean(altaFlag);
   }
-  const matriculaId = candidate.matriculaId as number | null | undefined;
   const alumnoId = candidate.alumnoId as number | null | undefined;
-  const flags = [
-    matriculaId,
-    alumnoId,
-    (candidate as any)?.tieneAltaGenerada,
-    (candidate as any)?.altaRegistrada,
-  ];
+  const matriculaId = candidate.matriculaId as number | null | undefined;
+  if (alumnoId != null || matriculaId != null) {
+    return Boolean(alumnoId ?? matriculaId);
+  }
+  const flags = [(candidate as any)?.tieneAltaGenerada, (candidate as any)?.altaRegistrada];
   return flags.some((value) => Boolean(value));
 };
 
 const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
+  if (resolveAltaGenerada(solicitud)) {
+    return false;
+  }
   const estadoActual = normalizeEstado(solicitud.estado);
-  return estadoActual === ESTADOS.ACEPTADA && !resolveAltaGenerada(solicitud);
+  return (
+    Boolean(solicitud.entrevistaRealizada) ||
+    estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
+    estadoActual === ESTADOS.ACEPTADA
+  );
 };
 
 type ScheduleFormState = {
@@ -459,6 +465,8 @@ export default function SolicitudAdmisionDetailPage() {
         ...data,
         aspirante,
         aspirantePersona,
+        matriculaId: data.matriculaId ?? null,
+        alumnoId: data.alumnoId ?? null,
       };
 
       const altaFromApi = resolveAltaGenerada(enriched);
@@ -470,8 +478,8 @@ export default function SolicitudAdmisionDetailPage() {
         return {
           ...enriched,
           altaGenerada: computedAlta,
-          matriculaId: (enriched as any)?.matriculaId ?? previousMatricula,
-          alumnoId: (enriched as any)?.alumnoId ?? previousAlumno,
+          matriculaId: enriched.matriculaId ?? previousMatricula,
+          alumnoId: enriched.alumnoId ?? previousAlumno,
         };
       });
       setAltaRegistrada((prev) => altaFromApi || prev);
@@ -696,16 +704,17 @@ export default function SolicitudAdmisionDetailPage() {
   );
   const puedeProgramar =
     estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA;
-  const puedeRechazar =
-    !altaRegistrada &&
-    (estado === ESTADOS.PENDIENTE ||
-      estado === ESTADOS.PROPUESTA ||
-      estado === ESTADOS.PROGRAMADA);
   const tieneEntrevistaConfirmada = Boolean(solicitud?.fechaEntrevistaConfirmada);
   const puedeDecidir =
     tieneEntrevistaConfirmada &&
     estado !== ESTADOS.RECHAZADA &&
     estado !== ESTADOS.ACEPTADA;
+  const puedeRechazar =
+    !altaRegistrada &&
+    !puedeDecidir &&
+    (estado === ESTADOS.PENDIENTE ||
+      estado === ESTADOS.PROPUESTA ||
+      estado === ESTADOS.PROGRAMADA);
 
   const handleRechazo = async (motivo: string) => {
     if (!solicitud) return;

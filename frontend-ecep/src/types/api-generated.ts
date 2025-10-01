@@ -804,6 +804,9 @@ export interface SolicitudAdmisionDTO {
   reprogramacionSolicitada?: boolean;
   comentarioReprogramacion?: string;
   cantidadPropuestasEnviadas?: number;
+  alumnoId?: number;
+  matriculaId?: number;
+  altaGenerada?: boolean;
 }
 
 export interface SolicitudAdmisionProgramarDTO {

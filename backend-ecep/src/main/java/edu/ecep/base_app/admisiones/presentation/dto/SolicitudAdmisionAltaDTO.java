@@ -11,5 +11,7 @@ import lombok.NoArgsConstructor;
 public class SolicitudAdmisionAltaDTO {
     private Long seccionId;
     private Turno turno;
+    private Long periodoEscolarId;
+    private Boolean autoAsignarSiguientePeriodo;
 }
 

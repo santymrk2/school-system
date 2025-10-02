@@ -116,9 +116,8 @@ function findResumenMatch(
   if (!targetDate) return null;
 
   return (
-    historial.find(
-      (item) => normalizeISODate(item.fecha) === targetDate,
-    ) ?? null
+    historial.find((item) => normalizeISODate(item.fecha) === targetDate) ??
+    null
   );
 }
 function alumnoDisplayName(row: any) {
@@ -494,9 +493,7 @@ export default function SeccionHistorialPage() {
                   ? "Sección cargando…"
                   : `Sección #${seccionId}`}
             </Badge>
-            <Badge variant="secondary">
-              Turno {seccion?.turno ?? "—"}
-            </Badge>
+            <Badge variant="secondary">Turno {seccion?.turno ?? "—"}</Badge>
           </div>
           {secErr && <p className="text-sm text-red-600">{secErr}</p>}
           <ActiveTrimestreBadge className="mt-3" />
@@ -685,20 +682,24 @@ export default function SeccionHistorialPage() {
                                               {fmt(selectedResumen.fecha)}
                                             </p>
                                           </div>
-                                          <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                            {fmt(selectedResumen.fecha)}
-                                          </Badge>
                                         </div>
                                         <div className="space-y-4 px-4 py-5">
                                           <div className="grid gap-3 sm:grid-cols-2">
                                             {selectedResumenStats.map(
-                                              ({ label, value, icon: Icon, accent }) => (
+                                              ({
+                                                label,
+                                                value,
+                                                icon: Icon,
+                                                accent,
+                                              }) => (
                                                 <div
                                                   key={label}
                                                   className="rounded-lg border bg-background/70 p-3 shadow-sm"
                                                 >
                                                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    <Icon className={`h-4 w-4 ${accent}`} />
+                                                    <Icon
+                                                      className={`h-4 w-4 ${accent}`}
+                                                    />
                                                     <span>{label}</span>
                                                   </div>
                                                   <p className="mt-2 text-lg font-semibold text-foreground">
@@ -715,7 +716,10 @@ export default function SeccionHistorialPage() {
                                                 {selectedResumenPercent}%
                                               </span>
                                             </div>
-                                            <Progress value={selectedResumenPercent} className="h-2" />
+                                            <Progress
+                                              value={selectedResumenPercent}
+                                              className="h-2"
+                                            />
                                           </div>
                                         </div>
                                       </div>
@@ -744,8 +748,8 @@ export default function SeccionHistorialPage() {
                                           Sin jornada seleccionada
                                         </p>
                                         <p>
-                                          Seleccioná un día con registros para ver
-                                          su resumen.
+                                          Seleccioná un día con registros para
+                                          ver su resumen.
                                         </p>
                                       </div>
                                     </div>

@@ -34,13 +34,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Download,
-  Search,
-  TimerReset,
-  UserPlus,
-  UserMinus,
-} from "lucide-react";
+import { Download, Search, TimerReset, UserPlus } from "lucide-react";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
@@ -972,9 +966,6 @@ export default function AlumnosIndexPage() {
                         onClick={fetchSolicitudesBaja}
                       >
                         <TimerReset className="mr-2 h-4 w-4" /> Actualizar
-                      </Button>
-                      <Button size="sm" onClick={() => setCrearBajaOpen(true)}>
-                        <UserMinus className="mr-2 h-4 w-4" /> Nueva baja
                       </Button>
                     </div>
                   </CardHeader>

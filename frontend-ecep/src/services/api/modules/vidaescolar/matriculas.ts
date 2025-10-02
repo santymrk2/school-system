@@ -22,4 +22,9 @@ export const solicitudesBaja = {
   list: () => http.get<DTO.SolicitudBajaAlumnoDTO[]>("/api/bajas"),
   create: (body: DTO.SolicitudBajaAlumnoCreateDTO) =>
     http.post<number>("/api/bajas", body),
+  approve: (id: number, body: DTO.SolicitudBajaAlumnoDecisionDTO) =>
+    http.post<void>(`/api/bajas/${id}/aprobar`, body),
+  reject: (id: number, body: DTO.SolicitudBajaAlumnoRechazoDTO) =>
+    http.post<void>(`/api/bajas/${id}/rechazar`, body),
+  historial: () => http.get<DTO.SolicitudBajaAlumnoDTO[]>("/api/bajas/historial"),
 };

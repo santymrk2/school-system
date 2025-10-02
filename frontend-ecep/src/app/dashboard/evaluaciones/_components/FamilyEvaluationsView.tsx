@@ -30,6 +30,7 @@ import type {
 } from "@/types/api-generated";
 import { NivelAcademico as NivelAcademicoEnum } from "@/types/api-generated";
 import { calendario, gestionAcademica } from "@/services/api/modules";
+import { getTrimestreEstado } from "@/lib/trimestres";
 import { useCalendarRefresh } from "@/hooks/useCalendarRefresh";
 import { CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
 
@@ -206,9 +207,9 @@ export function FamilyEvaluationsView({
             if (inf.trimestreId != null) map.set(inf.trimestreId, inf);
           }
 
-          const ordenados = Array.from(mapaTrimestres.values()).sort(
-            (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
-          );
+          const ordenados = Array.from(mapaTrimestres.values())
+            .filter((tri) => getTrimestreEstado(tri) === "cerrado")
+            .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
 
           setInformesInicial(
             ordenados.map((tri) => ({

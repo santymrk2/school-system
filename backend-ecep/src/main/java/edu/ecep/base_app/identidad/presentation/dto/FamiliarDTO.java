@@ -1,6 +1,5 @@
 package edu.ecep.base_app.identidad.presentation.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,4 +14,5 @@ public class FamiliarDTO {
     Long personaId;
 
     String ocupacion;
+    String lugarTrabajo;
 }

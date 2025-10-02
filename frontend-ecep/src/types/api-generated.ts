@@ -975,8 +975,8 @@ export interface FamiliarDTO {
   id: number; // == personaId
   personaId: number;
   // campos propios de Familiar (si existen):
-  // ocupacion?: string | null;
-  // observaciones?: string | null;
+  ocupacion?: string | null;
+  lugarTrabajo?: string | null;
 }
 export interface FamiliarCreateDTO extends Omit<FamiliarDTO, "id"> {}
 export interface FamiliarUpdateDTO extends Partial<FamiliarCreateDTO> {}

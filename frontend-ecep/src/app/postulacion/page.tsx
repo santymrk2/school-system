@@ -93,7 +93,8 @@ const completionMessages = {
     "Te invitamos a mantenerte atento a tu bandeja de entrada y revisar tu carpeta de correo no deseado.",
 };
 
-type FamiliarRecordDTO = DTO.FamiliarDTO & { ocupacion?: string | null };
+type FamiliarRecordDTO =
+  DTO.FamiliarDTO & { ocupacion?: string | null; lugarTrabajo?: string | null };
 
 type FamiliarPromptInfo = {
   index: number;
@@ -387,7 +388,8 @@ export default function PostulacionPage() {
           celular: persona.celular ?? basePersona.celular ?? "",
           email: persona.email ?? basePersona.email ?? "",
           emailContacto: persona.email ?? basePersona.emailContacto ?? "",
-          lugarTrabajo: basePersona.lugarTrabajo ?? "",
+          lugarTrabajo:
+            familiar?.lugarTrabajo ?? basePersona.lugarTrabajo ?? "",
           ocupacion: familiar?.ocupacion ?? basePersona.ocupacion ?? "",
         },
       };
@@ -558,11 +560,13 @@ export default function PostulacionPage() {
   const ensureFamiliarRecord = async (
     personaId: number,
     ocupacion?: string,
+    lugarTrabajo?: string,
   ): Promise<number> => {
     const payload: DTO.FamiliarDTO = {
       id: personaId,
       personaId,
       ocupacion,
+      lugarTrabajo,
     };
 
     try {
@@ -571,7 +575,11 @@ export default function PostulacionPage() {
       return data?.id ?? personaId;
     } catch (error: any) {
       if (error?.response?.status === 404) {
-        const { data } = await identidad.familiares.create({ personaId, ocupacion });
+        const { data } = await identidad.familiares.create({
+          personaId,
+          ocupacion,
+          lugarTrabajo,
+        });
         return Number(data);
       }
       throw error;
@@ -857,6 +865,7 @@ export default function PostulacionPage() {
         await ensureFamiliarRecord(
           familiarPersonaId,
           familiarPersona.ocupacion || undefined,
+          familiarPersona.lugarTrabajo || undefined,
         );
 
         const parentesco = isValidRolVinculo(familiarEntry.tipoRelacion)

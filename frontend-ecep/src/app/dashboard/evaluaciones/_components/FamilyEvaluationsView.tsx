@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import type {
   AlumnoLiteDTO,
+  AsignacionDocenteSeccionDTO,
   EvaluacionDTO,
   InformeInicialDTO,
   MateriaDTO,
@@ -54,6 +55,7 @@ interface EvaluacionDetalle {
 interface MateriaEvaluaciones {
   key: string;
   materiaNombre: string;
+  docenteNombre?: string | null;
   evaluaciones: EvaluacionDetalle[];
 }
 
@@ -75,6 +77,151 @@ const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   month: "2-digit",
   year: "numeric",
 });
+
+function normalizeText(value?: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function combineNombre(
+  apellido?: unknown,
+  nombre?: unknown,
+): string | null {
+  const apellidoStr = normalizeText(apellido);
+  const nombreStr = normalizeText(nombre);
+  if (apellidoStr || nombreStr) {
+    return [apellidoStr, nombreStr].filter(Boolean).join(" ").trim();
+  }
+  return null;
+}
+
+function extractPersonaNombre(persona: any): string | null {
+  if (!persona || typeof persona !== "object") return null;
+  return (
+    normalizeText(persona.nombreCompleto) ??
+    combineNombre(persona.apellido ?? persona.apellidos, persona.nombre ?? persona.nombres)
+  );
+}
+
+function extractNombreDocente(source: any): string | null {
+  if (!source) return null;
+  if (typeof source === "string") return normalizeText(source);
+  if (typeof source !== "object") return null;
+
+  const directCandidates = [
+    source.nombreCompleto,
+    source.nombreDocente,
+    source.docenteNombre,
+    source.nombre,
+    source.fullName,
+  ];
+  for (const candidate of directCandidates) {
+    const normalized = normalizeText(candidate);
+    if (normalized) {
+      const apellido = normalizeText(source.apellido ?? source.apellidos);
+      return apellido ? `${apellido} ${normalized}`.trim() : normalized;
+    }
+  }
+
+  const combined = combineNombre(
+    source.apellido ?? source.apellidos,
+    source.nombre ?? source.nombres,
+  );
+  if (combined) return combined;
+
+  const personaCandidates = [
+    source.persona,
+    source.personaDocente,
+    source.personaActual,
+    source.empleado?.persona,
+    source.docente?.persona,
+    source.personal?.persona,
+  ];
+  for (const persona of personaCandidates) {
+    const nombre = extractPersonaNombre(persona);
+    if (nombre) return nombre;
+  }
+
+  const nestedCandidates = [
+    source.empleado,
+    source.docente,
+    source.personal,
+    source.usuario,
+    source.user,
+  ];
+  for (const nested of nestedCandidates) {
+    if (!nested || nested === source) continue;
+    const nombre = extractNombreDocente(nested);
+    if (nombre) return nombre;
+  }
+
+  return null;
+}
+
+function extractDocenteFromSeccionMateria(
+  seccionMateria: SeccionMateriaDTO,
+): string | null {
+  const candidates = [
+    (seccionMateria as any)?.docente,
+    (seccionMateria as any)?.docenteAsignado,
+    (seccionMateria as any)?.docenteTitular,
+    (seccionMateria as any)?.docenteSeccion,
+    (seccionMateria as any)?.docenteActual,
+    (seccionMateria as any)?.docentePrincipal,
+    (seccionMateria as any)?.docenteResponsable,
+    (seccionMateria as any)?.docentes,
+    (seccionMateria as any)?.docentesAsignados,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) {
+        const nombre = extractNombreDocente(item);
+        if (nombre) return nombre;
+      }
+      continue;
+    }
+    const nombre = extractNombreDocente(candidate);
+    if (nombre) return nombre;
+  }
+
+  return null;
+}
+
+function extractDocenteFromAsignacion(
+  asignacion: AsignacionDocenteSeccionDTO,
+): string | null {
+  const raw: any = asignacion as any;
+  const directCandidates = [
+    raw.docente,
+    raw.docenteAsignado,
+    raw.docenteSeccion,
+    raw.docenteActual,
+    raw.empleado,
+    raw.personal,
+    raw.usuario,
+    raw.user,
+    raw.persona,
+  ];
+  for (const candidate of directCandidates) {
+    const nombre = extractNombreDocente(candidate);
+    if (nombre) return nombre;
+  }
+
+  const stringCandidates = [
+    raw.docenteNombre,
+    raw.nombreDocente,
+    raw.nombreCompletoDocente,
+  ];
+  for (const candidate of stringCandidates) {
+    const nombre = normalizeText(candidate);
+    if (nombre) return nombre;
+  }
+
+  return combineNombre(raw.apellido ?? raw.apellidos, raw.nombre ?? raw.nombres);
+}
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -223,25 +370,33 @@ export function FamilyEvaluationsView({
 
         const seccionId = alumnoSeleccionado.seccionId ?? null;
 
-        const [evaluacionesRes, resultadosRes, seccionMateriasRes, materiasRes] =
-          await Promise.all([
-            seccionId
-              ? gestionAcademica.evaluaciones
-                  .search({ seccionId })
-                  .catch(() => ({ data: [] as EvaluacionDTO[] }))
-              : gestionAcademica.evaluaciones
-                  .list()
-                  .catch(() => ({ data: [] as EvaluacionDTO[] })),
-            gestionAcademica.resultados
-              .list({ matriculaId: alumnoSeleccionado.matriculaId })
-              .catch(() => ({ data: [] as ResultadoEvaluacionDTO[] })),
-            gestionAcademica.seccionMaterias
-              .list()
-              .catch(() => ({ data: [] as SeccionMateriaDTO[] })),
-            gestionAcademica.materias
-              .list()
-              .catch(() => ({ data: [] as MateriaDTO[] })),
-          ]);
+        const [
+          evaluacionesRes,
+          resultadosRes,
+          seccionMateriasRes,
+          materiasRes,
+          asignacionesDocentesRes,
+        ] = await Promise.all([
+          seccionId
+            ? gestionAcademica.evaluaciones
+                .search({ seccionId })
+                .catch(() => ({ data: [] as EvaluacionDTO[] }))
+            : gestionAcademica.evaluaciones
+                .list()
+                .catch(() => ({ data: [] as EvaluacionDTO[] })),
+          gestionAcademica.resultados
+            .list({ matriculaId: alumnoSeleccionado.matriculaId })
+            .catch(() => ({ data: [] as ResultadoEvaluacionDTO[] })),
+          gestionAcademica.seccionMaterias
+            .list()
+            .catch(() => ({ data: [] as SeccionMateriaDTO[] })),
+          gestionAcademica.materias
+            .list()
+            .catch(() => ({ data: [] as MateriaDTO[] })),
+          gestionAcademica.asignacionDocenteSeccion
+            .list()
+            .catch(() => ({ data: [] as AsignacionDocenteSeccionDTO[] })),
+        ]);
 
         if (!alive) return;
 
@@ -264,21 +419,41 @@ export function FamilyEvaluationsView({
           }
         }
 
-        const materiaPorSeccionMateria = new Map<number, string>();
+        const asignacionesDocentes =
+          (asignacionesDocentesRes.data ?? []) as AsignacionDocenteSeccionDTO[];
+        const docentePorSeccionId = new Map<number, string>();
+        for (const asignacion of asignacionesDocentes) {
+          const raw: any = asignacion as any;
+          const seccionId = raw.seccionId ?? raw.seccion?.id ?? null;
+          if (seccionId == null) continue;
+          const nombreDocente = extractDocenteFromAsignacion(asignacion);
+          if (!nombreDocente) continue;
+          const rol = String(raw.rol ?? "").toUpperCase();
+          if (!docentePorSeccionId.has(seccionId) || rol.includes("TITULAR")) {
+            docentePorSeccionId.set(seccionId, nombreDocente);
+          }
+        }
+
+        const materiaPorSeccionMateria = new Map<
+          number,
+          { nombre: string; docenteNombre: string | null }
+        >();
         for (const sm of seccionMaterias) {
           if (sm.id == null) continue;
           const materiaId = sm.materiaId ?? (sm as any)?.materia?.id;
-          if (materiaId != null && materiaNombreById.has(materiaId)) {
-            materiaPorSeccionMateria.set(
-              sm.id,
-              materiaNombreById.get(materiaId)!,
-            );
-          } else {
-            materiaPorSeccionMateria.set(
-              sm.id,
-              `Materia ${materiaId ?? sm.id}`,
-            );
-          }
+          const nombre =
+            materiaId != null && materiaNombreById.has(materiaId)
+              ? materiaNombreById.get(materiaId)!
+              : `Materia ${materiaId ?? sm.id}`;
+          const seccionId =
+            sm.seccionId ?? (sm as any)?.seccion?.id ?? null;
+          const docenteNombre =
+            extractDocenteFromSeccionMateria(sm) ??
+            (seccionId != null ? docentePorSeccionId.get(seccionId) ?? null : null);
+          materiaPorSeccionMateria.set(sm.id, {
+            nombre,
+            docenteNombre: docenteNombre ?? null,
+          });
         }
 
         const seccionPorSeccionMateria = new Map<number, number>();
@@ -309,17 +484,24 @@ export function FamilyEvaluationsView({
           const smId = (evaluacion as any)?.seccionMateriaId as
             | number
             | undefined;
-          const materiaNombre = smId
-            ? materiaPorSeccionMateria.get(smId) ?? `Materia ${smId}`
-            : "Sin materia asignada";
+          const materiaInfo = smId ? materiaPorSeccionMateria.get(smId) : null;
+          const materiaNombre = materiaInfo?.nombre
+            ? materiaInfo.nombre
+            : smId
+              ? `Materia ${smId}`
+              : "Sin materia asignada";
+          const docenteNombre = materiaInfo?.docenteNombre ?? null;
           const key = smId != null ? String(smId) : `sin-${evaluacion.id}`;
 
           if (!materiasMap.has(key)) {
             materiasMap.set(key, {
               key,
               materiaNombre,
+              docenteNombre,
               evaluaciones: [],
             });
+          } else if (docenteNombre && !materiasMap.get(key)!.docenteNombre) {
+            materiasMap.get(key)!.docenteNombre = docenteNombre;
           }
 
           const resultado = resultadoPorEvaluacion.get(evaluacion.id);
@@ -342,14 +524,12 @@ export function FamilyEvaluationsView({
           });
         }
 
-        const materiasOrdenadas = Array.from(materiasMap.values()).map(
-          (mat) => ({
-            ...mat,
-            evaluaciones: mat.evaluaciones.sort((a, b) =>
-              (b.fecha ?? "").localeCompare(a.fecha ?? ""),
-            ),
-          }),
-        );
+        const materiasOrdenadas = Array.from(materiasMap.values()).map((mat) => ({
+          ...mat,
+          evaluaciones: mat.evaluaciones.sort((a, b) =>
+            (b.fecha ?? "").localeCompare(a.fecha ?? ""),
+          ),
+        }));
 
         setMaterias(
           materiasOrdenadas.sort((a, b) =>
@@ -497,7 +677,14 @@ export function FamilyEvaluationsView({
             <Card key={mat.key} className="overflow-hidden">
               <CardHeader>
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <CardTitle className="text-lg">{mat.materiaNombre}</CardTitle>
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{mat.materiaNombre}</CardTitle>
+                    {mat.docenteNombre && (
+                      <p className="text-sm text-muted-foreground">
+                        Docente: {mat.docenteNombre}
+                      </p>
+                    )}
+                  </div>
                   <Badge variant="outline">
                     {mat.evaluaciones.filter((e) => e.estado === "Calificada").length}
                     /{mat.evaluaciones.length} calificadas

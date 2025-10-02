@@ -1,6 +1,7 @@
 package edu.ecep.base_app.gestionacademica.application;
 
 import edu.ecep.base_app.gestionacademica.domain.Evaluacion;
+import edu.ecep.base_app.gestionacademica.domain.TrimestreEstado;
 import edu.ecep.base_app.vidaescolar.domain.MatriculaSeccionHistorial;
 import edu.ecep.base_app.gestionacademica.presentation.dto.ResultadoEvaluacionCreateDTO;
 import edu.ecep.base_app.gestionacademica.presentation.dto.ResultadoEvaluacionDTO;
@@ -31,6 +32,7 @@ public class ResultadoEvaluacionService {
     @Transactional
     public Long create(ResultadoEvaluacionCreateDTO dto){
         Evaluacion e = evalRepo.findById(dto.getEvaluacionId()).orElseThrow(() -> new NotFoundException("No encontrado"));
+        ensureTrimestreActivo(e);
         validateNota(dto.getNotaNumerica());
 
         var existing = repo.findByEvaluacionIdAndMatriculaId(dto.getEvaluacionId(), dto.getMatriculaId());
@@ -50,6 +52,7 @@ public class ResultadoEvaluacionService {
     @Transactional
     public void update(Long id, ResultadoEvaluacionUpdateDTO dto){
         var entity = repo.findById(id).orElseThrow(() -> new NotFoundException("No encontrado"));
+        ensureTrimestreActivo(entity.getEvaluacion());
         validateNota(dto.getNotaNumerica());
         mapper.update(entity, dto);
         repo.save(entity);
@@ -64,5 +67,13 @@ public class ResultadoEvaluacionService {
     private void validateNota(Double nota){
         if(nota == null) return;
         if(nota < 1 || nota > 10) throw new IllegalArgumentException("La nota debe estar entre 1 y 10");
+    }
+
+    private void ensureTrimestreActivo(Evaluacion evaluacion) {
+        if(evaluacion == null) return;
+        var trimestre = evaluacion.getTrimestre();
+        if(trimestre != null && trimestre.getEstado() != TrimestreEstado.ACTIVO) {
+            throw new IllegalArgumentException("El trimestre no está activo");
+        }
     }
 }

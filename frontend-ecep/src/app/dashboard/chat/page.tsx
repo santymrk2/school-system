@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +25,11 @@ import { comunicacion, identidad } from "@/services/api/modules";
 import { useAuth } from "@/hooks/useAuth";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import type { ChatMessageDTO, PersonaResumenDTO } from "@/types/api-generated";
+import { isAxiosError } from "axios";
+import type {
+  ChatMessageDTO,
+  PersonaResumenDTO,
+} from "@/types/api-generated";
 import useChatSocket from "@/hooks/useChatSocket";
 import { useSearchParams } from "next/navigation";
 import { logger } from "@/lib/logger";
@@ -62,13 +72,18 @@ const getPersonaEmail = (persona: PersonaResumenDTO | null | undefined) =>
   persona?.email ?? "Sin email";
 
 export default function ChatComponent() {
-  const chatLogger = logger.child({ module: "dashboard-chat" });
+  const chatLogger = useMemo(
+    () => logger.child({ module: "dashboard-chat" }),
+    [],
+  );
   const [activeChats, setActiveChats] = useState<PersonaResumenDTO[]>([]);
   const [openChatDialog, setOpenChatDialog] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [personas, setPersonas] = useState<PersonaResumenDTO[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [isDialogReady, setIsDialogReady] = useState(false);
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedPersona, setSelectedPersona] =
@@ -98,6 +113,18 @@ export default function ChatComponent() {
     refreshOnlineStatus,
     sendTyping,
   } = useChatSocket();
+
+  const canStartNewChat = !!user;
+
+  useEffect(() => {
+    setIsDialogReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!canStartNewChat && openChatDialog) {
+      setOpenChatDialog(false);
+    }
+  }, [canStartNewChat, openChatDialog]);
 
   useEffect(() => {
     if (!user) {
@@ -131,33 +158,50 @@ export default function ChatComponent() {
       alive = false;
       clearInterval(interval);
     };
-  }, [user]);
+  }, [user, chatLogger]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !canStartNewChat) {
+      setPersonas([]);
+      setSearchError(null);
+      return () => undefined;
+    }
     const query = searchTerm.trim();
 
     if (!query) {
       setPersonas([]);
+      setSearchError(null);
       return () => undefined;
     }
 
+    setSearchError(null);
     const debounceTimer = setTimeout(() => {
       identidad.personasCore
         .searchCredenciales(query)
         .then(({ data }) => {
           const results = (data ?? []).filter((p) => p.id !== user.id);
           setPersonas(results);
+          setSearchError(null);
         })
         .catch((error) => {
           if (process.env.NODE_ENV === "development") {
             chatLogger.error({ err: error }, "Error al buscar personas");
           }
+          if (isAxiosError(error) && error.response?.status === 403) {
+            setSearchError(
+              "No tenés permisos para buscar personas. Contactá al administrador si creés que es un error.",
+            );
+          } else {
+            setSearchError(
+              "No se pudo buscar personas en este momento. Intentá nuevamente más tarde.",
+            );
+          }
+          setPersonas([]);
         });
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [user, searchTerm]);
+  }, [user, searchTerm, canStartNewChat, chatLogger]);
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -190,7 +234,7 @@ export default function ChatComponent() {
         }
       }
     })();
-  }, [messages, user, activeChats]);
+  }, [messages, user, activeChats, chatLogger]);
 
   useEffect(() => {
     if (!selectedPersona) return;
@@ -224,7 +268,7 @@ export default function ChatComponent() {
     return () => {
       cancelled = true;
     };
-  }, [messages, selectedPersona, markRead]);
+  }, [messages, selectedPersona, markRead, chatLogger]);
 
   useEffect(() => {
     return () => {
@@ -322,7 +366,7 @@ export default function ChatComponent() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, selectedUserId, openChat]);
+  }, [searchParams, selectedUserId, openChat, chatLogger]);
 
   const finalizeTyping = () => {
     if (typingTimeoutRef.current) {
@@ -455,7 +499,7 @@ export default function ChatComponent() {
     }
 
     return (
-    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-3`}>
+      <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-3`}>
         <div
           className={`
             max-w-xs lg:max-w-md px-4 py-2 rounded-lg
@@ -515,75 +559,101 @@ export default function ChatComponent() {
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8 pt-6">
-        <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl bg-background">
+      <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl bg-background">
           {showChatList && (
             <div className="flex w-full min-h-0 flex-col bg-background md:w-1/3 md:flex-none md:border-r md:border-border">
               <div className="px-4 py-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold">Chats</h2>
-                  <Dialog
-                    open={openChatDialog}
-                    onOpenChange={setOpenChatDialog}
-                  >
-                    <DialogTrigger asChild>
-                      <Button size="icon">
-                        <Plus className="size-6" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Nuevo Chat</DialogTitle>
-                        <DialogDescription>
-                          Buscá y seleccioná una persona para iniciar la
-                          conversación.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <Input
-                        placeholder="Escribí para buscar..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                      <ScrollArea className="h-64">
-                        <div className="space-y-2">
-                          {personas
-                            .filter(
-                              (p) => !activeChats.some((ac) => ac.id === p.id),
-                            )
-                            .map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className="w-full p-2 rounded hover:bg-muted text-left"
-                                onClick={() => openChat(p)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback>
-                                      {getPersonaInitials(p)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="font-medium text-sm">
-                                      {getPersonaDisplayName(p)}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {getPersonaEmail(p)}
-                                    </p>
+                  {canStartNewChat && isDialogReady ? (
+                    <Dialog
+                      open={openChatDialog}
+                      onOpenChange={setOpenChatDialog}
+                    >
+                      <DialogTrigger asChild>
+                        <Button size="icon">
+                          <Plus className="size-6" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Nuevo Chat</DialogTitle>
+                          <DialogDescription>
+                            Buscá y seleccioná una persona para iniciar la
+                            conversación.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Input
+                          placeholder="Escribí para buscar..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        {searchError && (
+                          <p className="px-2 text-sm text-destructive">
+                            {searchError}
+                          </p>
+                        )}
+                        <ScrollArea className="h-64">
+                          <div className="space-y-2">
+                            {personas
+                              .filter(
+                                (p) => !activeChats.some((ac) => ac.id === p.id),
+                              )
+                              .map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  className="w-full p-2 rounded hover:bg-muted text-left"
+                                  onClick={() => openChat(p)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarFallback>
+                                        {getPersonaInitials(p)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium text-sm">
+                                        {getPersonaDisplayName(p)}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {getPersonaEmail(p)}
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
-                              </button>
-                            ))}
-                          {personas.length === 0 && (
-                            <p className="px-2 text-sm text-muted-foreground">
-                              Escribí para buscar personas con acceso al
-                              sistema.
-                            </p>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </DialogContent>
-                  </Dialog>
+                                </button>
+                              ))}
+                            {!searchError && personas.length === 0 && (
+                              <p className="px-2 text-sm text-muted-foreground">
+                                {searchTerm.trim()
+                                  ? "No encontramos personas que coincidan con tu búsqueda."
+                                  : "Escribí para buscar personas con acceso al sistema."}
+                              </p>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      disabled
+                      title={
+                        canStartNewChat
+                          ? "Cargando opciones"
+                          : "No tenés permisos para iniciar nuevos chats"
+                      }
+                    >
+                      <Plus className="size-6" />
+                    </Button>
+                  )}
                 </div>
+                {!canStartNewChat && (
+                  <p className="text-xs text-muted-foreground">
+                    No tenés permisos para iniciar nuevos chats.
+                  </p>
+                )}
                 <ConnectionStatus />
               </div>
               <div className="flex-1 overflow-hidden">

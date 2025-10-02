@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
 import type * as DTO from "@/types/api-generated";
@@ -23,12 +23,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  Search,
+  TimerReset,
+  UserPlus,
+  XCircle,
+} from "lucide-react";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
-import { identidad } from "@/services/api/modules";
+import { identidad, vidaEscolar } from "@/services/api/modules";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const TURNO_LABELS: Record<string, string> = {
   MANANA: "Mañana",
@@ -103,7 +111,7 @@ export default function AlumnosIndexPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState<
-    "alumnos" | "aspirantes" | "historial"
+    "alumnos" | "aspirantes" | "historial" | "bajas" | "avanzado"
   >("alumnos");
 
   const PAGE_SIZE = 25;
@@ -116,6 +124,23 @@ export default function AlumnosIndexPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
+  const [solicitudesBaja, setSolicitudesBaja] = useState<
+    DTO.SolicitudBajaAlumnoDTO[]
+  >([]);
+  const [loadingSolicitudesBaja, setLoadingSolicitudesBaja] = useState(false);
+  const [errorSolicitudesBaja, setErrorSolicitudesBaja] = useState<string | null>(
+    null,
+  );
+  const [historialBajas, setHistorialBajas] = useState<
+    DTO.SolicitudBajaAlumnoDTO[]
+  >([]);
+  const [loadingHistorialBajas, setLoadingHistorialBajas] = useState(false);
+  const [errorHistorialBajas, setErrorHistorialBajas] = useState<string | null>(
+    null,
+  );
+  const [processingSolicitudId, setProcessingSolicitudId] = useState<number | null>(
+    null,
+  );
 
   const {
     scope,
@@ -125,7 +150,7 @@ export default function AlumnosIndexPage() {
     hijos,
     periodoNombre,
   } = useScopedIndex({ includeTitularSec: true });
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchTerm), 350);
@@ -157,11 +182,192 @@ export default function AlumnosIndexPage() {
       hasRole(UserRole.SECRETARY) ||
       hasRole(UserRole.ADMIN));
 
+  const canManageBajas =
+    scope === "staff" && (hasRole(UserRole.DIRECTOR) || hasRole(UserRole.ADMIN));
+
+  const personaDecisorId = useMemo(
+    () => user?.personaId ?? user?.id ?? null,
+    [user],
+  );
+
+  const fetchSolicitudesBaja = useCallback(async () => {
+    setLoadingSolicitudesBaja(true);
+    setErrorSolicitudesBaja(null);
+    try {
+      const { data } = await vidaEscolar.solicitudesBaja.list();
+      setSolicitudesBaja(data ?? []);
+    } catch (error) {
+      console.error(error);
+      setErrorSolicitudesBaja("No se pudieron obtener las solicitudes de baja");
+    } finally {
+      setLoadingSolicitudesBaja(false);
+    }
+  }, []);
+
+  const fetchHistorialBajas = useCallback(async () => {
+    setLoadingHistorialBajas(true);
+    setErrorHistorialBajas(null);
+    try {
+      const { data } = await vidaEscolar.solicitudesBaja.historial();
+      setHistorialBajas(data ?? []);
+    } catch (error) {
+      console.error(error);
+      setErrorHistorialBajas("No se pudo cargar el historial de bajas");
+    } finally {
+      setLoadingHistorialBajas(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (!canViewAspirantesHistorial && selectedTab !== "alumnos") {
+    if (canManageBajas) {
+      fetchSolicitudesBaja();
+    } else {
+      setSolicitudesBaja([]);
+    }
+  }, [canManageBajas, fetchSolicitudesBaja]);
+
+  useEffect(() => {
+    if (canViewAspirantesHistorial || canManageBajas) {
+      fetchHistorialBajas();
+    } else {
+      setHistorialBajas([]);
+    }
+  }, [canManageBajas, canViewAspirantesHistorial, fetchHistorialBajas]);
+
+  const estadoLabels: Record<DTO.EstadoSolicitudBaja, string> = {
+    [DTO.EstadoSolicitudBaja.PENDIENTE]: "Pendiente",
+    [DTO.EstadoSolicitudBaja.APROBADA]: "Aprobada",
+    [DTO.EstadoSolicitudBaja.RECHAZADA]: "Rechazada",
+  };
+
+  const estadoVariant: Record<DTO.EstadoSolicitudBaja, "default" | "secondary" | "destructive"> = {
+    [DTO.EstadoSolicitudBaja.PENDIENTE]: "secondary",
+    [DTO.EstadoSolicitudBaja.APROBADA]: "default",
+    [DTO.EstadoSolicitudBaja.RECHAZADA]: "destructive",
+  };
+
+  const formatDecisionDate = (value?: string | null) => {
+    if (!value) return "—";
+    try {
+      return new Date(value).toLocaleString();
+    } catch (error) {
+      console.error(error);
+      return value;
+    }
+  };
+
+  const handleDownloadSolicitud = (sol: DTO.SolicitudBajaAlumnoDTO) => {
+    if (typeof window === "undefined") return;
+
+    const alumnoNombre = [sol.alumnoNombre, sol.alumnoApellido]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const payload = {
+      id: sol.id,
+      estado: sol.estado,
+      motivo: sol.motivo,
+      motivoRechazo: sol.motivoRechazo,
+      fechaDecision: sol.fechaDecision,
+      matriculaId: sol.matriculaId,
+      periodoEscolarId: sol.periodoEscolarId,
+      decididoPorPersonaId: sol.decididoPorPersonaId,
+      alumno: {
+        id: sol.alumnoId,
+        nombre: sol.alumnoNombre,
+        apellido: sol.alumnoApellido,
+        dni: sol.alumnoDni,
+        nombreCompleto: alumnoNombre || undefined,
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `solicitud-baja-${sol.id}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const ensurePersonaDecisor = () => {
+    if (!personaDecisorId) {
+      toast.error("No pudimos identificar a la persona que aprueba la solicitud");
+      return false;
+    }
+    return true;
+  };
+
+  const handleApproveSolicitud = async (sol: DTO.SolicitudBajaAlumnoDTO) => {
+    if (!ensurePersonaDecisor()) return;
+    if (!window.confirm("¿Confirmás aprobar la baja del alumno?")) return;
+
+    setProcessingSolicitudId(sol.id);
+    try {
+      await vidaEscolar.solicitudesBaja.approve(sol.id, {
+        decididoPorPersonaId: personaDecisorId!,
+      });
+      toast.success("Solicitud aprobada correctamente");
+      await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
+    } catch (error) {
+      console.error(error);
+      toast.error("No se pudo aprobar la solicitud");
+    } finally {
+      setProcessingSolicitudId(null);
+    }
+  };
+
+  const handleRejectSolicitud = async (sol: DTO.SolicitudBajaAlumnoDTO) => {
+    if (!ensurePersonaDecisor()) return;
+    const reason = window.prompt(
+      "Motivo del rechazo",
+      sol.motivoRechazo ?? "",
+    );
+    if (reason == null) return;
+    const normalized = reason.trim();
+    if (!normalized) {
+      toast.error("El motivo de rechazo es obligatorio");
+      return;
+    }
+
+    setProcessingSolicitudId(sol.id);
+    try {
+      await vidaEscolar.solicitudesBaja.reject(sol.id, {
+        decididoPorPersonaId: personaDecisorId!,
+        motivoRechazo: normalized,
+      });
+      toast.success("Solicitud rechazada");
+      await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
+    } catch (error) {
+      console.error(error);
+      toast.error("No se pudo rechazar la solicitud");
+    } finally {
+      setProcessingSolicitudId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      (selectedTab === "aspirantes" || selectedTab === "historial") &&
+      !canViewAspirantesHistorial
+    ) {
+      setSelectedTab("alumnos");
+      return;
+    }
+
+    if (
+      (selectedTab === "bajas" || selectedTab === "avanzado") &&
+      !canManageBajas
+    ) {
       setSelectedTab("alumnos");
     }
-  }, [canViewAspirantesHistorial, selectedTab]);
+  }, [canManageBajas, canViewAspirantesHistorial, selectedTab]);
 
   useEffect(() => {
     if (scope === "family" || scope === "student") return;
@@ -266,6 +472,35 @@ export default function AlumnosIndexPage() {
       ? 0
       : Math.min(showingFrom + alumnos.length - 1, totalItems);
 
+  const bajasPendientes = useMemo(
+    () =>
+      solicitudesBaja.filter(
+        (sol) => sol.estado === DTO.EstadoSolicitudBaja.PENDIENTE,
+      ),
+    [solicitudesBaja],
+  );
+
+  const bajasAprobadas = useMemo(
+    () =>
+      solicitudesBaja.filter(
+        (sol) => sol.estado === DTO.EstadoSolicitudBaja.APROBADA,
+      ),
+    [solicitudesBaja],
+  );
+
+  const bajasRechazadas = useMemo(
+    () =>
+      solicitudesBaja.filter(
+        (sol) => sol.estado === DTO.EstadoSolicitudBaja.RECHAZADA,
+      ),
+    [solicitudesBaja],
+  );
+
+  const ultimasBajas = useMemo(
+    () => historialBajas.slice(0, 5),
+    [historialBajas],
+  );
+
   const seccionOptions = useMemo(() => {
     if (secciones.length) {
       return secciones.map((s) => ({
@@ -355,6 +590,10 @@ export default function AlumnosIndexPage() {
                 setSelectedTab("alumnos");
                 return;
               }
+              if ((v === "bajas" || v === "avanzado") && !canManageBajas) {
+                setSelectedTab("alumnos");
+                return;
+              }
               setSelectedTab(v as any);
             }}
             className="space-y-4"
@@ -365,6 +604,12 @@ export default function AlumnosIndexPage() {
                 <>
                   <TabsTrigger value="aspirantes">Aspirantes</TabsTrigger>
                   <TabsTrigger value="historial">Historial</TabsTrigger>
+                </>
+              )}
+              {canManageBajas && (
+                <>
+                  <TabsTrigger value="avanzado">Avanzado</TabsTrigger>
+                  <TabsTrigger value="bajas">Bajas</TabsTrigger>
                 </>
               )}
             </TabsList>
@@ -540,25 +785,401 @@ export default function AlumnosIndexPage() {
               </Card>
             </TabsContent>
 
-            {/* Aspirantes (placeholder / mock) */}
+            {/* Aspirantes */}
             {canViewAspirantesHistorial && (
               <TabsContent value="aspirantes" className="space-y-4">
                 <AspirantesTab searchTerm={searchTerm} />
               </TabsContent>
             )}
 
-            {/* Historial (placeholder) */}
+            {/* Avanzado */}
+            {canManageBajas && (
+              <TabsContent value="avanzado" className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        Pendientes
+                      </CardTitle>
+                      <TimerReset className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {bajasPendientes.length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Solicitudes en revisión
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        Aprobadas
+                      </CardTitle>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {bajasAprobadas.length || historialBajas.length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Incluye las del historial reciente
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        Rechazadas
+                      </CardTitle>
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {bajasRechazadas.length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Últimos rechazos registrados
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>Resumen ejecutivo</CardTitle>
+                      <CardDescription>
+                        Seguimiento ágil de las decisiones tomadas sobre bajas.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        fetchSolicitudesBaja();
+                        fetchHistorialBajas();
+                      }}
+                    >
+                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-lg border p-4">
+                        <h4 className="text-sm font-semibold text-foreground">
+                          Tiempo de respuesta
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {bajasPendientes.length === 0
+                            ? "Todas las solicitudes están actualizadas"
+                            : "Hay solicitudes pendientes de revisión"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border p-4">
+                        <h4 className="text-sm font-semibold text-foreground">
+                          Historial registrado
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {historialBajas.length}
+                          {" "}
+                          bajas confirmadas disponibles para consulta.
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">
+                        Últimas aprobaciones
+                      </h4>
+                      {ultimasBajas.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Aún no registraste aprobaciones de baja.
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {ultimasBajas.map((sol) => {
+                            const estado = sol.estado ?? DTO.EstadoSolicitudBaja.APROBADA;
+                            const nombre =
+                              [sol.alumnoApellido, sol.alumnoNombre]
+                                .filter(Boolean)
+                                .join(", ") ||
+                              "Alumno sin datos";
+                            return (
+                              <li
+                                key={sol.id}
+                                className="flex flex-col gap-1 rounded border border-border/60 bg-muted/40 p-3 text-sm"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="font-medium text-foreground">
+                                    {nombre}
+                                  </span>
+                                  <Badge variant={estadoVariant[estado]}>
+                                    {estadoLabels[estado]}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDecisionDate(sol.fechaDecision)}
+                                </div>
+                                {sol.motivo && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Motivo: {sol.motivo}
+                                  </p>
+                                )}
+                                <div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="px-0 text-xs"
+                                    onClick={() => handleDownloadSolicitud(sol)}
+                                  >
+                                    <Download className="mr-1 h-3 w-3" />
+                                    Descargar ficha
+                                  </Button>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Bajas */}
+            {canManageBajas && (
+              <TabsContent value="bajas" className="space-y-4">
+                <Card>
+                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>Solicitudes de baja</CardTitle>
+                      <CardDescription>
+                        Gestioná las bajas enviadas por alumnos y familias.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchSolicitudesBaja}
+                    >
+                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingSolicitudesBaja ? (
+                      <LoadingState label="Cargando solicitudes…" />
+                    ) : errorSolicitudesBaja ? (
+                      <div className="text-sm text-red-600">
+                        {errorSolicitudesBaja}
+                      </div>
+                    ) : solicitudesBaja.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">
+                        No hay solicitudes de baja registradas.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                              <th className="py-2 pr-4 font-medium">Alumno</th>
+                              <th className="py-2 pr-4 font-medium">Motivo</th>
+                              <th className="py-2 pr-4 font-medium">Estado</th>
+                              <th className="py-2 pr-4 font-medium">Decisión</th>
+                              <th className="py-2 pr-4 font-medium">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {solicitudesBaja.map((sol) => {
+                              const estado =
+                                sol.estado ?? DTO.EstadoSolicitudBaja.PENDIENTE;
+                              const nombre =
+                                [sol.alumnoApellido, sol.alumnoNombre]
+                                  .filter(Boolean)
+                                  .join(", ") ||
+                                "Alumno sin datos";
+                              return (
+                                <tr
+                                  key={sol.id}
+                                  className="border-t border-border/60 align-top"
+                                >
+                                  <td className="py-3 pr-4">
+                                    <div className="font-medium text-foreground">
+                                      {nombre}
+                                    </div>
+                                    {sol.alumnoDni && (
+                                      <div className="text-xs text-muted-foreground">
+                                        DNI {sol.alumnoDni}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-3 pr-4 max-w-xs">
+                                    <div className="text-sm text-muted-foreground whitespace-pre-line">
+                                      {sol.motivo || "—"}
+                                    </div>
+                                    {sol.motivoRechazo && (
+                                      <div className="mt-1 text-xs text-destructive">
+                                        Rechazo: {sol.motivoRechazo}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-3 pr-4">
+                                    <Badge variant={estadoVariant[estado]}>
+                                      {estadoLabels[estado]}
+                                    </Badge>
+                                  </td>
+                                  <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                    <div>{formatDecisionDate(sol.fechaDecision)}</div>
+                                    {sol.decididoPorPersonaId && (
+                                      <div className="text-xs">
+                                        Decidido por #{sol.decididoPorPersonaId}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-3 pr-4">
+                                    <div className="flex flex-wrap gap-2">
+                                      {estado ===
+                                        DTO.EstadoSolicitudBaja.PENDIENTE && (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            onClick={() =>
+                                              handleApproveSolicitud(sol)
+                                            }
+                                            disabled={
+                                              processingSolicitudId === sol.id
+                                            }
+                                          >
+                                            Aprobar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() =>
+                                              handleRejectSolicitud(sol)
+                                            }
+                                            disabled={
+                                              processingSolicitudId === sol.id
+                                            }
+                                          >
+                                            Rechazar
+                                          </Button>
+                                        </>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDownloadSolicitud(sol)}
+                                      >
+                                        <Download className="mr-2 h-3 w-3" />
+                                        Descargar
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Historial */}
             {canViewAspirantesHistorial && (
               <TabsContent value="historial" className="space-y-4">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Historial de Alumnos</CardTitle>
-                    <CardDescription>Registro de egresos y bajas</CardDescription>
+                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>Historial de bajas</CardTitle>
+                      <CardDescription>
+                        Registro de bajas aceptadas con detalle de motivos y fechas.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchHistorialBajas}
+                    >
+                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
+                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8 text-gray-500">
-                      No hay registros por ahora.
-                    </div>
+                    {loadingHistorialBajas ? (
+                      <LoadingState label="Cargando historial…" />
+                    ) : errorHistorialBajas ? (
+                      <div className="text-sm text-red-600">
+                        {errorHistorialBajas}
+                      </div>
+                    ) : historialBajas.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">
+                        Todavía no hay bajas confirmadas.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                              <th className="py-2 pr-4 font-medium">Alumno</th>
+                              <th className="py-2 pr-4 font-medium">Motivo</th>
+                              <th className="py-2 pr-4 font-medium">Fecha decisión</th>
+                              <th className="py-2 pr-4 font-medium">Descarga</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {historialBajas.map((sol) => {
+                              const estado =
+                                sol.estado ?? DTO.EstadoSolicitudBaja.APROBADA;
+                              const nombre =
+                                [sol.alumnoApellido, sol.alumnoNombre]
+                                  .filter(Boolean)
+                                  .join(", ") ||
+                                "Alumno sin datos";
+                              return (
+                                <tr
+                                  key={sol.id}
+                                  className="border-t border-border/60 align-top"
+                                >
+                                  <td className="py-3 pr-4">
+                                    <div className="font-medium text-foreground">
+                                      {nombre}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                      <span>
+                                        {sol.alumnoDni ? `DNI ${sol.alumnoDni}` : "Sin documento"}
+                                      </span>
+                                      <Badge variant={estadoVariant[estado]}>
+                                        {estadoLabels[estado]}
+                                      </Badge>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 pr-4 max-w-md text-sm text-muted-foreground whitespace-pre-line">
+                                    {sol.motivo || "—"}
+                                  </td>
+                                  <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                    {formatDecisionDate(sol.fechaDecision)}
+                                  </td>
+                                  <td className="py-3 pr-4">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDownloadSolicitud(sol)}
+                                    >
+                                      <Download className="mr-2 h-3 w-3" />
+                                      Descargar
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -566,6 +1187,6 @@ export default function AlumnosIndexPage() {
           </Tabs>
         )}
       </div>
-    
+
   );
 }

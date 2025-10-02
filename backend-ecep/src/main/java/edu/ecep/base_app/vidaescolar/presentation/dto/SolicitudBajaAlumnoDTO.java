@@ -15,10 +15,15 @@ public class SolicitudBajaAlumnoDTO {
     Long id;
     @NotNull
     Long matriculaId;
+    Long alumnoId;
     @NotNull
     EstadoSolicitudBaja estado;
     String motivo;
     String motivoRechazo;
     OffsetDateTime fechaDecision;
-    Long decididoPor;
+    Long decididoPorPersonaId;
+    String alumnoNombre;
+    String alumnoApellido;
+    String alumnoDni;
+    Long periodoEscolarId;
 }

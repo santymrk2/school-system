@@ -897,11 +897,25 @@ export interface SolicitudBajaAlumnoCreateDTO {
 export interface SolicitudBajaAlumnoDTO {
   id: number;
   matriculaId?: number;
+  alumnoId?: number;
   estado?: EstadoSolicitudBaja;
   motivo?: string;
   motivoRechazo?: string;
   fechaDecision?: ISODateTime;
-  decididoPor?: number;
+  decididoPorPersonaId?: number;
+  alumnoNombre?: string;
+  alumnoApellido?: string;
+  alumnoDni?: string;
+  periodoEscolarId?: number;
+}
+
+export interface SolicitudBajaAlumnoDecisionDTO {
+  decididoPorPersonaId: number;
+}
+
+export interface SolicitudBajaAlumnoRechazoDTO
+  extends SolicitudBajaAlumnoDecisionDTO {
+  motivoRechazo: string;
 }
 
 export interface TrimestreCreateDTO {

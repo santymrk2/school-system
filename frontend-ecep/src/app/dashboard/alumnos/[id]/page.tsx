@@ -37,11 +37,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserMinus, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { logger } from "@/lib/logger";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const alumnosLogger = logger.child({ module: "dashboard-alumnos-detalle" });
 
@@ -76,7 +82,12 @@ import type {
   PersonaUpdateDTO,
   SeccionDTO,
 } from "@/types/api-generated";
-import { RolVinculo, UserRole } from "@/types/api-generated";
+import {
+  EstadoSolicitudBaja,
+  RolVinculo,
+  SolicitudBajaAlumnoDTO,
+  UserRole,
+} from "@/types/api-generated";
 
 type FamiliarConVinculo = FamiliarDTO & {
   parentesco?: string;
@@ -147,6 +158,18 @@ export default function AlumnoPerfilPage() {
   );
   const [seccionesList, setSeccionesList] = useState<SeccionDTO[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [crearBajaOpen, setCrearBajaOpen] = useState(false);
+  const [crearBajaMotivo, setCrearBajaMotivo] = useState("");
+  const [crearBajaConfirmacionDeuda, setCrearBajaConfirmacionDeuda] =
+    useState(false);
+  const [crearBajaLoading, setCrearBajaLoading] = useState(false);
+  const [solicitudesBaja, setSolicitudesBaja] = useState<
+    SolicitudBajaAlumnoDTO[]
+  >([]);
+  const [loadingSolicitudesBaja, setLoadingSolicitudesBaja] =
+    useState(false);
+  const [solicitudesBajaError, setSolicitudesBajaError] =
+    useState<string | null>(null);
 
   const [familiares, setFamiliares] = useState<FamiliarConVinculo[]>([]);
 
@@ -519,6 +542,14 @@ export default function AlumnoPerfilPage() {
     );
   }, [matriculas, activePeriodId]);
 
+  const matriculaIds = useMemo(
+    () =>
+      matriculas
+        .map((m) => m.id)
+        .filter((id): id is number => typeof id === "number" && !Number.isNaN(id)),
+    [matriculas],
+  );
+
   const matriculasConHistorial = useMemo(
     () =>
       [...matriculas]
@@ -543,6 +574,124 @@ export default function AlumnoPerfilPage() {
         })),
     [matriculas, historial],
   );
+
+  const fetchSolicitudesBaja = useCallback(async () => {
+    if (!canManageProfile) return;
+    if (matriculaIds.length === 0) {
+      setSolicitudesBaja([]);
+      return;
+    }
+    setLoadingSolicitudesBaja(true);
+    setSolicitudesBajaError(null);
+    try {
+      const { data } = await vidaEscolar.solicitudesBaja.list();
+      const all = (data ?? []) as SolicitudBajaAlumnoDTO[];
+      const filtered = all.filter((sol) => {
+        const id = sol.matriculaId ?? null;
+        return typeof id === "number" && matriculaIds.includes(id);
+      });
+      setSolicitudesBaja(filtered);
+    } catch (error) {
+      logAlumnoError(error, "No se pudieron obtener las solicitudes de baja");
+      setSolicitudesBajaError(
+        "No se pudieron obtener las solicitudes de baja",
+      );
+    } finally {
+      setLoadingSolicitudesBaja(false);
+    }
+  }, [canManageProfile, matriculaIds]);
+
+  useEffect(() => {
+    if (!canManageProfile) {
+      setSolicitudesBaja([]);
+      setSolicitudesBajaError(null);
+      setLoadingSolicitudesBaja(false);
+      return;
+    }
+    if (matriculaIds.length === 0) {
+      setSolicitudesBaja([]);
+      setSolicitudesBajaError(null);
+      return;
+    }
+    fetchSolicitudesBaja();
+  }, [canManageProfile, matriculaIds, fetchSolicitudesBaja]);
+
+  const pendingSolicitud = useMemo(() => {
+    if (!matriculaActual?.id) return null;
+    return (
+      solicitudesBaja.find(
+        (sol) =>
+          (sol.matriculaId ?? null) === matriculaActual.id &&
+          sol.estado === EstadoSolicitudBaja.PENDIENTE,
+      ) ?? null
+    );
+  }, [matriculaActual, solicitudesBaja]);
+
+  const resetCrearBajaForm = useCallback(() => {
+    setCrearBajaMotivo("");
+    setCrearBajaConfirmacionDeuda(false);
+    setCrearBajaLoading(false);
+    setSolicitudesBajaError(null);
+  }, []);
+
+  const handleCrearBajaOpenChange = useCallback(
+    (open: boolean) => {
+      setCrearBajaOpen(open);
+      if (open) {
+        fetchSolicitudesBaja();
+        return;
+      }
+      resetCrearBajaForm();
+    },
+    [fetchSolicitudesBaja, resetCrearBajaForm],
+  );
+
+  const handleCrearBaja = useCallback(async () => {
+    if (!matriculaActual?.id) {
+      toast.error("El alumno no tiene una matrícula activa para registrar la baja");
+      return;
+    }
+    if (pendingSolicitud) {
+      toast.error(
+        "Ya existe una solicitud de baja pendiente para esta matrícula",
+      );
+      return;
+    }
+    const motivo = crearBajaMotivo.trim();
+    if (!motivo) {
+      toast.error("El motivo de la baja es obligatorio");
+      return;
+    }
+    if (!crearBajaConfirmacionDeuda) {
+      toast.error("Confirmá que revisaste el estado de deudas del alumno");
+      return;
+    }
+
+    setCrearBajaLoading(true);
+    try {
+      await vidaEscolar.solicitudesBaja.create({
+        matriculaId: matriculaActual.id,
+        motivo,
+      });
+      toast.success("Solicitud de baja registrada correctamente");
+      resetCrearBajaForm();
+      setCrearBajaOpen(false);
+      await fetchSolicitudesBaja();
+      setReloadKey((prev) => prev + 1);
+    } catch (error) {
+      logAlumnoError(error, "No se pudo registrar la solicitud de baja");
+      toast.error("No se pudo registrar la solicitud de baja");
+    } finally {
+      setCrearBajaLoading(false);
+    }
+  }, [
+    crearBajaConfirmacionDeuda,
+    crearBajaMotivo,
+    fetchSolicitudesBaja,
+    matriculaActual,
+    pendingSolicitud,
+    resetCrearBajaForm,
+  ]);
 
   useEffect(() => {
     if (!editOpen) return;
@@ -1217,15 +1366,172 @@ export default function AlumnoPerfilPage() {
                   </Badge>
                 </>
               )}
+              {pendingSolicitud && (
+                <>
+                  {" "}
+                  •{" "}
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100">
+                          Baja pendiente
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
+                        Hay una solicitud de baja pendiente a la espera de revisión administrativa.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
+              )}
             </div>
           </div>
           {canManageProfile && (
-            <div className="flex items-center gap-2">
-              <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="default">Editar datos</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto sm:max-h-[80vh]">
+            <TooltipProvider delayDuration={200}>
+              <div className="flex items-center gap-2">
+                <Dialog
+                  open={crearBajaOpen}
+                  onOpenChange={handleCrearBajaOpenChange}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DialogTrigger asChild>
+                        <Button variant="destructive">
+                          <UserMinus className="mr-2 h-4 w-4" /> Solicitar baja
+                        </Button>
+                      </DialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      className="max-w-xs text-xs leading-relaxed"
+                    >
+                      Dirección inicia desde aquí el circuito de baja y
+                      Administración recibe la solicitud para auditar deudas
+                      antes de confirmarla.
+                    </TooltipContent>
+                  </Tooltip>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Solicitar baja del alumno</DialogTitle>
+                      <DialogDescription>
+                        Registrá la solicitud y notificaremos a Administración
+                        para que complete el circuito de baja.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Matrícula activa</Label>
+                        {matriculaActual ? (
+                          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 p-3 text-xs text-muted-foreground">
+                            <Badge variant="outline">#{matriculaActual.id}</Badge>
+                            {seccionActual?.seccionId && (
+                              <span>{seccionLabel(seccionActual.seccionId)}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            El alumno no tiene una matrícula activa en el período
+                            escolar vigente.
+                          </p>
+                        )}
+                      </div>
+                      {loadingSolicitudesBaja && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Buscando solicitudes de baja existentes…
+                        </div>
+                      )}
+                      {solicitudesBajaError && (
+                        <p className="text-sm text-destructive">
+                          {solicitudesBajaError}
+                        </p>
+                      )}
+                      {pendingSolicitud && (
+                        <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                          <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                          <div>
+                            Ya existe una solicitud pendiente (#{pendingSolicitud.id})
+                            para esta matrícula. Dirección debe aguardar la
+                            respuesta de Administración antes de enviar una nueva.
+                          </div>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <Label htmlFor="crear-baja-motivo">Motivo</Label>
+                        <Textarea
+                          id="crear-baja-motivo"
+                          placeholder="Ingresá el motivo de la baja"
+                          value={crearBajaMotivo}
+                          onChange={(event) => setCrearBajaMotivo(event.target.value)}
+                          rows={4}
+                          disabled={
+                            crearBajaLoading ||
+                            !matriculaActual?.id ||
+                            loadingSolicitudesBaja
+                          }
+                        />
+                      </div>
+                      <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
+                        <Checkbox
+                          id="crear-baja-deuda"
+                          checked={crearBajaConfirmacionDeuda}
+                          onCheckedChange={(checked) =>
+                            setCrearBajaConfirmacionDeuda(Boolean(checked))
+                          }
+                          disabled={
+                            crearBajaLoading ||
+                            !matriculaActual?.id ||
+                            loadingSolicitudesBaja
+                          }
+                        />
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor="crear-baja-deuda"
+                            className="text-sm font-medium"
+                          >
+                            Confirmación administrativa
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Confirmo que revisé el estado de deudas y autorizo la
+                            baja del alumno.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleCrearBajaOpenChange(false)}
+                        disabled={crearBajaLoading}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={handleCrearBaja}
+                        disabled={
+                          crearBajaLoading ||
+                          !matriculaActual?.id ||
+                          pendingSolicitud != null ||
+                          loadingSolicitudesBaja
+                        }
+                      >
+                        {crearBajaLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Registrando…
+                          </>
+                        ) : (
+                          "Registrar baja"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="default">Editar datos</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto sm:max-h-[80vh]">
                   <DialogHeader>
                     <DialogTitle>Editar perfil del alumno</DialogTitle>
                     <DialogDescription>
@@ -1501,9 +1807,10 @@ export default function AlumnoPerfilPage() {
                     Guardar cambios
                   </Button>
                 </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </TooltipProvider>
           )}
         </div>
 

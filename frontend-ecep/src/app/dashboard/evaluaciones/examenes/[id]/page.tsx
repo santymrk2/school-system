@@ -3,13 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
-import { gestionAcademica } from "@/services/api/modules";
+import { calendario, gestionAcademica } from "@/services/api/modules";
 import type {
   EvaluacionDTO,
   ResultadoEvaluacionDTO,
+  ResultadoEvaluacionCreateDTO,
+  ResultadoEvaluacionUpdateDTO,
   SeccionDTO,
   MateriaDTO,
   AlumnoLiteDTO,
+  TrimestreDTO,
 } from "@/types/api-generated";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +37,12 @@ import { School, Clock3 } from "lucide-react";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { toast } from "sonner";
 import { UserRole } from "@/types/api-generated";
+import {
+  getTrimestreEstado,
+  isFechaDentroDeTrimestre,
+  TRIMESTRE_ESTADO_LABEL,
+  type TrimestreEstado,
+} from "@/lib/trimestres";
 
 const fechaLargaFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "long",
@@ -88,6 +97,7 @@ export default function ExamenDetailPage() {
   const [materia, setMateria] = useState<MateriaDTO | null>(null);
   const [resultados, setResultados] = useState<ResultadoEvaluacionDTO[]>([]);
   const [alumnos, setAlumnos] = useState<AlumnoLiteDTO[]>([]);
+  const [trimestres, setTrimestres] = useState<TrimestreDTO[]>([]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editNombre, setEditNombre] = useState("");
@@ -131,7 +141,7 @@ export default function ExamenDetailPage() {
         const seccionId = (sm as any).seccionId as number | undefined;
         const materiaId = (sm as any).materiaId as number | undefined;
 
-        const [seccionResp, materiaResp, resultadosResp, alumnosResp] = await Promise.all([
+        const [seccionResp, materiaResp, resultadosResp, alumnosResp, trimestresResp] = await Promise.all([
           seccionId
             ? gestionAcademica.secciones.byId(seccionId).then((r) => r.data)
             : Promise.resolve(null),
@@ -146,6 +156,10 @@ export default function ExamenDetailPage() {
                 .bySeccionId(seccionId, (evalData as any).fecha)
                 .then((r) => r.data ?? [])
             : Promise.resolve([]),
+          calendario.trimestres
+            .list()
+            .then((r) => r.data ?? [])
+            .catch(() => []),
         ]);
 
         if (!alive) return;
@@ -155,6 +169,7 @@ export default function ExamenDetailPage() {
         setMateria(materiaResp);
         setResultados(resultadosResp);
         setAlumnos(alumnosResp);
+        setTrimestres(trimestresResp);
         const split = splitTema((evalData as any).tema ?? "");
         setEditNombre(split.nombre);
         setEditDescripcion(split.descripcion);
@@ -191,6 +206,47 @@ export default function ExamenDetailPage() {
     for (const a of alumnos) map.set(a.matriculaId, (a as any).nombreCompleto ?? "—");
     return map;
   }, [alumnos]);
+
+  const fechaEvaluacion = useMemo(() => {
+    const raw = (evaluacion as any)?.fecha as string | undefined;
+    return raw ?? undefined;
+  }, [evaluacion]);
+
+  const trimestreId = useMemo(() => {
+    const triId = (evaluacion as any)?.trimestreId as number | undefined;
+    if (triId) return triId;
+    if (!fechaEvaluacion) return undefined;
+    const tri = trimestres.find((t) => isFechaDentroDeTrimestre(fechaEvaluacion, t));
+    return tri?.id;
+  }, [evaluacion, trimestres, fechaEvaluacion]);
+
+  const trimestreEstado = useMemo<TrimestreEstado>(() => {
+    if (!trimestreId) return "activo";
+    const tri = trimestres.find((t) => t.id === trimestreId);
+    return getTrimestreEstado(tri);
+  }, [trimestres, trimestreId]);
+
+  const trimestreActivo = trimestreEstado === "activo";
+
+  const trimestreReadOnlyMessage = useMemo(() => {
+    if (trimestreEstado === "cerrado") {
+      return "No podés editar este examen porque el trimestre está cerrado.";
+    }
+    if (trimestreEstado === "inactivo") {
+      return "No podés editar este examen porque el trimestre no está activo.";
+    }
+    return null;
+  }, [trimestreEstado]);
+
+  const isTrimestreLockedError = (err: any) => {
+    const msg = err?.response?.data?.message;
+    if (typeof msg !== "string") return false;
+    const normalized = msg.toLowerCase();
+    return (
+      normalized.includes("trimestre") &&
+      (normalized.includes("no está activo") || normalized.includes("no esta activo"))
+    );
+  };
 
   const composeNotaRows = useMemo(() => {
     const mapResultados = new Map<number, ResultadoEvaluacionDTO>();
@@ -244,6 +300,7 @@ export default function ExamenDetailPage() {
   }, [composeNotaRows]);
 
   const handleNotaChange = (matriculaId: number, value: string) => {
+    if (!trimestreActivo) return;
     const normalized = value.replace(",", ".").trim();
     const parsed = normalized === "" ? null : Number(normalized);
     if (
@@ -262,6 +319,7 @@ export default function ExamenDetailPage() {
   };
 
   const handleObservacionChange = (matriculaId: number, value: string) => {
+    if (!trimestreActivo) return;
     setNotasRows((prev) =>
       prev.map((row) =>
         row.matriculaId === matriculaId
@@ -277,6 +335,13 @@ export default function ExamenDetailPage() {
 
   const handleSaveNotas = async () => {
     if (!canEdit) return;
+    if (!trimestreActivo) {
+      toast.error(
+        trimestreReadOnlyMessage ??
+          "No podés editar las notas porque el trimestre no está activo.",
+      );
+      return;
+    }
     try {
       setSavingNotas(true);
       const pending: Promise<unknown>[] = [];
@@ -320,11 +385,18 @@ export default function ExamenDetailPage() {
       setResultados(refreshed.data ?? []);
       toast.success("Notas guardadas.");
     } catch (e: any) {
-      toast.error(
-        e?.response?.data?.message ??
-          e?.message ??
-          "No se pudieron guardar las notas.",
-      );
+      if (isTrimestreLockedError(e)) {
+        toast.error(
+          trimestreReadOnlyMessage ??
+            "No podés editar las notas porque el trimestre no está activo.",
+        );
+      } else {
+        toast.error(
+          e?.response?.data?.message ??
+            e?.message ??
+            "No se pudieron guardar las notas.",
+        );
+      }
     } finally {
       setSavingNotas(false);
     }
@@ -341,6 +413,13 @@ export default function ExamenDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!evaluacion) return;
+    if (!trimestreActivo) {
+      toast.error(
+        trimestreReadOnlyMessage ??
+          "No podés editar este examen porque el trimestre no está activo.",
+      );
+      return;
+    }
     try {
       setSavingEdit(true);
       const nombre = editNombre.trim() || "Evaluación";
@@ -361,11 +440,18 @@ export default function ExamenDetailPage() {
       }
       setEditOpen(false);
     } catch (e: any) {
-      toast.error(
-        e?.response?.data?.message ??
-          e?.message ??
-          "No pudimos actualizar los datos del examen.",
-      );
+      if (isTrimestreLockedError(e)) {
+        toast.error(
+          trimestreReadOnlyMessage ??
+            "No podés editar este examen porque el trimestre no está activo.",
+        );
+      } else {
+        toast.error(
+          e?.response?.data?.message ??
+            e?.message ??
+            "No pudimos actualizar los datos del examen.",
+        );
+      }
     } finally {
       setSavingEdit(false);
     }
@@ -422,183 +508,204 @@ export default function ExamenDetailPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
-          Volver
-        </Button>
+      <Button variant="outline" onClick={() => router.back()}>
+        Volver
+      </Button>
 
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{tituloExamen}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <School className="h-3 w-3" /> {seccionEtiqueta}
-              </Badge>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Clock3 className="h-3 w-3" /> Turno {turnoEtiqueta}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {canEdit && (
-              <Button onClick={handleOpenEdit}>Editar examen</Button>
-            )}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{tituloExamen}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <School className="h-3 w-3" /> {seccionEtiqueta}
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Clock3 className="h-3 w-3" /> Turno {turnoEtiqueta}
+            </Badge>
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalle del examen</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div><strong>Nombre:</strong> {tituloExamen}</div>
+        <div className="flex flex-wrap gap-2">
+          {canEdit && (
+            <Button onClick={handleOpenEdit} disabled={!trimestreActivo}>
+              Editar examen
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {!trimestreActivo && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {trimestreReadOnlyMessage ??
+            "Este examen pertenece a un trimestre que no está activo. Solo lectura."}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Detalle del examen</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div><strong>Nombre:</strong> {tituloExamen}</div>
+          <div>
+            <strong>Descripción:</strong> {descripcionExamen || "—"}
+          </div>
+          <div><strong>Materia:</strong> {materia?.nombre ?? "—"}</div>
+          <div><strong>Fecha:</strong> {fechaTexto}</div>
+          <div>
+            <strong>Trimestre:</strong> {(evaluacion as any).trimestreId ?? "—"}
+          </div>
+          <div>
+            <strong>Estado del trimestre:</strong> {TRIMESTRE_ESTADO_LABEL[trimestreEstado]}
+          </div>
+          {typeof (evaluacion as any).peso === "number" && (
             <div>
-              <strong>Descripción:</strong> {descripcionExamen || "—"}
+              <strong>Peso:</strong> {(evaluacion as any).peso}
             </div>
-            <div><strong>Materia:</strong> {materia?.nombre ?? "—"}</div>
-            <div><strong>Fecha:</strong> {fechaTexto}</div>
-            <div>
-              <strong>Trimestre:</strong> {(evaluacion as any).trimestreId ?? "—"}
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Notas registradas</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {notasRows.length === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              Todavía no hay notas cargadas para este examen.
             </div>
-            {typeof (evaluacion as any).peso === "number" && (
-              <div>
-                <strong>Peso:</strong> {(evaluacion as any).peso}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Notas registradas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {notasRows.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                Todavía no hay notas cargadas para este examen.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {notasRows.map((row) => (
-                  <div
-                    key={row.matriculaId}
-                    className="grid grid-cols-1 gap-2 rounded-md border p-3 text-sm md:grid-cols-12 md:items-start"
-                  >
-                    <div className="md:col-span-4 font-medium">{row.nombre}</div>
-
-                    {canEdit ? (
-                      <div className="md:col-span-2">
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          step={1}
-                          inputMode="numeric"
-                          placeholder="Nota"
-                          value={
-                            row.notaNumerica === null || row.notaNumerica === undefined
-                              ? ""
-                              : String(row.notaNumerica)
-                          }
-                          onChange={(e) =>
-                            handleNotaChange(row.matriculaId, e.target.value)
-                          }
-                          disabled={savingNotas}
-                        />
-                      </div>
-                    ) : (
-                      <div className="md:col-span-2">
-                        Nota: {row.notaNumerica ?? "—"}
-                      </div>
-                    )}
-
-                    {canEdit ? (
-                      <div className="md:col-span-6">
-                        <Textarea
-                          rows={2}
-                          placeholder="Observaciones"
-                          value={row.observaciones}
-                          onChange={(e) =>
-                            handleObservacionChange(row.matriculaId, e.target.value)
-                          }
-                          disabled={savingNotas}
-                        />
-                      </div>
-                    ) : (
-                      <div className="md:col-span-6 text-muted-foreground">
-                        Observación: {row.observaciones || "Sin observaciones"}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {canEdit && notasRows.length > 0 && (
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={handleCancelNotas}
-                  disabled={savingNotas}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleSaveNotas} disabled={savingNotas}>
-                  {savingNotas ? "Guardando…" : "Guardar notas"}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Editar examen</DialogTitle>
-              <DialogDescription>
-                Modificá el nombre, la descripción o la fecha del examen. El trimestre permanece sin cambios.
-              </DialogDescription>
-            </DialogHeader>
+          ) : (
             <div className="space-y-3">
-              <div>
-                <label className="text-xs text-muted-foreground">Nombre</label>
-                <Input
-                  value={editNombre}
-                  onChange={(e) => setEditNombre(e.target.value)}
-                  placeholder="Nombre del examen"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">
-                  Descripción
-                </label>
-                <Textarea
-                  rows={3}
-                  value={editDescripcion}
-                  onChange={(e) => setEditDescripcion(e.target.value)}
-                  placeholder="Descripción u observaciones generales"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Fecha</label>
-                <DatePicker
-                  value={editFecha || undefined}
-                  onChange={(value) => setEditFecha(value ?? "")}
-                  required
-                />
-              </div>
+              {notasRows.map((row) => (
+                <div
+                  key={row.matriculaId}
+                  className="grid grid-cols-1 gap-2 rounded-md border p-3 text-sm md:grid-cols-12 md:items-start"
+                >
+                  <div className="md:col-span-4 font-medium">{row.nombre}</div>
+
+                  {canEdit ? (
+                    <div className="md:col-span-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        step={1}
+                        inputMode="numeric"
+                        placeholder="Nota"
+                        value={
+                          row.notaNumerica === null || row.notaNumerica === undefined
+                            ? ""
+                            : String(row.notaNumerica)
+                        }
+                        onChange={(e) =>
+                          handleNotaChange(row.matriculaId, e.target.value)
+                        }
+                        disabled={savingNotas || !trimestreActivo}
+                      />
+                    </div>
+                  ) : (
+                    <div className="md:col-span-2">
+                      Nota: {row.notaNumerica ?? "—"}
+                    </div>
+                  )}
+
+                  {canEdit ? (
+                    <div className="md:col-span-6">
+                      <Textarea
+                        rows={2}
+                        placeholder="Observaciones"
+                        value={row.observaciones}
+                        onChange={(e) =>
+                          handleObservacionChange(row.matriculaId, e.target.value)
+                        }
+                        disabled={savingNotas || !trimestreActivo}
+                      />
+                    </div>
+                  ) : (
+                    <div className="md:col-span-6 text-muted-foreground">
+                      Observación: {row.observaciones || "Sin observaciones"}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-            <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={() => setEditOpen(false)}>
+          )}
+
+          {canEdit && notasRows.length > 0 && (
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelNotas}
+                disabled={savingNotas || !trimestreActivo}
+              >
                 Cancelar
               </Button>
-              <Button onClick={handleSaveEdit} disabled={savingEdit || !editFecha.trim()}>
-                {savingEdit ? "Guardando…" : "Guardar"}
+              <Button
+                onClick={handleSaveNotas}
+                disabled={savingNotas || !trimestreActivo}
+              >
+                {savingNotas ? "Guardando…" : "Guardar notas"}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar examen</DialogTitle>
+            <DialogDescription>
+              Modificá el nombre, la descripción o la fecha del examen. El trimestre permanece sin cambios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Nombre</label>
+              <Input
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+                placeholder="Nombre del examen"
+                disabled={!trimestreActivo}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">
+                Descripción
+              </label>
+              <Textarea
+                rows={3}
+                value={editDescripcion}
+                onChange={(e) => setEditDescripcion(e.target.value)}
+                placeholder="Descripción u observaciones generales"
+                disabled={!trimestreActivo}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Fecha</label>
+              <DatePicker
+                value={editFecha || undefined}
+                onChange={(value) => setEditFecha(value ?? "")}
+                required
+                disabled={!trimestreActivo}
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={savingEdit || !trimestreActivo || !editFecha.trim()}
+            >
+              {savingEdit ? "Guardando…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
     
   );
 }

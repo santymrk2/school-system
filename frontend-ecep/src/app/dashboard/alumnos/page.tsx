@@ -24,12 +24,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  CheckCircle2,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Download,
   Search,
   TimerReset,
   UserPlus,
-  XCircle,
+  UserMinus,
 } from "lucide-react";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import FamilyView from "./_components/FamilyView";
@@ -111,7 +121,7 @@ export default function AlumnosIndexPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState<
-    "alumnos" | "aspirantes" | "historial" | "bajas" | "avanzado"
+    "alumnos" | "aspirantes" | "historial" | "bajas"
   >("alumnos");
 
   const PAGE_SIZE = 25;
@@ -141,6 +151,26 @@ export default function AlumnosIndexPage() {
   const [processingSolicitudId, setProcessingSolicitudId] = useState<number | null>(
     null,
   );
+  const [estadoSolicitudesFiltro, setEstadoSolicitudesFiltro] = useState<
+    "all" | DTO.EstadoSolicitudBaja
+  >("all");
+  const [crearBajaOpen, setCrearBajaOpen] = useState(false);
+  const [crearBajaMotivo, setCrearBajaMotivo] = useState("");
+  const [crearBajaMatriculaId, setCrearBajaMatriculaId] = useState<number | null>(
+    null,
+  );
+  const [crearBajaConfirmacionDeuda, setCrearBajaConfirmacionDeuda] =
+    useState(false);
+  const [crearBajaLoading, setCrearBajaLoading] = useState(false);
+  const [matriculaOptions, setMatriculaOptions] = useState<
+    {
+      value: number;
+      label: string;
+      seccion?: string | null;
+    }[]
+  >([]);
+  const [matriculasLoading, setMatriculasLoading] = useState(false);
+  const [matriculasError, setMatriculasError] = useState<string | null>(null);
 
   const {
     scope,
@@ -233,6 +263,82 @@ export default function AlumnosIndexPage() {
       setHistorialBajas([]);
     }
   }, [canManageBajas, canViewAspirantesHistorial, fetchHistorialBajas]);
+
+  const loadMatriculas = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      if (!canManageBajas) {
+        setMatriculaOptions([]);
+        setMatriculasError(null);
+        setMatriculasLoading(false);
+        return;
+      }
+
+      setMatriculasLoading(true);
+      setMatriculasError(null);
+
+      try {
+        const [matriculasRes, alumnosRes] = await Promise.all([
+          vidaEscolar.matriculas.list(),
+          identidad.alumnos.list(),
+        ]);
+        if (signal?.cancelled) return;
+        const matriculas = matriculasRes.data ?? [];
+        const alumnos = alumnosRes.data ?? [];
+        const alumnoMap = new Map<number, DTO.AlumnoDTO>();
+        for (const alumno of alumnos) {
+          if (alumno.id != null) {
+            alumnoMap.set(alumno.id, alumno);
+          }
+        }
+        const options = matriculas
+          .map((matricula) => {
+            const alumno = matricula.alumnoId
+              ? alumnoMap.get(matricula.alumnoId)
+              : undefined;
+            const nombreBase = alumno
+              ? `${alumno.apellido ?? ""}, ${alumno.nombre ?? ""}`
+                  .trim()
+                  .replace(/^,\s*/, "")
+              : "";
+            const label = nombreBase
+              ? `${nombreBase} — Matrícula #${matricula.id}`
+              : `Matrícula #${matricula.id}`;
+            const seccion = alumno?.seccionActualNombre ?? null;
+            return {
+              value: matricula.id,
+              label,
+              seccion,
+            };
+          })
+          .sort((a, b) => a.label.localeCompare(b.label, "es"));
+        setMatriculaOptions(options);
+      } catch (err) {
+        console.error(err);
+        if (signal?.cancelled) return;
+        setMatriculaOptions([]);
+        setMatriculasError("No se pudieron cargar las matrículas disponibles");
+      } finally {
+        if (signal?.cancelled) return;
+        setMatriculasLoading(false);
+      }
+    },
+    [canManageBajas],
+  );
+
+  useEffect(() => {
+    if (!canManageBajas) {
+      setMatriculaOptions([]);
+      setMatriculasError(null);
+      setMatriculasLoading(false);
+      return;
+    }
+
+    const signal = { cancelled: false };
+    loadMatriculas(signal);
+    return () => {
+      signal.cancelled = true;
+    };
+  }, [canManageBajas, loadMatriculas]);
 
   const estadoLabels: Record<DTO.EstadoSolicitudBaja, string> = {
     [DTO.EstadoSolicitudBaja.PENDIENTE]: "Pendiente",
@@ -352,6 +458,58 @@ export default function AlumnosIndexPage() {
     }
   };
 
+  const resetCrearBajaForm = useCallback(() => {
+    setCrearBajaMotivo("");
+    setCrearBajaMatriculaId(null);
+    setCrearBajaConfirmacionDeuda(false);
+    setCrearBajaLoading(false);
+  }, []);
+
+  const handleCrearBajaOpenChange = useCallback(
+    (open: boolean) => {
+      setCrearBajaOpen(open);
+      if (open) {
+        loadMatriculas();
+        return;
+      }
+      resetCrearBajaForm();
+    },
+    [loadMatriculas, resetCrearBajaForm],
+  );
+
+  const handleCrearBaja = async () => {
+    if (crearBajaMatriculaId == null) {
+      toast.error("Seleccioná un alumno para generar la baja");
+      return;
+    }
+    const motivo = crearBajaMotivo.trim();
+    if (!motivo) {
+      toast.error("El motivo de la baja es obligatorio");
+      return;
+    }
+    if (!crearBajaConfirmacionDeuda) {
+      toast.error("Confirmá que revisaste el estado de deudas del alumno");
+      return;
+    }
+
+    setCrearBajaLoading(true);
+    try {
+      await vidaEscolar.solicitudesBaja.create({
+        matriculaId: crearBajaMatriculaId,
+        motivo,
+      });
+      toast.success("Solicitud de baja registrada correctamente");
+      resetCrearBajaForm();
+      setCrearBajaOpen(false);
+      await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
+    } catch (error) {
+      console.error(error);
+      toast.error("No se pudo registrar la solicitud de baja");
+    } finally {
+      setCrearBajaLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (
       (selectedTab === "aspirantes" || selectedTab === "historial") &&
@@ -361,10 +519,7 @@ export default function AlumnosIndexPage() {
       return;
     }
 
-    if (
-      (selectedTab === "bajas" || selectedTab === "avanzado") &&
-      !canManageBajas
-    ) {
+    if (selectedTab === "bajas" && !canManageBajas) {
       setSelectedTab("alumnos");
     }
   }, [canManageBajas, canViewAspirantesHistorial, selectedTab]);
@@ -496,10 +651,22 @@ export default function AlumnosIndexPage() {
     [solicitudesBaja],
   );
 
-  const ultimasBajas = useMemo(
-    () => historialBajas.slice(0, 5),
-    [historialBajas],
-  );
+  const filteredSolicitudesBaja = useMemo(() => {
+    if (estadoSolicitudesFiltro === "all") {
+      return solicitudesBaja;
+    }
+    return solicitudesBaja.filter(
+      (solicitud) => solicitud.estado === estadoSolicitudesFiltro,
+    );
+  }, [estadoSolicitudesFiltro, solicitudesBaja]);
+
+  const selectedMatriculaInfo = useMemo(() => {
+    if (!crearBajaMatriculaId) return null;
+    const option = matriculaOptions.find(
+      (item) => item.value === crearBajaMatriculaId,
+    );
+    return option ?? null;
+  }, [crearBajaMatriculaId, matriculaOptions]);
 
   const seccionOptions = useMemo(() => {
     if (secciones.length) {
@@ -590,7 +757,7 @@ export default function AlumnosIndexPage() {
                 setSelectedTab("alumnos");
                 return;
               }
-              if ((v === "bajas" || v === "avanzado") && !canManageBajas) {
+              if (v === "bajas" && !canManageBajas) {
                 setSelectedTab("alumnos");
                 return;
               }
@@ -606,12 +773,7 @@ export default function AlumnosIndexPage() {
                   <TabsTrigger value="historial">Historial</TabsTrigger>
                 </>
               )}
-              {canManageBajas && (
-                <>
-                  <TabsTrigger value="avanzado">Avanzado</TabsTrigger>
-                  <TabsTrigger value="bajas">Bajas</TabsTrigger>
-                </>
-              )}
+              {canManageBajas && <TabsTrigger value="bajas">Bajas</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="alumnos" className="space-y-4">
@@ -792,162 +954,6 @@ export default function AlumnosIndexPage() {
               </TabsContent>
             )}
 
-            {/* Avanzado */}
-            {canManageBajas && (
-              <TabsContent value="avanzado" className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Pendientes
-                      </CardTitle>
-                      <TimerReset className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {bajasPendientes.length}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Solicitudes en revisión
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Aprobadas
-                      </CardTitle>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {bajasAprobadas.length || historialBajas.length}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Incluye las del historial reciente
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Rechazadas
-                      </CardTitle>
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {bajasRechazadas.length}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Últimos rechazos registrados
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <CardTitle>Resumen ejecutivo</CardTitle>
-                      <CardDescription>
-                        Seguimiento ágil de las decisiones tomadas sobre bajas.
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        fetchSolicitudesBaja();
-                        fetchHistorialBajas();
-                      }}
-                    >
-                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-lg border p-4">
-                        <h4 className="text-sm font-semibold text-foreground">
-                          Tiempo de respuesta
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {bajasPendientes.length === 0
-                            ? "Todas las solicitudes están actualizadas"
-                            : "Hay solicitudes pendientes de revisión"}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border p-4">
-                        <h4 className="text-sm font-semibold text-foreground">
-                          Historial registrado
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {historialBajas.length}
-                          {" "}
-                          bajas confirmadas disponibles para consulta.
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">
-                        Últimas aprobaciones
-                      </h4>
-                      {ultimasBajas.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">
-                          Aún no registraste aprobaciones de baja.
-                        </p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {ultimasBajas.map((sol) => {
-                            const estado = sol.estado ?? DTO.EstadoSolicitudBaja.APROBADA;
-                            const nombre =
-                              [sol.alumnoApellido, sol.alumnoNombre]
-                                .filter(Boolean)
-                                .join(", ") ||
-                              "Alumno sin datos";
-                            return (
-                              <li
-                                key={sol.id}
-                                className="flex flex-col gap-1 rounded border border-border/60 bg-muted/40 p-3 text-sm"
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <span className="font-medium text-foreground">
-                                    {nombre}
-                                  </span>
-                                  <Badge variant={estadoVariant[estado]}>
-                                    {estadoLabels[estado]}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatDecisionDate(sol.fechaDecision)}
-                                </div>
-                                {sol.motivo && (
-                                  <p className="text-xs text-muted-foreground">
-                                    Motivo: {sol.motivo}
-                                  </p>
-                                )}
-                                <div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="px-0 text-xs"
-                                    onClick={() => handleDownloadSolicitud(sol)}
-                                  >
-                                    <Download className="mr-1 h-3 w-3" />
-                                    Descargar ficha
-                                  </Button>
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
-
             {/* Bajas */}
             {canManageBajas && (
               <TabsContent value="bajas" className="space-y-4">
@@ -959,13 +965,18 @@ export default function AlumnosIndexPage() {
                         Gestioná las bajas enviadas por alumnos y familias.
                       </CardDescription>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fetchSolicitudesBaja}
-                    >
-                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchSolicitudesBaja}
+                      >
+                        <TimerReset className="mr-2 h-4 w-4" /> Actualizar
+                      </Button>
+                      <Button size="sm" onClick={() => setCrearBajaOpen(true)}>
+                        <UserMinus className="mr-2 h-4 w-4" /> Nueva baja
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {loadingSolicitudesBaja ? (
@@ -974,114 +985,157 @@ export default function AlumnosIndexPage() {
                       <div className="text-sm text-red-600">
                         {errorSolicitudesBaja}
                       </div>
-                    ) : solicitudesBaja.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-muted-foreground">
-                        No hay solicitudes de baja registradas.
-                      </div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                          <thead>
-                            <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                              <th className="py-2 pr-4 font-medium">Alumno</th>
-                              <th className="py-2 pr-4 font-medium">Motivo</th>
-                              <th className="py-2 pr-4 font-medium">Estado</th>
-                              <th className="py-2 pr-4 font-medium">Decisión</th>
-                              <th className="py-2 pr-4 font-medium">Acciones</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {solicitudesBaja.map((sol) => {
-                              const estado =
-                                sol.estado ?? DTO.EstadoSolicitudBaja.PENDIENTE;
-                              const nombre =
-                                [sol.alumnoApellido, sol.alumnoNombre]
-                                  .filter(Boolean)
-                                  .join(", ") ||
-                                "Alumno sin datos";
-                              return (
-                                <tr
-                                  key={sol.id}
-                                  className="border-t border-border/60 align-top"
-                                >
-                                  <td className="py-3 pr-4">
-                                    <div className="font-medium text-foreground">
-                                      {nombre}
-                                    </div>
-                                    {sol.alumnoDni && (
-                                      <div className="text-xs text-muted-foreground">
-                                        DNI {sol.alumnoDni}
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-3 pr-4 max-w-xs">
-                                    <div className="text-sm text-muted-foreground whitespace-pre-line">
-                                      {sol.motivo || "—"}
-                                    </div>
-                                    {sol.motivoRechazo && (
-                                      <div className="mt-1 text-xs text-destructive">
-                                        Rechazo: {sol.motivoRechazo}
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-3 pr-4">
-                                    <Badge variant={estadoVariant[estado]}>
-                                      {estadoLabels[estado]}
-                                    </Badge>
-                                  </td>
-                                  <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                    <div>{formatDecisionDate(sol.fechaDecision)}</div>
-                                    {sol.decididoPorPersonaId && (
-                                      <div className="text-xs">
-                                        Decidido por #{sol.decididoPorPersonaId}
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-3 pr-4">
-                                    <div className="flex flex-wrap gap-2">
-                                      {estado ===
-                                        DTO.EstadoSolicitudBaja.PENDIENTE && (
-                                        <>
-                                          <Button
-                                            size="sm"
-                                            onClick={() =>
-                                              handleApproveSolicitud(sol)
-                                            }
-                                            disabled={
-                                              processingSolicitudId === sol.id
-                                            }
-                                          >
-                                            Aprobar
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            onClick={() =>
-                                              handleRejectSolicitud(sol)
-                                            }
-                                            disabled={
-                                              processingSolicitudId === sol.id
-                                            }
-                                          >
-                                            Rechazar
-                                          </Button>
-                                        </>
-                                      )}
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleDownloadSolicitud(sol)}
-                                      >
-                                        <Download className="mr-2 h-3 w-3" />
-                                        Descargar
-                                      </Button>
-                                    </div>
-                                  </td>
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="text-xs text-muted-foreground">
+                            Mostrando {filteredSolicitudesBaja.length} de {" "}
+                            {solicitudesBaja.length} solicitudes
+                          </div>
+                          <Select
+                            value={estadoSolicitudesFiltro}
+                            onValueChange={(value) =>
+                              setEstadoSolicitudesFiltro(
+                                value as "all" | DTO.EstadoSolicitudBaja,
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-full sm:w-[220px]">
+                              <SelectValue placeholder="Filtrar por estado" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">
+                                Todas ({solicitudesBaja.length})
+                              </SelectItem>
+                              <SelectItem value={DTO.EstadoSolicitudBaja.PENDIENTE}>
+                                Pendientes ({bajasPendientes.length})
+                              </SelectItem>
+                              <SelectItem value={DTO.EstadoSolicitudBaja.APROBADA}>
+                                Aprobadas ({bajasAprobadas.length})
+                              </SelectItem>
+                              <SelectItem value={DTO.EstadoSolicitudBaja.RECHAZADA}>
+                                Rechazadas ({bajasRechazadas.length})
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {solicitudesBaja.length === 0 ? (
+                          <div className="py-8 text-center text-sm text-muted-foreground">
+                            No hay solicitudes de baja registradas.
+                          </div>
+                        ) : filteredSolicitudesBaja.length === 0 ? (
+                          <div className="py-8 text-center text-sm text-muted-foreground">
+                            No hay solicitudes para el filtro seleccionado.
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                  <th className="py-2 pr-4 font-medium">Alumno</th>
+                                  <th className="py-2 pr-4 font-medium">Motivo</th>
+                                  <th className="py-2 pr-4 font-medium">Estado</th>
+                                  <th className="py-2 pr-4 font-medium">Decisión</th>
+                                  <th className="py-2 pr-4 font-medium">Acciones</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                              </thead>
+                              <tbody>
+                                {filteredSolicitudesBaja.map((sol) => {
+                                  const estado =
+                                    sol.estado ?? DTO.EstadoSolicitudBaja.PENDIENTE;
+                                  const nombre =
+                                    [sol.alumnoApellido, sol.alumnoNombre]
+                                      .filter(Boolean)
+                                      .join(", ") ||
+                                    "Alumno sin datos";
+                                  return (
+                                    <tr
+                                      key={sol.id}
+                                      className="border-t border-border/60 align-top"
+                                    >
+                                      <td className="py-3 pr-4">
+                                        <div className="font-medium text-foreground">
+                                          {nombre}
+                                        </div>
+                                        {sol.alumnoDni && (
+                                          <div className="text-xs text-muted-foreground">
+                                            DNI {sol.alumnoDni}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="py-3 pr-4 max-w-xs">
+                                        <div className="text-sm text-muted-foreground whitespace-pre-line">
+                                          {sol.motivo || "—"}
+                                        </div>
+                                        {sol.motivoRechazo && (
+                                          <div className="mt-1 text-xs text-destructive">
+                                            Rechazo: {sol.motivoRechazo}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="py-3 pr-4">
+                                        <Badge variant={estadoVariant[estado]}>
+                                          {estadoLabels[estado]}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                        <div>{formatDecisionDate(sol.fechaDecision)}</div>
+                                        {sol.decididoPorPersonaId && (
+                                          <div className="text-xs">
+                                            Decidido por #{sol.decididoPorPersonaId}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="py-3 pr-4">
+                                        <div className="flex flex-wrap gap-2">
+                                          {estado ===
+                                            DTO.EstadoSolicitudBaja.PENDIENTE && (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleApproveSolicitud(sol)
+                                                }
+                                                disabled={
+                                                  processingSolicitudId === sol.id
+                                                }
+                                              >
+                                                Aprobar
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={() =>
+                                                  handleRejectSolicitud(sol)
+                                                }
+                                                disabled={
+                                                  processingSolicitudId === sol.id
+                                                }
+                                              >
+                                                Rechazar
+                                              </Button>
+                                            </>
+                                          )}
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() =>
+                                              handleDownloadSolicitud(sol)
+                                            }
+                                          >
+                                            <Download className="mr-2 h-3 w-3" />
+                                            Descargar
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -1185,6 +1239,132 @@ export default function AlumnosIndexPage() {
               </TabsContent>
             )}
           </Tabs>
+        )}
+        {canManageBajas && (
+          <Dialog open={crearBajaOpen} onOpenChange={handleCrearBajaOpenChange}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Registrar nueva baja</DialogTitle>
+                <DialogDescription>
+                  Creá una solicitud manual para dar de baja a un alumno.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="crear-baja-alumno">Alumno</Label>
+                  {matriculasLoading ? (
+                    <LoadingState label="Cargando matrículas disponibles…" />
+                  ) : matriculasError ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-destructive">{matriculasError}</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => loadMatriculas()}
+                      >
+                        Reintentar
+                      </Button>
+                    </div>
+                  ) : matriculaOptions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No hay matrículas activas disponibles para registrar una baja manual.
+                    </p>
+                  ) : (
+                    <Select
+                      value={
+                        crearBajaMatriculaId != null
+                          ? String(crearBajaMatriculaId)
+                          : undefined
+                      }
+                      onValueChange={(value) =>
+                        setCrearBajaMatriculaId(Number(value))
+                      }
+                      disabled={crearBajaLoading}
+                    >
+                      <SelectTrigger id="crear-baja-alumno">
+                        <SelectValue placeholder="Seleccioná un alumno" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {matriculaOptions.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={String(option.value)}
+                          >
+                            <div className="flex flex-col">
+                              <span>{option.label}</span>
+                              {option.seccion && (
+                                <span className="text-xs text-muted-foreground">
+                                  {option.seccion}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {selectedMatriculaInfo && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline">#{crearBajaMatriculaId}</Badge>
+                      {selectedMatriculaInfo.seccion && (
+                        <span>{selectedMatriculaInfo.seccion}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="crear-baja-motivo">Motivo</Label>
+                  <Textarea
+                    id="crear-baja-motivo"
+                    placeholder="Ingresá el motivo de la baja"
+                    value={crearBajaMotivo}
+                    onChange={(event) => setCrearBajaMotivo(event.target.value)}
+                    rows={4}
+                    disabled={crearBajaLoading}
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
+                  <Checkbox
+                    id="crear-baja-deuda"
+                    checked={crearBajaConfirmacionDeuda}
+                    onCheckedChange={(checked) =>
+                      setCrearBajaConfirmacionDeuda(Boolean(checked))
+                    }
+                    disabled={crearBajaLoading}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="crear-baja-deuda" className="text-sm font-medium">
+                      Confirmación administrativa
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Confirmo que revisé el estado de deudas y autorizo la baja del alumno.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => handleCrearBajaOpenChange(false)}
+                  disabled={crearBajaLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleCrearBaja}
+                  disabled={
+                    crearBajaLoading ||
+                    matriculasLoading ||
+                    matriculaOptions.length === 0
+                  }
+                >
+                  {crearBajaLoading ? "Registrando…" : "Registrar baja"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 

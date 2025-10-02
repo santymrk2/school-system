@@ -20,6 +20,8 @@ import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaSeccion
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -70,6 +72,12 @@ public class ComunicadoService {
         var comunicado = repo.findByIdAndActivoTrue(comunicadoId)
                 .orElseThrow(NotFoundException::new);
 
+        Set<Long> destinatarios = resolveDestinatarios(comunicado);
+        if (!destinatarios.contains(persona.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "La persona autenticada no es destinataria de este comunicado");
+        }
+
         ComunicadoLectura lectura = lecturaRepository
                 .findTopByComunicadoIdAndPersonaIdAndActivoTrueOrderByFechaLecturaDesc(comunicadoId, persona.getId())
                 .orElseGet(() -> {
@@ -90,15 +98,33 @@ public class ComunicadoService {
                 .orElseThrow(NotFoundException::new);
 
         Set<Long> destinatarios = resolveDestinatarios(comunicado);
+        boolean esAdminLike = hasAnyRole(persona,
+                UserRole.ADMIN,
+                UserRole.DIRECTOR,
+                UserRole.SECRETARY,
+                UserRole.COORDINATOR);
+
+        if (!esAdminLike && !destinatarios.contains(persona.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "La persona autenticada no es destinataria de este comunicado");
+        }
+
         long totalDestinatarios = destinatarios.size();
 
-        long confirmadas = lecturaRepository.countByEstado(comunicadoId).stream()
-                .filter(c -> c.getEstado() == EstadoLecturaComunicado.CONFIRMADA)
-                .mapToLong(ComunicadoLecturaRepository.LecturaEstadoCount::getTotal)
-                .sum();
+        long confirmadas = 0;
+        long pendientes;
+        OffsetDateTime ultimaLectura = null;
 
-        long pendientes = Math.max(totalDestinatarios - confirmadas, 0);
-        OffsetDateTime ultimaLectura = lecturaRepository.findUltimaLectura(comunicadoId, EstadoLecturaComunicado.CONFIRMADA);
+        if (esAdminLike) {
+            confirmadas = lecturaRepository.countByEstado(comunicadoId).stream()
+                    .filter(c -> c.getEstado() == EstadoLecturaComunicado.CONFIRMADA)
+                    .mapToLong(ComunicadoLecturaRepository.LecturaEstadoCount::getTotal)
+                    .sum();
+
+            ultimaLectura = lecturaRepository.findUltimaLectura(comunicadoId, EstadoLecturaComunicado.CONFIRMADA);
+        }
+
+        pendientes = Math.max(totalDestinatarios - confirmadas, 0);
 
         var lecturaPersonal = lecturaRepository
                 .findTopByComunicadoIdAndPersonaIdAndActivoTrueOrderByFechaLecturaDesc(comunicadoId, persona.getId());
@@ -124,12 +150,22 @@ public class ComunicadoService {
     }
 
     private void validarRolLectura(Persona persona) {
-        Set<UserRole> roles = persona.getRoles();
-        boolean autorizado = roles != null && roles.stream()
-                .anyMatch(role -> role == UserRole.FAMILY || role == UserRole.STUDENT);
-        if (!autorizado) {
+        if (!hasAnyRole(persona, UserRole.FAMILY)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rol no autorizado para confirmar lecturas");
         }
+    }
+
+    private boolean hasAnyRole(Persona persona, UserRole... rolesPermitidos) {
+        if (persona == null || rolesPermitidos == null || rolesPermitidos.length == 0) {
+            return false;
+        }
+        Set<UserRole> rolesPersona = persona.getRoles();
+        if (rolesPersona == null || rolesPersona.isEmpty()) {
+            return false;
+        }
+        EnumSet<UserRole> permitidos = EnumSet.noneOf(UserRole.class);
+        Collections.addAll(permitidos, rolesPermitidos);
+        return rolesPersona.stream().anyMatch(permitidos::contains);
     }
 
     private Set<Long> resolveDestinatarios(Comunicado comunicado) {

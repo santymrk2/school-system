@@ -40,7 +40,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   UserRole,
+  type ComunicadoDTO,
   type ComunicadoLecturaResumenDTO,
+  type SeccionDTO,
 } from "@/types/api-generated";
 
 const alcanceFilterOptions = [
@@ -52,25 +54,8 @@ const alcanceFilterOptions = [
 
 type AlcanceFilter = (typeof alcanceFilterOptions)[number]["value"];
 
-type ComunicadoDTO = {
-  id: number;
-  alcance: "INSTITUCIONAL" | "POR_NIVEL" | "POR_SECCION";
-  seccionId?: number | null;
-  nivel?: "INICIAL" | "PRIMARIO" | null;
-  titulo: string;
-  cuerpo: string;
-  publicado: boolean; // lo ignoramos visualmente
-  fechaCreacion?: string | null;
-  fechaPublicacion?: string | null;
-};
-
-type SeccionLite = {
-  id: number;
+type SeccionLite = Pick<SeccionDTO, "id" | "gradoSala" | "division" | "turno" | "nivel"> & {
   nombre?: string | null;
-  gradoSala?: string | null;
-  division?: string | null;
-  turno?: string | null;
-  nivel?: string | null; // "INICIAL" | "PRIMARIO"
 };
 
 function nivelEnumFromSeccion(s: any): "INICIAL" | "PRIMARIO" {
@@ -111,7 +96,7 @@ function fechaVisible(c: ComunicadoDTO): string | null {
   return c.fechaCreacion ?? c.fechaPublicacion ?? c.fechaProgPublicacion ?? null;
 }
 
-function preview(text: string, max = 220) {
+function preview(text: string | null | undefined, max = 220) {
   const clean = (text ?? "").replace(/\s+/g, " ").trim();
   return clean.length <= max ? clean : clean.slice(0, max) + "…";
 }
@@ -128,7 +113,7 @@ export default function ComunicadosPage() {
     role === UserRole.TEACHER || role === UserRole.ALTERNATE;
   const isAdminLike = isDirector || isAdmin || isSecret || isCoordinator;
   const canCreate = isAdminLike || isTeacher;
-  const canConfirmLectura = type === "family" || type === "student";
+  const canConfirmLectura = type === "family";
   const shouldLoadResumen = isAdminLike || canConfirmLectura;
 
   const { periodoEscolarId } = useActivePeriod();
@@ -557,7 +542,7 @@ function FeedList({
 }) {
   if (!items.length) {
     return (
-    <Card>
+      <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
           No hay comunicados para mostrar.
         </CardContent>
@@ -580,20 +565,20 @@ function FeedList({
                   <CardTitle className="text-lg">{c.titulo}</CardTitle>
 
                   {/* ⚠️ No usar CardDescription para divs */}
-                <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
-                  <TipoBadge c={c} seccionNameById={seccionNameById} />
-                  {fecha && (
-                    <span className="whitespace-nowrap">
-                      Publicado: {formatDateTime(fecha)}
-                    </span>
-                  )}
+                  <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+                    <TipoBadge c={c} seccionNameById={seccionNameById} />
+                    {fecha && (
+                      <span className="whitespace-nowrap">
+                        Publicado: {formatDateTime(fecha)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => onOpen(c)}>
-                  <Eye className="h-4 w-4 mr-1" />
-                  Ver
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => onOpen(c)}>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Ver
                 </Button>
 
                 {canDelete(c) && (

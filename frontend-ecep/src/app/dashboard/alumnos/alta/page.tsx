@@ -107,7 +107,7 @@ const emptyAlumno: AlumnoForm = {
 type AspiranteComplementoForm = Pick<
   PostulacionFormData,
   |
-    | "conectividadInternet"
+    "conectividadInternet"
     | "dispositivosDisponibles"
     | "idiomasHabladosHogar"
     | "enfermedadesAlergias"

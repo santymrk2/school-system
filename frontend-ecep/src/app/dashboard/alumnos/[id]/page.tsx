@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Step3 as HogarForm } from "@/app/postulacion/Step3";
+import { Step4 as SaludForm } from "@/app/postulacion/Step4";
+import type { PostulacionFormData } from "@/app/postulacion/types";
 import {
   Select,
   SelectContent,
@@ -96,6 +99,34 @@ type CredentialsFormState = {
   password: string;
   confirmPassword: string;
   roles: UserRole[];
+};
+
+type AspiranteComplementoForm = Pick<
+  PostulacionFormData,
+  |
+    "conectividadInternet"
+    | "dispositivosDisponibles"
+    | "idiomasHabladosHogar"
+    | "enfermedadesAlergias"
+    | "medicacionHabitual"
+    | "limitacionesFisicasNeurologicas"
+    | "tratamientosTerapeuticos"
+    | "usoAyudasMovilidad"
+    | "coberturaMedica"
+    | "observacionesAdicionalesSalud"
+>;
+
+const emptyAspiranteComplemento: AspiranteComplementoForm = {
+  conectividadInternet: "",
+  dispositivosDisponibles: "",
+  idiomasHabladosHogar: "",
+  enfermedadesAlergias: "",
+  medicacionHabitual: "",
+  limitacionesFisicasNeurologicas: "",
+  tratamientosTerapeuticos: "",
+  usoAyudasMovilidad: false,
+  coberturaMedica: "",
+  observacionesAdicionalesSalud: "",
 };
 
 export default function AlumnoPerfilPage() {
@@ -230,15 +261,21 @@ export default function AlumnoPerfilPage() {
     dni: "",
     fechaNacimiento: "",
     genero: DEFAULT_GENERO_VALUE,
+    estadoCivil: "",
     nacionalidad: "",
     domicilio: "",
+    telefono: "",
     celular: "",
     email: "",
   });
   const [alumnoDraft, setAlumnoDraft] = useState({
     fechaInscripcion: "",
     observacionesGenerales: "",
+    motivoRechazoBaja: "",
   });
+  const [aspiranteDraft, setAspiranteDraft] = useState<AspiranteComplementoForm>(
+    emptyAspiranteComplemento,
+  );
   const [selectedSeccionId, setSelectedSeccionId] = useState<string>("");
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
   const [credentialsForm, setCredentialsForm] = useState<CredentialsFormState>({
@@ -515,14 +552,29 @@ export default function AlumnoPerfilPage() {
       dni: formatDni(persona?.dni ?? ""),
       fechaNacimiento: persona?.fechaNacimiento ?? "",
       genero: normalizeGenero(persona?.genero) || DEFAULT_GENERO_VALUE,
+      estadoCivil: (persona as any)?.estadoCivil ?? "",
       nacionalidad: persona?.nacionalidad ?? "",
       domicilio: persona?.domicilio ?? "",
+      telefono: (persona as any)?.telefono ?? "",
       celular: persona?.celular ?? "",
       email: persona?.email ?? "",
     });
     setAlumnoDraft({
       fechaInscripcion: alumno?.fechaInscripcion ?? "",
       observacionesGenerales: alumno?.observacionesGenerales ?? "",
+      motivoRechazoBaja: alumno?.motivoRechazoBaja ?? "",
+    });
+    setAspiranteDraft({
+      conectividadInternet: alumno?.conectividadInternet ?? "",
+      dispositivosDisponibles: alumno?.dispositivosDisponibles ?? "",
+      idiomasHabladosHogar: alumno?.idiomasHabladosHogar ?? "",
+      enfermedadesAlergias: alumno?.enfermedadesAlergias ?? "",
+      medicacionHabitual: alumno?.medicacionHabitual ?? "",
+      limitacionesFisicasNeurologicas: alumno?.limitacionesFisicas ?? "",
+      tratamientosTerapeuticos: alumno?.tratamientosTerapeuticos ?? "",
+      usoAyudasMovilidad: Boolean(alumno?.usoAyudasMovilidad ?? false),
+      coberturaMedica: alumno?.coberturaMedica ?? "",
+      observacionesAdicionalesSalud: alumno?.observacionesSalud ?? "",
     });
     const currentSectionId = seccionActual?.seccionId
       ? String(seccionActual.seccionId)
@@ -543,6 +595,28 @@ export default function AlumnoPerfilPage() {
     if (sectionOptions.some((option) => option.id === selectedSeccionId)) return;
     setSelectedSeccionId("");
   }, [editOpen, sectionOptions, selectedSeccionId]);
+
+  const postulacionAdapter = useMemo(() => {
+    return {
+      ...aspiranteDraft,
+      familiares: [],
+    } as PostulacionFormData;
+  }, [aspiranteDraft]);
+
+  const handleAspiranteFieldChange = useCallback(
+    (field: string, value: any) => {
+      setAspiranteDraft((prev) => {
+        if (field === "usoAyudasMovilidad") {
+          return { ...prev, usoAyudasMovilidad: Boolean(value) };
+        }
+        return {
+          ...prev,
+          [field]: value ?? "",
+        } as AspiranteComplementoForm;
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!addFamilyOpen) return;
@@ -666,6 +740,21 @@ export default function AlumnoPerfilPage() {
       return;
     }
 
+    if (!aspiranteDraft.conectividadInternet?.trim()) {
+      toast.error("Completá la conectividad del hogar");
+      return;
+    }
+
+    if (!aspiranteDraft.dispositivosDisponibles?.trim()) {
+      toast.error("Indicá los dispositivos disponibles");
+      return;
+    }
+
+    if (!aspiranteDraft.idiomasHabladosHogar?.trim()) {
+      toast.error("Completá los idiomas hablados en el hogar");
+      return;
+    }
+
     setSavingProfile(true);
     const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -676,9 +765,11 @@ export default function AlumnoPerfilPage() {
         dni: dniValue,
         fechaNacimiento: personaDraft.fechaNacimiento || undefined,
         genero: personaDraft.genero || undefined,
+        estadoCivil: personaDraft.estadoCivil.trim() || undefined,
         nacionalidad: personaDraft.nacionalidad || undefined,
         domicilio: personaDraft.domicilio || undefined,
-        celular: personaDraft.celular || undefined,
+        telefono: personaDraft.telefono.trim() || undefined,
+        celular: personaDraft.celular.trim() || undefined,
         email: personaDraft.email || undefined,
       };
       const personaUpdatePayload: PersonaUpdateDTO = {
@@ -748,6 +839,27 @@ export default function AlumnoPerfilPage() {
           fechaInscripcion: alumnoDraft.fechaInscripcion || undefined,
           observacionesGenerales:
             alumnoDraft.observacionesGenerales?.trim() || undefined,
+          motivoRechazoBaja:
+            alumnoDraft.motivoRechazoBaja?.trim() || undefined,
+          conectividadInternet:
+            aspiranteDraft.conectividadInternet?.trim() || undefined,
+          dispositivosDisponibles:
+            aspiranteDraft.dispositivosDisponibles?.trim() || undefined,
+          idiomasHabladosHogar:
+            aspiranteDraft.idiomasHabladosHogar?.trim() || undefined,
+          enfermedadesAlergias:
+            aspiranteDraft.enfermedadesAlergias?.trim() || undefined,
+          medicacionHabitual:
+            aspiranteDraft.medicacionHabitual?.trim() || undefined,
+          limitacionesFisicas:
+            aspiranteDraft.limitacionesFisicasNeurologicas?.trim() || undefined,
+          tratamientosTerapeuticos:
+            aspiranteDraft.tratamientosTerapeuticos?.trim() || undefined,
+          usoAyudasMovilidad:
+            aspiranteDraft.usoAyudasMovilidad ?? undefined,
+          coberturaMedica: aspiranteDraft.coberturaMedica?.trim() || undefined,
+          observacionesSalud:
+            aspiranteDraft.observacionesAdicionalesSalud?.trim() || undefined,
         });
       }
 
@@ -823,14 +935,47 @@ export default function AlumnoPerfilPage() {
           dni: personaBasePayload.dni,
           fechaNacimiento: personaDraft.fechaNacimiento || undefined,
           genero: personaDraft.genero || undefined,
+          estadoCivil: personaBasePayload.estadoCivil,
           nacionalidad: personaBasePayload.nacionalidad,
           domicilio: personaBasePayload.domicilio,
+          telefono: personaBasePayload.telefono,
           celular: personaBasePayload.celular,
           email: personaBasePayload.email,
         } as PersonaDTO;
         return next;
       });
-      setAlumno((prev) => (prev ? { ...prev, personaId } : prev));
+      setAlumno((prev) =>
+        prev
+          ? {
+              ...prev,
+              personaId,
+              fechaInscripcion: alumnoDraft.fechaInscripcion || undefined,
+              observacionesGenerales:
+                alumnoDraft.observacionesGenerales?.trim() || undefined,
+              motivoRechazoBaja:
+                alumnoDraft.motivoRechazoBaja?.trim() || undefined,
+              conectividadInternet:
+                aspiranteDraft.conectividadInternet?.trim() || undefined,
+              dispositivosDisponibles:
+                aspiranteDraft.dispositivosDisponibles?.trim() || undefined,
+              idiomasHabladosHogar:
+                aspiranteDraft.idiomasHabladosHogar?.trim() || undefined,
+              enfermedadesAlergias:
+                aspiranteDraft.enfermedadesAlergias?.trim() || undefined,
+              medicacionHabitual:
+                aspiranteDraft.medicacionHabitual?.trim() || undefined,
+              limitacionesFisicas:
+                aspiranteDraft.limitacionesFisicasNeurologicas?.trim() || undefined,
+              tratamientosTerapeuticos:
+                aspiranteDraft.tratamientosTerapeuticos?.trim() || undefined,
+              usoAyudasMovilidad: aspiranteDraft.usoAyudasMovilidad ?? undefined,
+              coberturaMedica:
+                aspiranteDraft.coberturaMedica?.trim() || undefined,
+              observacionesSalud:
+                aspiranteDraft.observacionesAdicionalesSalud?.trim() || undefined,
+            }
+          : prev,
+      );
 
       toast.success("Perfil actualizado correctamente");
       setEditOpen(false);
@@ -1173,6 +1318,18 @@ export default function AlumnoPerfilPage() {
                         </Select>
                       </div>
                       <div className="space-y-2">
+                        <Label>Estado civil</Label>
+                        <Input
+                          value={personaDraft.estadoCivil}
+                          onChange={(e) =>
+                            setPersonaDraft((prev) => ({
+                              ...prev,
+                              estadoCivil: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Label>Nacionalidad</Label>
                         <Input
                           value={personaDraft.nacionalidad}
@@ -1180,6 +1337,18 @@ export default function AlumnoPerfilPage() {
                             setPersonaDraft((prev) => ({
                               ...prev,
                               nacionalidad: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Teléfono</Label>
+                        <Input
+                          value={personaDraft.telefono}
+                          onChange={(e) =>
+                            setPersonaDraft((prev) => ({
+                              ...prev,
+                              telefono: e.target.value,
                             }))
                           }
                         />
@@ -1289,7 +1458,33 @@ export default function AlumnoPerfilPage() {
                         }
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Motivo de rechazo o baja</Label>
+                      <Textarea
+                        rows={3}
+                        value={alumnoDraft.motivoRechazoBaja}
+                        onChange={(e) =>
+                          setAlumnoDraft((prev) => ({
+                            ...prev,
+                            motivoRechazoBaja: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
+                  <Separator />
+
+                  <HogarForm
+                    formData={postulacionAdapter}
+                    handleInputChange={handleAspiranteFieldChange}
+                  />
+
+                  <Separator />
+
+                  <SaludForm
+                    formData={postulacionAdapter}
+                    handleInputChange={handleAspiranteFieldChange}
+                  />
                 </div>
                 <DialogFooter>
                   <Button
@@ -1351,6 +1546,12 @@ export default function AlumnoPerfilPage() {
                       </span>
                     </div>
                     <div>
+                      <span className="text-muted-foreground">Estado civil: </span>
+                      <span className="font-medium">
+                        {(persona as any)?.estadoCivil ?? "—"}
+                      </span>
+                    </div>
+                    <div>
                       <span className="text-muted-foreground">
                         Nacionalidad:{" "}
                       </span>
@@ -1361,6 +1562,12 @@ export default function AlumnoPerfilPage() {
                     <div>
                       <span className="text-muted-foreground">Email: </span>
                       <span className="font-medium">{persona?.email ?? "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Teléfono: </span>
+                      <span className="font-medium">
+                        {(persona as any)?.telefono ?? "—"}
+                      </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Celular: </span>
@@ -1559,6 +1766,99 @@ export default function AlumnoPerfilPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Condiciones del hogar</CardTitle>
+                  <CardDescription>
+                    Información familiar registrada durante la inscripción.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">
+                      Conectividad a internet:{" "}
+                    </span>
+                    <span className="font-medium">
+                      {alumno?.conectividadInternet?.trim() || "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Dispositivos disponibles</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.dispositivosDisponibles?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Idiomas en el hogar</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.idiomasHabladosHogar?.trim() || "—"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Información de salud</CardTitle>
+                  <CardDescription>
+                    Antecedentes y observaciones médicas relevantes.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Enfermedades o alergias</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.enfermedadesAlergias?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Medicación habitual</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.medicacionHabitual?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">
+                      Limitaciones físicas o neurológicas
+                    </p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.limitacionesFisicas?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Tratamientos terapéuticos</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.tratamientosTerapeuticos?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      Uso de ayudas de movilidad:{" "}
+                    </span>
+                    <span className="font-medium">
+                      {alumno?.usoAyudasMovilidad === null ||
+                      alumno?.usoAyudasMovilidad === undefined
+                        ? "—"
+                        : alumno.usoAyudasMovilidad
+                          ? "Sí"
+                          : "No"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Cobertura médica</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.coberturaMedica?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Observaciones de salud</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.observacionesSalud?.trim() || "—"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Estado académico (matrícula + sección actual) */}
@@ -1570,6 +1870,29 @@ export default function AlumnoPerfilPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">
+                      Fecha de inscripción:{" "}
+                    </span>
+                    <span className="font-medium">
+                      {alumno?.fechaInscripcion ?? "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Observaciones generales</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.observacionesGenerales?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Motivo de rechazo o baja</p>
+                    <p className="font-medium whitespace-pre-line">
+                      {alumno?.motivoRechazoBaja?.trim() || "—"}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="rounded-lg border bg-muted/40 p-4 text-sm">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>

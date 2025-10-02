@@ -79,6 +79,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { logger } from "@/lib/logger";
+import { cn } from "@/lib/utils";
 
 const personalLogger = logger.child({ module: "dashboard-personal" });
 import { toast } from "sonner";
@@ -349,6 +350,7 @@ type AssignmentManagerProps = {
   secciones: EmpleadoSeccionView[];
   materias: EmpleadoMateriaView[];
   disabled?: boolean;
+  className?: string;
 };
 
 type TitularInfo = {
@@ -2142,6 +2144,7 @@ export default function PersonalPage() {
     secciones,
     materias,
     disabled,
+    className,
   }: AssignmentManagerProps) => {
     const [selectedSecciones, setSelectedSecciones] = useState<number[]>(() =>
       secciones.map((seccion) => seccion.seccionId),
@@ -2274,7 +2277,12 @@ export default function PersonalPage() {
 
     return (
     <>
-        <div className="rounded-lg border bg-muted/40 p-4">
+        <div
+          className={cn(
+            "flex h-full flex-col rounded-lg border bg-muted/40 p-4",
+            className,
+          )}
+        >
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Users className="h-4 w-4 text-muted-foreground" />
             Gestión de asignaciones
@@ -4336,9 +4344,9 @@ export default function PersonalPage() {
                         )}
                       </CardHeader>
                       {isExpanded ? (
-                        <CardContent className="space-y-4 text-sm">
-                          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            <div className="rounded-lg border bg-muted/40 p-4">
+                        <CardContent className="text-sm">
+                          <div className="grid gap-4 lg:grid-cols-6 2xl:grid-cols-12">
+                            <div className="rounded-lg border bg-muted/40 p-4 lg:col-span-3 2xl:col-span-3">
                               <div className="flex items-center gap-2 text-sm font-semibold">
                                 <Briefcase className="h-4 w-4 text-muted-foreground" />
                                 Información laboral
@@ -4370,7 +4378,7 @@ export default function PersonalPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border bg-muted/40 p-4">
+                            <div className="rounded-lg border bg-muted/40 p-4 lg:col-span-3 2xl:col-span-3">
                               <div className="flex items-center gap-2 text-sm font-semibold">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 Datos personales
@@ -4436,7 +4444,7 @@ export default function PersonalPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border bg-muted/40 p-4">
+                            <div className="rounded-lg border bg-muted/40 p-4 lg:col-span-3 2xl:col-span-3">
                               <div className="flex items-center gap-2 text-sm font-semibold">
                                 <Phone className="h-4 w-4 text-muted-foreground" />
                                 Información de contacto
@@ -4460,7 +4468,7 @@ export default function PersonalPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border bg-muted/40 p-4">
+                            <div className="rounded-lg border bg-muted/40 p-4 lg:col-span-3 2xl:col-span-3">
                               <div className="flex items-center gap-2 text-sm font-semibold">
                                 <Clock className="h-4 w-4 text-muted-foreground" />
                                 Licencias registradas
@@ -4510,19 +4518,20 @@ export default function PersonalPage() {
                                 )}
                               </div>
                             </div>
-                            <AssignmentManager
-                              empleadoId={
-                                typeof item.empleado.id === "number"
-                                  ? item.empleado.id
-                                  : null
-                              }
-                              secciones={item.secciones}
-                              materias={item.materias}
-                              disabled={dataLoading || !canEditThis}
-                            />
-                          </div>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="rounded-lg border bg-muted/40 p-4">
+                            <div className="lg:col-span-6 2xl:col-span-6">
+                              <AssignmentManager
+                                empleadoId={
+                                  typeof item.empleado.id === "number"
+                                    ? item.empleado.id
+                                    : null
+                                }
+                                secciones={item.secciones}
+                                materias={item.materias}
+                                disabled={dataLoading || !canEditThis}
+                                className="h-full"
+                              />
+                            </div>
+                            <div className="rounded-lg border bg-muted/40 p-4 lg:col-span-3 2xl:col-span-4">
                               <div className="flex items-center gap-2 text-sm font-semibold">
                                 <GraduationCap className="h-4 w-4 text-muted-foreground" />
                                 Formación académica
@@ -4561,7 +4570,7 @@ export default function PersonalPage() {
                             </div>
                             {(item.empleado.antecedentesLaborales ||
                               item.empleado.observacionesGenerales) && (
-                              <div className="rounded-lg border bg-muted/40 p-4">
+                              <div className="rounded-lg border bg-muted/40 p-4 lg:col-span-3 2xl:col-span-4">
                                 <div className="flex items-center gap-2 text-sm font-semibold">
                                   <FileText className="h-4 w-4 text-muted-foreground" />
                                   Notas y antecedentes
@@ -4590,9 +4599,7 @@ export default function PersonalPage() {
                                 </div>
                               </div>
                             )}
-                          </div>
-                          <div className="rounded-lg border bg-muted/40 p-4">
-                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="flex h-full flex-col justify-between gap-4 rounded-lg border bg-muted/40 p-4 lg:col-span-6 2xl:col-span-4">
                               <div className="space-y-1 text-sm">
                                 <div className="text-sm font-semibold text-foreground">
                                   Acceso al sistema

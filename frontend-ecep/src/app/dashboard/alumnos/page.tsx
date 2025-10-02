@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { useRouter } from "next/navigation";
-import type * as DTO from "@/types/api-generated";
+import * as DTO from "@/types/api-generated";
 import { UserRole } from "@/types/api-generated";
 import {
   Card,

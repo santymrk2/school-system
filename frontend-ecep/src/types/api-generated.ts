@@ -180,6 +180,16 @@ export interface AlumnoDTO {
   fechaInscripcion?: ISODate;
   observacionesGenerales?: string;
   motivoRechazoBaja?: string;
+  conectividadInternet?: string;
+  dispositivosDisponibles?: string;
+  idiomasHabladosHogar?: string;
+  enfermedadesAlergias?: string;
+  medicacionHabitual?: string;
+  limitacionesFisicas?: string;
+  tratamientosTerapeuticos?: string;
+  usoAyudasMovilidad?: boolean;
+  coberturaMedica?: string;
+  observacionesSalud?: string;
   nombre?: string;
   apellido?: string;
   dni?: string;

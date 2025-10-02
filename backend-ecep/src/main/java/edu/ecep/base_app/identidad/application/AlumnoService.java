@@ -1,5 +1,7 @@
 package edu.ecep.base_app.identidad.application;
 
+import edu.ecep.base_app.admisiones.domain.Aspirante;
+import edu.ecep.base_app.admisiones.infrastructure.persistence.AspiranteRepository;
 import edu.ecep.base_app.gestionacademica.domain.Seccion;
 import edu.ecep.base_app.identidad.domain.Alumno;
 import edu.ecep.base_app.identidad.infrastructure.mapper.AlumnoMapper;
@@ -38,6 +40,7 @@ public class AlumnoService {
     private final MatriculaRepository matriculaRepository;
     private final MatriculaSeccionHistorialRepository matriculaSeccionHistorialRepository;
     private final AlumnoFamiliarRepository alumnoFamiliarRepository;
+    private final AspiranteRepository aspiranteRepository;
     private final AlumnoMapper alumnoMapper;
     private final PersonaRepository personaRepository;
 
@@ -102,6 +105,8 @@ public class AlumnoService {
         ensurePersonaHasRole(persona, UserRole.STUDENT);
         personaRepository.save(persona);
 
+        upsertAspiranteForPersona(persona, dto);
+
         return alumnoRepository.save(entity).getId();
     }
 
@@ -135,6 +140,7 @@ public class AlumnoService {
         if (existing.getPersona() != null) {
             ensurePersonaHasRole(existing.getPersona(), UserRole.STUDENT);
             personaRepository.save(existing.getPersona());
+            upsertAspiranteForPersona(existing.getPersona(), dto);
         }
         alumnoRepository.save(existing);
     }
@@ -199,6 +205,30 @@ public class AlumnoService {
             return w;
         }
         return null;
+    }
+
+    private void upsertAspiranteForPersona(Persona persona, AlumnoDTO dto) {
+        if (persona == null || dto == null) {
+            return;
+        }
+        Aspirante aspirante = aspiranteRepository.findByPersonaId(persona.getId())
+                .orElseGet(() -> {
+                    Aspirante nuevo = new Aspirante();
+                    nuevo.setId(persona.getId());
+                    nuevo.setPersona(persona);
+                    return nuevo;
+                });
+        aspirante.setConectividadInternet(dto.getConectividadInternet());
+        aspirante.setDispositivosDisponibles(dto.getDispositivosDisponibles());
+        aspirante.setIdiomasHabladosHogar(dto.getIdiomasHabladosHogar());
+        aspirante.setEnfermedadesAlergias(dto.getEnfermedadesAlergias());
+        aspirante.setMedicacionHabitual(dto.getMedicacionHabitual());
+        aspirante.setLimitacionesFisicas(dto.getLimitacionesFisicas());
+        aspirante.setTratamientosTerapeuticos(dto.getTratamientosTerapeuticos());
+        aspirante.setUsoAyudasMovilidad(dto.getUsoAyudasMovilidad());
+        aspirante.setCoberturaMedica(dto.getCoberturaMedica());
+        aspirante.setObservacionesSalud(dto.getObservacionesSalud());
+        aspiranteRepository.save(aspirante);
     }
 
     private void ensurePersonaHasRole(Persona persona, UserRole role) {

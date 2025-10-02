@@ -97,6 +97,7 @@ export default function FamiliarPerfilPage() {
     observaciones: "",
   });
   const [ocupacion, setOcupacion] = useState<string>("");
+  const [lugarTrabajo, setLugarTrabajo] = useState<string>("");
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -152,6 +153,7 @@ export default function FamiliarPerfilPage() {
         if (!alive) return;
         setPersona(personaData);
         setOcupacion((familiarData as any)?.ocupacion ?? "");
+        setLugarTrabajo((familiarData as any)?.lugarTrabajo ?? "");
 
         let linksData: AlumnoFamiliarDTO[] = [];
         try {
@@ -221,6 +223,7 @@ export default function FamiliarPerfilPage() {
       observaciones: (persona as any)?.observacionesGenerales ?? "",
     });
     setOcupacion((familiar as any)?.ocupacion ?? "");
+    setLugarTrabajo((familiar as any)?.lugarTrabajo ?? "");
   }, [editOpen, persona, familiar]);
 
   const handleSaveProfile = async () => {
@@ -256,6 +259,7 @@ export default function FamiliarPerfilPage() {
         id: familiar.id,
         personaId: persona.id,
         ocupacion: ocupacion.trim() || undefined,
+        lugarTrabajo: lugarTrabajo.trim() || undefined,
       } as any);
 
       toast.success("Datos del familiar actualizados");
@@ -452,6 +456,13 @@ export default function FamiliarPerfilPage() {
                     <Input value={ocupacion} onChange={(e) => setOcupacion(e.target.value)} />
                   </div>
                   <div className="md:col-span-2 space-y-2">
+                    <Label>Lugar de trabajo</Label>
+                    <Input
+                      value={lugarTrabajo}
+                      onChange={(e) => setLugarTrabajo(e.target.value)}
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
                     <Label>Observaciones</Label>
                     <Textarea
                       rows={3}
@@ -536,6 +547,10 @@ export default function FamiliarPerfilPage() {
                 <div>
                   <span className="text-muted-foreground">Ocupación: </span>
                   <span className="font-medium">{ocupacion || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Lugar de trabajo: </span>
+                  <span className="font-medium">{lugarTrabajo || "—"}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Alumno(s) vinculados: </span>

@@ -21,6 +21,7 @@ public class Familiar {
     Persona persona;
 
     String ocupacion;
+    String lugarTrabajo;
 
     @OneToMany(mappedBy="familiar") Set<AlumnoFamiliar> familiarAlumnoFamiliares = new HashSet<>();
     @OneToMany(mappedBy="familiar") Set<AspiranteFamiliar> familiarAspiranteFamiliares = new HashSet<>();

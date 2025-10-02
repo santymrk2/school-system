@@ -333,6 +333,60 @@ export function Step2({
                 />
               </div>
 
+              {/* Ocupación */}
+              <div className="md:col-span-2">
+                <Label htmlFor={`familiar-ocupacion-${i}`}>Ocupación</Label>
+                <Input
+                  id={`familiar-ocupacion-${i}`}
+                  value={f.familiar?.ocupacion ?? ""}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "familiares",
+                      familiares.map((x, j) =>
+                        j === i
+                          ? {
+                              ...x,
+                              familiar: {
+                                ...x.familiar!,
+                                ocupacion: e.target.value,
+                              },
+                            }
+                          : x,
+                      ),
+                    )
+                  }
+                  placeholder="Profesión u ocupación"
+                />
+              </div>
+
+              {/* Lugar de trabajo */}
+              <div className="md:col-span-2">
+                <Label htmlFor={`familiar-lugar-trabajo-${i}`}>
+                  Lugar de trabajo
+                </Label>
+                <Input
+                  id={`familiar-lugar-trabajo-${i}`}
+                  value={f.familiar?.lugarTrabajo ?? ""}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "familiares",
+                      familiares.map((x, j) =>
+                        j === i
+                          ? {
+                              ...x,
+                              familiar: {
+                                ...x.familiar!,
+                                lugarTrabajo: e.target.value,
+                              },
+                            }
+                          : x,
+                      ),
+                    )
+                  }
+                  placeholder="Empresa o institución"
+                />
+              </div>
+
               {/* Domicilio */}
               <div>
                 <Label htmlFor={`familiar-domicilio-${i}`}>Domicilio</Label>

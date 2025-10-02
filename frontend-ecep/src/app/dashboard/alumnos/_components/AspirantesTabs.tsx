@@ -48,6 +48,18 @@ const ESTADOS = {
   RECHAZADA: "RECHAZADA",
 } as const;
 
+const ESTADO_FILTER_ALL = "ALL";
+
+const ESTADO_FILTER_OPTIONS = [
+  { value: ESTADO_FILTER_ALL, label: "Todos los estados" },
+  { value: ESTADOS.PENDIENTE, label: "Pendientes" },
+  { value: ESTADOS.PROPUESTA, label: "Propuestas enviadas" },
+  { value: ESTADOS.PROGRAMADA, label: "Entrevistas programadas" },
+  { value: ESTADOS.ENTREVISTA_REALIZADA, label: "Entrevistas realizadas" },
+  { value: ESTADOS.ACEPTADA, label: "Aceptadas" },
+  { value: ESTADOS.RECHAZADA, label: "Rechazadas" },
+] as const;
+
 const formatCurso = (curso?: DTO.Curso | string | null) => {
   if (!curso && curso !== 0) return "—";
   const base: Record<string, string> = {
@@ -289,12 +301,13 @@ export default function AspirantesTab({ searchTerm }: Props) {
   const [altaOpen, setAltaOpen] = useState(false);
   const [altaSolicitud, setAltaSolicitud] = useState<SolicitudAdmisionItem | null>(null);
   const [page, setPage] = useState(0);
+  const [estadoFilter, setEstadoFilter] = useState<string>(ESTADO_FILTER_ALL);
   const [altasRegistradas, setAltasRegistradas] = useState<Set<number>>(new Set());
   const pageSize = 6;
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm]);
+  }, [searchTerm, estadoFilter]);
 
   useEffect(() => {
     setAltasRegistradas((prev) => {
@@ -308,17 +321,28 @@ export default function AspirantesTab({ searchTerm }: Props) {
     });
   }, [solicitudes]);
 
+  const filteredSolicitudes = useMemo(() => {
+    if (estadoFilter === ESTADO_FILTER_ALL) {
+      return solicitudes;
+    }
+    return solicitudes.filter(
+      (item) => normalizeEstado(item.estado) === estadoFilter,
+    );
+  }, [estadoFilter, solicitudes]);
+
+  const filteredLength = filteredSolicitudes.length;
+
   useEffect(() => {
-    if (page * pageSize >= solicitudes.length && page > 0) {
-      const nextPage = Math.max(0, Math.ceil(solicitudes.length / pageSize) - 1);
+    if (page * pageSize >= filteredLength && page > 0) {
+      const nextPage = Math.max(0, Math.ceil(filteredLength / pageSize) - 1);
       setPage(nextPage);
     }
-  }, [page, solicitudes.length, pageSize]);
+  }, [page, filteredLength, pageSize]);
 
-  const totalPages = Math.ceil(solicitudes.length / pageSize);
+  const totalPages = Math.ceil(filteredLength / pageSize);
   const startIndex = totalPages === 0 ? 0 : page * pageSize;
-  const endIndex = Math.min(solicitudes.length, startIndex + pageSize);
-  const currentSolicitudes = solicitudes.slice(startIndex, endIndex);
+  const endIndex = Math.min(filteredLength, startIndex + pageSize);
+  const currentSolicitudes = filteredSolicitudes.slice(startIndex, endIndex);
 
   const openAlta = (row: SolicitudAdmisionItem) => {
     if (resolveAltaGenerada(row)) {
@@ -369,6 +393,27 @@ export default function AspirantesTab({ searchTerm }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="estado-filter">Filtrar por estado</Label>
+              <Select
+                value={estadoFilter}
+                onValueChange={setEstadoFilter}
+              >
+                <SelectTrigger id="estado-filter" className="w-full md:w-[220px]">
+                  <SelectValue placeholder="Todos los estados" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ESTADO_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {currentSolicitudes.map((row) => {
               const nombre = resolveAspiranteNombre(row);
@@ -433,15 +478,15 @@ export default function AspirantesTab({ searchTerm }: Props) {
             })}
             {!currentSolicitudes.length && (
               <div className="col-span-full text-sm text-muted-foreground">
-                No hay solicitudes para esta página.
+                No hay solicitudes que coincidan con los criterios actuales.
               </div>
             )}
           </div>
 
           <div className="flex flex-col gap-2 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
             <div>
-              Mostrando {solicitudes.length === 0 ? 0 : startIndex + 1}-{endIndex} de {solicitudes.length} solicitud
-              {solicitudes.length === 1 ? "" : "es"}.
+              Mostrando {filteredLength === 0 ? 0 : startIndex + 1}-{endIndex} de {filteredLength} solicitud
+              {filteredLength === 1 ? "" : "es"}.
             </div>
             <div className="flex items-center gap-2">
               <Button

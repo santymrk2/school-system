@@ -287,14 +287,21 @@ export default function FamilyCalificacionesView({
 
         const informesFiltrados = (informesRes.data ?? []).filter((inf) => {
           if (!matriculaIds.includes(inf.matriculaId ?? -1)) return false;
-          if (!allowedTrimestreIds || allowedTrimestreIds.size === 0)
-            return true;
           const triId =
             inf.trimestreId ??
             (inf as any).trimestreId ??
             (inf as any).trimestre?.id ??
             null;
-          return typeof triId === "number" && allowedTrimestreIds.has(triId);
+          if (typeof triId !== "number") return false;
+          if (
+            allowedTrimestreIds &&
+            allowedTrimestreIds.size > 0 &&
+            !allowedTrimestreIds.has(triId)
+          ) {
+            return false;
+          }
+          const trimestre = allTrimestresById.get(triId);
+          return getTrimestreEstado(trimestre) === "cerrado";
         });
         setInformes(informesFiltrados);
       } catch (error: any) {

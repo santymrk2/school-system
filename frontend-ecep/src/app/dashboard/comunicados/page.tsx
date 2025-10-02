@@ -38,7 +38,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserRole } from "@/types/api-generated";
+import { UserRole, type ComunicadoDTO } from "@/types/api-generated";
+import {
+  buildMisNiveles,
+  buildMisSeccionesIds,
+  filterVisibleComunicados,
+  isAdminLikeRole,
+  isTeacherRole,
+} from "@/lib/comunicados/visibility";
 
 const alcanceFilterOptions = [
   { value: "ALL", label: "Todos los alcances" },
@@ -49,18 +56,6 @@ const alcanceFilterOptions = [
 
 type AlcanceFilter = (typeof alcanceFilterOptions)[number]["value"];
 
-type ComunicadoDTO = {
-  id: number;
-  alcance: "INSTITUCIONAL" | "POR_NIVEL" | "POR_SECCION";
-  seccionId?: number | null;
-  nivel?: "INICIAL" | "PRIMARIO" | null;
-  titulo: string;
-  cuerpo: string;
-  publicado: boolean; // lo ignoramos visualmente
-  fechaCreacion?: string | null;
-  fechaPublicacion?: string | null;
-};
-
 type SeccionLite = {
   id: number;
   nombre?: string | null;
@@ -69,28 +64,6 @@ type SeccionLite = {
   turno?: string | null;
   nivel?: string | null; // "INICIAL" | "PRIMARIO"
 };
-
-function nivelEnumFromSeccion(s: any): "INICIAL" | "PRIMARIO" {
-  const n = (
-    s?.nivel ??
-    s?.seccionActual?.nivel ??
-    s?.seccion?.nivel ??
-    ""
-  )
-    .toString()
-    .toUpperCase();
-  return n === "PRIMARIO" ? "PRIMARIO" : "INICIAL";
-}
-
-function seccionIdFrom(item: any): number | null {
-  if (!item) return null;
-  if (typeof item.seccionId === "number") return item.seccionId;
-  if (typeof item.seccionId === "string") return Number(item.seccionId);
-  if (typeof item?.seccionActual?.id === "number") return item.seccionActual.id;
-  if (typeof item?.seccion?.id === "number") return item.seccion.id;
-  if (typeof item?.seccionId?.id === "number") return item.seccionId.id;
-  return null;
-}
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "short",
@@ -117,13 +90,8 @@ export default function ComunicadosPage() {
   const { type, activeRole } = useViewerScope();
   const role = activeRole ?? null;
 
-  const isDirector = role === UserRole.DIRECTOR;
-  const isAdmin = role === UserRole.ADMIN;
-  const isSecret = role === UserRole.SECRETARY;
-  const isCoordinator = role === UserRole.COORDINATOR;
-  const isTeacher =
-    role === UserRole.TEACHER || role === UserRole.ALTERNATE;
-  const isAdminLike = isDirector || isAdmin || isSecret || isCoordinator;
+  const isAdminLike = isAdminLikeRole(role);
+  const isTeacher = isTeacherRole(role);
   const canCreate = isAdminLike || isTeacher;
 
   const { periodoEscolarId } = useActivePeriod();
@@ -173,46 +141,29 @@ export default function ComunicadosPage() {
   }, []);
 
   // destinos del usuario
-  const misSeccionesIds = useMemo(() => {
-    if (type === "teacher")
-      return new Set<number>(
-        secciones
-          .map((s: any) => Number(seccionIdFrom(s) ?? s?.id))
-          .filter((id): id is number => Number.isFinite(id)),
-      );
-    if (type === "family" || type === "student") {
-      const ids = (hijos ?? [])
-        .map((h: any) => seccionIdFrom(h) ?? seccionIdFrom(h?.seccionActual))
-        .filter((id): id is number => typeof id === "number" && !Number.isNaN(id));
-      return new Set<number>(ids);
-    }
-    return new Set<number>();
-  }, [type, secciones, hijos]);
+  const misSeccionesIds = useMemo(
+    () => buildMisSeccionesIds(type, secciones, hijos) ?? new Set<number>(),
+    [type, secciones, hijos],
+  );
 
-  const misNiveles = useMemo(() => {
-    const niveles: Array<"INICIAL" | "PRIMARIO"> = [];
-    if (type === "teacher") {
-      for (const s of secciones) niveles.push(nivelEnumFromSeccion(s));
-    } else if (type === "family" || type === "student") {
-      for (const h of hijos ?? []) niveles.push(nivelEnumFromSeccion(h));
-    }
-    return new Set<string>(niveles);
-  }, [type, secciones, hijos]);
+  const misNiveles = useMemo(
+    () => buildMisNiveles(type, secciones, hijos) ?? new Set<string>(),
+    [type, secciones, hijos],
+  );
 
-  const baseVisibles = useMemo(() => {
-    const todos = comunicados ?? [];
-    if (type === "staff" || isAdminLike) return todos;
-    return todos.filter((c) => {
-      if (c.alcance === "INSTITUCIONAL") return true;
-      if (c.alcance === "POR_NIVEL")
-        return !!c.nivel && misNiveles.has(c.nivel);
-      if (c.alcance === "POR_SECCION") {
-        const id = c.seccionId;
-        return typeof id === "number" && misSeccionesIds.has(id);
-      }
-      return false;
-    });
-  }, [comunicados, type, isAdminLike, misNiveles, misSeccionesIds]);
+  const baseVisibles = useMemo(
+    () =>
+      filterVisibleComunicados({
+        comunicados,
+        type,
+        role,
+        misSeccionesIds,
+        misNiveles,
+        secciones,
+        hijos,
+      }),
+    [comunicados, type, role, misSeccionesIds, misNiveles, secciones, hijos],
+  );
 
   const visibles = useMemo(() => {
     if (alcanceFilter === "ALL") return baseVisibles;

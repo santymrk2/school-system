@@ -256,21 +256,54 @@ export function FamilyAttendanceView() {
           return;
         }
 
-        const entries = await Promise.all(
-          jornadaIds.map(async (jid) => {
-            try {
-              const res = await asistencias.jornadas.byId(jid);
-              return [jid, res.data ?? null] as const;
-            } catch {
-              return [jid, null] as const;
-            }
-          }),
-        );
-        if (!alive) return;
         const next = new Map<number, JornadaAsistenciaDTO>();
-        for (const [jid, jornada] of entries) {
-          if (jornada) next.set(jid, jornada);
+
+        const seccionId = alumnoSeleccionado?.seccionId ?? null;
+        let fetchedJornadas: JornadaAsistenciaDTO[] = [];
+
+        if (
+          seccionId != null &&
+          periodoDateRange.fromISO &&
+          periodoDateRange.toISO
+        ) {
+          try {
+            const { data: jornadasData } = await asistencias.jornadas.search({
+              seccionId,
+              from: periodoDateRange.fromISO,
+              to: periodoDateRange.toISO,
+            });
+            fetchedJornadas = (jornadasData ?? []).filter(
+              (j): j is JornadaAsistenciaDTO =>
+                !!j && typeof j.id === "number" && jornadaIds.includes(j.id),
+            );
+          } catch {
+            // ignoramos el error y usamos el fallback debajo
+            fetchedJornadas = [];
+          }
         }
+
+        if (!fetchedJornadas.length) {
+          const entries = await Promise.all(
+            jornadaIds.map(async (jid) => {
+              try {
+                const res = await asistencias.jornadas.byId(jid);
+                return [jid, res.data ?? null] as const;
+              } catch {
+                return [jid, null] as const;
+              }
+            }),
+          );
+          if (!alive) return;
+          for (const [jid, jornada] of entries) {
+            if (jornada) next.set(jid, jornada);
+          }
+        } else {
+          if (!alive) return;
+          for (const jornada of fetchedJornadas) {
+            next.set(jornada.id, jornada);
+          }
+        }
+
         setJornadas(next);
       } catch (fetchError: any) {
         if (!alive) return;

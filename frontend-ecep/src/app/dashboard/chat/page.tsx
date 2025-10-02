@@ -137,9 +137,14 @@ export default function ChatComponent() {
     if (!user) return;
     const query = searchTerm.trim();
 
+    if (!query) {
+      setPersonas([]);
+      return () => undefined;
+    }
+
     const debounceTimer = setTimeout(() => {
       identidad.personasCore
-        .searchCredenciales(query || undefined)
+        .searchCredenciales(query)
         .then(({ data }) => {
           const results = (data ?? []).filter((p) => p.id !== user.id);
           setPersonas(results);

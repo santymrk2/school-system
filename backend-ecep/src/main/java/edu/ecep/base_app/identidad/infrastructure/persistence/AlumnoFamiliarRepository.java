@@ -7,7 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 
 public interface AlumnoFamiliarRepository extends JpaRepository<AlumnoFamiliar, Long> {
@@ -23,4 +25,13 @@ public interface AlumnoFamiliarRepository extends JpaRepository<AlumnoFamiliar, 
          where af.familiar.id = :familiarId
          """)
     List<Alumno> findAlumnosByFamiliar(@Param("familiarId") Long familiarId);
+
+    @Query("""
+            select distinct af.familiar.persona.id
+            from AlumnoFamiliar af
+            where af.activo = true
+              and af.alumno.id in :alumnoIds
+              and af.familiar.persona.activo = true
+            """)
+    Set<Long> findPersonaIdsByAlumnoIds(@Param("alumnoIds") Collection<Long> alumnoIds);
 }

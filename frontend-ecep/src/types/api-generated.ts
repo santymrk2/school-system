@@ -348,6 +348,16 @@ export interface ComunicadoDTO {
   fechaCreacion?: ISODateTime;
 }
 
+export interface ComunicadoLecturaResumenDTO {
+  comunicadoId: number;
+  totalDestinatarios: number;
+  confirmadas: number;
+  pendientes: number;
+  ultimaLectura?: ISODateTime | null;
+  confirmadoPorMi: boolean;
+  miFechaLectura?: ISODateTime | null;
+}
+
 export interface CuotaCreateDTO {
   id?: number;
   matriculaId?: number;

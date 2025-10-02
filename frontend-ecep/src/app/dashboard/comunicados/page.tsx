@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Trash2, Eye } from "lucide-react";
+import { CheckCircle2, Eye, Loader2, Megaphone, Trash2 } from "lucide-react";
 import { comunicacion, gestionAcademica } from "@/services/api/modules";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -38,7 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserRole } from "@/types/api-generated";
+import {
+  UserRole,
+  type ComunicadoLecturaResumenDTO,
+} from "@/types/api-generated";
 
 const alcanceFilterOptions = [
   { value: "ALL", label: "Todos los alcances" },
@@ -125,6 +128,8 @@ export default function ComunicadosPage() {
     role === UserRole.TEACHER || role === UserRole.ALTERNATE;
   const isAdminLike = isDirector || isAdmin || isSecret || isCoordinator;
   const canCreate = isAdminLike || isTeacher;
+  const canConfirmLectura = type === "family" || type === "student";
+  const shouldLoadResumen = isAdminLike || canConfirmLectura;
 
   const { periodoEscolarId } = useActivePeriod();
   const { secciones } = useScopedSecciones({
@@ -136,6 +141,10 @@ export default function ComunicadosPage() {
   const [comunicados, setComunicados] = useState<ComunicadoDTO[]>([]);
   const [q, setQ] = useState("");
   const [alcanceFilter, setAlcanceFilter] = useState<AlcanceFilter>("ALL");
+  const [resumenById, setResumenById] = useState<
+    Record<number, ComunicadoLecturaResumenDTO>
+  >({});
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   // nombres de sección
   const [allSecciones, setAllSecciones] = useState<SeccionLite[]>([]);
@@ -171,6 +180,48 @@ export default function ComunicadosPage() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!shouldLoadResumen) {
+      setResumenById({});
+      return;
+    }
+
+    const ids = (comunicados ?? []).map((c) => c.id);
+    if (!ids.length) {
+      setResumenById({});
+      return;
+    }
+
+    let active = true;
+    (async () => {
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const res = await comunicacion.comunicados.resumenLecturas(id);
+            return [id, res.data ?? null] as const;
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("No se pudo obtener el resumen de lecturas", error);
+            }
+            return [id, null] as const;
+          }
+        }),
+      );
+      if (!active) return;
+      const next: Record<number, ComunicadoLecturaResumenDTO> = {};
+      for (const [id, data] of entries) {
+        if (data) {
+          next[id] = data;
+        }
+      }
+      setResumenById(next);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [comunicados, shouldLoadResumen]);
 
   // destinos del usuario
   const misSeccionesIds = useMemo(() => {
@@ -243,6 +294,43 @@ export default function ComunicadosPage() {
     setComunicados(res.data ?? []);
   };
 
+  const refreshResumen = useCallback(
+    async (id: number) => {
+      if (!shouldLoadResumen) return;
+      try {
+        const res = await comunicacion.comunicados.resumenLecturas(id);
+        const data = res.data;
+        if (!data) return;
+        setResumenById((prev) => ({ ...prev, [id]: data }));
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("No se pudo actualizar el resumen de lecturas", error);
+        }
+      }
+    },
+    [shouldLoadResumen],
+  );
+
+  const handleConfirmLectura = useCallback(
+    async (id: number) => {
+      try {
+        setConfirmingId(id);
+        await comunicacion.comunicados.confirmarLectura(id);
+        toast.success("Lectura confirmada");
+        await refreshResumen(id);
+      } catch (e: any) {
+        toast.error(
+          e?.response?.data?.message ??
+            e?.message ??
+            "No se pudo confirmar la lectura",
+        );
+      } finally {
+        setConfirmingId((current) => (current === id ? null : current));
+      }
+    },
+    [refreshResumen],
+  );
+
   const mySeccionIds = useMemo(
     () => new Set<number>(secciones.map((s: any) => s.id)),
     [secciones],
@@ -260,6 +348,12 @@ export default function ComunicadosPage() {
     try {
       await comunicacion.comunicados.delete(id);
       await refresh();
+      setResumenById((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (e: any) {
       toast.error(
         e?.response?.data?.message ??
@@ -272,6 +366,13 @@ export default function ComunicadosPage() {
   // diálogo de detalle
   const [selected, setSelected] = useState<ComunicadoDTO | null>(null);
   const selectedFecha = selected ? fechaVisible(selected) : null;
+  const selectedResumen = selected ? resumenById[selected.id] : undefined;
+
+  useEffect(() => {
+    if (!selected || !shouldLoadResumen) return;
+    if (resumenById[selected.id]) return;
+    void refreshResumen(selected.id);
+  }, [selected, shouldLoadResumen, resumenById, refreshResumen]);
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -331,7 +432,17 @@ export default function ComunicadosPage() {
             seccionNameById={seccionNameById}
             canDelete={canDeleteCom}
             onDelete={handleDelete}
-            onOpen={(c) => setSelected(c)}
+            onOpen={(c) => {
+              setSelected(c);
+              if (shouldLoadResumen && !resumenById[c.id]) {
+                void refreshResumen(c.id);
+              }
+            }}
+            resumenById={resumenById}
+            canConfirmLectura={canConfirmLectura}
+            onConfirmLectura={handleConfirmLectura}
+            confirmingId={confirmingId}
+            showResumen={isAdminLike}
           />
         )}
 
@@ -358,6 +469,26 @@ export default function ComunicadosPage() {
                 <div className="whitespace-pre-wrap text-base leading-relaxed">
                   {selected.cuerpo}
                 </div>
+
+                {(isAdminLike || canConfirmLectura) && (
+                  <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    {isAdminLike && (
+                      <LecturasResumen resumen={selectedResumen} />
+                    )}
+                    {canConfirmLectura && (
+                      <ConfirmLecturaButton
+                        confirmado={selectedResumen?.confirmadoPorMi ?? false}
+                        fecha={selectedResumen?.miFechaLectura ?? null}
+                        onConfirm={() => handleConfirmLectura(selected.id)}
+                        disabled={
+                          (selectedResumen?.confirmadoPorMi ?? false) ||
+                          confirmingId === selected.id
+                        }
+                        loading={confirmingId === selected.id}
+                      />
+                    )}
+                  </div>
+                )}
 
                 {canDeleteCom(selected) && (
                   <div className="flex justify-end">
@@ -407,12 +538,22 @@ function FeedList({
   canDelete,
   onDelete,
   onOpen,
+  resumenById,
+  canConfirmLectura,
+  onConfirmLectura,
+  confirmingId,
+  showResumen,
 }: {
   items: ComunicadoDTO[];
   seccionNameById: Map<number, string>;
   canDelete: (c: ComunicadoDTO) => boolean;
   onDelete: (id: number) => void;
   onOpen: (c: ComunicadoDTO) => void;
+  resumenById: Record<number, ComunicadoLecturaResumenDTO>;
+  canConfirmLectura: boolean;
+  onConfirmLectura: (id: number) => void;
+  confirmingId: number | null;
+  showResumen: boolean;
 }) {
   if (!items.length) {
     return (
@@ -428,6 +569,9 @@ function FeedList({
     <div className="space-y-3">
       {items.map((c) => {
         const fecha = fechaVisible(c);
+        const resumen = resumenById?.[c.id];
+        const confirmado = resumen?.confirmadoPorMi ?? false;
+        const miFechaLectura = resumen?.miFechaLectura ?? null;
         return (
           <Card key={c.id} className="transition-colors hover:border-primary">
             <CardHeader>
@@ -486,10 +630,112 @@ function FeedList({
               <div className="text-sm text-muted-foreground">
                 {preview(c.cuerpo)}
               </div>
+
+              {(showResumen || canConfirmLectura) && (
+                <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  {showResumen && (
+                    <LecturasResumen resumen={resumen} />
+                  )}
+                  {canConfirmLectura && (
+                    <ConfirmLecturaButton
+                      confirmado={confirmado}
+                      fecha={miFechaLectura}
+                      onConfirm={() => onConfirmLectura(c.id)}
+                      disabled={confirmado || confirmingId === c.id}
+                      loading={confirmingId === c.id}
+                    />
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+function LecturasResumen({
+  resumen,
+}: {
+  resumen?: ComunicadoLecturaResumenDTO;
+}) {
+  if (!resumen) {
+    return (
+      <div className="text-xs text-muted-foreground">
+        Sin confirmaciones registradas.
+      </div>
+    );
+  }
+
+  const total = resumen.totalDestinatarios ?? 0;
+  const confirmadas = resumen.confirmadas ?? 0;
+  const pendientes = Math.max(resumen.pendientes ?? 0, 0);
+  const porcentaje = total > 0 ? Math.round((confirmadas / total) * 100) : 0;
+
+  return (
+    <div className="text-xs text-muted-foreground leading-relaxed space-y-1">
+      <div>
+        Lecturas confirmadas:
+        <span className="font-semibold">
+          {" "}
+          {confirmadas}
+          {total ? ` / ${total}` : ""}
+        </span>
+        {total ? ` (${porcentaje}%)` : ""}
+      </div>
+      {total ? <div>Pendientes estimadas: {pendientes}</div> : null}
+      {resumen.ultimaLectura ? (
+        <div>
+          Última confirmación: {formatDateTime(resumen.ultimaLectura)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ConfirmLecturaButton({
+  confirmado,
+  fecha,
+  onConfirm,
+  disabled,
+  loading,
+}: {
+  confirmado: boolean;
+  fecha?: string | null;
+  onConfirm: () => void;
+  disabled: boolean;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Button
+        size="sm"
+        variant={confirmado ? "secondary" : "default"}
+        disabled={disabled}
+        onClick={onConfirm}
+        type="button"
+      >
+        {confirmado ? (
+          <>
+            <CheckCircle2 className="mr-2 h-4 w-4" /> Confirmado
+          </>
+        ) : (
+          <>
+            {loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+            )}
+            {loading ? "Confirmando…" : "Confirmar lectura"}
+          </>
+        )}
+      </Button>
+      {confirmado && fecha ? (
+        <span className="text-xs text-muted-foreground">
+          Confirmado el {formatDateTime(fecha)}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -9,4 +9,9 @@ export const comunicados = {
   update: (id: number, body: Partial<DTO.ComunicadoCreateDTO>) =>
     http.put<number>("/api/comunicados/" + id, body),
   delete: (id: number) => http.delete<void>("/api/comunicados/" + id),
+  confirmarLectura: (id: number) => http.post<void>(`/api/comunicados/${id}/lecturas`, {}),
+  resumenLecturas: (id: number) =>
+    http.get<DTO.ComunicadoLecturaResumenDTO>(
+      `/api/comunicados/${id}/lecturas/resumen`,
+    ),
 };

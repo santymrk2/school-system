@@ -33,6 +33,7 @@ import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useFamilyAlumnos } from "@/hooks/useFamilyAlumnos";
 import { comunicacion } from "@/services/api/modules";
 import type { ComunicadoDTO } from "@/types/api-generated";
+import { UserRole } from "@/types/api-generated";
 import {
   buildMisNiveles,
   buildMisSeccionesIds,
@@ -202,6 +203,9 @@ export default function DashboardPage() {
     [menuByRole],
   );
 
+  const canSeeStats =
+    role === UserRole.DIRECTOR || role === UserRole.ADMIN;
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         {/* Header */}
@@ -215,86 +219,88 @@ export default function DashboardPage() {
         </div>
 
         {/* Estadísticas principales (5 cards) */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Alumnos Activos
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.alumnosActivos}</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-secondary inline-flex items-center">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  {loadingStats ? "actualizando…" : "en período vigente"}
-                </span>
-              </p>
-            </CardContent>
-          </Card>
+        {canSeeStats && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Alumnos Activos
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.alumnosActivos}</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-secondary inline-flex items-center">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    {loadingStats ? "actualizando…" : "en período vigente"}
+                  </span>
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Docentes Activos
-              </CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.docentesActivos}</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-blue-600 inline-flex items-center">
-                  <CircleCheck className="h-3 w-3 mr-1" />
-                  con asignación vigente
-                </span>
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Docentes Activos
+                </CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.docentesActivos}</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-blue-600 inline-flex items-center">
+                    <CircleCheck className="h-3 w-3 mr-1" />
+                    con asignación vigente
+                  </span>
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Postulaciones
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats?.postulacionesPendientes}
-              </div>
-              <p className="text-xs text-muted-foreground">pendientes</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Postulaciones
+                </CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stats?.postulacionesPendientes}
+                </div>
+                <p className="text-xs text-muted-foreground">pendientes</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Licencias Activas
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats?.licenciasActivas}
-              </div>
-              <p className="text-xs text-muted-foreground">vigentes hoy</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Licencias Activas
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stats?.licenciasActivas}
+                </div>
+                <p className="text-xs text-muted-foreground">vigentes hoy</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Actas sin firmar
-              </CardTitle>
-              <Ambulance className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.actasSinFirmar}</div>
-              <p className="text-xs text-muted-foreground">en borrador</p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Actas sin firmar
+                </CardTitle>
+                <Ambulance className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.actasSinFirmar}</div>
+                <p className="text-xs text-muted-foreground">en borrador</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           {/* Acciones rápidas */}

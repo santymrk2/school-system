@@ -52,6 +52,7 @@ export type BoletinesReportProps = {
       name: string;
       teacher: string | null;
       grade: string;
+      observations: string | null;
     }[];
   }[];
 };
@@ -389,11 +390,14 @@ function BoletinSubjectsDetail({
                 <div className="divide-y">
                   {trimester.subjects.map((subject) => {
                     const displayTeacher = sanitizeTeacherName(subject.teacher);
+                    const hasObservations = Boolean(
+                      subject.observations && subject.observations.trim(),
+                    );
 
                     return (
                       <div
                         key={subject.id}
-                        className="flex items-start justify-between gap-3 px-4 py-3"
+                        className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
                       >
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-foreground">
@@ -404,8 +408,13 @@ function BoletinSubjectsDetail({
                               Docente: {displayTeacher}
                             </p>
                           )}
+                          {hasObservations && (
+                            <p className="text-xs text-muted-foreground whitespace-pre-line">
+                              Observaciones: {subject.observations?.trim()}
+                            </p>
+                          )}
                         </div>
-                        <span className="rounded-md bg-muted px-2 py-1 text-sm font-semibold text-foreground whitespace-nowrap">
+                        <span className="self-start whitespace-nowrap rounded-md bg-muted px-2 py-1 text-sm font-semibold text-foreground sm:self-center">
                           {subject.grade ?? "—"}
                         </span>
                       </div>

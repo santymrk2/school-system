@@ -29,6 +29,7 @@ export type BoletinReportTrimester = {
     name: string;
     teacher?: string | null;
     grade: string;
+    observations?: string | null;
   }[];
 };
 
@@ -225,6 +226,13 @@ const getTrimesterCardHeight = (
       );
       total += teacherLines.length * (lineHeight - 0.5);
     }
+    if (subject.observations) {
+      const observationLines = doc.splitTextToSize(
+        `Observaciones: ${subject.observations}`,
+        subjectTextWidth,
+      );
+      total += observationLines.length * (lineHeight - 0.5);
+    }
     total += lineHeight; // space for grade baseline
     if (index < trimester.subjects.length - 1) {
       total += 6;
@@ -357,6 +365,20 @@ const renderTrimesterCardsSection = (
           subjectTextWidth,
         );
         teacherLines.forEach((line) => {
+          doc.text(line, cardX + cardPaddingX, textCursorY);
+          textCursorY += lineHeight - 0.5;
+        });
+      }
+
+      if (subject.observations) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        const observationLines = doc.splitTextToSize(
+          `Observaciones: ${subject.observations}`,
+          subjectTextWidth,
+        );
+        observationLines.forEach((line) => {
           doc.text(line, cardX + cardPaddingX, textCursorY);
           textCursorY += lineHeight - 0.5;
         });

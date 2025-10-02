@@ -136,6 +136,7 @@ export default function ReportesPage() {
           seccionesRes,
           materiasRes,
           seccionMateriasRes,
+          asignacionesMateriaRes,
           calificacionesRes,
           informesRes,
           trimestresRes,
@@ -143,6 +144,7 @@ export default function ReportesPage() {
           gestionAcademica.secciones.list(),
           gestionAcademica.materias.list(),
           gestionAcademica.seccionMaterias.list(),
+          gestionAcademica.asignacionDocenteMateria.list(),
           gestionAcademica.calificaciones.list(),
           gestionAcademica.informes.list(),
           calendario.trimestres.list(),
@@ -152,11 +154,47 @@ export default function ReportesPage() {
         const seccionesRaw = seccionesRes.data ?? [];
         const materias = materiasRes.data ?? [];
         const seccionMaterias = seccionMateriasRes.data ?? [];
+        const asignacionesMateria = asignacionesMateriaRes.data ?? [];
         const calificaciones = calificacionesRes.data ?? [];
         const informes = informesRes.data ?? [];
         const trimestres = (trimestresRes.data ?? []).sort(
           (a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0),
         );
+
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const teacherIdsBySeccionMateria = new Map<number, number[]>();
+        asignacionesMateria.forEach((asignacion: any) => {
+          const seccionMateriaIdRaw =
+            asignacion.seccionMateriaId ?? asignacion.seccionMateria?.id;
+          if (seccionMateriaIdRaw == null) return;
+          const seccionMateriaId = Number(seccionMateriaIdRaw);
+          if (Number.isNaN(seccionMateriaId)) return;
+          const empleadoId =
+            asignacion.empleadoId ??
+            asignacion.personalId ??
+            asignacion.docenteId ??
+            asignacion.empleado?.id ??
+            null;
+          if (empleadoId == null) return;
+
+          const vigenciaDesde =
+            asignacion.vigenciaDesde ?? asignacion.desde ?? null;
+          if (typeof vigenciaDesde === "string" && vigenciaDesde > todayISO)
+            return;
+
+          const vigenciaHasta =
+            asignacion.vigenciaHasta ?? asignacion.hasta ?? null;
+          if (typeof vigenciaHasta === "string" && vigenciaHasta < todayISO)
+            return;
+
+          if (!teacherIdsBySeccionMateria.has(seccionMateriaId)) {
+            teacherIdsBySeccionMateria.set(seccionMateriaId, []);
+          }
+          const current = teacherIdsBySeccionMateria.get(seccionMateriaId)!;
+          if (!current.includes(empleadoId)) {
+            current.push(empleadoId);
+          }
+        });
 
         const trimestreMap = new Map<number, string>();
         trimestres.forEach((t: any, index) => {
@@ -227,7 +265,10 @@ export default function ReportesPage() {
             if (level === "Primario") {
               const subjectEntries = sectionMateriasList
                 .map((sm: any) => {
-                  const smId = sm.id ?? sm.seccionMateriaId;
+                  const smIdRaw = sm.id ?? sm.seccionMateriaId;
+                  if (smIdRaw == null) return null;
+                  const smId = Number(smIdRaw);
+                  if (Number.isNaN(smId)) return null;
                   const subjectCalifs = calificaciones.filter(
                     (c: any) =>
                       c.matriculaId === matriculaId &&
@@ -237,6 +278,15 @@ export default function ReportesPage() {
                   const materia = materiaMap.get(
                     sm.materiaId ?? sm.materia?.id ?? sm.materiaId,
                   );
+                  const teacherIds = teacherIdsBySeccionMateria.get(smId) ?? [];
+                  const subjectTeacherIds = teacherIds.length
+                    ? [...teacherIds]
+                    : [];
+                  const teacherLabel = subjectTeacherIds.length
+                    ? subjectTeacherIds
+                        .map((id) => `Empleado #${id}`)
+                        .join(", ")
+                    : null;
                   const grades = subjectCalifs
                     .map((calif: any) => {
                       const trimestreId = calif.trimestreId;
@@ -256,7 +306,10 @@ export default function ReportesPage() {
                     id: String(smId),
                     name:
                       materia?.nombre ?? `Materia #${sm.materiaId ?? smId ?? ""}`,
-                    teacher: null,
+                    teacherIds: subjectTeacherIds.length
+                      ? subjectTeacherIds
+                      : undefined,
+                    teacher: teacherLabel,
                     grades,
                   } as BoletinSubject;
                 })
@@ -546,12 +599,17 @@ export default function ReportesPage() {
         label: trimester.label,
         subjects: boletinSubjectsForTable.map((subject) => {
           const grade = subject.grades.find((g) => g.trimestreId === trimester.id);
+          const observationsRaw = grade?.observaciones ?? null;
+          const observations = observationsRaw
+            ? String(observationsRaw).trim() || null
+            : null;
 
           return {
             id: subject.id,
             name: subject.name,
             teacher: sanitizeTeacherName(subject.teacher),
             grade: getBoletinGradeDisplay(grade),
+            observations,
           };
         }),
       })),
@@ -636,6 +694,7 @@ export default function ReportesPage() {
                 name: subject.name,
                 teacher: subject.teacher,
                 grade: subject.grade ?? "—",
+                observations: subject.observations ?? null,
               })),
             })),
             footer: `Generado el ${generatedAt}`,
@@ -655,7 +714,7 @@ export default function ReportesPage() {
     } finally {
       setExportingBoletin(false);
     }
-  }, [activeBoletin, boletinSubjectsForTable, boletinTrimesters]);
+    }, [activeBoletin, boletinSubjectsByTrimester]);
 
   const isActiveBoletinPrimario = activeBoletin?.level === "Primario";
 
@@ -747,6 +806,62 @@ export default function ReportesPage() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!Object.keys(empleadoMap).length) return;
+
+    setBoletinSections((prev) => {
+      let sectionsChanged = false;
+
+      const nextSections = prev.map((section) => {
+        let studentsChanged = false;
+
+        const nextStudents = section.students.map((student) => {
+          let subjectsChanged = false;
+
+          const nextSubjects = student.subjects.map((subject) => {
+            if (!subject.teacherIds?.length) {
+              return subject;
+            }
+
+            const teacherNames = subject.teacherIds
+              .map((teacherId) => {
+                const name = empleadoMap[teacherId]?.name?.trim();
+                return name && name.length
+                  ? name
+                  : `Empleado #${teacherId}`;
+              })
+              .filter((value, index, array) => array.indexOf(value) === index);
+
+            const teacher = teacherNames.length ? teacherNames.join(", ") : null;
+
+            if (teacher === subject.teacher) {
+              return subject;
+            }
+
+            subjectsChanged = true;
+            return { ...subject, teacher };
+          });
+
+          if (!subjectsChanged) {
+            return student;
+          }
+
+          studentsChanged = true;
+          return { ...student, subjects: nextSubjects };
+        });
+
+        if (!studentsChanged) {
+          return section;
+        }
+
+        sectionsChanged = true;
+        return { ...section, students: nextStudents };
+      });
+
+      return sectionsChanged ? nextSections : prev;
+    });
+  }, [empleadoMap]);
 
   useEffect(() => {
     setActiveBoletin(null);

@@ -9,6 +9,7 @@ export type BoletinSubjectGrade = {
 export type BoletinSubject = {
   id: string;
   name: string;
+  teacherIds?: number[];
   teacher?: string | null;
   grades: BoletinSubjectGrade[];
 };

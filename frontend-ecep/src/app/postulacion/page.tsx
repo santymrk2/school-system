@@ -1,9 +1,9 @@
 // app/postulacion/page.tsx
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { BASE } from "@/services/api/http";
 import * as DTO from "@/types/api-generated";
 import { isBirthDateValid } from "@/lib/form-utils";
 import { logger } from "@/lib/logger";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const postulacionLogger = logger.child({ module: "postulacion" });
 
@@ -107,6 +108,15 @@ type FamiliarLookupState = {
   status: "pending" | "prompted" | "completed" | "notfound";
 };
 
+const DRAFT_STORAGE_KEY = "postulacionDraft";
+
+type PostulacionDraft = {
+  formData: PostulacionFormData;
+  currentStep: number;
+  communicationsAuthorized: boolean;
+  updatedAt?: string;
+};
+
 const buildSolicitudObservaciones = (
   data: PostulacionFormData,
 ): string | undefined => {
@@ -190,10 +200,122 @@ export default function PostulacionPage() {
   );
   const [submissionCompleted, setSubmissionCompleted] = useState(false);
   const activePromptRef = useRef<FamiliarPromptInfo | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<PostulacionDraft | null>(
+    null,
+  );
+  const [draftPromptVisible, setDraftPromptVisible] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      logPostulacionError(error, "No se pudo limpiar el borrador almacenado.");
+    }
+  }, []);
 
   useEffect(() => {
     activePromptRef.current = existingFamiliarPrompt;
   }, [existingFamiliarPrompt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const rawDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!rawDraft) {
+        setDraftReady(true);
+        return;
+      }
+      const parsed = JSON.parse(rawDraft) as PostulacionDraft | null;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.formData &&
+        typeof parsed.currentStep === "number"
+      ) {
+        setPendingDraft({
+          formData: {
+            ...initialFormData,
+            ...(parsed.formData ?? {}),
+            familiares: parsed.formData?.familiares ?? [],
+          },
+          currentStep: parsed.currentStep,
+          communicationsAuthorized: Boolean(parsed.communicationsAuthorized),
+          updatedAt: parsed.updatedAt,
+        });
+        setDraftPromptVisible(true);
+        return;
+      }
+    } catch (error) {
+      logPostulacionError(error, "No se pudo recuperar el borrador almacenado.");
+      clearDraft();
+    }
+    setDraftReady(true);
+  }, [clearDraft]);
+
+  useEffect(() => {
+    if (!draftReady || submissionCompleted) return;
+    if (typeof window === "undefined") return;
+
+    const hasDraftContent = Boolean(
+      formData.personaId ||
+        (formData.nombre ?? "").trim() ||
+        (formData.apellido ?? "").trim() ||
+        formatDni(formData.dni ?? "") ||
+        (formData.fechaNacimiento ?? "").trim() ||
+        formData.cursoSolicitado ||
+        formData.turnoPreferido ||
+        (formData.escuelaActual ?? "").trim() ||
+        (formData.domicilio ?? "").trim() ||
+        (formData.nacionalidad ?? "").trim() ||
+        (formData.conectividadInternet ?? "").trim() ||
+        (formData.dispositivosDisponibles ?? "").trim() ||
+        (formData.idiomasHabladosHogar ?? "").trim() ||
+        (formData.enfermedadesAlergias ?? "").trim() ||
+        (formData.medicacionHabitual ?? "").trim() ||
+        (formData.limitacionesFisicasNeurologicas ?? "").trim() ||
+        (formData.tratamientosTerapeuticos ?? "").trim() ||
+        formData.usoAyudasMovilidad ||
+        (formData.coberturaMedica ?? "").trim() ||
+        (formData.observacionesAdicionalesSalud ?? "").trim() ||
+        (formData.familiares?.length ?? 0) > 0 ||
+        communicationsAuthorized ||
+        currentStep !== 1,
+    );
+
+    if (!hasDraftContent) {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      return;
+    }
+
+    const payload: PostulacionDraft = {
+      formData: JSON.parse(
+        JSON.stringify({
+          ...formData,
+          familiares: formData.familiares ?? [],
+        }),
+      ) as PostulacionFormData,
+      currentStep,
+      communicationsAuthorized,
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      window.localStorage.setItem(
+        DRAFT_STORAGE_KEY,
+        JSON.stringify(payload),
+      );
+    } catch (error) {
+      logPostulacionError(error, "No se pudo guardar el borrador de la postulación.");
+    }
+  }, [
+    communicationsAuthorized,
+    currentStep,
+    draftReady,
+    formData,
+    submissionCompleted,
+  ]);
 
   useEffect(() => {
     if (existingFamiliarPrompt) {
@@ -602,7 +724,7 @@ export default function PostulacionPage() {
   const addFamiliar = () => {
     setFormData((prev) => ({
       ...prev,
-      familiares: [...prev.familiares, createEmptyFamiliar()],
+      familiares: [...(prev.familiares ?? []), createEmptyFamiliar()],
     }));
     setErrors((prev) => {
       if (!prev.familiares) return prev;
@@ -881,6 +1003,7 @@ export default function PostulacionPage() {
 
       toast.success("Postulación enviada con éxito.");
 
+      clearDraft();
       setSubmissionCompleted(true);
       setFormData({ ...initialFormData, familiares: [] });
       setAspirantePersonaPreview(null);
@@ -978,6 +1101,53 @@ export default function PostulacionPage() {
     }
   };
 
+  const handleRestoreDraft = () => {
+    if (!pendingDraft) return;
+    const normalizedStep = Math.min(
+      Math.max(Number(pendingDraft.currentStep) || 1, 1),
+      totalSteps,
+    );
+    setFormData({
+      ...initialFormData,
+      ...(pendingDraft.formData ?? {}),
+      familiares: pendingDraft.formData?.familiares ?? [],
+    });
+    setCurrentStep(normalizedStep);
+    setCommunicationsAuthorized(Boolean(pendingDraft.communicationsAuthorized));
+    setDraftPromptVisible(false);
+    setPendingDraft(null);
+    setDraftReady(true);
+    toast.success("Borrador recuperado correctamente.");
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    setPendingDraft(null);
+    setDraftPromptVisible(false);
+    setDraftReady(true);
+    toast.info("Se descartó el borrador almacenado.");
+  };
+
+  const handleCancel = () => {
+    const confirmed =
+      typeof window === "undefined" ||
+      window.confirm(
+        "¿Querés cancelar la postulación y descartar el borrador guardado?",
+      );
+    if (!confirmed) return;
+
+    clearDraft();
+    setDraftReady(false);
+    setFormData({ ...initialFormData, familiares: [] });
+    setAspirantePersonaPreview(null);
+    setLastLookupDni("");
+    setCommunicationsAuthorized(false);
+    setErrors({});
+    setCurrentStep(1);
+    toast.info("Se canceló la postulación. Podés comenzar una nueva cuando quieras.");
+    setTimeout(() => setDraftReady(true), 0);
+  };
+
   return (
     <div
       className="min-h-screen bg-background dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors"
@@ -995,6 +1165,26 @@ export default function PostulacionPage() {
           </p>
         </div>
 
+        {draftPromptVisible && pendingDraft ? (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Continuá donde lo dejaste</AlertTitle>
+            <AlertDescription className="mt-2 space-y-3">
+              <p>
+                Encontramos un borrador guardado de tu postulación anterior.
+                Podés recuperarlo para seguir completando o descartarlo y
+                comenzar nuevamente.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button onClick={handleRestoreDraft}>Recuperar borrador</Button>
+                <Button variant="outline" onClick={handleDiscardDraft}>
+                  Descartar
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>
@@ -1004,15 +1194,18 @@ export default function PostulacionPage() {
           <CardContent>
             {renderStep()}
 
-            <div className="flex justify-between mt-8">
-              {currentStep > 1 ? (
-                <Button variant="outline" onClick={prevStep}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Anterior
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="ghost" onClick={handleCancel}>
+                  Cancelar postulación
                 </Button>
-              ) : (
-                <div className="w-32" />
-              )}
+                {currentStep > 1 ? (
+                  <Button variant="outline" onClick={prevStep}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Anterior
+                  </Button>
+                ) : null}
+              </div>
 
               {currentStep < totalSteps ? (
                 <Button onClick={nextStep}>

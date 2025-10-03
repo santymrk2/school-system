@@ -91,10 +91,7 @@ function cleanSeccionNombre(
 
   for (const variant of variants) {
     const core = escapeRegExp(variant);
-    const pattern = new RegExp(
-      `\\s*\\(\\s*(?:turno\\s+)?${core}\\s*\\)$`,
-      "i",
-    );
+    const pattern = new RegExp(`\\s*\\(\\s*(?:turno\\s+)?${core}\\s*\\)$`, "i");
     const cleaned = base.replace(pattern, "").trim();
     if (cleaned !== base) {
       return cleaned || base;
@@ -131,9 +128,9 @@ export default function AlumnosIndexPage() {
     DTO.SolicitudBajaAlumnoDTO[]
   >([]);
   const [loadingSolicitudesBaja, setLoadingSolicitudesBaja] = useState(false);
-  const [errorSolicitudesBaja, setErrorSolicitudesBaja] = useState<string | null>(
-    null,
-  );
+  const [errorSolicitudesBaja, setErrorSolicitudesBaja] = useState<
+    string | null
+  >(null);
   const [historialAlumnos, setHistorialAlumnos] = useState<
     DTO.AlumnoHistorialDTO[]
   >([]);
@@ -141,20 +138,20 @@ export default function AlumnosIndexPage() {
   const [errorHistorialAlumnos, setErrorHistorialAlumnos] = useState<
     string | null
   >(null);
-  const [processingSolicitudId, setProcessingSolicitudId] = useState<number | null>(
-    null,
-  );
-  const [processingRevisionId, setProcessingRevisionId] = useState<number | null>(
-    null,
-  );
+  const [processingSolicitudId, setProcessingSolicitudId] = useState<
+    number | null
+  >(null);
+  const [processingRevisionId, setProcessingRevisionId] = useState<
+    number | null
+  >(null);
   const [estadoSolicitudesFiltro, setEstadoSolicitudesFiltro] = useState<
     "all" | DTO.EstadoSolicitudBaja
   >("all");
   const [crearBajaOpen, setCrearBajaOpen] = useState(false);
   const [crearBajaMotivo, setCrearBajaMotivo] = useState("");
-  const [crearBajaMatriculaId, setCrearBajaMatriculaId] = useState<number | null>(
-    null,
-  );
+  const [crearBajaMatriculaId, setCrearBajaMatriculaId] = useState<
+    number | null
+  >(null);
   const [crearBajaLoading, setCrearBajaLoading] = useState(false);
   const [matriculaOptions, setMatriculaOptions] = useState<
     {
@@ -166,14 +163,8 @@ export default function AlumnosIndexPage() {
   const [matriculasLoading, setMatriculasLoading] = useState(false);
   const [matriculasError, setMatriculasError] = useState<string | null>(null);
 
-  const {
-    scope,
-    loading,
-    error,
-    secciones,
-    hijos,
-    periodoNombre,
-  } = useScopedIndex({ includeTitularSec: true });
+  const { scope, loading, error, secciones, hijos, periodoNombre } =
+    useScopedIndex({ includeTitularSec: true });
   const { hasRole, user } = useAuth();
 
   useEffect(() => {
@@ -187,7 +178,10 @@ export default function AlumnosIndexPage() {
       setSeccionFiltro("");
       return;
     }
-    if (seccionFiltro && secciones.some((s) => String(s.id) === seccionFiltro)) {
+    if (
+      seccionFiltro &&
+      secciones.some((s) => String(s.id) === seccionFiltro)
+    ) {
       return;
     }
     const first = secciones[0];
@@ -207,7 +201,8 @@ export default function AlumnosIndexPage() {
       hasRole(UserRole.ADMIN));
 
   const canManageBajas =
-    scope === "staff" && (hasRole(UserRole.DIRECTOR) || hasRole(UserRole.ADMIN));
+    scope === "staff" &&
+    (hasRole(UserRole.DIRECTOR) || hasRole(UserRole.ADMIN));
   const canReviewBajasAdministracion =
     scope === "staff" && hasRole(UserRole.ADMIN);
   const canDecideBajasDireccion =
@@ -262,11 +257,7 @@ export default function AlumnosIndexPage() {
     } else {
       setHistorialAlumnos([]);
     }
-  }, [
-    canManageBajas,
-    canViewAspirantesHistorial,
-    fetchHistorialAlumnos,
-  ]);
+  }, [canManageBajas, canViewAspirantesHistorial, fetchHistorialAlumnos]);
 
   const loadMatriculas = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -350,7 +341,10 @@ export default function AlumnosIndexPage() {
     [DTO.EstadoSolicitudBaja.RECHAZADA]: "Rechazada",
   };
 
-  const estadoVariant: Record<DTO.EstadoSolicitudBaja, "default" | "secondary" | "destructive"> = {
+  const estadoVariant: Record<
+    DTO.EstadoSolicitudBaja,
+    "default" | "secondary" | "destructive"
+  > = {
     [DTO.EstadoSolicitudBaja.PENDIENTE]: "secondary",
     [DTO.EstadoSolicitudBaja.APROBADA]: "default",
     [DTO.EstadoSolicitudBaja.RECHAZADA]: "destructive",
@@ -457,7 +451,11 @@ export default function AlumnosIndexPage() {
       );
       return;
     }
-    if (!ensurePersonaActual("No pudimos identificar a la persona que aprueba la solicitud"))
+    if (
+      !ensurePersonaActual(
+        "No pudimos identificar a la persona que aprueba la solicitud",
+      )
+    )
       return;
     if (!window.confirm("¿Confirmás aceptar la baja del alumno?")) return;
 
@@ -486,12 +484,13 @@ export default function AlumnosIndexPage() {
       );
       return;
     }
-    if (!ensurePersonaActual("No pudimos identificar a la persona que rechaza la solicitud"))
+    if (
+      !ensurePersonaActual(
+        "No pudimos identificar a la persona que rechaza la solicitud",
+      )
+    )
       return;
-    const reason = window.prompt(
-      "Motivo del rechazo",
-      sol.motivoRechazo ?? "",
-    );
+    const reason = window.prompt("Motivo del rechazo", sol.motivoRechazo ?? "");
     if (reason == null) return;
     const normalized = reason.trim();
     if (!normalized) {
@@ -528,7 +527,11 @@ export default function AlumnosIndexPage() {
       return;
     }
 
-    if (!ensurePersonaActual("No pudimos identificar a la persona que revisa la solicitud"))
+    if (
+      !ensurePersonaActual(
+        "No pudimos identificar a la persona que revisa la solicitud",
+      )
+    )
       return;
 
     let observacion: string | undefined =
@@ -695,7 +698,8 @@ export default function AlumnosIndexPage() {
         if (nextPage !== page) {
           setPage(nextPage);
         }
-        const reportedSize = typeof data?.size === "number" ? data.size : PAGE_SIZE;
+        const reportedSize =
+          typeof data?.size === "number" ? data.size : PAGE_SIZE;
         setPageSize(reportedSize);
       })
       .catch((err: any) => {
@@ -712,14 +716,7 @@ export default function AlumnosIndexPage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    scope,
-    selectedTab,
-    secciones,
-    seccionFiltro,
-    debouncedSearch,
-    page,
-  ]);
+  }, [scope, selectedTab, secciones, seccionFiltro, debouncedSearch, page]);
 
   const teacherWithoutSecciones = scope === "teacher" && secciones.length === 0;
   const teacherNeedsSelection =
@@ -778,7 +775,8 @@ export default function AlumnosIndexPage() {
     if (secciones.length) {
       return secciones.map((s) => ({
         id: String(s.id),
-        label: `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() +
+        label:
+          `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() +
           (s.turno ? ` (${s.turno})` : ""),
       }));
     }
@@ -793,766 +791,812 @@ export default function AlumnosIndexPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Alumnos</h2>
-            {scope === "staff" ? (
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="outline">
-                  Período {periodoNombre ?? "—"}
-                </Badge>
-              </div>
-            ) : (
-              <div className="text-muted-foreground">
-                {scope === "teacher"
-                  ? "Gestión de alumnos por sección"
-                  : scope === "student"
-                    ? "Consulta de mi información académica"
-                    : "Vista de hijos y perfiles"}
-              </div>
-            )}
-          </div>
-          {scope === "staff" && (
-            <div className="flex items-center space-x-2">
-              <Button onClick={() => router.push("/dashboard/alumnos/alta")}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Alta Manual
-              </Button>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Alumnos</h2>
+          {scope === "staff" ? (
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">Período {periodoNombre ?? "—"}</Badge>
+            </div>
+          ) : (
+            <div className="text-muted-foreground">
+              {scope === "teacher"
+                ? "Gestión de alumnos por sección"
+                : scope === "student"
+                  ? "Consulta de mi información académica"
+                  : "Vista de hijos y perfiles"}
             </div>
           )}
         </div>
-
-        {/* Search global (para Aspirantes / Historial) */}
-        {canViewAspirantesHistorial && (
+        {scope === "staff" && (
           <div className="flex items-center space-x-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por nombre, curso o sección…"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Button onClick={() => router.push("/dashboard/alumnos/alta")}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Alta Manual
+            </Button>
           </div>
         )}
+      </div>
 
-        {loading && <LoadingState label="Cargando información…" />}
-        {error && <div className="text-sm text-red-600">{String(error)}</div>}
+      {/* Search global (para Aspirantes / Historial) */}
+      {canViewAspirantesHistorial && (
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar por nombre, curso o sección…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+      )}
 
-        {/* FAMILY / STUDENT: lista de hijos o matrícula propia */}
-        {!loading && !error && (scope === "family" || scope === "student") && (
-          <FamilyView
-            hijos={hijos}
-            title={scope === "student" ? "Mi matrícula" : "Mis hijos/as"}
-          />
-        )}
+      {loading && <LoadingState label="Cargando información…" />}
+      {error && <div className="text-sm text-red-600">{String(error)}</div>}
 
-        {/* STAFF / TEACHER: Tabs */}
-        {!loading &&
-          !error &&
-          (scope === "staff" || scope === "teacher") && (
-          <Tabs
-            value={selectedTab}
-            onValueChange={(v) => {
-              if (
-                (v === "aspirantes" || v === "historial") &&
-                !canViewAspirantesHistorial
-              ) {
-                setSelectedTab("alumnos");
-                return;
-              }
-              if (v === "bajas" && !canManageBajas) {
-                setSelectedTab("alumnos");
-                return;
-              }
-              setSelectedTab(v as any);
-            }}
-            className="space-y-4"
-          >
-            <TabsList>
-              <TabsTrigger value="alumnos">Alumnos</TabsTrigger>
-              {canViewAspirantesHistorial && (
-                <>
-                  <TabsTrigger value="aspirantes">Aspirantes</TabsTrigger>
-                  <TabsTrigger value="historial">Historial</TabsTrigger>
-                </>
+      {/* FAMILY / STUDENT: lista de hijos o matrícula propia */}
+      {!loading && !error && (scope === "family" || scope === "student") && (
+        <FamilyView
+          hijos={hijos}
+          title={scope === "student" ? "Mi matrícula" : "Mis hijos/as"}
+        />
+      )}
+
+      {/* STAFF / TEACHER: Tabs */}
+      {!loading && !error && (scope === "staff" || scope === "teacher") && (
+        <Tabs
+          value={selectedTab}
+          onValueChange={(v) => {
+            if (
+              (v === "aspirantes" || v === "historial") &&
+              !canViewAspirantesHistorial
+            ) {
+              setSelectedTab("alumnos");
+              return;
+            }
+            if (v === "bajas" && !canManageBajas) {
+              setSelectedTab("alumnos");
+              return;
+            }
+            setSelectedTab(v as any);
+          }}
+          className="space-y-4"
+        >
+          <TabsList>
+            <TabsTrigger value="alumnos">Activos</TabsTrigger>
+            {canViewAspirantesHistorial && (
+              <>
+                <TabsTrigger value="aspirantes">Aspirantes</TabsTrigger>
+                <TabsTrigger value="historial">Historial</TabsTrigger>
+              </>
+            )}
+            {canManageBajas && <TabsTrigger value="bajas">Bajas</TabsTrigger>}
+          </TabsList>
+
+          <TabsContent value="alumnos" className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                value={seccionFiltro || undefined}
+                onValueChange={(value) =>
+                  setSeccionFiltro(value === "__all" ? "" : value)
+                }
+                disabled={teacherWithoutSecciones}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder={seccionPlaceholder} />
+                </SelectTrigger>
+                <SelectContent>
+                  {scope === "staff" && (
+                    <SelectItem value="__all">Todas las secciones</SelectItem>
+                  )}
+                  {seccionOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {scope === "staff" && seccionFiltro && (
+                <Badge variant="outline">Filtrando por sección</Badge>
               )}
-              {canManageBajas && <TabsTrigger value="bajas">Bajas</TabsTrigger>}
-            </TabsList>
+            </div>
 
-            <TabsContent value="alumnos" className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Select
-                  value={seccionFiltro || undefined}
-                  onValueChange={(value) =>
-                    setSeccionFiltro(value === "__all" ? "" : value)
-                  }
-                  disabled={teacherWithoutSecciones}
-                >
-                  <SelectTrigger className="w-[220px]">
-                    <SelectValue placeholder={seccionPlaceholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {scope === "staff" && (
-                      <SelectItem value="__all">Todas las secciones</SelectItem>
-                    )}
-                    {seccionOptions.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {scope === "staff" && seccionFiltro && (
-                  <Badge variant="outline">Filtrando por sección</Badge>
-                )}
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Listado de alumnos</CardTitle>
+                <CardDescription>
+                  Seleccioná un alumno para ver su ficha completa.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {teacherWithoutSecciones ? (
+                  <div className="text-sm text-muted-foreground py-6">
+                    No tenés secciones asignadas para ver alumnos.
+                  </div>
+                ) : teacherNeedsSelection ? (
+                  <div className="text-sm text-muted-foreground py-6">
+                    Seleccioná una sección para ver los alumnos asignados.
+                  </div>
+                ) : loadingAlumnos ? (
+                  <LoadingState label="Cargando alumnos…" />
+                ) : errorAlumnos ? (
+                  <div className="text-sm text-red-600 py-6">
+                    {errorAlumnos}
+                  </div>
+                ) : alumnos.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-6">
+                    No se encontraron alumnos con los filtros aplicados.
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {alumnos.map((alumno) => {
+                        const alumnoId = alumno.id;
+                        const nombre = alumno.nombre?.trim() || "—";
+                        const apellido = alumno.apellido?.trim() || "—";
+                        const dni = alumno.dni?.trim() || "—";
+                        const turnoRaw = alumno.seccionActualTurno?.trim();
+                        const turnoLabel = formatTurnoLabel(turnoRaw);
+                        const seccionNombre =
+                          cleanSeccionNombre(
+                            alumno.seccionActualNombre,
+                            turnoRaw,
+                            turnoLabel,
+                          ) || "Sin asignar";
+                        const turno = turnoLabel ?? turnoRaw ?? "—";
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Listado de alumnos</CardTitle>
-                  <CardDescription>
-                    Seleccioná un alumno para ver su ficha completa.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {teacherWithoutSecciones ? (
-                    <div className="text-sm text-muted-foreground py-6">
-                      No tenés secciones asignadas para ver alumnos.
-                    </div>
-                  ) : teacherNeedsSelection ? (
-                    <div className="text-sm text-muted-foreground py-6">
-                      Seleccioná una sección para ver los alumnos asignados.
-                    </div>
-                  ) : loadingAlumnos ? (
-                    <LoadingState label="Cargando alumnos…" />
-                  ) : errorAlumnos ? (
-                    <div className="text-sm text-red-600 py-6">{errorAlumnos}</div>
-                  ) : alumnos.length === 0 ? (
-                    <div className="text-sm text-muted-foreground py-6">
-                      No se encontraron alumnos con los filtros aplicados.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {alumnos.map((alumno) => {
-                          const alumnoId = alumno.id;
-                          const nombre = alumno.nombre?.trim() || "—";
-                          const apellido = alumno.apellido?.trim() || "—";
-                          const dni = alumno.dni?.trim() || "—";
-                          const turnoRaw = alumno.seccionActualTurno?.trim();
-                          const turnoLabel = formatTurnoLabel(turnoRaw);
-                          const seccionNombre =
-                            cleanSeccionNombre(
-                              alumno.seccionActualNombre,
-                              turnoRaw,
-                              turnoLabel,
-                            ) || "Sin asignar";
-                          const turno = turnoLabel ?? turnoRaw ?? "—";
-
-                          return (
-                            <button
-                              key={alumnoId ?? `${nombre}-${apellido}-${dni}`}
-                              type="button"
-                              onClick={() =>
-                                alumnoId && router.push(`/dashboard/alumnos/${alumnoId}`)
-                              }
-                              className="h-full w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                            >
-                              <Card className="h-full border transition-colors hover:border-primary hover:shadow-md">
-                                <CardContent className="space-y-4 pt-6 text-sm">
-                                  <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-                                    <dl className="grid gap-1">
-                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                        Nombre
-                                      </dt>
-                                      <dd className="text-base font-semibold text-foreground">
-                                        {nombre}
-                                      </dd>
-                                    </dl>
-                                    <dl className="grid gap-1">
-                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                        Apellido
-                                      </dt>
-                                      <dd className="text-base font-semibold text-foreground">
-                                        {apellido}
-                                      </dd>
-                                    </dl>
-                                  </div>
+                        return (
+                          <button
+                            key={alumnoId ?? `${nombre}-${apellido}-${dni}`}
+                            type="button"
+                            onClick={() =>
+                              alumnoId &&
+                              router.push(`/dashboard/alumnos/${alumnoId}`)
+                            }
+                            className="h-full w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                          >
+                            <Card className="h-full border transition-colors hover:border-primary hover:shadow-md">
+                              <CardContent className="space-y-4 pt-6 text-sm">
+                                <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
                                   <dl className="grid gap-1">
                                     <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                      DNI
+                                      Nombre
                                     </dt>
                                     <dd className="text-base font-semibold text-foreground">
-                                      {dni}
+                                      {nombre}
                                     </dd>
                                   </dl>
-                                  <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-                                    <dl className="grid gap-1">
-                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                        Sección actual
-                                      </dt>
-                                      <dd className="text-base font-semibold text-foreground">
-                                        {seccionNombre}
-                                      </dd>
-                                    </dl>
-                                    <dl className="grid gap-1">
-                                      <dt className="text-xs font-medium uppercase text-muted-foreground">
-                                        Turno
-                                      </dt>
-                                      <dd className="text-base font-semibold text-foreground">
-                                        {turno}
-                                      </dd>
-                                    </dl>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </button>
-                          );
-                        })}
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Apellido
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {apellido}
+                                    </dd>
+                                  </dl>
+                                </div>
+                                <dl className="grid gap-1">
+                                  <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                    DNI
+                                  </dt>
+                                  <dd className="text-base font-semibold text-foreground">
+                                    {dni}
+                                  </dd>
+                                </dl>
+                                <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Sección actual
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {seccionNombre}
+                                    </dd>
+                                  </dl>
+                                  <dl className="grid gap-1">
+                                    <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                      Turno
+                                    </dt>
+                                    <dd className="text-base font-semibold text-foreground">
+                                      {turno}
+                                    </dd>
+                                  </dl>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 flex flex-col gap-2 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                      <div>
+                        Mostrando {showingFrom}-{showingTo} de {totalItems}{" "}
+                        alumno
+                        {totalItems === 1 ? "" : "s"}.
                       </div>
-                      <div className="mt-4 flex flex-col gap-2 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setPage((prev) => Math.max(0, prev - 1))
+                          }
+                          disabled={page === 0 || loadingAlumnos}
+                        >
+                          Anterior
+                        </Button>
                         <div>
-                          Mostrando {showingFrom}-{showingTo} de {totalItems} alumno
-                          {totalItems === 1 ? "" : "s"}.
+                          Página {totalPages === 0 ? 0 : page + 1} de{" "}
+                          {totalPages}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage((prev) => Math.max(0, prev - 1))}
-                            disabled={page === 0 || loadingAlumnos}
-                          >
-                            Anterior
-                          </Button>
-                          <div>
-                            Página {totalPages === 0 ? 0 : page + 1} de {totalPages}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setPage((prev) => {
-                                if (totalPages === 0) return prev;
-                                return Math.min(totalPages - 1, Math.max(0, prev + 1));
-                              })
-                            }
-                            disabled={
-                              totalPages === 0 || page >= totalPages - 1 || loadingAlumnos
-                            }
-                          >
-                            Siguiente
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setPage((prev) => {
+                              if (totalPages === 0) return prev;
+                              return Math.min(
+                                totalPages - 1,
+                                Math.max(0, prev + 1),
+                              );
+                            })
+                          }
+                          disabled={
+                            totalPages === 0 ||
+                            page >= totalPages - 1 ||
+                            loadingAlumnos
+                          }
+                        >
+                          Siguiente
+                        </Button>
                       </div>
-                    </>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Aspirantes */}
+          {canViewAspirantesHistorial && (
+            <TabsContent value="aspirantes" className="space-y-4">
+              <AspirantesTab searchTerm={searchTerm} />
+            </TabsContent>
+          )}
+
+          {/* Bajas */}
+          {canManageBajas && (
+            <TabsContent value="bajas" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle>Solicitudes de baja</CardTitle>
+                    <CardDescription>
+                      Gestioná las bajas enviadas por alumnos y familias.
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchSolicitudesBaja}
+                    >
+                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loadingSolicitudesBaja ? (
+                    <LoadingState label="Cargando solicitudes…" />
+                  ) : errorSolicitudesBaja ? (
+                    <div className="text-sm text-red-600">
+                      {errorSolicitudesBaja}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-xs text-muted-foreground">
+                          Mostrando {filteredSolicitudesBaja.length} de{" "}
+                          {solicitudesBaja.length} solicitudes
+                        </div>
+                        <Select
+                          value={estadoSolicitudesFiltro}
+                          onValueChange={(value) =>
+                            setEstadoSolicitudesFiltro(
+                              value as "all" | DTO.EstadoSolicitudBaja,
+                            )
+                          }
+                        >
+                          <SelectTrigger className="w-full sm:w-[220px]">
+                            <SelectValue placeholder="Filtrar por estado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">
+                              Todas ({solicitudesBaja.length})
+                            </SelectItem>
+                            <SelectItem
+                              value={DTO.EstadoSolicitudBaja.PENDIENTE}
+                            >
+                              Pendientes ({bajasPendientes.length})
+                            </SelectItem>
+                            <SelectItem
+                              value={DTO.EstadoSolicitudBaja.APROBADA}
+                            >
+                              Aprobadas ({bajasAprobadas.length})
+                            </SelectItem>
+                            <SelectItem
+                              value={DTO.EstadoSolicitudBaja.RECHAZADA}
+                            >
+                              Rechazadas ({bajasRechazadas.length})
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {solicitudesBaja.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">
+                          No hay solicitudes de baja registradas.
+                        </div>
+                      ) : filteredSolicitudesBaja.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">
+                          No hay solicitudes para el filtro seleccionado.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                <th className="py-2 pr-4 font-medium">
+                                  Alumno
+                                </th>
+                                <th className="py-2 pr-4 font-medium">
+                                  Motivo
+                                </th>
+                                <th className="py-2 pr-4 font-medium">
+                                  Administración
+                                </th>
+                                <th className="py-2 pr-4 font-medium">
+                                  Estado
+                                </th>
+                                <th className="py-2 pr-4 font-medium">
+                                  Decisión
+                                </th>
+                                <th className="py-2 pr-4 font-medium">
+                                  Acciones
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredSolicitudesBaja.map((sol) => {
+                                const estado =
+                                  sol.estado ??
+                                  DTO.EstadoSolicitudBaja.PENDIENTE;
+                                const revisionEstado =
+                                  sol.estadoRevisionAdministrativa ??
+                                  DTO.EstadoRevisionAdministrativa.PENDIENTE;
+                                const nombre =
+                                  [sol.alumnoApellido, sol.alumnoNombre]
+                                    .filter(Boolean)
+                                    .join(", ") || "Alumno sin datos";
+                                const revisionObservacion =
+                                  sol.observacionRevisionAdministrativa?.trim() ||
+                                  null;
+                                const puedeRevisar =
+                                  canReviewBajasAdministracion &&
+                                  estado ===
+                                    DTO.EstadoSolicitudBaja.PENDIENTE &&
+                                  revisionEstado ===
+                                    DTO.EstadoRevisionAdministrativa.PENDIENTE;
+                                const puedeDecidir =
+                                  canDecideBajasDireccion &&
+                                  estado ===
+                                    DTO.EstadoSolicitudBaja.PENDIENTE &&
+                                  revisionEstado !==
+                                    DTO.EstadoRevisionAdministrativa.PENDIENTE;
+                                return (
+                                  <tr
+                                    key={sol.id}
+                                    className="border-t border-border/60 align-top"
+                                  >
+                                    <td className="py-3 pr-4">
+                                      <div className="font-medium text-foreground">
+                                        {nombre}
+                                      </div>
+                                      {sol.alumnoDni && (
+                                        <div className="text-xs text-muted-foreground">
+                                          DNI {sol.alumnoDni}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="py-3 pr-4 max-w-xs">
+                                      <div className="text-sm text-muted-foreground whitespace-pre-line">
+                                        {sol.motivo || "—"}
+                                      </div>
+                                      {sol.motivoRechazo && (
+                                        <div className="mt-1 text-xs text-destructive">
+                                          Rechazo: {sol.motivoRechazo}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="py-3 pr-4">
+                                      <div className="flex flex-col gap-1 text-sm">
+                                        <Badge
+                                          variant={
+                                            revisionVariant[revisionEstado]
+                                          }
+                                        >
+                                          {revisionLabels[revisionEstado]}
+                                        </Badge>
+                                        <div className="text-xs text-muted-foreground">
+                                          {formatDateTime(
+                                            sol.fechaRevisionAdministrativa,
+                                          )}
+                                        </div>
+                                        {sol.revisadoAdministrativamentePorPersonaId && (
+                                          <div className="text-xs text-muted-foreground">
+                                            Rev. por #
+                                            {
+                                              sol.revisadoAdministrativamentePorPersonaId
+                                            }
+                                          </div>
+                                        )}
+                                        {revisionObservacion && (
+                                          <p className="text-xs text-muted-foreground whitespace-pre-line">
+                                            {revisionObservacion}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-3 pr-4">
+                                      <Badge variant={estadoVariant[estado]}>
+                                        {estadoLabels[estado]}
+                                      </Badge>
+                                    </td>
+                                    <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                      <div>
+                                        {formatDateTime(sol.fechaDecision)}
+                                      </div>
+                                      {sol.decididoPorPersonaId && (
+                                        <div className="text-xs">
+                                          Decidido por #
+                                          {sol.decididoPorPersonaId}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="py-3 pr-4">
+                                      <div className="flex flex-wrap gap-2">
+                                        {puedeRevisar && (
+                                          <>
+                                            <Button
+                                              size="sm"
+                                              onClick={() =>
+                                                handleAdministracionRevision(
+                                                  sol,
+                                                  DTO
+                                                    .EstadoRevisionAdministrativa
+                                                    .CONFIRMADA,
+                                                )
+                                              }
+                                              disabled={
+                                                processingRevisionId === sol.id
+                                              }
+                                            >
+                                              Confirmar baja
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="destructive"
+                                              onClick={() =>
+                                                handleAdministracionRevision(
+                                                  sol,
+                                                  DTO
+                                                    .EstadoRevisionAdministrativa
+                                                    .DEUDAS_INFORMADAS,
+                                                )
+                                              }
+                                              disabled={
+                                                processingRevisionId === sol.id
+                                              }
+                                            >
+                                              Informar deudas
+                                            </Button>
+                                          </>
+                                        )}
+                                        {puedeDecidir && (
+                                          <>
+                                            <Button
+                                              size="sm"
+                                              onClick={() =>
+                                                handleApproveSolicitud(sol)
+                                              }
+                                              disabled={
+                                                processingSolicitudId === sol.id
+                                              }
+                                            >
+                                              Aceptar baja
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="destructive"
+                                              onClick={() =>
+                                                handleRejectSolicitud(sol)
+                                              }
+                                              disabled={
+                                                processingSolicitudId === sol.id
+                                              }
+                                            >
+                                              Rechazar
+                                            </Button>
+                                          </>
+                                        )}
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleDownloadSolicitud(sol)
+                                          }
+                                        >
+                                          <Download className="mr-2 h-3 w-3" />
+                                          Descargar
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
+          )}
 
-            {/* Aspirantes */}
-            {canViewAspirantesHistorial && (
-              <TabsContent value="aspirantes" className="space-y-4">
-                <AspirantesTab searchTerm={searchTerm} />
-              </TabsContent>
-            )}
-
-            {/* Bajas */}
-            {canManageBajas && (
-              <TabsContent value="bajas" className="space-y-4">
-                <Card>
-                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <CardTitle>Solicitudes de baja</CardTitle>
-                      <CardDescription>
-                        Gestioná las bajas enviadas por alumnos y familias.
-                      </CardDescription>
+          {/* Historial */}
+          {canViewAspirantesHistorial && (
+            <TabsContent value="historial" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle>Historial de alumnos</CardTitle>
+                    <CardDescription>
+                      Registro de estudiantes que egresaron o finalizaron su
+                      paso por la institución.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchHistorialAlumnos}
+                  >
+                    <TimerReset className="mr-2 h-4 w-4" /> Actualizar
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {loadingHistorialAlumnos ? (
+                    <LoadingState label="Cargando historial…" />
+                  ) : errorHistorialAlumnos ? (
+                    <div className="text-sm text-red-600">
+                      {errorHistorialAlumnos}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={fetchSolicitudesBaja}
-                      >
-                        <TimerReset className="mr-2 h-4 w-4" /> Actualizar
-                      </Button>
+                  ) : historialAlumnos.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-muted-foreground">
+                      Todavía no hay alumnos en el historial.
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingSolicitudesBaja ? (
-                      <LoadingState label="Cargando solicitudes…" />
-                    ) : errorSolicitudesBaja ? (
-                      <div className="text-sm text-red-600">
-                        {errorSolicitudesBaja}
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="text-xs text-muted-foreground">
-                            Mostrando {filteredSolicitudesBaja.length} de {" "}
-                            {solicitudesBaja.length} solicitudes
-                          </div>
-                          <Select
-                            value={estadoSolicitudesFiltro}
-                            onValueChange={(value) =>
-                              setEstadoSolicitudesFiltro(
-                                value as "all" | DTO.EstadoSolicitudBaja,
-                              )
-                            }
-                          >
-                            <SelectTrigger className="w-full sm:w-[220px]">
-                              <SelectValue placeholder="Filtrar por estado" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">
-                                Todas ({solicitudesBaja.length})
-                              </SelectItem>
-                              <SelectItem value={DTO.EstadoSolicitudBaja.PENDIENTE}>
-                                Pendientes ({bajasPendientes.length})
-                              </SelectItem>
-                              <SelectItem value={DTO.EstadoSolicitudBaja.APROBADA}>
-                                Aprobadas ({bajasAprobadas.length})
-                              </SelectItem>
-                              <SelectItem value={DTO.EstadoSolicitudBaja.RECHAZADA}>
-                                Rechazadas ({bajasRechazadas.length})
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {solicitudesBaja.length === 0 ? (
-                          <div className="py-8 text-center text-sm text-muted-foreground">
-                            No hay solicitudes de baja registradas.
-                          </div>
-                        ) : filteredSolicitudesBaja.length === 0 ? (
-                          <div className="py-8 text-center text-sm text-muted-foreground">
-                            No hay solicitudes para el filtro seleccionado.
-                          </div>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                              <thead>
-                                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                                  <th className="py-2 pr-4 font-medium">Alumno</th>
-                                  <th className="py-2 pr-4 font-medium">Motivo</th>
-                                  <th className="py-2 pr-4 font-medium">Administración</th>
-                                  <th className="py-2 pr-4 font-medium">Estado</th>
-                                  <th className="py-2 pr-4 font-medium">Decisión</th>
-                                  <th className="py-2 pr-4 font-medium">Acciones</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {filteredSolicitudesBaja.map((sol) => {
-                                  const estado =
-                                    sol.estado ?? DTO.EstadoSolicitudBaja.PENDIENTE;
-                                  const revisionEstado =
-                                    sol.estadoRevisionAdministrativa ??
-                                    DTO.EstadoRevisionAdministrativa.PENDIENTE;
-                                  const nombre =
-                                    [sol.alumnoApellido, sol.alumnoNombre]
-                                      .filter(Boolean)
-                                      .join(", ") ||
-                                    "Alumno sin datos";
-                                  const revisionObservacion =
-                                    sol.observacionRevisionAdministrativa?.trim() ||
-                                    null;
-                                  const puedeRevisar =
-                                    canReviewBajasAdministracion &&
-                                    estado === DTO.EstadoSolicitudBaja.PENDIENTE &&
-                                    revisionEstado ===
-                                      DTO.EstadoRevisionAdministrativa.PENDIENTE;
-                                  const puedeDecidir =
-                                    canDecideBajasDireccion &&
-                                    estado === DTO.EstadoSolicitudBaja.PENDIENTE &&
-                                    revisionEstado !==
-                                      DTO.EstadoRevisionAdministrativa.PENDIENTE;
-                                  return (
-                                    <tr
-                                      key={sol.id}
-                                      className="border-t border-border/60 align-top"
-                                    >
-                                      <td className="py-3 pr-4">
-                                        <div className="font-medium text-foreground">
-                                          {nombre}
-                                        </div>
-                                        {sol.alumnoDni && (
-                                          <div className="text-xs text-muted-foreground">
-                                            DNI {sol.alumnoDni}
-                                          </div>
-                                        )}
-                                      </td>
-                                      <td className="py-3 pr-4 max-w-xs">
-                                        <div className="text-sm text-muted-foreground whitespace-pre-line">
-                                          {sol.motivo || "—"}
-                                        </div>
-                                        {sol.motivoRechazo && (
-                                          <div className="mt-1 text-xs text-destructive">
-                                            Rechazo: {sol.motivoRechazo}
-                                          </div>
-                                        )}
-                                      </td>
-                                      <td className="py-3 pr-4">
-                                        <div className="flex flex-col gap-1 text-sm">
-                                          <Badge variant={revisionVariant[revisionEstado]}>
-                                            {revisionLabels[revisionEstado]}
-                                          </Badge>
-                                          <div className="text-xs text-muted-foreground">
-                                            {formatDateTime(sol.fechaRevisionAdministrativa)}
-                                          </div>
-                                          {sol.revisadoAdministrativamentePorPersonaId && (
-                                            <div className="text-xs text-muted-foreground">
-                                              Rev. por #
-                                              {sol.revisadoAdministrativamentePorPersonaId}
-                                            </div>
-                                          )}
-                                          {revisionObservacion && (
-                                            <p className="text-xs text-muted-foreground whitespace-pre-line">
-                                              {revisionObservacion}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </td>
-                                      <td className="py-3 pr-4">
-                                        <Badge variant={estadoVariant[estado]}>
-                                          {estadoLabels[estado]}
-                                        </Badge>
-                                      </td>
-                                      <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                        <div>{formatDateTime(sol.fechaDecision)}</div>
-                                        {sol.decididoPorPersonaId && (
-                                          <div className="text-xs">
-                                            Decidido por #{sol.decididoPorPersonaId}
-                                          </div>
-                                        )}
-                                      </td>
-                                      <td className="py-3 pr-4">
-                                        <div className="flex flex-wrap gap-2">
-                                          {puedeRevisar && (
-                                            <>
-                                              <Button
-                                                size="sm"
-                                                onClick={() =>
-                                                  handleAdministracionRevision(
-                                                    sol,
-                                                    DTO.EstadoRevisionAdministrativa.CONFIRMADA,
-                                                  )
-                                                }
-                                                disabled={
-                                                  processingRevisionId === sol.id
-                                                }
-                                              >
-                                                Confirmar baja
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="destructive"
-                                                onClick={() =>
-                                                  handleAdministracionRevision(
-                                                    sol,
-                                                    DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS,
-                                                  )
-                                                }
-                                                disabled={
-                                                  processingRevisionId === sol.id
-                                                }
-                                              >
-                                                Informar deudas
-                                              </Button>
-                                            </>
-                                          )}
-                                          {puedeDecidir && (
-                                            <>
-                                              <Button
-                                                size="sm"
-                                                onClick={() =>
-                                                  handleApproveSolicitud(sol)
-                                                }
-                                                disabled={
-                                                  processingSolicitudId === sol.id
-                                                }
-                                              >
-                                                Aceptar baja
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="destructive"
-                                                onClick={() =>
-                                                  handleRejectSolicitud(sol)
-                                                }
-                                                disabled={
-                                                  processingSolicitudId === sol.id
-                                                }
-                                              >
-                                                Rechazar
-                                              </Button>
-                                            </>
-                                          )}
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() =>
-                                              handleDownloadSolicitud(sol)
-                                            }
-                                          >
-                                            <Download className="mr-2 h-3 w-3" />
-                                            Descargar
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
-
-            {/* Historial */}
-            {canViewAspirantesHistorial && (
-              <TabsContent value="historial" className="space-y-4">
-                <Card>
-                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <CardTitle>Historial de alumnos</CardTitle>
-                      <CardDescription>
-                        Registro de estudiantes que egresaron o finalizaron su
-                        paso por la institución.
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fetchHistorialAlumnos}
-                    >
-                      <TimerReset className="mr-2 h-4 w-4" /> Actualizar
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingHistorialAlumnos ? (
-                      <LoadingState label="Cargando historial…" />
-                    ) : errorHistorialAlumnos ? (
-                      <div className="text-sm text-red-600">
-                        {errorHistorialAlumnos}
-                      </div>
-                    ) : historialAlumnos.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-muted-foreground">
-                        Todavía no hay alumnos en el historial.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                          <thead>
-                            <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                              <th className="py-2 pr-4 font-medium">Alumno</th>
-                              <th className="py-2 pr-4 font-medium">Detalle</th>
-                              <th className="py-2 pr-4 font-medium">Última sección</th>
-                              <th className="py-2 pr-4 font-medium">Periodo</th>
-                              <th className="py-2 pr-4 font-medium">Fecha</th>
-                              <th className="py-2 pr-4 font-medium">Acciones</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {historialAlumnos.map((entry) => {
-                              const estado =
-                                entry.estado ??
-                                DTO.EstadoHistorialAlumno.TERMINADO;
-                              const nombre =
-                                [entry.alumnoApellido, entry.alumnoNombre]
-                                  .filter(Boolean)
-                                  .join(", ") ||
-                                "Alumno sin datos";
-                              const dniLabel = entry.alumnoDni
-                                ? `DNI ${entry.alumnoDni}`
-                                : "Sin documento";
-                              const detalle = entry.detalle ?? "—";
-                              const seccion = entry.seccionNombre ?? "—";
-                              const periodo = entry.periodoEscolarAnio
-                                ? `Período ${entry.periodoEscolarAnio}`
-                                : "—";
-                              const key =
-                                entry.solicitudBajaId != null
-                                  ? `baja-${entry.solicitudBajaId}`
-                                  : `terminado-${entry.alumnoId ?? ""}-${
-                                      entry.matriculaId ?? ""
-                                    }-${entry.fechaRegistro ?? ""}`;
-                              return (
-                                <tr
-                                  key={key}
-                                  className="border-t border-border/60 align-top"
-                                >
-                                  <td className="py-3 pr-4">
-                                    <div className="font-medium text-foreground">
-                                      {nombre}
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                      <span>{dniLabel}</span>
-                                      <Badge variant={historialEstadoVariant[estado]}>
-                                        {historialEstadoLabels[estado]}
-                                      </Badge>
-                                    </div>
-                                  </td>
-                                  <td className="py-3 pr-4 max-w-md text-sm text-muted-foreground whitespace-pre-line">
-                                    {detalle}
-                                  </td>
-                                  <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                    {seccion}
-                                  </td>
-                                  <td className="py-3 pr-4">
-                                    {periodo}
-                                  </td>
-                                  <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                    {formatDateTime(entry.fechaRegistro)}
-                                  </td>
-                                  <td className="py-3 pr-4">
-                                    {entry.solicitudBaja ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          handleDownloadSolicitud(
-                                            entry.solicitudBaja!,
-                                          )
-                                        }
-                                      >
-                                        <Download className="mr-2 h-3 w-3" />
-                                        Descargar
-                                      </Button>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground">
-                                        —
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
-          </Tabs>
-        )}
-        {canManageBajas && (
-          <Dialog open={crearBajaOpen} onOpenChange={handleCrearBajaOpenChange}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Registrar nueva baja</DialogTitle>
-                <DialogDescription>
-                  Creá una solicitud manual para dar de baja a un alumno.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="crear-baja-alumno">Alumno</Label>
-                  {matriculasLoading ? (
-                    <LoadingState label="Cargando matrículas disponibles…" />
-                  ) : matriculasError ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-destructive">{matriculasError}</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => loadMatriculas()}
-                      >
-                        Reintentar
-                      </Button>
-                    </div>
-                  ) : matriculaOptions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No hay matrículas activas disponibles para registrar una baja manual.
-                    </p>
                   ) : (
-                    <Select
-                      value={
-                        crearBajaMatriculaId != null
-                          ? String(crearBajaMatriculaId)
-                          : undefined
-                      }
-                      onValueChange={(value) =>
-                        setCrearBajaMatriculaId(Number(value))
-                      }
-                      disabled={crearBajaLoading}
-                    >
-                      <SelectTrigger id="crear-baja-alumno">
-                        <SelectValue placeholder="Seleccioná un alumno" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        {matriculaOptions.map((option) => (
-                          <SelectItem
-                            key={option.value}
-                            value={String(option.value)}
-                          >
-                            <div className="flex flex-col">
-                              <span>{option.label}</span>
-                              {option.seccion && (
-                                <span className="text-xs text-muted-foreground">
-                                  {option.seccion}
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {selectedMatriculaInfo && (
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline">#{crearBajaMatriculaId}</Badge>
-                      {selectedMatriculaInfo.seccion && (
-                        <span>{selectedMatriculaInfo.seccion}</span>
-                      )}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                            <th className="py-2 pr-4 font-medium">Alumno</th>
+                            <th className="py-2 pr-4 font-medium">Detalle</th>
+                            <th className="py-2 pr-4 font-medium">
+                              Última sección
+                            </th>
+                            <th className="py-2 pr-4 font-medium">Periodo</th>
+                            <th className="py-2 pr-4 font-medium">Fecha</th>
+                            <th className="py-2 pr-4 font-medium">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {historialAlumnos.map((entry) => {
+                            const estado =
+                              entry.estado ??
+                              DTO.EstadoHistorialAlumno.TERMINADO;
+                            const nombre =
+                              [entry.alumnoApellido, entry.alumnoNombre]
+                                .filter(Boolean)
+                                .join(", ") || "Alumno sin datos";
+                            const dniLabel = entry.alumnoDni
+                              ? `DNI ${entry.alumnoDni}`
+                              : "Sin documento";
+                            const detalle = entry.detalle ?? "—";
+                            const seccion = entry.seccionNombre ?? "—";
+                            const periodo = entry.periodoEscolarAnio
+                              ? `Período ${entry.periodoEscolarAnio}`
+                              : "—";
+                            const key =
+                              entry.solicitudBajaId != null
+                                ? `baja-${entry.solicitudBajaId}`
+                                : `terminado-${entry.alumnoId ?? ""}-${
+                                    entry.matriculaId ?? ""
+                                  }-${entry.fechaRegistro ?? ""}`;
+                            return (
+                              <tr
+                                key={key}
+                                className="border-t border-border/60 align-top"
+                              >
+                                <td className="py-3 pr-4">
+                                  <div className="font-medium text-foreground">
+                                    {nombre}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{dniLabel}</span>
+                                    <Badge
+                                      variant={historialEstadoVariant[estado]}
+                                    >
+                                      {historialEstadoLabels[estado]}
+                                    </Badge>
+                                  </div>
+                                </td>
+                                <td className="py-3 pr-4 max-w-md text-sm text-muted-foreground whitespace-pre-line">
+                                  {detalle}
+                                </td>
+                                <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                  {seccion}
+                                </td>
+                                <td className="py-3 pr-4">{periodo}</td>
+                                <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                  {formatDateTime(entry.fechaRegistro)}
+                                </td>
+                                <td className="py-3 pr-4">
+                                  {entry.solicitudBaja ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        handleDownloadSolicitud(
+                                          entry.solicitudBaja!,
+                                        )
+                                      }
+                                    >
+                                      <Download className="mr-2 h-3 w-3" />
+                                      Descargar
+                                    </Button>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      —
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="crear-baja-motivo">Motivo</Label>
-                  <Textarea
-                    id="crear-baja-motivo"
-                    placeholder="Ingresá el motivo de la baja"
-                    value={crearBajaMotivo}
-                    onChange={(event) => setCrearBajaMotivo(event.target.value)}
-                    rows={4}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
+      )}
+      {canManageBajas && (
+        <Dialog open={crearBajaOpen} onOpenChange={handleCrearBajaOpenChange}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Registrar nueva baja</DialogTitle>
+              <DialogDescription>
+                Creá una solicitud manual para dar de baja a un alumno.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="crear-baja-alumno">Alumno</Label>
+                {matriculasLoading ? (
+                  <LoadingState label="Cargando matrículas disponibles…" />
+                ) : matriculasError ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-destructive">
+                      {matriculasError}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => loadMatriculas()}
+                    >
+                      Reintentar
+                    </Button>
+                  </div>
+                ) : matriculaOptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No hay matrículas activas disponibles para registrar una
+                    baja manual.
+                  </p>
+                ) : (
+                  <Select
+                    value={
+                      crearBajaMatriculaId != null
+                        ? String(crearBajaMatriculaId)
+                        : undefined
+                    }
+                    onValueChange={(value) =>
+                      setCrearBajaMatriculaId(Number(value))
+                    }
                     disabled={crearBajaLoading}
-                  />
-                </div>
+                  >
+                    <SelectTrigger id="crear-baja-alumno">
+                      <SelectValue placeholder="Seleccioná un alumno" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {matriculaOptions.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={String(option.value)}
+                        >
+                          <div className="flex flex-col">
+                            <span>{option.label}</span>
+                            {option.seccion && (
+                              <span className="text-xs text-muted-foreground">
+                                {option.seccion}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {selectedMatriculaInfo && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <Badge variant="outline">#{crearBajaMatriculaId}</Badge>
+                    {selectedMatriculaInfo.seccion && (
+                      <span>{selectedMatriculaInfo.seccion}</span>
+                    )}
+                  </div>
+                )}
               </div>
-              <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => handleCrearBajaOpenChange(false)}
-                  disabled={crearBajaLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleCrearBaja}
-                  disabled={
-                    crearBajaLoading ||
-                    matriculasLoading ||
-                    matriculaOptions.length === 0
-                  }
-                >
-                  {crearBajaLoading ? "Registrando…" : "Registrar baja"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="crear-baja-motivo">Motivo</Label>
+                <Textarea
+                  id="crear-baja-motivo"
+                  placeholder="Ingresá el motivo de la baja"
+                  value={crearBajaMotivo}
+                  onChange={(event) => setCrearBajaMotivo(event.target.value)}
+                  rows={4}
+                  disabled={crearBajaLoading}
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => handleCrearBajaOpenChange(false)}
+                disabled={crearBajaLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCrearBaja}
+                disabled={
+                  crearBajaLoading ||
+                  matriculasLoading ||
+                  matriculaOptions.length === 0
+                }
+              >
+                {crearBajaLoading ? "Registrando…" : "Registrar baja"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 }

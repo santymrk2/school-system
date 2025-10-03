@@ -83,6 +83,7 @@ import type {
   SeccionDTO,
 } from "@/types/api-generated";
 import {
+  EstadoRevisionAdministrativa,
   EstadoSolicitudBaja,
   RolVinculo,
   SolicitudBajaAlumnoDTO,
@@ -160,8 +161,6 @@ export default function AlumnoPerfilPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [crearBajaOpen, setCrearBajaOpen] = useState(false);
   const [crearBajaMotivo, setCrearBajaMotivo] = useState("");
-  const [crearBajaConfirmacionDeuda, setCrearBajaConfirmacionDeuda] =
-    useState(false);
   const [crearBajaLoading, setCrearBajaLoading] = useState(false);
   const [solicitudesBaja, setSolicitudesBaja] = useState<
     SolicitudBajaAlumnoDTO[]
@@ -170,15 +169,56 @@ export default function AlumnoPerfilPage() {
     useState(false);
   const [solicitudesBajaError, setSolicitudesBajaError] =
     useState<string | null>(null);
+  const [processingDecisionSolicitudId, setProcessingDecisionSolicitudId] =
+    useState<number | null>(null);
 
   const [familiares, setFamiliares] = useState<FamiliarConVinculo[]>([]);
 
   const { periodoEscolarId: activePeriodId, getPeriodoNombre } = useActivePeriod();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const { type: viewerScope } = useViewerScope();
   const canManageProfile = viewerScope === "staff";
   const canEditRoles =
     canManageProfile && (hasRole(UserRole.ADMIN) || hasRole(UserRole.DIRECTOR));
+  const personaActualId = useMemo(
+    () => user?.personaId ?? user?.id ?? null,
+    [user],
+  );
+  const puedeDecidirBaja =
+    viewerScope === "staff" && hasRole(UserRole.DIRECTOR);
+
+  const estadoSolicitudLabels: Record<EstadoSolicitudBaja, string> = {
+    [EstadoSolicitudBaja.PENDIENTE]: "Pendiente",
+    [EstadoSolicitudBaja.APROBADA]: "Aprobada",
+    [EstadoSolicitudBaja.RECHAZADA]: "Rechazada",
+  };
+
+  const estadoSolicitudVariant: Record<
+    EstadoSolicitudBaja,
+    "secondary" | "default" | "destructive"
+  > = {
+    [EstadoSolicitudBaja.PENDIENTE]: "secondary",
+    [EstadoSolicitudBaja.APROBADA]: "default",
+    [EstadoSolicitudBaja.RECHAZADA]: "destructive",
+  };
+
+  const revisionAdministrativaLabels: Record<
+    EstadoRevisionAdministrativa,
+    string
+  > = {
+    [EstadoRevisionAdministrativa.PENDIENTE]: "Pendiente",
+    [EstadoRevisionAdministrativa.CONFIRMADA]: "Sin deudas",
+    [EstadoRevisionAdministrativa.DEUDAS_INFORMADAS]: "Deudas informadas",
+  };
+
+  const revisionAdministrativaVariant: Record<
+    EstadoRevisionAdministrativa,
+    "outline" | "default" | "destructive"
+  > = {
+    [EstadoRevisionAdministrativa.PENDIENTE]: "outline",
+    [EstadoRevisionAdministrativa.CONFIRMADA]: "default",
+    [EstadoRevisionAdministrativa.DEUDAS_INFORMADAS]: "destructive",
+  };
 
   // helpers
   const toNombre = (p?: PersonaDTO | null) =>
@@ -223,6 +263,19 @@ export default function AlumnoPerfilPage() {
     if (start && !end) return `${start} – Actualidad`;
     if (!start && end) return `Hasta ${end}`;
     return "Sin fechas registradas";
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    const parsed = parseDateValue(value);
+    if (!parsed) return value;
+    return parsed.toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const getTimeValue = (value?: string | null) => {
@@ -627,9 +680,43 @@ export default function AlumnoPerfilPage() {
     );
   }, [matriculaActual, solicitudesBaja]);
 
+  const pendingSolicitudRevisionEstado = pendingSolicitud
+    ? pendingSolicitud.estadoRevisionAdministrativa ??
+      EstadoRevisionAdministrativa.PENDIENTE
+    : null;
+
+  const pendingSolicitudTooltip = useMemo(() => {
+    if (!pendingSolicitud) return null;
+    const detalle = pendingSolicitud.observacionRevisionAdministrativa?.trim();
+    const estado =
+      pendingSolicitudRevisionEstado ?? EstadoRevisionAdministrativa.PENDIENTE;
+    if (estado === EstadoRevisionAdministrativa.PENDIENTE) {
+      return "Hay una solicitud de baja pendiente a la espera de revisión administrativa.";
+    }
+    if (estado === EstadoRevisionAdministrativa.CONFIRMADA) {
+      return "Administración confirmó la revisión. Dirección debe decidir si acepta o rechaza la baja.";
+    }
+    return `Administración informó deudas pendientes.${
+      detalle ? ` Detalle: ${detalle}` : ""
+    }`;
+  }, [pendingSolicitud, pendingSolicitudRevisionEstado]);
+
+  const pendingSolicitudBadgeClass = useMemo(() => {
+    if (!pendingSolicitudRevisionEstado) {
+      return "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100";
+    }
+    switch (pendingSolicitudRevisionEstado) {
+      case EstadoRevisionAdministrativa.CONFIRMADA:
+        return "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100";
+      case EstadoRevisionAdministrativa.DEUDAS_INFORMADAS:
+        return "border-red-300 bg-red-50 text-red-900 hover:bg-red-100";
+      default:
+        return "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100";
+    }
+  }, [pendingSolicitudRevisionEstado]);
+
   const resetCrearBajaForm = useCallback(() => {
     setCrearBajaMotivo("");
-    setCrearBajaConfirmacionDeuda(false);
     setCrearBajaLoading(false);
     setSolicitudesBajaError(null);
   }, []);
@@ -662,10 +749,6 @@ export default function AlumnoPerfilPage() {
       toast.error("El motivo de la baja es obligatorio");
       return;
     }
-    if (!crearBajaConfirmacionDeuda) {
-      toast.error("Confirmá que revisaste el estado de deudas del alumno");
-      return;
-    }
 
     setCrearBajaLoading(true);
     try {
@@ -685,13 +768,112 @@ export default function AlumnoPerfilPage() {
       setCrearBajaLoading(false);
     }
   }, [
-    crearBajaConfirmacionDeuda,
     crearBajaMotivo,
     fetchSolicitudesBaja,
     matriculaActual,
     pendingSolicitud,
     resetCrearBajaForm,
   ]);
+
+  const ensurePersonaActual = useCallback(
+    (message: string) => {
+      if (!personaActualId) {
+        toast.error(message);
+        return false;
+      }
+      return true;
+    },
+    [personaActualId],
+  );
+
+  const handleAceptarSolicitud = useCallback(
+    async (sol: SolicitudBajaAlumnoDTO) => {
+      if (
+        (sol.estadoRevisionAdministrativa ??
+          EstadoRevisionAdministrativa.PENDIENTE) ===
+        EstadoRevisionAdministrativa.PENDIENTE
+      ) {
+        toast.error(
+          "Administración debe completar la revisión antes de aceptar la baja",
+        );
+        return;
+      }
+      if (!ensurePersonaActual("No pudimos identificar a la persona que acepta la baja"))
+        return;
+      if (!window.confirm("¿Confirmás aceptar la baja del alumno?")) return;
+
+      setProcessingDecisionSolicitudId(sol.id ?? null);
+      try {
+        await vidaEscolar.solicitudesBaja.approve(sol.id!, {
+          decididoPorPersonaId: personaActualId!,
+        });
+        toast.success("Baja aceptada correctamente");
+        await fetchSolicitudesBaja();
+        setReloadKey((prev) => prev + 1);
+      } catch (error) {
+        logAlumnoError(error, "No se pudo aceptar la baja");
+        toast.error("No se pudo aceptar la baja");
+      } finally {
+        setProcessingDecisionSolicitudId(null);
+      }
+    },
+    [
+      ensurePersonaActual,
+      fetchSolicitudesBaja,
+      personaActualId,
+      setReloadKey,
+    ],
+  );
+
+  const handleRechazarSolicitud = useCallback(
+    async (sol: SolicitudBajaAlumnoDTO) => {
+      if (
+        (sol.estadoRevisionAdministrativa ??
+          EstadoRevisionAdministrativa.PENDIENTE) ===
+        EstadoRevisionAdministrativa.PENDIENTE
+      ) {
+        toast.error(
+          "Administración debe completar la revisión antes de rechazar la baja",
+        );
+        return;
+      }
+      if (!ensurePersonaActual("No pudimos identificar a la persona que rechaza la baja"))
+        return;
+
+      const reason = window.prompt(
+        "Motivo del rechazo",
+        sol.motivoRechazo ?? "",
+      );
+      if (reason == null) return;
+      const normalized = reason.trim();
+      if (!normalized) {
+        toast.error("El motivo de rechazo es obligatorio");
+        return;
+      }
+
+      setProcessingDecisionSolicitudId(sol.id ?? null);
+      try {
+        await vidaEscolar.solicitudesBaja.reject(sol.id!, {
+          decididoPorPersonaId: personaActualId!,
+          motivoRechazo: normalized,
+        });
+        toast.success("Solicitud rechazada");
+        await fetchSolicitudesBaja();
+        setReloadKey((prev) => prev + 1);
+      } catch (error) {
+        logAlumnoError(error, "No se pudo rechazar la baja");
+        toast.error("No se pudo rechazar la baja");
+      } finally {
+        setProcessingDecisionSolicitudId(null);
+      }
+    },
+    [
+      ensurePersonaActual,
+      fetchSolicitudesBaja,
+      personaActualId,
+      setReloadKey,
+    ],
+  );
 
   useEffect(() => {
     if (!editOpen) return;
@@ -1373,12 +1555,13 @@ export default function AlumnoPerfilPage() {
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100">
+                        <Badge className={pendingSolicitudBadgeClass}>
                           Baja pendiente
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
-                        Hay una solicitud de baja pendiente a la espera de revisión administrativa.
+                        {pendingSolicitudTooltip ??
+                          "Hay una solicitud de baja pendiente a la espera de revisión administrativa."}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1470,32 +1653,6 @@ export default function AlumnoPerfilPage() {
                             loadingSolicitudesBaja
                           }
                         />
-                      </div>
-                      <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
-                        <Checkbox
-                          id="crear-baja-deuda"
-                          checked={crearBajaConfirmacionDeuda}
-                          onCheckedChange={(checked) =>
-                            setCrearBajaConfirmacionDeuda(Boolean(checked))
-                          }
-                          disabled={
-                            crearBajaLoading ||
-                            !matriculaActual?.id ||
-                            loadingSolicitudesBaja
-                          }
-                        />
-                        <div className="space-y-1">
-                          <Label
-                            htmlFor="crear-baja-deuda"
-                            className="text-sm font-medium"
-                          >
-                            Confirmación administrativa
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Confirmo que revisé el estado de deudas y autorizo la
-                            baja del alumno.
-                          </p>
-                        </div>
                       </div>
                     </div>
                     <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -2331,11 +2488,156 @@ export default function AlumnoPerfilPage() {
                     </div>
                   )}
                 </div>
+            </CardContent>
+          </Card>
+
+          {canManageProfile && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>Solicitudes de baja</CardTitle>
+                <CardDescription>
+                  Seguimiento del circuito de baja registrado para este alumno.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingSolicitudesBaja ? (
+                  <LoadingState label="Cargando solicitudes…" />
+                ) : solicitudesBajaError ? (
+                  <div className="text-sm text-destructive">
+                    {solicitudesBajaError}
+                  </div>
+                ) : solicitudesBaja.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No hay solicitudes de baja registradas para este alumno.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {solicitudesBaja.map((sol) => {
+                      const estado =
+                        sol.estado ?? EstadoSolicitudBaja.PENDIENTE;
+                      const revisionEstado =
+                        sol.estadoRevisionAdministrativa ??
+                        EstadoRevisionAdministrativa.PENDIENTE;
+                      const observacionRevision =
+                        sol.observacionRevisionAdministrativa?.trim() || null;
+                      const puedeResolver =
+                        puedeDecidirBaja &&
+                        estado === EstadoSolicitudBaja.PENDIENTE &&
+                        revisionEstado !== EstadoRevisionAdministrativa.PENDIENTE;
+
+                      return (
+                        <div
+                          key={sol.id}
+                          className="rounded-lg border border-border/60 p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={estadoSolicitudVariant[estado]}>
+                                {estadoSolicitudLabels[estado]}
+                              </Badge>
+                              <Badge
+                                variant={
+                                  revisionAdministrativaVariant[revisionEstado]
+                                }
+                              >
+                                {revisionAdministrativaLabels[revisionEstado]}
+                              </Badge>
+                              <Badge variant="outline">Solicitud #{sol.id}</Badge>
+                            </div>
+                            {sol.matriculaId && (
+                              <div className="text-xs text-muted-foreground">
+                                Matrícula #{sol.matriculaId}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+                            <div className="whitespace-pre-line">
+                              {sol.motivo?.trim() || "—"}
+                            </div>
+                            {observacionRevision && (
+                              <div className="rounded-md bg-muted/60 p-3 text-xs text-foreground">
+                                <span className="font-medium">
+                                  Detalle de administración:
+                                </span>{" "}
+                                <span className="whitespace-pre-line">
+                                  {observacionRevision}
+                                </span>
+                              </div>
+                            )}
+                            <div className="grid gap-2 text-xs sm:grid-cols-2">
+                              <div>
+                                <span className="text-muted-foreground">
+                                  Revisión administrativa:
+                                </span>{" "}
+                                {revisionEstado ===
+                                EstadoRevisionAdministrativa.PENDIENTE
+                                  ? "Pendiente"
+                                  : formatDateTime(
+                                      sol.fechaRevisionAdministrativa,
+                                    )}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">
+                                  Decisión final:
+                                </span>{" "}
+                                {estado === EstadoSolicitudBaja.PENDIENTE
+                                  ? "Pendiente"
+                                  : formatDateTime(sol.fechaDecision)}
+                              </div>
+                              {sol.revisadoAdministrativamentePorPersonaId && (
+                                <div>
+                                  <span className="text-muted-foreground">
+                                    Revisó Adm.:
+                                  </span>{" "}
+                                  #{sol.revisadoAdministrativamentePorPersonaId}
+                                </div>
+                              )}
+                              {sol.decididoPorPersonaId && (
+                                <div>
+                                  <span className="text-muted-foreground">
+                                    Decidió Dirección:
+                                  </span>{" "}
+                                  #{sol.decididoPorPersonaId}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {puedeResolver && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleAceptarSolicitud(sol)}
+                                disabled={
+                                  processingDecisionSolicitudId === sol.id
+                                }
+                              >
+                                Aceptar baja
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRechazarSolicitud(sol)}
+                                disabled={
+                                  processingDecisionSolicitudId === sol.id
+                                }
+                              >
+                                Rechazar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
+          )}
 
-            {/* Familia */}
-            <Card className="md:col-span-2">
+          {/* Familia */}
+          <Card className="md:col-span-2">
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>

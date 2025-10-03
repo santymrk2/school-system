@@ -97,6 +97,12 @@ export enum EstadoSolicitudBaja {
   RECHAZADA = "RECHAZADA",
 }
 
+export enum EstadoRevisionAdministrativa {
+  PENDIENTE = "PENDIENTE",
+  CONFIRMADA = "CONFIRMADA",
+  DEUDAS_INFORMADAS = "DEUDAS_INFORMADAS",
+}
+
 export enum RolSeccion {
   MAESTRO_TITULAR = "MAESTRO_TITULAR",
   SUPLENTE = "SUPLENTE",
@@ -909,9 +915,13 @@ export interface SolicitudBajaAlumnoDTO {
   matriculaId?: number;
   alumnoId?: number;
   estado?: EstadoSolicitudBaja;
+  estadoRevisionAdministrativa?: EstadoRevisionAdministrativa;
   motivo?: string;
   motivoRechazo?: string;
+  fechaRevisionAdministrativa?: ISODateTime;
   fechaDecision?: ISODateTime;
+  revisadoAdministrativamentePorPersonaId?: number;
+  observacionRevisionAdministrativa?: string;
   decididoPorPersonaId?: number;
   alumnoNombre?: string;
   alumnoApellido?: string;
@@ -926,6 +936,12 @@ export interface SolicitudBajaAlumnoDecisionDTO {
 export interface SolicitudBajaAlumnoRechazoDTO
   extends SolicitudBajaAlumnoDecisionDTO {
   motivoRechazo: string;
+}
+
+export interface SolicitudBajaAlumnoRevisionAdministrativaDTO {
+  estadoRevisionAdministrativa: EstadoRevisionAdministrativa;
+  revisadoPorPersonaId: number;
+  observacionRevisionAdministrativa?: string;
 }
 
 export interface TrimestreCreateDTO {

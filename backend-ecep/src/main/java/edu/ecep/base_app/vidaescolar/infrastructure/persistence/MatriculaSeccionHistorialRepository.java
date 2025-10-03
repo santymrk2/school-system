@@ -15,7 +15,11 @@ public interface MatriculaSeccionHistorialRepository extends JpaRepository<Matri
     @Query("""
         select h from MatriculaSeccionHistorial h
         join fetch h.seccion s
+        left join fetch s.periodoEscolar
         where h.matricula.id = :matriculaId
+          and h.activo = true
+          and h.matricula.activo = true
+          and s.activo = true
           and h.desde <= :fecha
           and (h.hasta is null or h.hasta >= :fecha)
     """)

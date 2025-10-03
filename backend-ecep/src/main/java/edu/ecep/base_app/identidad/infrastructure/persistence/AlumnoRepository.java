@@ -36,23 +36,31 @@ public interface AlumnoRepository extends JpaRepository<Alumno, Long> {
                     or lower(p.apellido) like :search
                     or lower(p.dni) like :search
             )
-              and (
-                    :seccionId is null
-                    or exists (
-                        select 1
-                        from MatriculaSeccionHistorial msh
-                        where msh.matricula.alumno = a
-                          and msh.matricula.activo = true
-                          and msh.activo = true
-                          and msh.desde <= :fecha
-                          and (msh.hasta is null or msh.hasta >= :fecha)
-                          and msh.seccion.id = :seccionId
-                    )
+              and exists (
+                    select 1
+                    from Matricula m
+                    join m.periodoEscolar pe
+                    where m.alumno = a
+                      and m.activo = true
+                      and pe.activo = true
+                      and pe.id in :periodoIds
+                      and exists (
+                            select 1
+                            from MatriculaSeccionHistorial msh
+                            join msh.seccion s
+                            where msh.matricula = m
+                              and msh.activo = true
+                              and s.activo = true
+                              and msh.desde <= :fecha
+                              and (msh.hasta is null or msh.hasta >= :fecha)
+                              and (:seccionId is null or s.id = :seccionId)
+                      )
             )
             """)
     Page<Alumno> searchPaged(
             @Param("search") String search,
             @Param("seccionId") Long seccionId,
             @Param("fecha") LocalDate fecha,
+            @Param("periodoIds") List<Long> periodoIds,
             Pageable pageable);
 }

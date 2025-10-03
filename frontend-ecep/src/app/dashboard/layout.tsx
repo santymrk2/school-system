@@ -80,6 +80,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [loading, user, rolesNormalized, selectedRole, setSelectedRole, router]);
 
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-muted dark:bg-background">
+        <span className="text-sm text-muted-foreground">Cargando panel...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   // ⭐ Agrupación dinámica por `group` preservando orden
   const groupedMenu = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
@@ -90,6 +102,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
     return Array.from(map.entries()); // [groupKey, items][]
   }, [visibleMenu]);
+
+  if (rolesNormalized.length > 1 && !selectedRole) return null;
+
+  const displayName = user.nombreCompleto || user.email || "Usuario";
+
+  const handleChangeRole = (r: UserRole) => {
+    if (currentRole === r) return;
+
+    setSelectedRole(r);
+
+    // Siempre mandamos al usuario al inicio del dashboard para evitar rutas
+    // incompatibles con el nuevo rol seleccionado.
+    router.replace("/dashboard");
+  };
+
+  const handleLogout = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    logout();
+  };
+
+  const handleNavigationToggle = () => {
+    if (isDesktop) {
+      setIsCollapsed((prev) => !prev);
+      return;
+    }
+
+    setSidebarOpen((prev) => !prev);
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");

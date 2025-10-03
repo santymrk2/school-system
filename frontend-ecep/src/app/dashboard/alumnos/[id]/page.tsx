@@ -284,10 +284,8 @@ export default function AlumnoPerfilPage() {
     dni: "",
     fechaNacimiento: "",
     genero: DEFAULT_GENERO_VALUE,
-    estadoCivil: "",
     nacionalidad: "",
     domicilio: "",
-    telefono: "",
     celular: "",
     email: "",
   });
@@ -701,10 +699,8 @@ export default function AlumnoPerfilPage() {
       dni: formatDni(persona?.dni ?? ""),
       fechaNacimiento: persona?.fechaNacimiento ?? "",
       genero: normalizeGenero(persona?.genero) || DEFAULT_GENERO_VALUE,
-      estadoCivil: (persona as any)?.estadoCivil ?? "",
       nacionalidad: persona?.nacionalidad ?? "",
       domicilio: persona?.domicilio ?? "",
-      telefono: (persona as any)?.telefono ?? "",
       celular: persona?.celular ?? "",
       email: persona?.email ?? "",
     });
@@ -914,10 +910,8 @@ export default function AlumnoPerfilPage() {
         dni: dniValue,
         fechaNacimiento: personaDraft.fechaNacimiento || undefined,
         genero: personaDraft.genero || undefined,
-        estadoCivil: personaDraft.estadoCivil.trim() || undefined,
         nacionalidad: personaDraft.nacionalidad || undefined,
         domicilio: personaDraft.domicilio || undefined,
-        telefono: personaDraft.telefono.trim() || undefined,
         celular: personaDraft.celular.trim() || undefined,
         email: personaDraft.email || undefined,
       };
@@ -1084,10 +1078,8 @@ export default function AlumnoPerfilPage() {
           dni: personaBasePayload.dni,
           fechaNacimiento: personaDraft.fechaNacimiento || undefined,
           genero: personaDraft.genero || undefined,
-          estadoCivil: personaBasePayload.estadoCivil,
           nacionalidad: personaBasePayload.nacionalidad,
           domicilio: personaBasePayload.domicilio,
-          telefono: personaBasePayload.telefono,
           celular: personaBasePayload.celular,
           email: personaBasePayload.email,
         } as PersonaDTO;
@@ -1624,18 +1616,6 @@ export default function AlumnoPerfilPage() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Estado civil</Label>
-                        <Input
-                          value={personaDraft.estadoCivil}
-                          onChange={(e) =>
-                            setPersonaDraft((prev) => ({
-                              ...prev,
-                              estadoCivil: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
                         <Label>Nacionalidad</Label>
                         <Input
                           value={personaDraft.nacionalidad}
@@ -1643,18 +1623,6 @@ export default function AlumnoPerfilPage() {
                             setPersonaDraft((prev) => ({
                               ...prev,
                               nacionalidad: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Teléfono</Label>
-                        <Input
-                          value={personaDraft.telefono}
-                          onChange={(e) =>
-                            setPersonaDraft((prev) => ({
-                              ...prev,
-                              telefono: e.target.value,
                             }))
                           }
                         />

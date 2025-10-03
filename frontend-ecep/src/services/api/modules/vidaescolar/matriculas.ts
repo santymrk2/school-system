@@ -18,8 +18,14 @@ export const matriculaSeccionHistorial = {
     http.put<void>(`/api/matriculas/historial/${id}`, body),
 };
 
+type SolicitudesBajaListParams = {
+  alumnoId?: number;
+  matriculaId?: number | number[];
+};
+
 export const solicitudesBaja = {
-  list: () => http.get<DTO.SolicitudBajaAlumnoDTO[]>("/api/bajas"),
+  list: (params?: SolicitudesBajaListParams) =>
+    http.get<DTO.SolicitudBajaAlumnoDTO[]>("/api/bajas", { params }),
   create: (body: DTO.SolicitudBajaAlumnoCreateDTO) =>
     http.post<number>("/api/bajas", body),
   review: (

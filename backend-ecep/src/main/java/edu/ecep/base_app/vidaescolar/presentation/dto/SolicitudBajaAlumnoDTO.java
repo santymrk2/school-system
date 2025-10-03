@@ -1,5 +1,6 @@
 package edu.ecep.base_app.vidaescolar.presentation.dto;
 
+import edu.ecep.base_app.vidaescolar.domain.enums.EstadoRevisionAdministrativa;
 import edu.ecep.base_app.vidaescolar.domain.enums.EstadoSolicitudBaja;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -18,8 +19,13 @@ public class SolicitudBajaAlumnoDTO {
     Long alumnoId;
     @NotNull
     EstadoSolicitudBaja estado;
+    @NotNull
+    EstadoRevisionAdministrativa estadoRevisionAdministrativa;
     String motivo;
     String motivoRechazo;
+    OffsetDateTime fechaRevisionAdministrativa;
+    Long revisadoAdministrativamentePorPersonaId;
+    String observacionRevisionAdministrativa;
     OffsetDateTime fechaDecision;
     Long decididoPorPersonaId;
     String alumnoNombre;

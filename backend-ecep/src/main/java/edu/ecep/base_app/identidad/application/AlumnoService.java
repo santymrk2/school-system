@@ -3,6 +3,8 @@ package edu.ecep.base_app.identidad.application;
 import edu.ecep.base_app.admisiones.domain.Aspirante;
 import edu.ecep.base_app.admisiones.infrastructure.persistence.AspiranteRepository;
 import edu.ecep.base_app.gestionacademica.domain.Seccion;
+import edu.ecep.base_app.calendario.domain.PeriodoEscolar;
+import edu.ecep.base_app.calendario.infrastructure.persistence.PeriodoEscolarRepository;
 import edu.ecep.base_app.identidad.domain.Alumno;
 import edu.ecep.base_app.identidad.infrastructure.mapper.AlumnoMapper;
 import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepository;
@@ -17,7 +19,9 @@ import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaSeccion
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import edu.ecep.base_app.shared.exception.ReferencedException;
 import edu.ecep.base_app.shared.exception.ReferencedWarning;
@@ -39,6 +43,7 @@ public class AlumnoService {
     private final AlumnoRepository alumnoRepository;
     private final MatriculaRepository matriculaRepository;
     private final MatriculaSeccionHistorialRepository matriculaSeccionHistorialRepository;
+    private final PeriodoEscolarRepository periodoEscolarRepository;
     private final AlumnoFamiliarRepository alumnoFamiliarRepository;
     private final AspiranteRepository aspiranteRepository;
     private final AlumnoMapper alumnoMapper;
@@ -69,7 +74,16 @@ public class AlumnoService {
             effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), defaultSort);
         }
 
-        return alumnoRepository.searchPaged(likeTerm, seccionId, hoy, effectivePageable)
+        List<Long> periodosActivos = periodoEscolarRepository.findByActivoTrue().stream()
+                .map(PeriodoEscolar::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (periodosActivos.isEmpty()) {
+            return Page.empty(effectivePageable);
+        }
+
+        return alumnoRepository.searchPaged(likeTerm, seccionId, hoy, periodosActivos, effectivePageable)
                 .map(a -> {
                     AlumnoDTO dto = alumnoMapper.toDto(a);
                     applySeccionActual(dto, a.getId());
@@ -165,10 +179,28 @@ public class AlumnoService {
         LocalDate hoy = LocalDate.now();
         var matriculas = matriculaRepository.findByAlumnoId(alumnoId);
         for (Matricula matricula : matriculas) {
+            if (matricula == null || !matricula.isActivo()) {
+                continue;
+            }
+            var periodo = matricula.getPeriodoEscolar();
+            if (periodo == null || !periodo.isActivo()) {
+                continue;
+            }
             var vigentes = matriculaSeccionHistorialRepository.findVigente(matricula.getId(), hoy);
-            if (!vigentes.isEmpty()) {
-                var msh = vigentes.get(0);
-                var seccion = msh.getSeccion();
+            var vigente = vigentes.stream()
+                    .filter(h -> h != null && h.isActivo())
+                    .filter(h -> h.getSeccion() != null && h.getSeccion().isActivo())
+                    .filter(h -> {
+                        var seccion = h.getSeccion();
+                        if (seccion == null) {
+                            return false;
+                        }
+                        var seccionPeriodo = seccion.getPeriodoEscolar();
+                        return seccionPeriodo == null || seccionPeriodo.isActivo();
+                    })
+                    .findFirst();
+            if (vigente.isPresent()) {
+                var seccion = vigente.get().getSeccion();
                 if (seccion != null) {
                     dto.setSeccionActualId(seccion.getId());
                     dto.setSeccionActualNombre(buildNombreSeccion(seccion));

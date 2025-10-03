@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Download, Search, TimerReset, UserPlus } from "lucide-react";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import FamilyView from "./_components/FamilyView";
@@ -145,6 +144,9 @@ export default function AlumnosIndexPage() {
   const [processingSolicitudId, setProcessingSolicitudId] = useState<number | null>(
     null,
   );
+  const [processingRevisionId, setProcessingRevisionId] = useState<number | null>(
+    null,
+  );
   const [estadoSolicitudesFiltro, setEstadoSolicitudesFiltro] = useState<
     "all" | DTO.EstadoSolicitudBaja
   >("all");
@@ -153,8 +155,6 @@ export default function AlumnosIndexPage() {
   const [crearBajaMatriculaId, setCrearBajaMatriculaId] = useState<number | null>(
     null,
   );
-  const [crearBajaConfirmacionDeuda, setCrearBajaConfirmacionDeuda] =
-    useState(false);
   const [crearBajaLoading, setCrearBajaLoading] = useState(false);
   const [matriculaOptions, setMatriculaOptions] = useState<
     {
@@ -208,8 +208,12 @@ export default function AlumnosIndexPage() {
 
   const canManageBajas =
     scope === "staff" && (hasRole(UserRole.DIRECTOR) || hasRole(UserRole.ADMIN));
+  const canReviewBajasAdministracion =
+    scope === "staff" && hasRole(UserRole.ADMIN);
+  const canDecideBajasDireccion =
+    scope === "staff" && hasRole(UserRole.DIRECTOR);
 
-  const personaDecisorId = useMemo(
+  const personaActualId = useMemo(
     () => user?.personaId ?? user?.id ?? null,
     [user],
   );
@@ -346,7 +350,22 @@ export default function AlumnosIndexPage() {
     [DTO.EstadoSolicitudBaja.RECHAZADA]: "destructive",
   };
 
-  const formatDecisionDate = (value?: string | null) => {
+  const revisionLabels: Record<DTO.EstadoRevisionAdministrativa, string> = {
+    [DTO.EstadoRevisionAdministrativa.PENDIENTE]: "Pendiente",
+    [DTO.EstadoRevisionAdministrativa.CONFIRMADA]: "Sin deudas",
+    [DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS]: "Deudas informadas",
+  };
+
+  const revisionVariant: Record<
+    DTO.EstadoRevisionAdministrativa,
+    "outline" | "default" | "destructive"
+  > = {
+    [DTO.EstadoRevisionAdministrativa.PENDIENTE]: "outline",
+    [DTO.EstadoRevisionAdministrativa.CONFIRMADA]: "default",
+    [DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS]: "destructive",
+  };
+
+  const formatDateTime = (value?: string | null) => {
     if (!value) return "—";
     try {
       return new Date(value).toLocaleString();
@@ -367,12 +386,17 @@ export default function AlumnosIndexPage() {
     const payload = {
       id: sol.id,
       estado: sol.estado,
+      estadoRevisionAdministrativa: sol.estadoRevisionAdministrativa,
       motivo: sol.motivo,
       motivoRechazo: sol.motivoRechazo,
+      observacionRevisionAdministrativa: sol.observacionRevisionAdministrativa,
       fechaDecision: sol.fechaDecision,
+      fechaRevisionAdministrativa: sol.fechaRevisionAdministrativa,
       matriculaId: sol.matriculaId,
       periodoEscolarId: sol.periodoEscolarId,
       decididoPorPersonaId: sol.decididoPorPersonaId,
+      revisadoAdministrativamentePorPersonaId:
+        sol.revisadoAdministrativamentePorPersonaId,
       alumno: {
         id: sol.alumnoId,
         nombre: sol.alumnoNombre,
@@ -396,35 +420,55 @@ export default function AlumnosIndexPage() {
     URL.revokeObjectURL(url);
   };
 
-  const ensurePersonaDecisor = () => {
-    if (!personaDecisorId) {
-      toast.error("No pudimos identificar a la persona que aprueba la solicitud");
+  const ensurePersonaActual = (message: string) => {
+    if (!personaActualId) {
+      toast.error(message);
       return false;
     }
     return true;
   };
 
   const handleApproveSolicitud = async (sol: DTO.SolicitudBajaAlumnoDTO) => {
-    if (!ensurePersonaDecisor()) return;
-    if (!window.confirm("¿Confirmás aprobar la baja del alumno?")) return;
+    if (
+      sol.estadoRevisionAdministrativa ===
+      DTO.EstadoRevisionAdministrativa.PENDIENTE
+    ) {
+      toast.error(
+        "Administración debe completar la revisión antes de aprobar la baja",
+      );
+      return;
+    }
+    if (!ensurePersonaActual("No pudimos identificar a la persona que aprueba la solicitud"))
+      return;
+    if (!window.confirm("¿Confirmás aceptar la baja del alumno?")) return;
 
     setProcessingSolicitudId(sol.id);
     try {
       await vidaEscolar.solicitudesBaja.approve(sol.id, {
-        decididoPorPersonaId: personaDecisorId!,
+        decididoPorPersonaId: personaActualId!,
       });
-      toast.success("Solicitud aprobada correctamente");
+      toast.success("Baja aceptada correctamente");
       await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
     } catch (error) {
       console.error(error);
-      toast.error("No se pudo aprobar la solicitud");
+      toast.error("No se pudo aceptar la baja");
     } finally {
       setProcessingSolicitudId(null);
     }
   };
 
   const handleRejectSolicitud = async (sol: DTO.SolicitudBajaAlumnoDTO) => {
-    if (!ensurePersonaDecisor()) return;
+    if (
+      sol.estadoRevisionAdministrativa ===
+      DTO.EstadoRevisionAdministrativa.PENDIENTE
+    ) {
+      toast.error(
+        "Administración debe completar la revisión antes de rechazar la baja",
+      );
+      return;
+    }
+    if (!ensurePersonaActual("No pudimos identificar a la persona que rechaza la solicitud"))
+      return;
     const reason = window.prompt(
       "Motivo del rechazo",
       sol.motivoRechazo ?? "",
@@ -439,7 +483,7 @@ export default function AlumnosIndexPage() {
     setProcessingSolicitudId(sol.id);
     try {
       await vidaEscolar.solicitudesBaja.reject(sol.id, {
-        decididoPorPersonaId: personaDecisorId!,
+        decididoPorPersonaId: personaActualId!,
         motivoRechazo: normalized,
       });
       toast.success("Solicitud rechazada");
@@ -452,10 +496,63 @@ export default function AlumnosIndexPage() {
     }
   };
 
+  const handleAdministracionRevision = async (
+    sol: DTO.SolicitudBajaAlumnoDTO,
+    estado: DTO.EstadoRevisionAdministrativa,
+  ) => {
+    if (
+      sol.estadoRevisionAdministrativa &&
+      sol.estadoRevisionAdministrativa !==
+        DTO.EstadoRevisionAdministrativa.PENDIENTE
+    ) {
+      toast.error("La solicitud ya cuenta con la revisión administrativa");
+      return;
+    }
+
+    if (!ensurePersonaActual("No pudimos identificar a la persona que revisa la solicitud"))
+      return;
+
+    let observacion: string | undefined =
+      sol.observacionRevisionAdministrativa?.trim() || undefined;
+
+    if (estado === DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS) {
+      const detalle = window.prompt(
+        "Detalle de las deudas informadas",
+        observacion ?? "",
+      );
+      if (detalle == null) return;
+      const normalized = detalle.trim();
+      if (!normalized) {
+        toast.error("Debés indicar el detalle de las deudas informadas");
+        return;
+      }
+      observacion = normalized;
+    }
+
+    setProcessingRevisionId(sol.id ?? null);
+    try {
+      await vidaEscolar.solicitudesBaja.review(sol.id, {
+        estadoRevisionAdministrativa: estado,
+        revisadoPorPersonaId: personaActualId!,
+        observacionRevisionAdministrativa: observacion,
+      });
+      toast.success(
+        estado === DTO.EstadoRevisionAdministrativa.CONFIRMADA
+          ? "Revisión administrativa confirmada"
+          : "Deudas informadas a Dirección",
+      );
+      await fetchSolicitudesBaja();
+    } catch (error) {
+      console.error(error);
+      toast.error("No se pudo registrar la revisión administrativa");
+    } finally {
+      setProcessingRevisionId(null);
+    }
+  };
+
   const resetCrearBajaForm = useCallback(() => {
     setCrearBajaMotivo("");
     setCrearBajaMatriculaId(null);
-    setCrearBajaConfirmacionDeuda(false);
     setCrearBajaLoading(false);
   }, []);
 
@@ -479,10 +576,6 @@ export default function AlumnosIndexPage() {
     const motivo = crearBajaMotivo.trim();
     if (!motivo) {
       toast.error("El motivo de la baja es obligatorio");
-      return;
-    }
-    if (!crearBajaConfirmacionDeuda) {
-      toast.error("Confirmá que revisaste el estado de deudas del alumno");
       return;
     }
 
@@ -1026,6 +1119,7 @@ export default function AlumnosIndexPage() {
                                 <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                                   <th className="py-2 pr-4 font-medium">Alumno</th>
                                   <th className="py-2 pr-4 font-medium">Motivo</th>
+                                  <th className="py-2 pr-4 font-medium">Administración</th>
                                   <th className="py-2 pr-4 font-medium">Estado</th>
                                   <th className="py-2 pr-4 font-medium">Decisión</th>
                                   <th className="py-2 pr-4 font-medium">Acciones</th>
@@ -1035,11 +1129,27 @@ export default function AlumnosIndexPage() {
                                 {filteredSolicitudesBaja.map((sol) => {
                                   const estado =
                                     sol.estado ?? DTO.EstadoSolicitudBaja.PENDIENTE;
+                                  const revisionEstado =
+                                    sol.estadoRevisionAdministrativa ??
+                                    DTO.EstadoRevisionAdministrativa.PENDIENTE;
                                   const nombre =
                                     [sol.alumnoApellido, sol.alumnoNombre]
                                       .filter(Boolean)
                                       .join(", ") ||
                                     "Alumno sin datos";
+                                  const revisionObservacion =
+                                    sol.observacionRevisionAdministrativa?.trim() ||
+                                    null;
+                                  const puedeRevisar =
+                                    canReviewBajasAdministracion &&
+                                    estado === DTO.EstadoSolicitudBaja.PENDIENTE &&
+                                    revisionEstado ===
+                                      DTO.EstadoRevisionAdministrativa.PENDIENTE;
+                                  const puedeDecidir =
+                                    canDecideBajasDireccion &&
+                                    estado === DTO.EstadoSolicitudBaja.PENDIENTE &&
+                                    revisionEstado !==
+                                      DTO.EstadoRevisionAdministrativa.PENDIENTE;
                                   return (
                                     <tr
                                       key={sol.id}
@@ -1066,12 +1176,33 @@ export default function AlumnosIndexPage() {
                                         )}
                                       </td>
                                       <td className="py-3 pr-4">
+                                        <div className="flex flex-col gap-1 text-sm">
+                                          <Badge variant={revisionVariant[revisionEstado]}>
+                                            {revisionLabels[revisionEstado]}
+                                          </Badge>
+                                          <div className="text-xs text-muted-foreground">
+                                            {formatDateTime(sol.fechaRevisionAdministrativa)}
+                                          </div>
+                                          {sol.revisadoAdministrativamentePorPersonaId && (
+                                            <div className="text-xs text-muted-foreground">
+                                              Rev. por #
+                                              {sol.revisadoAdministrativamentePorPersonaId}
+                                            </div>
+                                          )}
+                                          {revisionObservacion && (
+                                            <p className="text-xs text-muted-foreground whitespace-pre-line">
+                                              {revisionObservacion}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="py-3 pr-4">
                                         <Badge variant={estadoVariant[estado]}>
                                           {estadoLabels[estado]}
                                         </Badge>
                                       </td>
                                       <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                        <div>{formatDecisionDate(sol.fechaDecision)}</div>
+                                        <div>{formatDateTime(sol.fechaDecision)}</div>
                                         {sol.decididoPorPersonaId && (
                                           <div className="text-xs">
                                             Decidido por #{sol.decididoPorPersonaId}
@@ -1080,8 +1211,40 @@ export default function AlumnosIndexPage() {
                                       </td>
                                       <td className="py-3 pr-4">
                                         <div className="flex flex-wrap gap-2">
-                                          {estado ===
-                                            DTO.EstadoSolicitudBaja.PENDIENTE && (
+                                          {puedeRevisar && (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleAdministracionRevision(
+                                                    sol,
+                                                    DTO.EstadoRevisionAdministrativa.CONFIRMADA,
+                                                  )
+                                                }
+                                                disabled={
+                                                  processingRevisionId === sol.id
+                                                }
+                                              >
+                                                Confirmar baja
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={() =>
+                                                  handleAdministracionRevision(
+                                                    sol,
+                                                    DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS,
+                                                  )
+                                                }
+                                                disabled={
+                                                  processingRevisionId === sol.id
+                                                }
+                                              >
+                                                Informar deudas
+                                              </Button>
+                                            </>
+                                          )}
+                                          {puedeDecidir && (
                                             <>
                                               <Button
                                                 size="sm"
@@ -1092,7 +1255,7 @@ export default function AlumnosIndexPage() {
                                                   processingSolicitudId === sol.id
                                                 }
                                               >
-                                                Aprobar
+                                                Aceptar baja
                                               </Button>
                                               <Button
                                                 size="sm"
@@ -1206,7 +1369,7 @@ export default function AlumnosIndexPage() {
                                     {sol.motivo || "—"}
                                   </td>
                                   <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                    {formatDecisionDate(sol.fechaDecision)}
+                                    {formatDateTime(sol.fechaDecision)}
                                   </td>
                                   <td className="py-3 pr-4">
                                     <Button
@@ -1314,25 +1477,6 @@ export default function AlumnosIndexPage() {
                     rows={4}
                     disabled={crearBajaLoading}
                   />
-                </div>
-
-                <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
-                  <Checkbox
-                    id="crear-baja-deuda"
-                    checked={crearBajaConfirmacionDeuda}
-                    onCheckedChange={(checked) =>
-                      setCrearBajaConfirmacionDeuda(Boolean(checked))
-                    }
-                    disabled={crearBajaLoading}
-                  />
-                  <div className="space-y-1">
-                    <Label htmlFor="crear-baja-deuda" className="text-sm font-medium">
-                      Confirmación administrativa
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Confirmo que revisé el estado de deudas y autorizo la baja del alumno.
-                    </p>
-                  </div>
                 </div>
               </div>
               <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">

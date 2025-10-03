@@ -160,6 +160,46 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, []);
 
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-muted dark:bg-background">
+        <span className="text-sm text-muted-foreground">Cargando panel...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (rolesNormalized.length > 1 && !selectedRole) return null;
+
+  const displayName = user.nombreCompleto || user.email || "Usuario";
+
+  const handleChangeRole = (r: UserRole) => {
+    if (currentRole === r) return;
+
+    setSelectedRole(r);
+
+    // Siempre mandamos al usuario al inicio del dashboard para evitar rutas
+    // incompatibles con el nuevo rol seleccionado.
+    router.replace("/dashboard");
+  };
+
+  const handleLogout = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    logout();
+  };
+
+  const handleNavigationToggle = () => {
+    if (isDesktop) {
+      setIsCollapsed((prev) => !prev);
+      return;
+    }
+
+    setSidebarOpen((prev) => !prev);
+  };
+
   const isNavCollapsed = isDesktop && isCollapsed;
   const isNavigationOpen = isDesktop ? !isNavCollapsed : sidebarOpen;
   const NavigationToggleIcon = isNavigationOpen ? X : Menu;

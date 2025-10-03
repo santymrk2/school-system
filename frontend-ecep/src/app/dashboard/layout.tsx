@@ -91,6 +91,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return Array.from(map.entries()); // [groupKey, items][]
   }, [visibleMenu]);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+
+    const updateIsDesktop = (matches: boolean) => {
+      setIsDesktop(matches);
+      if (!matches) {
+        setIsCollapsed(false);
+      }
+    };
+
+    updateIsDesktop(mediaQuery.matches);
+
+    const listener = (event: MediaQueryListEvent) => {
+      updateIsDesktop(event.matches);
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", listener);
+      return () => {
+        mediaQuery.removeEventListener("change", listener);
+      };
+    }
+
+    mediaQuery.addListener(listener);
+    return () => {
+      mediaQuery.removeListener(listener);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-muted dark:bg-background">
@@ -130,35 +159,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     setSidebarOpen((prev) => !prev);
   };
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-
-    const updateIsDesktop = (matches: boolean) => {
-      setIsDesktop(matches);
-      if (!matches) {
-        setIsCollapsed(false);
-      }
-    };
-
-    updateIsDesktop(mediaQuery.matches);
-
-    const listener = (event: MediaQueryListEvent) => {
-      updateIsDesktop(event.matches);
-    };
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", listener);
-      return () => {
-        mediaQuery.removeEventListener("change", listener);
-      };
-    }
-
-    mediaQuery.addListener(listener);
-    return () => {
-      mediaQuery.removeListener(listener);
-    };
-  }, []);
 
   const isNavCollapsed = isDesktop && isCollapsed;
   const isNavigationOpen = isDesktop ? !isNavCollapsed : sidebarOpen;

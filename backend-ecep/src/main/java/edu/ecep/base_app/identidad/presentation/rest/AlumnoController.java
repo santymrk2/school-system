@@ -1,7 +1,9 @@
 package edu.ecep.base_app.identidad.presentation.rest;
 
+import edu.ecep.base_app.identidad.application.AlumnoHistorialService;
 import edu.ecep.base_app.identidad.application.AlumnoService;
 import edu.ecep.base_app.identidad.presentation.dto.AlumnoDTO;
+import edu.ecep.base_app.identidad.presentation.dto.AlumnoHistorialDTO;
 import edu.ecep.base_app.shared.web.PageResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -28,10 +30,16 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class AlumnoController {
     private final AlumnoService service;
+    private final AlumnoHistorialService historialService;
 
     @GetMapping
     public List<AlumnoDTO> list() {
         return service.findAll();
+    }
+
+    @GetMapping("/historial")
+    public List<AlumnoHistorialDTO> historial() {
+        return historialService.findHistorialCompleto();
     }
 
     @GetMapping("/paginated")

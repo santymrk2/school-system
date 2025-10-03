@@ -103,6 +103,11 @@ export enum EstadoRevisionAdministrativa {
   DEUDAS_INFORMADAS = "DEUDAS_INFORMADAS",
 }
 
+export enum EstadoHistorialAlumno {
+  BAJA = "BAJA",
+  TERMINADO = "TERMINADO",
+}
+
 export enum RolSeccion {
   MAESTRO_TITULAR = "MAESTRO_TITULAR",
   SUPLENTE = "SUPLENTE",
@@ -202,6 +207,21 @@ export interface AlumnoDTO {
   seccionActualId?: number;
   seccionActualNombre?: string;
   seccionActualTurno?: string;
+}
+
+export interface AlumnoHistorialDTO {
+  alumnoId?: number;
+  matriculaId?: number;
+  solicitudBajaId?: number;
+  alumnoNombre?: string;
+  alumnoApellido?: string;
+  alumnoDni?: string;
+  estado: EstadoHistorialAlumno;
+  detalle?: string;
+  fechaRegistro?: ISODateTime;
+  seccionNombre?: string;
+  periodoEscolarAnio?: number;
+  solicitudBaja?: SolicitudBajaAlumnoDTO | null;
 }
 
 export interface AlumnoFamiliarCreateDTO {

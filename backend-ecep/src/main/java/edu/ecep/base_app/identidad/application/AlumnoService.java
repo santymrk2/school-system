@@ -177,7 +177,7 @@ public class AlumnoService {
             return;
         }
         LocalDate hoy = LocalDate.now();
-        var matriculas = matriculaRepository.findByAlumnoId(alumnoId);
+        var matriculas = matriculaRepository.findByAlumnoIdWithPeriodo(alumnoId);
         for (Matricula matricula : matriculas) {
             if (matricula == null || !matricula.isActivo()) {
                 continue;

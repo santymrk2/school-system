@@ -214,10 +214,16 @@ public class AlumnoService {
         Aspirante aspirante = aspiranteRepository.findByPersonaId(persona.getId())
                 .orElseGet(() -> {
                     Aspirante nuevo = new Aspirante();
-                    nuevo.setId(persona.getId());
+                    // Con @MapsId el id se copia automáticamente desde Persona al persistir.
+                    // Si seteamos manualmente el id en una entidad nueva, Hibernate asume que
+                    // ya existe y genera un UPDATE; si la fila aún no existe obtenemos un
+                    // StaleStateException como el que se observa al editar el alumno.
                     nuevo.setPersona(persona);
                     return nuevo;
                 });
+        if (aspirante.getPersona() == null) {
+            aspirante.setPersona(persona);
+        }
         aspirante.setConectividadInternet(dto.getConectividadInternet());
         aspirante.setDispositivosDisponibles(dto.getDispositivosDisponibles());
         aspirante.setIdiomasHabladosHogar(dto.getIdiomasHabladosHogar());

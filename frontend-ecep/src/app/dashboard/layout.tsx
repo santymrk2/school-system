@@ -80,6 +80,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [loading, user, rolesNormalized, selectedRole, setSelectedRole, router]);
 
+  // ⭐ Agrupación dinámica por `group` preservando orden
+  const groupedMenu = useMemo(() => {
+    const map = new Map<string, MenuItem[]>();
+    for (const item of visibleMenu) {
+      const key = item.group ?? "__default__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+    return Array.from(map.entries()); // [groupKey, items][]
+  }, [visibleMenu]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-muted dark:bg-background">
@@ -91,17 +102,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!user) {
     return null;
   }
-
-  // ⭐ Agrupación dinámica por `group` preservando orden
-  const groupedMenu = useMemo(() => {
-    const map = new Map<string, MenuItem[]>();
-    for (const item of visibleMenu) {
-      const key = item.group ?? "__default__";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(item);
-    }
-    return Array.from(map.entries()); // [groupKey, items][]
-  }, [visibleMenu]);
 
   if (rolesNormalized.length > 1 && !selectedRole) return null;
 

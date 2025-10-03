@@ -17,6 +17,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Step3 as HogarForm } from "@/app/postulacion/Step3";
 import { Step4 as SaludForm } from "@/app/postulacion/Step4";
 import type { PostulacionFormData } from "@/app/postulacion/types";
@@ -634,7 +635,9 @@ export default function AlumnoPerfilPage() {
     setLoadingSolicitudesBaja(true);
     setSolicitudesBajaError(null);
     try {
-      const { data } = await vidaEscolar.solicitudesBaja.list();
+      const safeAlumnoId = Number.isFinite(alumnoId) ? alumnoId : undefined;
+      const params = safeAlumnoId ? { alumnoId: safeAlumnoId } : undefined;
+      const { data } = await vidaEscolar.solicitudesBaja.list(params);
       const all = (data ?? []) as SolicitudBajaAlumnoDTO[];
       const filtered = all.filter((sol) => {
         const id = sol.matriculaId ?? null;
@@ -649,7 +652,7 @@ export default function AlumnoPerfilPage() {
     } finally {
       setLoadingSolicitudesBaja(false);
     }
-  }, [canManageProfile, matriculaIds]);
+  }, [alumnoId, canManageProfile, matriculaIds]);
 
   useEffect(() => {
     if (!canManageProfile) {

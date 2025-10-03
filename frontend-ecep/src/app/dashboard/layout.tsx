@@ -278,7 +278,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       );
                     })}
                     {groupIndex < groupedMenu.length - 1 && (
-                      <div className="m-2 border-t border-border/60 dark:border-border/40" />
+                      <div className="m-2 border-t ring-border" />
                     )}
                   </div>
                 ))}

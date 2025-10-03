@@ -1,5 +1,6 @@
 package edu.ecep.base_app.vidaescolar.infrastructure.persistence;
 
+import edu.ecep.base_app.shared.domain.enums.NivelAcademico;
 import edu.ecep.base_app.vidaescolar.domain.MatriculaSeccionHistorial;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,4 +33,21 @@ public interface MatriculaSeccionHistorialRepository extends JpaRepository<Matri
          """)
     List<MatriculaSeccionHistorial> findActivosBySeccionOnDate(@Param("seccionId") Long seccionId,
                                                                @Param("fecha") LocalDate fecha);
+
+    @Query("""
+            select h
+            from MatriculaSeccionHistorial h
+            join fetch h.matricula m
+            join fetch m.alumno a
+            join fetch a.persona p
+            join fetch h.seccion s
+            where h.activo = true
+              and m.activo = true
+              and s.nivel = :nivel
+              and s.gradoSala = :gradoSala
+              and h.hasta is not null
+            """)
+    List<MatriculaSeccionHistorial> findByNivelAndGradoFinalizados(
+            @Param("nivel") NivelAcademico nivel,
+            @Param("gradoSala") String gradoSala);
 }

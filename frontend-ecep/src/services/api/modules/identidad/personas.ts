@@ -4,6 +4,7 @@ import type { SpringPage } from "@/types/pagination";
 
 export const alumnos = {
   list: () => http.get<DTO.AlumnoDTO[]>("/api/alumnos"),
+  historial: () => http.get<DTO.AlumnoHistorialDTO[]>("/api/alumnos/historial"),
   listPaged: (params?: {
     page?: number;
     size?: number;

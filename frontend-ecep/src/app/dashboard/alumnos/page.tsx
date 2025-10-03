@@ -134,13 +134,13 @@ export default function AlumnosIndexPage() {
   const [errorSolicitudesBaja, setErrorSolicitudesBaja] = useState<string | null>(
     null,
   );
-  const [historialBajas, setHistorialBajas] = useState<
-    DTO.SolicitudBajaAlumnoDTO[]
+  const [historialAlumnos, setHistorialAlumnos] = useState<
+    DTO.AlumnoHistorialDTO[]
   >([]);
-  const [loadingHistorialBajas, setLoadingHistorialBajas] = useState(false);
-  const [errorHistorialBajas, setErrorHistorialBajas] = useState<string | null>(
-    null,
-  );
+  const [loadingHistorialAlumnos, setLoadingHistorialAlumnos] = useState(false);
+  const [errorHistorialAlumnos, setErrorHistorialAlumnos] = useState<
+    string | null
+  >(null);
   const [processingSolicitudId, setProcessingSolicitudId] = useState<number | null>(
     null,
   );
@@ -232,17 +232,19 @@ export default function AlumnosIndexPage() {
     }
   }, []);
 
-  const fetchHistorialBajas = useCallback(async () => {
-    setLoadingHistorialBajas(true);
-    setErrorHistorialBajas(null);
+  const fetchHistorialAlumnos = useCallback(async () => {
+    setLoadingHistorialAlumnos(true);
+    setErrorHistorialAlumnos(null);
     try {
-      const { data } = await vidaEscolar.solicitudesBaja.historial();
-      setHistorialBajas(data ?? []);
+      const { data } = await identidad.alumnos.historial();
+      setHistorialAlumnos(data ?? []);
     } catch (error) {
       console.error(error);
-      setErrorHistorialBajas("No se pudo cargar el historial de bajas");
+      setErrorHistorialAlumnos(
+        "No se pudo cargar el historial de alumnos egresados",
+      );
     } finally {
-      setLoadingHistorialBajas(false);
+      setLoadingHistorialAlumnos(false);
     }
   }, []);
 
@@ -256,11 +258,15 @@ export default function AlumnosIndexPage() {
 
   useEffect(() => {
     if (canViewAspirantesHistorial || canManageBajas) {
-      fetchHistorialBajas();
+      fetchHistorialAlumnos();
     } else {
-      setHistorialBajas([]);
+      setHistorialAlumnos([]);
     }
-  }, [canManageBajas, canViewAspirantesHistorial, fetchHistorialBajas]);
+  }, [
+    canManageBajas,
+    canViewAspirantesHistorial,
+    fetchHistorialAlumnos,
+  ]);
 
   const loadMatriculas = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -348,6 +354,19 @@ export default function AlumnosIndexPage() {
     [DTO.EstadoSolicitudBaja.PENDIENTE]: "secondary",
     [DTO.EstadoSolicitudBaja.APROBADA]: "default",
     [DTO.EstadoSolicitudBaja.RECHAZADA]: "destructive",
+  };
+
+  const historialEstadoLabels: Record<DTO.EstadoHistorialAlumno, string> = {
+    [DTO.EstadoHistorialAlumno.BAJA]: "Baja",
+    [DTO.EstadoHistorialAlumno.TERMINADO]: "Finalización",
+  };
+
+  const historialEstadoVariant: Record<
+    DTO.EstadoHistorialAlumno,
+    "default" | "secondary" | "destructive"
+  > = {
+    [DTO.EstadoHistorialAlumno.BAJA]: "destructive",
+    [DTO.EstadoHistorialAlumno.TERMINADO]: "secondary",
   };
 
   const revisionLabels: Record<DTO.EstadoRevisionAdministrativa, string> = {
@@ -448,7 +467,7 @@ export default function AlumnosIndexPage() {
         decididoPorPersonaId: personaActualId!,
       });
       toast.success("Baja aceptada correctamente");
-      await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
+      await Promise.all([fetchSolicitudesBaja(), fetchHistorialAlumnos()]);
     } catch (error) {
       console.error(error);
       toast.error("No se pudo aceptar la baja");
@@ -487,7 +506,7 @@ export default function AlumnosIndexPage() {
         motivoRechazo: normalized,
       });
       toast.success("Solicitud rechazada");
-      await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
+      await Promise.all([fetchSolicitudesBaja(), fetchHistorialAlumnos()]);
     } catch (error) {
       console.error(error);
       toast.error("No se pudo rechazar la solicitud");
@@ -588,7 +607,7 @@ export default function AlumnosIndexPage() {
       toast.success("Solicitud de baja registrada correctamente");
       resetCrearBajaForm();
       setCrearBajaOpen(false);
-      await Promise.all([fetchSolicitudesBaja(), fetchHistorialBajas()]);
+      await Promise.all([fetchSolicitudesBaja(), fetchHistorialAlumnos()]);
     } catch (error) {
       console.error(error);
       toast.error("No se pudo registrar la solicitud de baja");
@@ -1303,29 +1322,30 @@ export default function AlumnosIndexPage() {
                 <Card>
                   <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <CardTitle>Historial de bajas</CardTitle>
+                      <CardTitle>Historial de alumnos</CardTitle>
                       <CardDescription>
-                        Registro de bajas aceptadas con detalle de motivos y fechas.
+                        Registro de estudiantes que egresaron o finalizaron su
+                        paso por la institución.
                       </CardDescription>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={fetchHistorialBajas}
+                      onClick={fetchHistorialAlumnos}
                     >
                       <TimerReset className="mr-2 h-4 w-4" /> Actualizar
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    {loadingHistorialBajas ? (
+                    {loadingHistorialAlumnos ? (
                       <LoadingState label="Cargando historial…" />
-                    ) : errorHistorialBajas ? (
+                    ) : errorHistorialAlumnos ? (
                       <div className="text-sm text-red-600">
-                        {errorHistorialBajas}
+                        {errorHistorialAlumnos}
                       </div>
-                    ) : historialBajas.length === 0 ? (
+                    ) : historialAlumnos.length === 0 ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">
-                        Todavía no hay bajas confirmadas.
+                        Todavía no hay alumnos en el historial.
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -1333,23 +1353,40 @@ export default function AlumnosIndexPage() {
                           <thead>
                             <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                               <th className="py-2 pr-4 font-medium">Alumno</th>
-                              <th className="py-2 pr-4 font-medium">Motivo</th>
-                              <th className="py-2 pr-4 font-medium">Fecha decisión</th>
-                              <th className="py-2 pr-4 font-medium">Descarga</th>
+                              <th className="py-2 pr-4 font-medium">Detalle</th>
+                              <th className="py-2 pr-4 font-medium">Última sección</th>
+                              <th className="py-2 pr-4 font-medium">Periodo</th>
+                              <th className="py-2 pr-4 font-medium">Fecha</th>
+                              <th className="py-2 pr-4 font-medium">Acciones</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {historialBajas.map((sol) => {
+                            {historialAlumnos.map((entry) => {
                               const estado =
-                                sol.estado ?? DTO.EstadoSolicitudBaja.APROBADA;
+                                entry.estado ??
+                                DTO.EstadoHistorialAlumno.TERMINADO;
                               const nombre =
-                                [sol.alumnoApellido, sol.alumnoNombre]
+                                [entry.alumnoApellido, entry.alumnoNombre]
                                   .filter(Boolean)
                                   .join(", ") ||
                                 "Alumno sin datos";
+                              const dniLabel = entry.alumnoDni
+                                ? `DNI ${entry.alumnoDni}`
+                                : "Sin documento";
+                              const detalle = entry.detalle ?? "—";
+                              const seccion = entry.seccionNombre ?? "—";
+                              const periodo = entry.periodoEscolarAnio
+                                ? `Período ${entry.periodoEscolarAnio}`
+                                : "—";
+                              const key =
+                                entry.solicitudBajaId != null
+                                  ? `baja-${entry.solicitudBajaId}`
+                                  : `terminado-${entry.alumnoId ?? ""}-${
+                                      entry.matriculaId ?? ""
+                                    }-${entry.fechaRegistro ?? ""}`;
                               return (
                                 <tr
-                                  key={sol.id}
+                                  key={key}
                                   className="border-t border-border/60 align-top"
                                 >
                                   <td className="py-3 pr-4">
@@ -1357,29 +1394,43 @@ export default function AlumnosIndexPage() {
                                       {nombre}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                      <span>
-                                        {sol.alumnoDni ? `DNI ${sol.alumnoDni}` : "Sin documento"}
-                                      </span>
-                                      <Badge variant={estadoVariant[estado]}>
-                                        {estadoLabels[estado]}
+                                      <span>{dniLabel}</span>
+                                      <Badge variant={historialEstadoVariant[estado]}>
+                                        {historialEstadoLabels[estado]}
                                       </Badge>
                                     </div>
                                   </td>
                                   <td className="py-3 pr-4 max-w-md text-sm text-muted-foreground whitespace-pre-line">
-                                    {sol.motivo || "—"}
+                                    {detalle}
                                   </td>
                                   <td className="py-3 pr-4 text-sm text-muted-foreground">
-                                    {formatDateTime(sol.fechaDecision)}
+                                    {seccion}
                                   </td>
                                   <td className="py-3 pr-4">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleDownloadSolicitud(sol)}
-                                    >
-                                      <Download className="mr-2 h-3 w-3" />
-                                      Descargar
-                                    </Button>
+                                    {periodo}
+                                  </td>
+                                  <td className="py-3 pr-4 text-sm text-muted-foreground">
+                                    {formatDateTime(entry.fechaRegistro)}
+                                  </td>
+                                  <td className="py-3 pr-4">
+                                    {entry.solicitudBaja ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleDownloadSolicitud(
+                                            entry.solicitudBaja!,
+                                          )
+                                        }
+                                      >
+                                        <Download className="mr-2 h-3 w-3" />
+                                        Descargar
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">
+                                        —
+                                      </span>
+                                    )}
                                   </td>
                                 </tr>
                               );

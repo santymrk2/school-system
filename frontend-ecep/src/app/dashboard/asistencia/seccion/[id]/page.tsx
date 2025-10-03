@@ -10,6 +10,7 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +119,38 @@ function findResumenMatch(
   return (
     historial.find((item) => normalizeISODate(item.fecha) === targetDate) ??
     null
+  );
+}
+
+function StudentAttendanceDonut({
+  present,
+  absent,
+}: {
+  present: number;
+  absent: number;
+}) {
+  const total = present + absent;
+  const presentPercent = total > 0 ? (present / total) * 100 : 0;
+  const presentDeg = (presentPercent / 100) * 360;
+  const hasData = total > 0;
+  const gradient = hasData
+    ? `conic-gradient(hsl(var(--secondary)) 0deg ${presentDeg}deg, hsl(var(--destructive)) ${presentDeg}deg 360deg)`
+    : "conic-gradient(hsl(var(--muted)) 0deg 360deg)";
+
+  return (
+    <div className="relative h-28 w-28">
+      <div
+        className="h-full w-full rounded-full"
+        style={{ background: gradient }}
+        aria-hidden
+      />
+      <div className="absolute inset-6 rounded-full border border-border bg-background" />
+      <span className="sr-only">
+        {hasData
+          ? `Presentes: ${present}. Ausentes: ${absent}.`
+          : "Sin asistencias registradas"}
+      </span>
+    </div>
   );
 }
 function alumnoDisplayName(row: any) {
@@ -768,30 +801,56 @@ export default function SeccionHistorialPage() {
                               Porcentaje acumulado en el trimestre
                             </CardDescription>
                           </CardHeader>
-                          <CardContent className="space-y-3">
+                          <CardContent>
                             {resumen.length === 0 ? (
                               <div className="text-sm text-muted-foreground">
                                 Sin registros acumulados para este trimestre.
                               </div>
                             ) : (
-                              resumen.map((r) => (
-                                <div key={r.matriculaId} className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="font-medium">
-                                      {alumnoDisplayName(r as any)}
-                                    </span>
-                                    <span>
-                                      {Math.round(r.porcentaje)}% ({r.presentes}
-                                      /{r.presentes + r.ausentes})
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={Math.round(r.porcentaje)}
-                                    className="h-2 bg-destructive"
-                                    indicatorClassName="bg-emerald-500"
-                                  />
-                                </div>
-                              ))
+                              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                                {resumen.map((r) => {
+                                  const total = r.presentes + r.ausentes;
+                                  const presentPercent =
+                                    total > 0
+                                      ? Math.round((r.presentes / total) * 100)
+                                      : 0;
+                                  const absentPercent = total > 0 ? 100 - presentPercent : 0;
+                                  const displayName = alumnoDisplayName(r as any);
+                                  return (
+                                    <Card
+                                      key={r.matriculaId}
+                                      className="flex h-full flex-col items-center text-center"
+                                    >
+                                      <CardContent className="flex w-full flex-1 flex-col items-center gap-4 pt-6">
+                                        <StudentAttendanceDonut
+                                          present={r.presentes}
+                                          absent={r.ausentes}
+                                        />
+                                        <div className="space-y-2 text-sm">
+                                          <div className="flex items-center justify-center gap-2 text-emerald-600">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            <span className="font-semibold">
+                                              Presentes: {r.presentes} ({presentPercent}%)
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center justify-center gap-2 text-destructive">
+                                            <XCircle className="h-4 w-4" />
+                                            <span className="font-semibold">
+                                              Ausentes: {r.ausentes} ({absentPercent}%)
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            Total de jornadas: {total}
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                      <CardFooter className="w-full justify-center border-t pt-3 text-sm font-medium">
+                                        {displayName}
+                                      </CardFooter>
+                                    </Card>
+                                  );
+                                })}
+                              </div>
                             )}
                           </CardContent>
                         </Card>

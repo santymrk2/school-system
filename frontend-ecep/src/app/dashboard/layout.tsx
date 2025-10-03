@@ -92,6 +92,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return null;
   }
 
+  // ⭐ Agrupación dinámica por `group` preservando orden
+  const groupedMenu = useMemo(() => {
+    const map = new Map<string, MenuItem[]>();
+    for (const item of visibleMenu) {
+      const key = item.group ?? "__default__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+    return Array.from(map.entries()); // [groupKey, items][]
+  }, [visibleMenu]);
+
   if (rolesNormalized.length > 1 && !selectedRole) return null;
 
   const displayName = user.nombreCompleto || user.email || "Usuario";
@@ -119,17 +130,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     setSidebarOpen((prev) => !prev);
   };
-
-  // ⭐ Agrupación dinámica por `group` preservando orden
-  const groupedMenu = useMemo(() => {
-    const map = new Map<string, MenuItem[]>();
-    for (const item of visibleMenu) {
-      const key = item.group ?? "__default__";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(item);
-    }
-    return Array.from(map.entries()); // [groupKey, items][]
-  }, [visibleMenu]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { es } from 'date-fns/locale';
 import type { CaptionProps } from 'react-day-picker';
 import { DayPicker, useDayPicker } from 'react-day-picker';
 
@@ -292,6 +293,7 @@ function Calendar({
   components,
   disableMonthDropdown = false,
   disableYearDropdown = false,
+  locale,
   ...props
 }: CalendarProps) {
   const minDate =
@@ -310,6 +312,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      locale={locale ?? es}
       className={cn('p-3 flex flex-col items-center gap-4', className)}
       classNames={{
         months:

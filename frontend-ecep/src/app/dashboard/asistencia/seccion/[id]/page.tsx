@@ -718,7 +718,8 @@ export default function SeccionHistorialPage() {
                                             </div>
                                             <Progress
                                               value={selectedResumenPercent}
-                                              className="h-2"
+                                              className="h-2 bg-destructive"
+                                              indicatorClassName="bg-emerald-500"
                                             />
                                           </div>
                                         </div>
@@ -786,7 +787,8 @@ export default function SeccionHistorialPage() {
                                   </div>
                                   <Progress
                                     value={Math.round(r.porcentaje)}
-                                    className="h-2"
+                                    className="h-2 bg-destructive"
+                                    indicatorClassName="bg-emerald-500"
                                   />
                                 </div>
                               ))

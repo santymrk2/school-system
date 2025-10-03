@@ -156,7 +156,11 @@ export default function DetalleDiaDialog({
                   Porcentaje: <b>{porcentaje}%</b>
                 </span>
               </div>
-              <Progress value={porcentaje} className="h-2 mt-2" />
+              <Progress
+                value={porcentaje}
+                className="h-2 mt-2 bg-destructive"
+                indicatorClassName="bg-emerald-500"
+              />
             </div>
 
             <div className="space-y-2">

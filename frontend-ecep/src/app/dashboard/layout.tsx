@@ -80,9 +80,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [loading, user, rolesNormalized, selectedRole, setSelectedRole, router]);
 
-  if (user && rolesNormalized.length > 1 && !selectedRole) return null;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-muted dark:bg-background">
+        <span className="text-sm text-muted-foreground">Cargando panel...</span>
+      </div>
+    );
+  }
 
-  const displayName = user?.nombreCompleto || user?.email || "Usuario";
+  if (!user) {
+    return null;
+  }
+
+  if (rolesNormalized.length > 1 && !selectedRole) return null;
+
+  const displayName = user.nombreCompleto || user.email || "Usuario";
 
   const handleChangeRole = (r: UserRole) => {
     if (currentRole === r) return;

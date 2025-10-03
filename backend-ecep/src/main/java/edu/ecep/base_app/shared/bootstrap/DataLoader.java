@@ -283,6 +283,20 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
                 alumno("Delfina", "Paiva", "66061009", "Cecilia", "Paiva", "46061004", RolVinculo.MADRE, true),
                 alumno("Fiona", "Pereyra", "66061010", "Leonel", "Pereyra", "30113008", RolVinculo.PADRE, true)
         );
+        List<PersonaSeed> primario6AAlumni2023 = List.of(
+                alumno("Ariadna", "Lagos", "66360001", "Mauro", "Lagos", "46360001", RolVinculo.PADRE, true),
+                alumno("Brenda", "Quinteros", "66360002", "Soledad", "Quinteros", "46360002", RolVinculo.MADRE, true),
+                alumno("Ciro", "Piedra", "66360003", "Luis", "Piedra", "46360003", RolVinculo.PADRE, true),
+                alumno("Diana", "Ferrer", "66360004", "Valeria", "Ferrer", "46360004", RolVinculo.MADRE, true),
+                alumno("Elías", "Martel", "66360005", "Gabriel", "Martel", "46360005", RolVinculo.PADRE, true)
+        );
+        List<PersonaSeed> primario6BAlumni2023 = List.of(
+                alumno("Alina", "Bravo", "66361001", "Romina", "Bravo", "46361001", RolVinculo.MADRE, true),
+                alumno("Benjamín", "Coronel", "66361002", "Diego", "Coronel", "46361002", RolVinculo.PADRE, true),
+                alumno("Candela", "Silva", "66361003", "Marcela", "Silva", "46361003", RolVinculo.MADRE, true),
+                alumno("David", "Ojeda", "66361004", "Héctor", "Ojeda", "46361004", RolVinculo.PADRE, true),
+                alumno("Florencia", "Valle", "66361005", "Carla", "Valle", "46361005", RolVinculo.MADRE, true)
+        );
         List<PersonaSeed> inicial2AStudents = List.of(
                 alumno("Aldana", "Lemos", "52020001", "Brenda", "Lemos", "32020001", RolVinculo.MADRE, true),
                 alumno("Benicio", "Campos", "52020002", "Carlos", "Campos", "32020002", RolVinculo.PADRE, true),
@@ -394,8 +408,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         LocalDate titularDesde2023 = LocalDate.of(2023, 3, 1);
         LocalDate matriculaDesde2023 = LocalDate.of(2023, 3, 6);
         List<SeccionSetup> secciones2023 = List.of(
-                seccion("PRI-2023-6A", NivelAcademico.PRIMARIO, "6°", "A", Turno.MANANA, "DOC_PRI_6A", titularDesde2023, matriculaDesde2023, planPrimario("DOC_PRI_6A"), primario6AStudents.stream().skip(3).limit(5).toList()),
-                seccion("PRI-2023-6B", NivelAcademico.PRIMARIO, "6°", "B", Turno.TARDE, "DOC_PRI_6B", titularDesde2023, matriculaDesde2023, planPrimario("DOC_PRI_6B"), primario6BStudents.stream().skip(3).limit(5).toList()),
+                seccion("PRI-2023-6A", NivelAcademico.PRIMARIO, "6°", "A", Turno.MANANA, "DOC_PRI_6A", titularDesde2023, matriculaDesde2023, planPrimario("DOC_PRI_6A"), primario6AAlumni2023),
+                seccion("PRI-2023-6B", NivelAcademico.PRIMARIO, "6°", "B", Turno.TARDE, "DOC_PRI_6B", titularDesde2023, matriculaDesde2023, planPrimario("DOC_PRI_6B"), primario6BAlumni2023),
                 seccion("INI-2023-2A", NivelAcademico.INICIAL, "2 Seccion", "A", Turno.MANANA, "DOC_INI_2A", titularDesde2023, matriculaDesde2023, planInicial("DOC_INI_2A"), inicial2AStudents.stream().limit(5).toList())
         );
 

@@ -153,7 +153,7 @@ export default function CalificacionesSeccionPage() {
         </div>
 
         {loading && <LoadingState label="Cargando sección…" />}
-        {error && <div className="text-sm text-red-600">{error}</div>}
+        {error && <div className="text-sm text-error">{error}</div>}
 
         {!loading && !error && (
           <>

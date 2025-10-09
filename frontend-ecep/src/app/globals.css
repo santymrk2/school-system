@@ -9,7 +9,7 @@
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 210 90% 58%;
+  --primary: 210.8 83% 56.3%;
   --primary-foreground: 210 40% 98%;
   --secondary: 150 60% 32%;
   --secondary-foreground: 0 0% 100%;
@@ -21,18 +21,27 @@
   --destructive-foreground: 210 40% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 210 90% 58%;
+  --ring: var(--primary);
   --radius: 0.5rem;
+
+  --success: 162.9 93.5% 24.3%;
+  --success-foreground: 210 40% 98%;
+  --error: 0 73.7% 41.8%;
+  --error-foreground: 210 40% 98%;
+  --success-plain: 142.8 64.2% 24.1%;
+  --error-plain: 0 73.7% 41.8%;
+  --success-soft: 151.8 81% 95.9%;
+  --error-soft: 0 85.7% 97.3%;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
+  --background: 214.7 76% 4.9%;
   --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
+  --card: 214.7 76% 4.9%;
   --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
+  --popover: 214.7 76% 4.9%;
   --popover-foreground: 210 40% 98%;
-  --primary: 210 90% 58%;
+  --primary: 210.8 83% 56.3%;
   --primary-foreground: 210 40% 98%;
   --secondary: 150 58% 33%;
   --secondary-foreground: 0 0% 100%;
@@ -44,7 +53,10 @@
   --destructive-foreground: 210 40% 98%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 210 90% 58%;
+  --ring: var(--primary);
+
+  --success-plain: 142.1 70.6% 45.3%;
+  --error-plain: 0 84.2% 60.2%;
 }
 
 @layer base {
@@ -56,7 +68,79 @@
   }
 }
 
+@layer components {
+  .text-success {
+    color: hsl(var(--success-plain));
+  }
+
+  .text-error {
+    color: hsl(var(--error-plain));
+  }
+
+  .bg-success {
+    background-color: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+  }
+
+  .bg-error {
+    background-color: hsl(var(--error));
+    color: hsl(var(--error-foreground));
+  }
+
+  .badge-success {
+    @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
+    background-color: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+  }
+
+  .badge-error {
+    @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
+    background-color: hsl(var(--error));
+    color: hsl(var(--error-foreground));
+  }
+
+  .alert-success {
+    background-color: hsl(var(--success-soft));
+    color: hsl(var(--success-plain));
+    border: 1px solid hsl(var(--success-plain) / 0.25);
+    @apply rounded-md p-3;
+  }
+
+  .alert-error {
+    background-color: hsl(var(--error-soft));
+    color: hsl(var(--error-plain));
+    border: 1px solid hsl(var(--error-plain) / 0.25);
+    @apply rounded-md p-3;
+  }
+
+  .dark .alert-success {
+    background-color: hsl(var(--success-plain) / 0.15);
+    border-color: hsl(var(--success-plain) / 0.25);
+  }
+
+  .dark .alert-error {
+    background-color: hsl(var(--error-plain) / 0.18);
+    border-color: hsl(var(--error-plain) / 0.28);
+  }
+}
+
 @layer utilities {
+  .ring-success {
+    --tw-ring-color: hsl(var(--success));
+  }
+
+  .ring-error {
+    --tw-ring-color: hsl(var(--error));
+  }
+
+  .border-success {
+    border-color: hsl(var(--success));
+  }
+
+  .border-error {
+    border-color: hsl(var(--error));
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;

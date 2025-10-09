@@ -145,7 +145,7 @@ export default function CalificacionesIndexPage() {
         {loading ? (
           <LoadingState label="Cargando secciones…" />
         ) : error ? (
-          <div className="text-sm text-red-600">{String(error)}</div>
+          <div className="text-sm text-error">{String(error)}</div>
         ) : (
           <Tabs
             value={tab}

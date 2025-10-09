@@ -483,7 +483,7 @@ export default function ExamenDetailPage() {
           <Button variant="outline" onClick={() => router.back()}>
             Volver
           </Button>
-          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="alert-error text-sm p-4">
             {error}
           </div>
         </div>

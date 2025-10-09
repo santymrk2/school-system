@@ -195,7 +195,7 @@ export function AttendanceReport({
           </div>
 
           {attendanceError && (
-            <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
+            <div className="alert-error border-dashed text-sm p-4">
               {attendanceError}
             </div>
           )}

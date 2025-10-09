@@ -104,7 +104,7 @@ export function BoletinesReport({
             </div>
 
             {error && (
-              <div className="rounded-lg border border-dashed bg-red-50 p-6 text-sm text-red-600">
+              <div className="alert-error border-dashed text-sm p-6">
                 {error}
               </div>
             )}

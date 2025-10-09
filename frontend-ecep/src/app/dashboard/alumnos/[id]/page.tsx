@@ -707,9 +707,9 @@ export default function AlumnoPerfilPage() {
     }
     switch (pendingSolicitudRevisionEstado) {
       case EstadoRevisionAdministrativa.CONFIRMADA:
-        return "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100";
+        return "border-[hsl(var(--success-plain)/0.4)] bg-[hsl(var(--success-soft))] text-success hover:bg-[hsl(var(--success-plain)/0.12)]";
       case EstadoRevisionAdministrativa.DEUDAS_INFORMADAS:
-        return "border-red-300 bg-red-50 text-red-900 hover:bg-red-100";
+        return "border-[hsl(var(--error-plain)/0.4)] bg-[hsl(var(--error-soft))] text-error hover:bg-[hsl(var(--error-plain)/0.12)]";
       default:
         return "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100";
     }
@@ -1942,7 +1942,7 @@ export default function AlumnoPerfilPage() {
         </div>
 
         {loading && <LoadingState label="Cargando información del alumno…" />}
-        {error && <div className="text-sm text-red-600">{error}</div>}
+        {error && <div className="text-sm text-error">{error}</div>}
 
         {!loading && !error && alumno && (
           <div className="grid gap-4 md:grid-cols-2">

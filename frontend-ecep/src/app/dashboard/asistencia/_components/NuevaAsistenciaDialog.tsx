@@ -235,10 +235,10 @@ export default function NuevaAsistenciaDialog({
               required
             />
             {!dentro && (
-              <p className="text-xs text-red-600 mt-1">Fuera del trimestre</p>
+              <p className="text-xs text-error mt-1">Fuera del trimestre</p>
             )}
             {dateError && (
-              <p className="text-xs text-red-600 mt-1">{dateError}</p>
+              <p className="text-xs text-error mt-1">{dateError}</p>
             )}
           </div>
           <div>

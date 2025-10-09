@@ -403,7 +403,7 @@ export function NewJornadaDialog({ seccion, trigger, onCreated }: Props) {
               <p className="text-xs text-muted-foreground mt-1">{formattedFecha}</p>
             )}
             {dateError && (
-              <p className="text-xs text-red-600 mt-1">{dateError}</p>
+              <p className="text-xs text-error mt-1">{dateError}</p>
             )}
           </div>
 

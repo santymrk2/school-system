@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { BackButton } from "@/components/common/BackButton";
 import {
   Card,
   CardHeader,
@@ -110,7 +111,6 @@ function formatRolSeccionLabel(rol?: RolSeccion | string | null) {
 export default function MateriasSeccionPage() {
   const { id } = useParams<{ id: string }>();
   const seccionId = Number(id);
-  const router = useRouter();
   const { type, activeRole } = useViewerScope();
   const { getPeriodoNombre } = useActivePeriod();
   const {
@@ -425,12 +425,7 @@ export default function MateriasSeccionPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <Button
-        variant="outline"
-        onClick={() => router.push("/dashboard/materias")}
-      >
-        Volver
-      </Button>
+      <BackButton href="/dashboard/materias" />
 
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>

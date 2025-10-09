@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { BackButton } from "@/components/common/BackButton";
 import {
   Card,
   CardHeader,
@@ -81,7 +82,6 @@ function vigente(
 export default function AccidentesSeccionPage() {
   const params = useParams<{ id: string }>();
   const seccionId = Number(params.id);
-  const router = useRouter();
   const { hoyISO } = useActivePeriod();
   const { activeRole } = useViewerScope();
   const role = activeRole ?? null;
@@ -626,12 +626,7 @@ export default function AccidentesSeccionPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/accidentes")}
-        >
-          Volver
-        </Button>
+        <BackButton href="/dashboard/accidentes" />
 
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>

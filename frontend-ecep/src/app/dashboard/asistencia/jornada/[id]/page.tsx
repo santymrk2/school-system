@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
+import { BackButton } from "@/components/common/BackButton";
 import { asistencias, gestionAcademica } from "@/services/api/modules";
 import {
   JornadaAsistenciaDTO,
@@ -63,7 +64,6 @@ function buildSeccionNombre(seccion: SeccionDTO | null, fallbackId: number) {
 
 export default function JornadaPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const jornadaId = Number(id);
 
   const [loading, setLoading] = useState(true);
@@ -327,12 +327,10 @@ export default function JornadaPage() {
               <CardTitle>No se pudo cargar la jornada</CardTitle>
               <CardDescription>{err ?? "Jornada inexistente"}</CardDescription>
             </CardHeader>
-            <CardContent className="flex gap-2">
-              <Button variant="outline" onClick={() => router.back()}>
-                Volver
-              </Button>
-              <Button onClick={load}>Reintentar</Button>
-            </CardContent>
+          <CardContent className="flex gap-2">
+            <BackButton />
+            <Button onClick={load}>Reintentar</Button>
+          </CardContent>
           </Card>
         </div>
       
@@ -341,9 +339,7 @@ export default function JornadaPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
-          Volver
-        </Button>
+      <BackButton />
 
         <div className="space-y-2">
           <h2 className="text-3xl font-semibold">{seccionNombre}</h2>

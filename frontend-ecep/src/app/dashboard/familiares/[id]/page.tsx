@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
+import { BackButton } from "@/components/common/BackButton";
 import { useParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -355,9 +356,7 @@ export default function FamiliarPerfilPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
-          Volver
-        </Button>
+        <BackButton />
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Perfil del Familiar</h2>

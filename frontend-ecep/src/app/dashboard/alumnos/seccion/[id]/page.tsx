@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
+import { BackButton } from "@/components/common/BackButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,7 @@ export default function SeccionAlumnosPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/alumnos")}
-        >
-          Volver
-        </Button>
+        <BackButton href="/dashboard/alumnos" />
         {/* Header sin filtros */}
         <div>
           <h2 className="text-3xl font-bold tracking-tight">

@@ -14,6 +14,7 @@ import * as DTO from "@/types/api-generated";
 import { isBirthDateValid } from "@/lib/form-utils";
 import { logger } from "@/lib/logger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { BackButton } from "@/components/common/BackButton";
 
 const postulacionLogger = logger.child({ module: "postulacion" });
 
@@ -1030,9 +1031,7 @@ export default function PostulacionPage() {
     return (
       <div className="min-h-screen bg-background dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors">
         <div className="max-w-2xl mx-auto space-y-6">
-          <Button variant="outline" asChild>
-            <Link href="/">Volver</Link>
-          </Button>
+          <BackButton href="/" className="ml-0" />
           <Card className="text-center">
             <CardHeader className="space-y-4">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -1162,9 +1161,7 @@ export default function PostulacionPage() {
       className="min-h-screen bg-background dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 p-4 transition-colors"
     >
       <div className="max-w-4xl mx-auto space-y-6">
-        <Button variant="outline" asChild>
-          <Link href="/">Volver</Link>
-        </Button>
+        <BackButton href="/" className="ml-0" />
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Postulación de Alumno

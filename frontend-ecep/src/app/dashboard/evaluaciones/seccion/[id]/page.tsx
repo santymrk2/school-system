@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
+import { BackButton } from "@/components/common/BackButton";
 import { gestionAcademica } from "@/services/api/modules";
 import type {
   SeccionDTO,
@@ -360,12 +361,7 @@ export default function SeccionEvaluacionesPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <Button
-        variant="outline"
-        onClick={() => router.push("/dashboard/evaluaciones")}
-      >
-        Volver
-      </Button>
+      <BackButton href="/dashboard/evaluaciones" />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Evaluaciones</h1>

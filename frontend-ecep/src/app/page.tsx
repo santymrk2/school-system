@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import axios from "axios";
 
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/common/BackButton";
 import {
   Card,
   CardContent,
@@ -197,15 +198,14 @@ export default function LoginPage() {
         <Card className="shadow-lg">
           <CardHeader className="space-y-4">
             {isValidEmail && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleGoBackToEmail}
-                disabled={isLoggingIn}
+              <BackButton
                 className="self-start"
-              >
-                Volver
-              </Button>
+                disabled={isLoggingIn}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleGoBackToEmail();
+                }}
+              />
             )}
             <div className="space-y-2 text-center">
               <CardTitle className="text-2xl text-center text-foreground">

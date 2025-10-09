@@ -21,6 +21,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/common/BackButton";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -679,12 +680,7 @@ export default function AltaAlumnoPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8">
-      <Button
-        variant="outline"
-        onClick={() => router.push("/dashboard/alumnos")}
-      >
-        Volver
-      </Button>
+      <BackButton href="/dashboard/alumnos" />
       <div>
         <h1 className="text-3xl font-bold">Alta manual de alumno</h1>
         <p className="text-muted-foreground">

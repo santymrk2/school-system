@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
+import { BackButton } from "@/components/common/BackButton";
 import { NewJornadaDialog } from "@/app/dashboard/asistencia/_components/NewJornadaDialog";
 import {
   Card,
@@ -508,12 +509,7 @@ export default function SeccionHistorialPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <Button
-        variant="outline"
-        onClick={() => router.push("/dashboard/asistencia")}
-      >
-        Volver
-      </Button>
+      <BackButton href="/dashboard/asistencia" />
 
       <div className="space-y-3">
         <div>

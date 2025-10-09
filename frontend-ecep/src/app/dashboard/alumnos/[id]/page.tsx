@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/common/BackButton";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -1522,9 +1523,7 @@ export default function AlumnoPerfilPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
-          Volver
-        </Button>
+        <BackButton />
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import LoadingState from "@/components/common/LoadingState";
+import { BackButton } from "@/components/common/BackButton";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -57,7 +58,6 @@ import {
   RefreshCw,
   StickyNote,
   X,
-  ArrowLeft,
 } from "lucide-react";
 import * as DTO from "@/types/api-generated";
 import { format } from "date-fns";
@@ -344,7 +344,7 @@ type TimelineItem = {
 
 export default function SolicitudAdmisionDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  
   const solicitudId = Number(params?.id);
   const [solicitud, setSolicitud] = useState<SolicitudAdmisionItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -899,15 +899,7 @@ export default function SolicitudAdmisionDetailPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="-ml-2"
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-          </Button>
+          <BackButton />
         </div>
         <div className="flex flex-wrap gap-2">
           {estadoBadge(solicitud.estado)}

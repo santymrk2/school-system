@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
-import { useParams, useRouter } from "next/navigation";
+import { BackButton } from "@/components/common/BackButton";
+import { useParams } from "next/navigation";
 import { calendario, gestionAcademica } from "@/services/api/modules";
 import type {
   EvaluacionDTO,
@@ -75,7 +76,6 @@ type NotaRow = {
 export default function ExamenDetailPage() {
   const params = useParams<{ id: string }>();
   const examenId = Number(params?.id);
-  const router = useRouter();
   const { activeRole } = useViewerScope();
   const role = activeRole ?? null;
   const isAdmin = role === UserRole.ADMIN;
@@ -480,9 +480,7 @@ export default function ExamenDetailPage() {
     return (
       
         <div className="p-6 space-y-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            Volver
-          </Button>
+          <BackButton />
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
@@ -495,9 +493,7 @@ export default function ExamenDetailPage() {
     return (
       
         <div className="p-6 space-y-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            Volver
-          </Button>
+          <BackButton />
           <div className="rounded-md border p-4 text-sm">
             No encontramos datos para el examen solicitado.
           </div>
@@ -508,9 +504,7 @@ export default function ExamenDetailPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <Button variant="outline" onClick={() => router.back()}>
-        Volver
-      </Button>
+      <BackButton />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>

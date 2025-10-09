@@ -258,7 +258,7 @@ export default function NotasExamenDialog({
         {loading ? (
           <LoadingState label="Cargando notas…" />
         ) : errorMsg ? (
-          <div className="text-sm text-red-600">{errorMsg}</div>
+          <div className="text-sm text-error">{errorMsg}</div>
         ) : (
           <>
             {trimestreSoloLectura && (

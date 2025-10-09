@@ -125,7 +125,7 @@ export default function FamilyActasView({
   }
 
   if (initialError) {
-    return <div className="text-sm text-red-600">{initialError}</div>;
+    return <div className="text-sm text-error">{initialError}</div>;
   }
 
   if (!alumnos.length) {
@@ -140,7 +140,7 @@ export default function FamilyActasView({
     <div className="space-y-4">
       {loading && <LoadingState label="Cargando actas…" />}
       {error && !loading && (
-        <div className="text-sm text-red-600">{error}</div>
+        <div className="text-sm text-error">{error}</div>
       )}
 
       {!loading &&

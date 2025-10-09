@@ -280,7 +280,7 @@ export default function EditActaDialog({
                 ) : null}
               </div>
               {!alumnoId && (
-                <div className="text-xs text-red-600">
+                <div className="text-xs text-error">
                   Seleccioná un alumno de la lista.
                 </div>
               )}

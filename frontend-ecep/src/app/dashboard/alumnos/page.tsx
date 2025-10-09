@@ -835,7 +835,7 @@ export default function AlumnosIndexPage() {
       )}
 
       {loading && <LoadingState label="Cargando información…" />}
-      {error && <div className="text-sm text-red-600">{String(error)}</div>}
+      {error && <div className="text-sm text-error">{String(error)}</div>}
 
       {/* FAMILY / STUDENT: lista de hijos o matrícula propia */}
       {!loading && !error && (scope === "family" || scope === "student") && (
@@ -923,7 +923,7 @@ export default function AlumnosIndexPage() {
                 ) : loadingAlumnos ? (
                   <LoadingState label="Cargando alumnos…" />
                 ) : errorAlumnos ? (
-                  <div className="text-sm text-red-600 py-6">
+                  <div className="text-sm text-error py-6">
                     {errorAlumnos}
                   </div>
                 ) : alumnos.length === 0 ? (
@@ -1091,7 +1091,7 @@ export default function AlumnosIndexPage() {
                   {loadingSolicitudesBaja ? (
                     <LoadingState label="Cargando solicitudes…" />
                   ) : errorSolicitudesBaja ? (
-                    <div className="text-sm text-red-600">
+                    <div className="text-sm text-error">
                       {errorSolicitudesBaja}
                     </div>
                   ) : (
@@ -1381,7 +1381,7 @@ export default function AlumnosIndexPage() {
                   {loadingHistorialAlumnos ? (
                     <LoadingState label="Cargando historial…" />
                   ) : errorHistorialAlumnos ? (
-                    <div className="text-sm text-red-600">
+                    <div className="text-sm text-error">
                       {errorHistorialAlumnos}
                     </div>
                   ) : historialAlumnos.length === 0 ? (

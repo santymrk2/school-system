@@ -93,7 +93,7 @@ export const MENU: MenuItem[] = [
     icon: Ambulance,
     label: "Accidentes",
     href: "/dashboard/actas",
-    color: "bg-red-500",
+    color: "bg-error",
     group: "secondary",
   },
 

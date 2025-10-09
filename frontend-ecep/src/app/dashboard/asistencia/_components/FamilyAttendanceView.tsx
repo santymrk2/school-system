@@ -36,17 +36,17 @@ const calendarModifierClassNames: Record<AttendanceCategory, string> = {
   present:
     "bg-secondary/20 text-secondary hover:bg-secondary/25 focus:bg-secondary/25 dark:text-secondary-foreground dark:hover:bg-secondary/30 dark:focus:bg-secondary/30",
   absent:
-    "bg-red-500/15 text-red-700 hover:bg-red-500/20 focus:bg-red-500/20",
+    "bg-[hsl(var(--error-plain)/0.15)] text-error hover:bg-[hsl(var(--error-plain)/0.2)] focus:bg-[hsl(var(--error-plain)/0.2)]",
 };
 
 const calendarLegend: { key: AttendanceCategory; label: string; dotClass: string }[] = [
   { key: "present", label: "Presente", dotClass: "bg-secondary" },
-  { key: "absent", label: "Ausente", dotClass: "bg-red-500/70" },
+  { key: "absent", label: "Ausente", dotClass: "bg-[hsl(var(--error))]" },
 ];
 
 const calendarDayBadge: Record<AttendanceCategory, { text: string; className: string }> = {
   present: { text: "Presente", className: "bg-secondary text-secondary-foreground" },
-  absent: { text: "Ausente", className: "bg-red-100 text-red-700" },
+  absent: { text: "Ausente", className: "bg-[hsl(var(--error-soft))] text-error" },
 };
 
 function Donut({ percent }: { percent: number }) {
@@ -582,7 +582,7 @@ export function FamilyAttendanceView() {
   }
 
   if (error) {
-    return <div className="text-sm text-red-600">{error}</div>;
+    return <div className="text-sm text-error">{error}</div>;
   }
 
   if (!alumnos.length) {
@@ -660,7 +660,7 @@ export function FamilyAttendanceView() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <X className="h-4 w-4 text-red-600" />
+                        <X className="h-4 w-4 text-error" />
                         <span className="font-medium">
                           Ausentes: {resumen.ausentes}
                         </span>
@@ -687,7 +687,7 @@ export function FamilyAttendanceView() {
               {loadingDetalles ? (
                 <LoadingState label="Cargando calendario…" className="h-64" />
               ) : errorDetalles ? (
-                <div className="text-sm text-red-600">{errorDetalles}</div>
+                <div className="text-sm text-error">{errorDetalles}</div>
               ) : (
                 <div className="space-y-4">
                   <AttendanceCalendar

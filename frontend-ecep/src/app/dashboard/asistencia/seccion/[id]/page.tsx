@@ -234,7 +234,7 @@ export default function SeccionHistorialPage() {
         label: "Presentes",
         value: selectedResumen.presentes,
         icon: CheckCircle2,
-        accent: "text-emerald-500",
+        accent: "text-success",
       },
       {
         label: "Ausentes",
@@ -528,10 +528,10 @@ export default function SeccionHistorialPage() {
             </Badge>
             <Badge variant="secondary">Turno {seccion?.turno ?? "—"}</Badge>
           </div>
-          {secErr && <p className="text-sm text-red-600">{secErr}</p>}
+          {secErr && <p className="text-sm text-error">{secErr}</p>}
           <ActiveTrimestreBadge className="mt-3" />
         </div>
-        {periodError && <p className="text-sm text-red-600">{periodError}</p>}
+        {periodError && <p className="text-sm text-error">{periodError}</p>}
       </div>
 
       {loadingPeriod ? (
@@ -582,7 +582,7 @@ export default function SeccionHistorialPage() {
                 ) : (
                   <>
                     {loading && <LoadingState label="Cargando asistencia…" />}
-                    {err && <div className="text-sm text-red-600">{err}</div>}
+                    {err && <div className="text-sm text-error">{err}</div>}
                     {!loading && !err && (
                       <>
                         <Card>
@@ -752,7 +752,7 @@ export default function SeccionHistorialPage() {
                                             <Progress
                                               value={selectedResumenPercent}
                                               className="h-2 bg-destructive"
-                                              indicatorClassName="bg-emerald-500"
+                                              indicatorClassName="bg-success"
                                             />
                                           </div>
                                         </div>
@@ -827,7 +827,7 @@ export default function SeccionHistorialPage() {
                                           absent={r.ausentes}
                                         />
                                         <div className="space-y-2 text-sm">
-                                          <div className="flex items-center justify-center gap-2 text-emerald-600">
+                                          <div className="flex items-center justify-center gap-2 text-success">
                                             <CheckCircle2 className="h-4 w-4" />
                                             <span className="font-semibold">
                                               Presentes: {r.presentes} ({presentPercent}%)

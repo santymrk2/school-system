@@ -532,7 +532,7 @@ export default function SeccionEvaluacionesPage() {
         </div>
       </div>
 
-      {error && <div className="text-sm text-red-600">{error}</div>}
+      {error && <div className="text-sm text-error">{error}</div>}
 
       {!error && (
         <>

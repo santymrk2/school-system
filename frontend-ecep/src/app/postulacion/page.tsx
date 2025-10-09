@@ -1035,7 +1035,7 @@ export default function PostulacionPage() {
           </Button>
           <Card className="text-center">
             <CardHeader className="space-y-4">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--success-soft))] text-success">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <CardTitle className="text-2xl font-semibold">

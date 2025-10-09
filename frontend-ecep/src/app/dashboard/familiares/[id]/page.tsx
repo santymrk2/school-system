@@ -495,7 +495,7 @@ export default function FamiliarPerfilPage() {
         </div>
 
         {loading && <LoadingState label="Cargando información del familiar…" />}
-        {error && <div className="text-sm text-error">{error}</div>}
+        {error && <div className="text-sm text-red-600">{error}</div>}
 
         {!loading && !error && (
           <div className="grid gap-4 md:grid-cols-2">

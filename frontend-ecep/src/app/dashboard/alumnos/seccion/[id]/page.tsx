@@ -44,7 +44,7 @@ export default function SeccionAlumnosPage() {
         {loading ? (
           <LoadingState label="Cargando alumnos…" />
         ) : error ? (
-          <div className="text-sm text-error">
+          <div className="text-sm text-red-600">
             Ocurrió un error al cargar los alumnos.
             <Button
               variant="link"

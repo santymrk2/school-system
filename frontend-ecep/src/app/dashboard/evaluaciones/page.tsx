@@ -227,7 +227,7 @@ export default function EvaluacionesIndexPage() {
           <LoadingState label="Cargando evaluaciones…" />
         )}
         {(error || errorScope) && (
-          <div className="text-sm text-error">
+          <div className="text-sm text-red-600">
             {String(error ?? errorScope)}
           </div>
         )}

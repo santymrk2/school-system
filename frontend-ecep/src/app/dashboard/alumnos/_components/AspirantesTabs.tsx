@@ -366,7 +366,7 @@ export default function AspirantesTab({ searchTerm }: Props) {
 
   if (error) {
     return (
-      <div className="text-sm text-error py-8">
+      <div className="text-sm text-red-600 py-8">
         No se pudieron cargar las solicitudes.
         <Button variant="link" onClick={refetch} className="ml-2 p-0 h-auto">
           Reintentar

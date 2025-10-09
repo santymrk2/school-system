@@ -346,7 +346,7 @@ export default function FamilyCalificacionesView({
   }
 
   if (initialError) {
-    return <div className="text-sm text-error">{initialError}</div>;
+    return <div className="text-sm text-red-600">{initialError}</div>;
   }
 
   if (!alumnos.length) {
@@ -455,7 +455,7 @@ export default function FamilyCalificacionesView({
             {loadingDetalle ? (
               <LoadingState label="Cargando detalle de calificaciones…" />
             ) : errorDetalle ? (
-              <div className="text-sm text-error">{errorDetalle}</div>
+              <div className="text-sm text-red-600">{errorDetalle}</div>
             ) : (
               <div className="space-y-4">
                 <Card>

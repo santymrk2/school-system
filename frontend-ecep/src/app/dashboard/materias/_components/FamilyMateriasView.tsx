@@ -304,7 +304,7 @@ export default function FamilyMateriasView({
   }
 
   if (initialError) {
-    return <div className="text-sm text-error">{initialError}</div>;
+    return <div className="text-sm text-red-600">{initialError}</div>;
   }
 
   if (!alumnos.length) {
@@ -347,7 +347,7 @@ export default function FamilyMateriasView({
             {loadingDetalle ? (
               <LoadingState label="Cargando docentes y materias…" />
             ) : errorDetalle ? (
-              <div className="text-sm text-error">{errorDetalle}</div>
+              <div className="text-sm text-red-600">{errorDetalle}</div>
             ) : (
               <div className="space-y-4">
                 <Card>

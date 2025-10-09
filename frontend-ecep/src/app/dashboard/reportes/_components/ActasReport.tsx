@@ -169,7 +169,7 @@ export function ActasReport({
 
               <div className="space-y-4">
                 {actaErrorMsg && (
-                  <div className="alert-error border-dashed text-sm p-4">
+                  <div className="rounded-lg border border-dashed bg-red-50 p-4 text-sm text-red-600">
                     {actaErrorMsg}
                   </div>
                 )}

@@ -159,7 +159,7 @@ export default function DetalleDiaDialog({
               <Progress
                 value={porcentaje}
                 className="h-2 mt-2 bg-destructive"
-                indicatorClassName="bg-success"
+                indicatorClassName="bg-emerald-500"
               />
             </div>
 

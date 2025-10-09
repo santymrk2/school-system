@@ -439,7 +439,7 @@ export default function NewActaDialog({
                 ) : null}
               </div>
               {!alumnoId && (
-                <div className="text-xs text-error mt-1">
+                <div className="text-xs text-red-600 mt-1">
                   Seleccioná un alumno de la lista.
                 </div>
               )}

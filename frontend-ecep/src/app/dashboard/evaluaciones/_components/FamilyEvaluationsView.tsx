@@ -575,7 +575,7 @@ export function FamilyEvaluationsView({
   }
 
   if (initialError) {
-    return <div className="text-sm text-error">{initialError}</div>;
+    return <div className="text-sm text-red-600">{initialError}</div>;
   }
 
   if (!alumnosVisibles.length) {
@@ -663,7 +663,7 @@ export function FamilyEvaluationsView({
       {loadingDetalle && <LoadingState label="Actualizando información…" />}
 
       {errorDetalle && !loadingDetalle && (
-        <div className="text-sm text-error">{errorDetalle}</div>
+        <div className="text-sm text-red-600">{errorDetalle}</div>
       )}
 
       {!loadingDetalle && !errorDetalle && nivel === NivelAcademicoEnum.PRIMARIO && (

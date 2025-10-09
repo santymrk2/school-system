@@ -457,7 +457,7 @@ export default function ChatComponent() {
         );
       case "disconnected":
         return (
-          <div className="flex items-center gap-2 text-error">
+          <div className="flex items-center gap-2 text-red-600">
             <WifiOff className="h-4 w-4" />
             <span className="text-sm">Desconectado</span>
             <Button size="sm" variant="outline" onClick={reconnect}>
@@ -686,7 +686,7 @@ export default function ChatComponent() {
                               </AvatarFallback>
                             </Avatar>
                             {(unreadCounts[p.id] ?? 0) > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-error text-xs font-bold px-1.5 py-0.5 rounded-full">
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                                 {unreadCounts[p.id]}
                               </span>
                             )}

@@ -189,7 +189,7 @@ function TeacherView() {
   }, [loading, primario.length, inicial.length]);
 
   if (loading) return <LoadingState label="Cargando secciones…" />;
-  if (error) return <div className="text-sm text-error">{String(error)}</div>;
+  if (error) return <div className="text-sm text-red-600">{String(error)}</div>;
   if (!secciones.length)
     return <div className="text-sm">No tenés secciones asignadas.</div>;
 
@@ -241,7 +241,7 @@ function TeacherView() {
   return (
     <div className="space-y-4">
       {countsError && (
-        <div className="text-sm text-error">{countsError}</div>
+        <div className="text-sm text-red-600">{countsError}</div>
       )}
       <Tabs
         value={tab}
@@ -398,8 +398,8 @@ function DirectivoView() {
   return (
     <div className="space-y-4">
       {loading && <LoadingState label="Cargando secciones…" />}
-      {err && <div className="text-sm text-error">{err}</div>}
-      {countsError && <div className="text-sm text-error">{countsError}</div>}
+      {err && <div className="text-sm text-red-600">{err}</div>}
+      {countsError && <div className="text-sm text-red-600">{countsError}</div>}
 
       {!loading && !seccionesOrdenadas.length && (
         <div className="text-sm text-muted-foreground">

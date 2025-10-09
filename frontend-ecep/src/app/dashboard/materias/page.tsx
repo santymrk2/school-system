@@ -138,7 +138,7 @@ export default function MateriasPage() {
         {loading ? (
           <LoadingState label="Cargando secciones…" />
         ) : error ? (
-          <div className="text-sm text-error">{String(error)}</div>
+          <div className="text-sm text-red-600">{String(error)}</div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((s) => {

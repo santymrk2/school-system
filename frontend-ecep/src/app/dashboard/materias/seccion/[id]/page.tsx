@@ -465,7 +465,7 @@ export default function MateriasSeccionPage() {
       {loading ? (
         <LoadingState label="Cargando asignaciones…" />
       ) : error ? (
-        <div className="text-sm text-error">{error}</div>
+        <div className="text-sm text-red-600">{error}</div>
       ) : (
         <div className="space-y-6">
           <Card>

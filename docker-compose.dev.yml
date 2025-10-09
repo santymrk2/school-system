@@ -66,8 +66,8 @@ services:
       - ./frontend-ecep:/app
       - /app/node_modules
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      #NEXT_PUBLIC_API_URL: https://api.ecep.dpdns.org
+      #NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_API_URL: https://api.ecep.dpdns.org
     depends_on:
       backend:
         condition: service_started

@@ -488,21 +488,21 @@ function getSituacionBadge(situacion?: string | null) {
   const normalized = (situacion ?? "").toLowerCase();
   if (normalized === "activo") {
     return (
-    <Badge variant="default">
+      <Badge variant="default">
         <CircleCheck className="mr-1 h-3 w-3" /> Activo
       </Badge>
     );
   }
   if (normalized.includes("licencia")) {
     return (
-    <Badge variant="secondary">
+      <Badge variant="secondary">
         <Clock className="mr-1 h-3 w-3" /> En licencia
       </Badge>
     );
   }
   if (normalized.includes("baja")) {
     return (
-    <Badge variant="destructive">
+      <Badge variant="destructive">
         <AlertCircle className="mr-1 h-3 w-3" /> Baja
       </Badge>
     );
@@ -569,7 +569,7 @@ function MultiSelectControl({
   disabled,
   emptyMessage,
   summaryEmptyText,
-  badgeVariant = "secondary",
+  badgeVariant = "",
 }: MultiSelectControlProps) {
   const [open, setOpen] = useState(false);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -676,7 +676,7 @@ function MultiSelectControl({
               className="flex items-center gap-1"
             >
               {option.description ? (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-foreground">
                   {option.description}
                 </span>
               ) : null}
@@ -703,15 +703,12 @@ function SectionMateriaSelector({
 }: SectionMateriaSelectorProps) {
   const [open, setOpen] = useState(false);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const [pendingReplace, setPendingReplace] = useState<
-    | {
-        materiaId: number;
-        materiaNombre: string;
-        seccionLabel: string;
-        titular: TitularInfo;
-      }
-    | null
-  >(null);
+  const [pendingReplace, setPendingReplace] = useState<{
+    materiaId: number;
+    materiaNombre: string;
+    seccionLabel: string;
+    titular: TitularInfo;
+  } | null>(null);
 
   const optionDetails = useMemo(() => {
     const map = new Map<
@@ -761,9 +758,10 @@ function SectionMateriaSelector({
       ? "Sin materias disponibles"
       : "Seleccioná las materias por sección o dejalo vacío para removerlas.");
 
-  const resolvedEmptyMessage = sections.length === 0
-    ? "No hay materias disponibles."
-    : "No encontramos materias en las secciones disponibles.";
+  const resolvedEmptyMessage =
+    sections.length === 0
+      ? "No hay materias disponibles."
+      : "No encontramos materias en las secciones disponibles.";
 
   const handleToggle = useCallback(
     (
@@ -798,9 +796,7 @@ function SectionMateriaSelector({
     if (!pendingReplace) {
       return;
     }
-    onChange(
-      Array.from(new Set([...selectedIds, pendingReplace.materiaId])),
-    );
+    onChange(Array.from(new Set([...selectedIds, pendingReplace.materiaId])));
     setPendingReplace(null);
   }, [onChange, pendingReplace, selectedIds]);
 
@@ -881,7 +877,8 @@ function SectionMateriaSelector({
                             const isSelected = selectedSet.has(
                               materia.seccionMateriaId,
                             );
-                            const materiaTitular = materia.currentTitular ?? null;
+                            const materiaTitular =
+                              materia.currentTitular ?? null;
                             const materiaTitularLabel = materiaTitular
                               ? materiaTitular.empleadoId === empleadoId
                                 ? "Asignada a este docente"
@@ -891,7 +888,9 @@ function SectionMateriaSelector({
                               <div
                                 key={`materia-option-${materia.seccionMateriaId}`}
                                 className={`rounded-lg border border-border p-3 transition-colors hover:bg-muted/40 ${
-                                  isSelected ? "border-primary bg-primary/5" : ""
+                                  isSelected
+                                    ? "border-primary bg-primary/5"
+                                    : ""
                                 }`}
                               >
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1073,7 +1072,9 @@ export default function PersonalPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [personal, setPersonal] = useState<EmpleadoView[]>([]);
   const [allLicencias, setAllLicencias] = useState<LicenciaDTO[]>([]);
-  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>([]);
+  const [availableSecciones, setAvailableSecciones] = useState<SeccionDTO[]>(
+    [],
+  );
   const [availableSeccionMaterias, setAvailableSeccionMaterias] = useState<
     SeccionMateriaDTO[]
   >([]);
@@ -1158,9 +1159,9 @@ export default function PersonalPage() {
   const [editMateriaDetails, setEditMateriaDetails] = useState<
     EmpleadoMateriaView[]
   >([]);
-  const [editFormaciones, setEditFormaciones] = useState<
-    EditFormacionEntry[]
-  >([{ ...initialFormacionEntry }]);
+  const [editFormaciones, setEditFormaciones] = useState<EditFormacionEntry[]>([
+    { ...initialFormacionEntry },
+  ]);
   const [editFormacionesToDelete, setEditFormacionesToDelete] = useState<
     number[]
   >([]);
@@ -1170,7 +1171,9 @@ export default function PersonalPage() {
   const updateEditFormacionEntry = useCallback(
     (index: number, patch: Partial<EditFormacionEntry>) => {
       setEditFormaciones((prev) =>
-        prev.map((entry, idx) => (idx === index ? { ...entry, ...patch } : entry)),
+        prev.map((entry, idx) =>
+          idx === index ? { ...entry, ...patch } : entry,
+        ),
       );
     },
     [],
@@ -1594,12 +1597,13 @@ export default function PersonalPage() {
 
         const seccionAssignments =
           seccionesPorEmpleado.get(empleado.id ?? 0) ?? [];
-        const activeSeccionAssignments = seccionAssignments.filter((assignment) =>
-          isAssignmentActiveOn(
-            assignment.vigenciaDesde,
-            assignment.vigenciaHasta,
-            referenciaIso,
-          ),
+        const activeSeccionAssignments = seccionAssignments.filter(
+          (assignment) =>
+            isAssignmentActiveOn(
+              assignment.vigenciaDesde,
+              assignment.vigenciaHasta,
+              referenciaIso,
+            ),
         );
         const seccionEntryMap = new Map<string, EmpleadoSeccionView>();
         for (const assignment of activeSeccionAssignments) {
@@ -1916,13 +1920,9 @@ export default function PersonalPage() {
   const seccionMultiOptions = useMemo(() => {
     const entries = Array.from(seccionMetadataById.entries()).map(
       ([id, metadata]) => {
-        const titular = titularSeccionMap.get(id);
         const descriptionParts: string[] = [];
         if (metadata.nivel) {
           descriptionParts.push(formatNivel(metadata.nivel));
-        }
-        if (titular) {
-          descriptionParts.push(`Titular actual: ${titular.nombre}`);
         }
         return {
           id,
@@ -1950,10 +1950,11 @@ export default function PersonalPage() {
     });
 
     return availableSeccionMaterias
-      .filter((sm): sm is SeccionMateriaDTO & { id: number } =>
-        typeof sm.id === "number" &&
-        typeof sm.seccionId === "number" &&
-        typeof sm.materiaId === "number",
+      .filter(
+        (sm): sm is SeccionMateriaDTO & { id: number } =>
+          typeof sm.id === "number" &&
+          typeof sm.seccionId === "number" &&
+          typeof sm.materiaId === "number",
       )
       .map((sm) => {
         const seccionMeta = seccionMetadataById.get(sm.seccionId!);
@@ -2001,14 +2002,13 @@ export default function PersonalPage() {
       }
       const seccionMeta = seccionMetadataById.get(sm.seccionId);
       const existing = groups.get(sm.seccionId);
-      const group: MateriaSectionGroup =
-        existing ?? {
-          seccionId: sm.seccionId,
-          seccionLabel: seccionMeta?.label ?? `Sección #${sm.seccionId}`,
-          nivel: seccionMeta?.nivel ?? null,
-          seccionTitular: titularSeccionMap.get(sm.seccionId) ?? null,
-          materias: [],
-        };
+      const group: MateriaSectionGroup = existing ?? {
+        seccionId: sm.seccionId,
+        seccionLabel: seccionMeta?.label ?? `Sección #${sm.seccionId}`,
+        nivel: seccionMeta?.nivel ?? null,
+        seccionTitular: titularSeccionMap.get(sm.seccionId) ?? null,
+        materias: [],
+      };
       group.materias.push({
         seccionMateriaId: sm.id,
         materiaId: sm.materiaId,
@@ -2023,7 +2023,9 @@ export default function PersonalPage() {
       .map((group) => ({
         ...group,
         seccionTitular:
-          titularSeccionMap.get(group.seccionId) ?? group.seccionTitular ?? null,
+          titularSeccionMap.get(group.seccionId) ??
+          group.seccionTitular ??
+          null,
         materias: [...group.materias].sort((a, b) =>
           a.materiaNombre.localeCompare(b.materiaNombre, "es", {
             sensitivity: "base",
@@ -2153,24 +2155,19 @@ export default function PersonalPage() {
       materias.map((materia) => materia.seccionMateriaId),
     );
     const [saving, setSaving] = useState(false);
-    const [pendingSeccionReplace, setPendingSeccionReplace] = useState<
-      | {
-          seccionId: number;
-          seccionLabel: string;
-          titular: TitularInfo;
-          targetIds: number[];
-        }
-      | null
-    >(null);
+    const [pendingSeccionReplace, setPendingSeccionReplace] = useState<{
+      seccionId: number;
+      seccionLabel: string;
+      titular: TitularInfo;
+      targetIds: number[];
+    } | null>(null);
 
     useEffect(() => {
       setSelectedSecciones(secciones.map((seccion) => seccion.seccionId));
     }, [secciones]);
 
     useEffect(() => {
-      setSelectedMaterias(
-        materias.map((materia) => materia.seccionMateriaId),
-      );
+      setSelectedMaterias(materias.map((materia) => materia.seccionMateriaId));
     }, [materias]);
 
     const handleSeccionesChange = useCallback(
@@ -2183,14 +2180,12 @@ export default function PersonalPage() {
         const trimmed = ids.slice(0, 2);
         const normalized = Array.from(new Set(trimmed));
 
-        let replaceRequest:
-          | {
-              seccionId: number;
-              seccionLabel: string;
-              titular: TitularInfo;
-              targetIds: number[];
-            }
-          | null = null;
+        let replaceRequest: {
+          seccionId: number;
+          seccionLabel: string;
+          titular: TitularInfo;
+          targetIds: number[];
+        } | null = null;
 
         for (const seccionId of normalized) {
           const alreadySelected = selectedSecciones.includes(seccionId);
@@ -2276,7 +2271,7 @@ export default function PersonalPage() {
     const isDisabled = disabled || !empleadoId || saving;
 
     return (
-    <>
+      <>
         <div
           className={cn(
             "flex h-full flex-col rounded-lg border bg-muted/40 p-4",
@@ -2317,8 +2312,8 @@ export default function PersonalPage() {
             />
             <div className="flex flex-col gap-2 pt-1 text-xs text-muted-foreground">
               <p>
-                Los cambios aplican inmediatamente sobre la planificación y
-                las vistas académicas.
+                Los cambios aplican inmediatamente sobre la planificación y las
+                vistas académicas.
               </p>
               <div className="flex justify-end">
                 <Button
@@ -2939,14 +2934,11 @@ export default function PersonalPage() {
     setEditSeccionDetails(item.secciones);
     setEditMateriaDetails(item.materias);
     setEditSeccionIds(item.secciones.map((seccion) => seccion.seccionId));
-    setEditMateriaIds(
-      item.materias.map((materia) => materia.seccionMateriaId),
-    );
+    setEditMateriaIds(item.materias.map((materia) => materia.seccionMateriaId));
     setEditFormaciones(
       item.formaciones.length > 0
         ? item.formaciones.map((formacion) => ({
-            id:
-              typeof formacion.id === "number" ? formacion.id : undefined,
+            id: typeof formacion.id === "number" ? formacion.id : undefined,
             nivel: formacion.nivel ?? "",
             tituloObtenido: formacion.tituloObtenido ?? "",
             institucion: formacion.institucion ?? "",
@@ -3437,7 +3429,11 @@ export default function PersonalPage() {
         fechaFin: string | null;
       }> = [];
 
-      for (let index = 0; index < normalizedEditFormaciones.length; index += 1) {
+      for (
+        let index = 0;
+        index < normalizedEditFormaciones.length;
+        index += 1
+      ) {
         const formacion = normalizedEditFormaciones[index];
         const tieneDatos =
           formacion.nivel.length > 0 ||
@@ -3985,11 +3981,7 @@ export default function PersonalPage() {
   );
 
   if (loading || !user) {
-    return (
-      
-        <div className="flex-1 p-4 pt-6 md:p-8">{renderLoadingState()}</div>
-      
-    );
+    return <div className="flex-1 p-4 pt-6 md:p-8">{renderLoadingState()}</div>;
   }
 
   const canCreatePersonal =
@@ -4156,7 +4148,7 @@ export default function PersonalPage() {
                             <Button
                               type="button"
                               size="sm"
-                              variant={isExpanded ? "secondary" : "outline"}
+                              variant={isExpanded ? "" : "outline"}
                               onClick={() =>
                                 toggleEmployeeDetails(item.empleado.id)
                               }
@@ -4201,7 +4193,8 @@ export default function PersonalPage() {
                             ) : null}
                           </div>
                         </div>
-                        {(item.secciones.length > 0 || item.materias.length > 0) && (
+                        {(item.secciones.length > 0 ||
+                          item.materias.length > 0) && (
                           <div className="flex flex-wrap gap-2">
                             {(() => {
                               const materiasPorSeccion = new Map<
@@ -4210,7 +4203,8 @@ export default function PersonalPage() {
                               >();
                               for (const materia of item.materias) {
                                 const list =
-                                  materiasPorSeccion.get(materia.seccionId) ?? [];
+                                  materiasPorSeccion.get(materia.seccionId) ??
+                                  [];
                                 list.push(materia);
                                 materiasPorSeccion.set(materia.seccionId, list);
                               }
@@ -4220,7 +4214,9 @@ export default function PersonalPage() {
                                   seccion.rol === RolSeccion.MAESTRO_TITULAR,
                               );
                               const titularIds = new Set(
-                                titularSecciones.map((seccion) => seccion.seccionId),
+                                titularSecciones.map(
+                                  (seccion) => seccion.seccionId,
+                                ),
                               );
 
                               const otrasSeccionesMap = new Map<
@@ -4231,7 +4227,8 @@ export default function PersonalPage() {
                               item.secciones
                                 .filter(
                                   (seccion) =>
-                                    seccion.rol !== RolSeccion.MAESTRO_TITULAR &&
+                                    seccion.rol !==
+                                      RolSeccion.MAESTRO_TITULAR &&
                                     !titularIds.has(seccion.seccionId),
                                 )
                                 .forEach((seccion) => {
@@ -4241,19 +4238,21 @@ export default function PersonalPage() {
                                   });
                                 });
 
-                              materiasPorSeccion.forEach((_materias, seccionId) => {
-                                if (titularIds.has(seccionId)) {
-                                  return;
-                                }
-                                if (!otrasSeccionesMap.has(seccionId)) {
-                                  const firstMateria = _materias[0];
-                                  otrasSeccionesMap.set(seccionId, {
-                                    label: getSeccionDisplayName(
-                                      firstMateria?.seccionLabel,
-                                    ),
-                                  });
-                                }
-                              });
+                              materiasPorSeccion.forEach(
+                                (_materias, seccionId) => {
+                                  if (titularIds.has(seccionId)) {
+                                    return;
+                                  }
+                                  if (!otrasSeccionesMap.has(seccionId)) {
+                                    const firstMateria = _materias[0];
+                                    otrasSeccionesMap.set(seccionId, {
+                                      label: getSeccionDisplayName(
+                                        firstMateria?.seccionLabel,
+                                      ),
+                                    });
+                                  }
+                                },
+                              );
 
                               const badgeEntries = [
                                 ...titularSecciones.map((seccion) => ({
@@ -4275,30 +4274,30 @@ export default function PersonalPage() {
                               return badgeEntries.map((entry) => {
                                 const materiasAsignadas =
                                   materiasPorSeccion.get(entry.seccionId) ?? [];
-                                const seccionNombre =
-                                  entry.label?.length
-                                    ? entry.label
-                                    : `Sección #${entry.seccionId}`;
+                                const seccionNombre = entry.label?.length
+                                  ? entry.label
+                                  : `Sección #${entry.seccionId}`;
                                 const badgeKey = `seccion-${empleadoId}-${entry.seccionId}-${entry.variant}`;
-                                const contenidoMaterias = materiasAsignadas.length ? (
-                                  <ul className="space-y-1 text-sm text-muted-foreground">
-                                    {materiasAsignadas.map((materia) => (
-                                      <li
-                                        key={`materia-${badgeKey}-${materia.seccionMateriaId}`}
-                                        className="flex items-start gap-2"
-                                      >
-                                        <GraduationCap className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                                        <span className="text-foreground">
-                                          {materia.materiaNombre}
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">
-                                    Sin materias registradas.
-                                  </p>
-                                );
+                                const contenidoMaterias =
+                                  materiasAsignadas.length ? (
+                                    <ul className="space-y-1 text-sm text-muted-foreground">
+                                      {materiasAsignadas.map((materia) => (
+                                        <li
+                                          key={`materia-${badgeKey}-${materia.seccionMateriaId}`}
+                                          className="flex items-start gap-2"
+                                        >
+                                          <GraduationCap className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                          <span className="text-foreground">
+                                            {materia.materiaNombre}
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      Sin materias registradas.
+                                    </p>
+                                  );
 
                                 return (
                                   <Popover key={badgeKey}>
@@ -4321,7 +4320,8 @@ export default function PersonalPage() {
                                     >
                                       <div>
                                         <p className="text-sm font-semibold text-foreground">
-                                          {seccionNombre || "Sección sin nombre"}
+                                          {seccionNombre ||
+                                            "Sección sin nombre"}
                                         </p>
                                         {entry.nivel ? (
                                           <p className="text-xs text-muted-foreground">

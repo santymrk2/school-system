@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { formatDni } from "@/lib/form-utils";
 import { maxBirthDate } from "@/lib/form-utils";
 import { RolVinculo } from "@/types/api-generated";
-import type { PostulacionFormData } from "./types";
+import type { FamiliarForm, PostulacionFormData } from "./types";
 
 interface Step2Props {
   formData: PostulacionFormData;
@@ -39,6 +39,33 @@ export function Step2({
   errors = {},
 }: Step2Props) {
   const familiares = formData.familiares ?? [];
+  const updateFamiliares = (
+    index: number,
+    producer: (current: FamiliarForm) => FamiliarForm,
+    errorKeys?: string | string[],
+  ) => {
+    const next = familiares.map((entry, position) =>
+      position === index ? producer(entry) : entry,
+    );
+    handleInputChange("familiares", next, { errorKeys });
+  };
+
+  const updateFamiliarPersona = (
+    index: number,
+    patch: Partial<FamiliarForm["familiar"]>,
+    errorKeys?: string | string[],
+  ) =>
+    updateFamiliares(
+      index,
+      (entry) => ({
+        ...entry,
+        familiar: {
+          ...entry.familiar,
+          ...patch,
+        },
+      }),
+      errorKeys,
+    );
   const relationshipOptions: { value: RolVinculo; label: string }[] = [
     { value: RolVinculo.PADRE, label: "Padre" },
     { value: RolVinculo.MADRE, label: "Madre" },
@@ -90,6 +117,11 @@ export function Step2({
           const dniError = hasError(`${familiarKey}.dni`);
           const fechaNacimientoError = hasError(`${familiarKey}.fechaNacimiento`);
           const emailError = hasError(`${familiarKey}.emailContacto`);
+          const telefonoError = hasError(`${familiarKey}.telefono`);
+          const celularError = hasError(`${familiarKey}.celular`);
+          const ocupacionError = hasError(`${familiarKey}.ocupacion`);
+          const lugarTrabajoError = hasError(`${familiarKey}.lugarTrabajo`);
+          const domicilioError = hasError(`${familiarKey}.domicilio`);
 
           return (
             <div key={i} className="border rounded-lg p-4">
@@ -101,19 +133,21 @@ export function Step2({
                   <Select
                     id={`tipoRelacion-${i}`}
                     value={f.tipoRelacion}
-                    onValueChange={(v) =>
-                      handleInputChange(
-                        "familiares",
-                        familiares.map((x, j) =>
-                          j === i ? { ...x, tipoRelacion: v as string } : x,
-                        ),
-                        { errorKeys: [`familiares.${i}.tipoRelacion`] },
+                    onValueChange={(value) =>
+                      updateFamiliares(
+                        i,
+                        (entry) => ({
+                          ...entry,
+                          tipoRelacion: value as FamiliarForm["tipoRelacion"],
+                        }),
+                        `familiares.${i}.tipoRelacion`,
                       )
                     }
                   >
                     <SelectTrigger
                       aria-invalid={tipoRelacionError || undefined}
                       className={cn(tipoRelacionError && "border-destructive")}
+                      aria-required={true}
                     >
                       <SelectValue placeholder="Seleccione relación" />
                     </SelectTrigger>
@@ -133,26 +167,17 @@ export function Step2({
                   <Input
                     id={`familiar-nombre-${i}`}
                     value={f.familiar?.nombre ?? ""}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "familiares",
-                        familiares.map((x, j) =>
-                          j === i
-                            ? {
-                                ...x,
-                                familiar: {
-                                  ...x.familiar!,
-                                  nombre: e.target.value,
-                                },
-                              }
-                            : x,
-                        ),
-                        { errorKeys: [`familiares.${i}.familiar.nombre`] },
+                    onChange={(event) =>
+                      updateFamiliarPersona(
+                        i,
+                        { nombre: event.target.value },
+                        `familiares.${i}.familiar.nombre`,
                       )
                     }
                     placeholder="Nombre"
                     aria-invalid={nombreError || undefined}
                     className={cn(nombreError && "border-destructive")}
+                    required
                   />
                 </div>
 
@@ -162,26 +187,17 @@ export function Step2({
                   <Input
                     id={`familiar-apellido-${i}`}
                     value={f.familiar?.apellido ?? ""}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "familiares",
-                        familiares.map((x, j) =>
-                          j === i
-                            ? {
-                                ...x,
-                                familiar: {
-                                  ...x.familiar!,
-                                  apellido: e.target.value,
-                                },
-                              }
-                            : x,
-                        ),
-                        { errorKeys: [`familiares.${i}.familiar.apellido`] },
+                    onChange={(event) =>
+                      updateFamiliarPersona(
+                        i,
+                        { apellido: event.target.value },
+                        `familiares.${i}.familiar.apellido`,
                       )
                     }
                     placeholder="Apellido"
                     aria-invalid={apellidoError || undefined}
                     className={cn(apellidoError && "border-destructive")}
+                    required
                   />
                 </div>
 
@@ -195,26 +211,17 @@ export function Step2({
                     minLength={7}
                     maxLength={10}
                     value={f.familiar?.dni ?? ""}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "familiares",
-                        familiares.map((x, j) =>
-                          j === i
-                            ? {
-                                ...x,
-                                familiar: {
-                                  ...x.familiar!,
-                                  dni: formatDni(e.target.value),
-                                },
-                              }
-                            : x,
-                        ),
-                        { errorKeys: [`familiares.${i}.familiar.dni`] },
+                    onChange={(event) =>
+                      updateFamiliarPersona(
+                        i,
+                        { dni: formatDni(event.target.value) },
+                        `familiares.${i}.familiar.dni`,
                       )
                     }
                     placeholder="12345678"
                     aria-invalid={dniError || undefined}
                     className={cn(dniError && "border-destructive")}
+                    required
                   />
                 </div>
 
@@ -228,20 +235,10 @@ export function Step2({
                     max={maxBirthDate}
                     value={f.familiar?.fechaNacimiento ?? undefined}
                     onChange={(value) =>
-                      handleInputChange(
-                        "familiares",
-                        familiares.map((x, j) =>
-                          j === i
-                            ? {
-                                ...x,
-                                familiar: {
-                                  ...x.familiar!,
-                                  fechaNacimiento: value ?? "",
-                                },
-                              }
-                            : x,
-                        ),
-                        { errorKeys: [`familiares.${i}.familiar.fechaNacimiento`] },
+                      updateFamiliarPersona(
+                        i,
+                        { fechaNacimiento: value ?? "" },
+                        `familiares.${i}.familiar.fechaNacimiento`,
                       )
                     }
                     error={Boolean(fechaNacimientoError)}
@@ -258,26 +255,17 @@ export function Step2({
                     id={`familiar-email-${i}`}
                     type="email"
                     value={f.familiar?.emailContacto ?? ""}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "familiares",
-                        familiares.map((x, j) =>
-                          j === i
-                            ? {
-                                ...x,
-                                familiar: {
-                                  ...x.familiar!,
-                                  emailContacto: e.target.value,
-                                },
-                              }
-                            : x,
-                        ),
-                        { errorKeys: [`familiares.${i}.familiar.emailContacto`] },
+                    onChange={(event) =>
+                      updateFamiliarPersona(
+                        i,
+                        { emailContacto: event.target.value },
+                        `familiares.${i}.familiar.emailContacto`,
                       )
                     }
                     placeholder="email@dominio.com"
                     aria-invalid={emailError || undefined}
                     className={cn(emailError && "border-destructive")}
+                    required
                   />
                 </div>
 
@@ -287,23 +275,17 @@ export function Step2({
                 <Input
                   id={`familiar-telefono-${i}`}
                   value={f.familiar?.telefono ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                telefono: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
+                  onChange={(event) =>
+                    updateFamiliarPersona(
+                      i,
+                      { telefono: event.target.value },
+                      `familiares.${i}.familiar.telefono`,
                     )
                   }
                   placeholder="11-1234-5678"
+                  aria-invalid={telefonoError || undefined}
+                  className={cn(telefonoError && "border-destructive")}
+                  required
                 />
               </div>
 
@@ -313,23 +295,17 @@ export function Step2({
                 <Input
                   id={`familiar-celular-${i}`}
                   value={f.familiar?.celular ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                celular: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
+                  onChange={(event) =>
+                    updateFamiliarPersona(
+                      i,
+                      { celular: event.target.value },
+                      `familiares.${i}.familiar.celular`,
                     )
                   }
                   placeholder="11-1234-5678"
+                  aria-invalid={celularError || undefined}
+                  className={cn(celularError && "border-destructive")}
+                  required
                 />
               </div>
 
@@ -339,23 +315,17 @@ export function Step2({
                 <Input
                   id={`familiar-ocupacion-${i}`}
                   value={f.familiar?.ocupacion ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                ocupacion: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
+                  onChange={(event) =>
+                    updateFamiliarPersona(
+                      i,
+                      { ocupacion: event.target.value },
+                      `familiares.${i}.familiar.ocupacion`,
                     )
                   }
                   placeholder="Profesión u ocupación"
+                  aria-invalid={ocupacionError || undefined}
+                  className={cn(ocupacionError && "border-destructive")}
+                  required
                 />
               </div>
 
@@ -367,23 +337,17 @@ export function Step2({
                 <Input
                   id={`familiar-lugar-trabajo-${i}`}
                   value={f.familiar?.lugarTrabajo ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                lugarTrabajo: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
+                  onChange={(event) =>
+                    updateFamiliarPersona(
+                      i,
+                      { lugarTrabajo: event.target.value },
+                      `familiares.${i}.familiar.lugarTrabajo`,
                     )
                   }
                   placeholder="Empresa o institución"
+                  aria-invalid={lugarTrabajoError || undefined}
+                  className={cn(lugarTrabajoError && "border-destructive")}
+                  required
                 />
               </div>
 
@@ -393,23 +357,17 @@ export function Step2({
                 <Input
                   id={`familiar-domicilio-${i}`}
                   value={f.familiar?.domicilio ?? ""}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              familiar: {
-                                ...x.familiar!,
-                                domicilio: e.target.value,
-                              },
-                            }
-                          : x,
-                      ),
+                  onChange={(event) =>
+                    updateFamiliarPersona(
+                      i,
+                      { domicilio: event.target.value },
+                      `familiares.${i}.familiar.domicilio`,
                     )
                   }
                   placeholder="Dirección completa"
+                  aria-invalid={domicilioError || undefined}
+                  className={cn(domicilioError && "border-destructive")}
+                  required
                 />
               </div>
 
@@ -418,12 +376,13 @@ export function Step2({
                 <Checkbox
                   id={`viveConAlumno-${i}`}
                   checked={f.viveConAlumno ?? false}
-                  onCheckedChange={(c) =>
-                    handleInputChange(
-                      "familiares",
-                      familiares.map((x, j) =>
-                        j === i ? { ...x, viveConAlumno: c as boolean } : x,
-                      ),
+                  onCheckedChange={(checked) =>
+                    updateFamiliares(
+                      i,
+                      (entry) => ({
+                        ...entry,
+                        viveConAlumno: checked === true,
+                      }),
                     )
                   }
                 />

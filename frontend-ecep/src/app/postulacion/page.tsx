@@ -842,7 +842,10 @@ export default function PostulacionPage() {
         ok = false;
       }
       const fechaNacimiento = familiarPersona?.fechaNacimiento?.trim();
-      if (fechaNacimiento && !isBirthDateValid(fechaNacimiento)) {
+      if (!fechaNacimiento) {
+        newErrors[`familiares.${index}.familiar.fechaNacimiento`] = true;
+        ok = false;
+      } else if (!isBirthDateValid(fechaNacimiento)) {
         newErrors[`familiares.${index}.familiar.fechaNacimiento`] = true;
         ok = false;
         invalidBirthDate = true;
@@ -852,12 +855,37 @@ export default function PostulacionPage() {
         newErrors[`familiares.${index}.familiar.emailContacto`] = true;
         ok = false;
       }
+      const telefono = familiarPersona?.telefono?.trim();
+      if (!telefono) {
+        newErrors[`familiares.${index}.familiar.telefono`] = true;
+        ok = false;
+      }
+      const celular = familiarPersona?.celular?.trim();
+      if (!celular) {
+        newErrors[`familiares.${index}.familiar.celular`] = true;
+        ok = false;
+      }
+      const ocupacion = familiarPersona?.ocupacion?.trim();
+      if (!ocupacion) {
+        newErrors[`familiares.${index}.familiar.ocupacion`] = true;
+        ok = false;
+      }
+      const lugarTrabajo = familiarPersona?.lugarTrabajo?.trim();
+      if (!lugarTrabajo) {
+        newErrors[`familiares.${index}.familiar.lugarTrabajo`] = true;
+        ok = false;
+      }
+      const domicilio = familiarPersona?.domicilio?.trim();
+      if (!domicilio) {
+        newErrors[`familiares.${index}.familiar.domicilio`] = true;
+        ok = false;
+      }
     });
 
     setErrors(newErrors);
     if (!ok) {
       const description = [
-        "Ingresá nombre, apellido, DNI y un email de contacto para continuar.",
+        "Completá todos los datos del familiar (relación, identificación y contacto).",
         invalidBirthDate
           ? "Revisá también la fecha de nacimiento: debe ser al menos dos años anterior a hoy."
           : null,

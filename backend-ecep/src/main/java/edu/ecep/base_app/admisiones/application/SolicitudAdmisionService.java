@@ -613,13 +613,25 @@ public class SolicitudAdmisionService {
     private void enviarCorreo(SolicitudAdmision entity, String subject, String body, boolean html) {
         Optional<String> correo = obtenerCorreoContacto(entity);
         if (correo.isEmpty()) {
-            log.info("[ADMISION][EMAIL-MISSING] subject={} body={} ", subject, body);
+            Long solicitudId = entity != null ? entity.getId() : null;
+            log.info(
+                    "[ADMISION][EMAIL-MISSING] solicitud={} subject={} body={} ",
+                    solicitudId,
+                    sanitizeForLog(subject),
+                    sanitizeForLog(body));
             return;
         }
         String destinatario = correo.get();
         boolean notificationsEnabled = emailService.isNotificationsEnabled();
         if (!notificationsEnabled) {
-            log.info("[ADMISION][EMAIL-DISABLED] to={} subject={} body={}", destinatario, subject, body);
+            Long solicitudId = entity != null ? entity.getId() : null;
+            log.info(
+                    "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud={} to={} subject={} formato={} body={}",
+                    solicitudId,
+                    destinatario,
+                    sanitizeForLog(subject),
+                    html ? "HTML" : "PLAIN",
+                    sanitizeForLog(body));
             return;
         }
         try {
@@ -633,9 +645,24 @@ public class SolicitudAdmisionService {
                 repository.save(entity);
             }
         } catch (MessagingException | MailException ex) {
-            log.error("[ADMISION][EMAIL-ERROR] to={} subject={} body={} error={}",
-                    destinatario, subject, body, ex.getMessage(), ex);
+            Long solicitudId = entity != null ? entity.getId() : null;
+            log.error(
+                    "[ADMISION][EMAIL-ERROR] solicitud={} to={} subject={} body={} error={}",
+                    solicitudId,
+                    destinatario,
+                    sanitizeForLog(subject),
+                    sanitizeForLog(body),
+                    ex.getMessage(),
+                    ex);
         }
+    }
+
+    private String sanitizeForLog(String text) {
+        if (text == null) {
+            return "";
+        }
+        String collapsedWhitespace = text.replaceAll("[\\r\\n]+", " ");
+        return collapsedWhitespace.replaceAll("\\s{2,}", " ").trim();
     }
 
     private void validarAccesoPortal(SolicitudAdmision entity, String email) {

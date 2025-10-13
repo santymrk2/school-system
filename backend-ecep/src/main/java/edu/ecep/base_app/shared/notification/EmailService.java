@@ -48,8 +48,7 @@ public class EmailService {
         }
 
         MailSettingsInternal configuredSettings = notificationSettingsService.getMailSettingsInternal();
-        boolean notificationsEnabled =
-                configuredSettings.enabled() != null ? configuredSettings.enabled() : defaultEnabled;
+        boolean notificationsEnabled = isNotificationsEnabled(configuredSettings);
         if (!notificationsEnabled) {
             log.info("[EMAIL][DISABLED] to={} subject={} body={}", to, subject, body);
             return;
@@ -69,6 +68,15 @@ public class EmailService {
 
         sender.send(message);
         log.info("[EMAIL][SENT] to={} subject={}", to, subject);
+    }
+
+    public boolean isNotificationsEnabled() {
+        MailSettingsInternal configuredSettings = notificationSettingsService.getMailSettingsInternal();
+        return isNotificationsEnabled(configuredSettings);
+    }
+
+    private boolean isNotificationsEnabled(MailSettingsInternal configuredSettings) {
+        return configuredSettings.enabled() != null ? configuredSettings.enabled() : defaultEnabled;
     }
 
     private JavaMailSender resolveMailSender(MailSettingsInternal settings) {

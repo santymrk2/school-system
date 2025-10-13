@@ -616,11 +616,16 @@ public class SolicitudAdmisionService {
             log.info("[ADMISION][EMAIL-MISSING] subject={} body={} ", subject, body);
             return;
         }
+        String destinatario = correo.get();
+        boolean notificationsEnabled = emailService.isNotificationsEnabled();
+        if (!notificationsEnabled) {
+            log.info("[ADMISION][EMAIL-DISABLED] to={} subject={} body={}", destinatario, subject, body);
+        }
         try {
             if (html) {
-                emailService.sendHtml(correo.get(), subject, body);
+                emailService.sendHtml(destinatario, subject, body);
             } else {
-                emailService.sendPlainText(correo.get(), subject, body);
+                emailService.sendPlainText(destinatario, subject, body);
             }
             if (!Boolean.TRUE.equals(entity.getEmailConfirmacionEnviado())) {
                 entity.setEmailConfirmacionEnviado(true);
@@ -628,7 +633,7 @@ public class SolicitudAdmisionService {
             }
         } catch (MessagingException | MailException ex) {
             log.error("[ADMISION][EMAIL-ERROR] to={} subject={} body={} error={}",
-                    correo.get(), subject, body, ex.getMessage(), ex);
+                    destinatario, subject, body, ex.getMessage(), ex);
         }
     }
 

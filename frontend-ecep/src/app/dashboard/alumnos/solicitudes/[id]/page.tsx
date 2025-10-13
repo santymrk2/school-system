@@ -60,7 +60,7 @@ import {
   X,
 } from "lucide-react";
 import * as DTO from "@/types/api-generated";
-import { format } from "date-fns";
+import { format, parse, parseISO } from "date-fns";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -105,25 +105,63 @@ const formatBoolean = (value?: boolean | null) => {
   return "—";
 };
 
+const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_TIME_REGEX = /^\d{4}-\d{2}-\d{2}T/;
+const HAS_TIME_REGEX = /[T\s]\d{2}:\d{2}/;
+
+const parseDateInput = (value?: string | null): Date | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let parsed: Date | null = null;
+  try {
+    if (ISO_DATE_ONLY_REGEX.test(trimmed)) {
+      parsed = parse(trimmed, "yyyy-MM-dd", new Date());
+    } else if (ISO_DATE_TIME_REGEX.test(trimmed)) {
+      parsed = parseISO(trimmed);
+    } else {
+      const timestamp = Date.parse(trimmed);
+      if (!Number.isNaN(timestamp)) {
+        parsed = new Date(timestamp);
+      }
+    }
+  } catch (err) {
+    return null;
+  }
+
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+};
+
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const parsed = parseDateInput(value);
+  if (!parsed) {
+    return value;
+  }
+
   try {
-    return format(date, "dd/MM/yyyy");
+    return format(parsed, "dd/MM/yyyy");
   } catch (err) {
-    return date.toLocaleDateString();
+    return parsed.toLocaleDateString();
   }
 };
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const parsed = parseDateInput(value);
+  if (!parsed) {
+    return value;
+  }
+
   try {
-    return format(date, "dd/MM/yyyy HH:mm");
+    return format(parsed, "dd/MM/yyyy HH:mm");
   } catch (err) {
-    return date.toLocaleString();
+    return parsed.toLocaleString();
   }
 };
 
@@ -133,18 +171,17 @@ const formatDateWithTime = (
 ) => {
   const normalizedTime = timeValue?.trim();
   if (dateValue) {
-    const parsed = new Date(dateValue);
-    if (!Number.isNaN(parsed.getTime())) {
-      const hasExplicitTime =
-        parsed.getHours() !== 0 ||
-        parsed.getMinutes() !== 0 ||
-        /T\d{2}:\d{2}/.test(String(dateValue));
-      if (hasExplicitTime) {
-        return formatDateTime(dateValue);
+    const trimmed = dateValue.trim();
+    const parsed = parseDateInput(trimmed);
+    if (parsed) {
+      if (HAS_TIME_REGEX.test(trimmed)) {
+        return formatDateTime(trimmed);
       }
+      const base = formatDate(trimmed);
+      return normalizedTime ? `${base} · ${normalizedTime}` : base;
     }
-    const base = formatDate(dateValue);
-    return normalizedTime ? `${base} · ${normalizedTime}` : base;
+
+    return normalizedTime ? `${trimmed} · ${normalizedTime}` : trimmed;
   }
   return normalizedTime ?? "—";
 };
@@ -320,7 +357,7 @@ type ScheduleFormState = {
   aclaraciones: string;
 };
 
-type ConfirmOption = { fecha: string; horario?: string };
+type ConfirmOption = { fecha: string; horario?: string; selected?: boolean };
 
 type DecisionKind = "aceptar" | "rechazar" | null;
 
@@ -564,14 +601,50 @@ export default function SolicitudAdmisionDetailPage() {
     }
   }, [altaOpen, pendingAutoAlta, periodosEscolares]);
 
+  const selectedOptionIndex = useMemo(() => {
+    const option = solicitud?.opcionEntrevistaSeleccionada;
+    if (option == null) return null;
+    const index = option - 1;
+    return index >= 0 ? index : null;
+  }, [solicitud?.opcionEntrevistaSeleccionada]);
+
+  const selectedProposal = useMemo(() => {
+    if (selectedOptionIndex == null || !solicitud) {
+      return null;
+    }
+    const fecha = solicitud.fechasPropuestas?.[selectedOptionIndex] ?? null;
+    const horario = solicitud.rangosHorariosPropuestos?.[selectedOptionIndex] ?? null;
+    if (!fecha && !horario) {
+      return null;
+    }
+    return { fecha, horario };
+  }, [selectedOptionIndex, solicitud]);
+
   const propuestasDetalladas: ConfirmOption[] = useMemo(() => {
     if (!solicitud) return [];
     const propuestas = solicitud.fechasPropuestas ?? [];
     return propuestas.map((fecha, index) => ({
       fecha,
       horario: solicitud.rangosHorariosPropuestos?.[index] ?? "",
+      selected: selectedOptionIndex === index,
     }));
-  }, [solicitud]);
+  }, [selectedOptionIndex, solicitud]);
+
+  const confirmedByDireccion = Boolean(solicitud?.fechaEntrevistaConfirmada);
+  const familyConfirmed = Boolean(selectedProposal);
+  const confirmedDateValue =
+    solicitud?.fechaEntrevistaConfirmada ?? selectedProposal?.fecha ?? null;
+  const confirmedTimeValue =
+    solicitud?.horarioEntrevistaConfirmado ?? selectedProposal?.horario ?? null;
+  const confirmedDateDisplay = useMemo(
+    () => formatDateWithTime(confirmedDateValue ?? undefined, confirmedTimeValue ?? undefined),
+    [confirmedDateValue, confirmedTimeValue],
+  );
+  const confirmedDateLabelText = confirmedByDireccion
+    ? "Fecha confirmada"
+    : familyConfirmed
+    ? "Fecha elegida por la familia"
+    : "Fecha confirmada";
 
   const timelineItems = useMemo<TimelineItem[]>(() => {
     if (!solicitud) return [];
@@ -586,7 +659,10 @@ export default function SolicitudAdmisionDetailPage() {
       (solicitud.fechasPropuestas?.length ?? 0) > 0 ||
       estadoActual === ESTADOS.PROGRAMADA ||
       estadoActual === ESTADOS.PROPUESTA;
-    const hasConfirmation = Boolean(solicitud.fechaEntrevistaConfirmada);
+    const hasConfirmation =
+      confirmedByDireccion ||
+      familyConfirmed ||
+      Boolean(solicitud.fechaRespuestaFamilia);
     const interviewDone =
       Boolean(solicitud.entrevistaRealizada) ||
       estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
@@ -616,8 +692,10 @@ export default function SolicitudAdmisionDetailPage() {
       ? "La solicitud fue rechazada antes de enviar una propuesta."
       : "Definí las fechas y la documentación a compartir con la familia.";
 
-    const confirmationDescription = hasConfirmation
+    const confirmationDescription = confirmedByDireccion
       ? "Registraste la fecha pactada con la familia."
+      : familyConfirmed
+      ? "La familia eligió una opción. Confirmá la fecha seleccionada en la solicitud."
       : decisionTaken
       ? "La solicitud se resolvió sin registrar una confirmación."
       : hasProposal
@@ -640,11 +718,6 @@ export default function SolicitudAdmisionDetailPage() {
       ? "Definí si la solicitud será aceptada o rechazada."
       : "Registrá la fecha confirmada para habilitar la decisión final.";
 
-    const confirmedDateLabel = formatDateWithTime(
-      solicitud.fechaEntrevistaConfirmada,
-      solicitud.horarioEntrevistaConfirmado,
-    );
-
     const steps: Array<Omit<TimelineItem, "status">> = [
       {
         key: "received",
@@ -665,8 +738,12 @@ export default function SolicitudAdmisionDetailPage() {
         key: "confirmation",
         title: "Confirmación de la familia",
         description: confirmationDescription,
-        date: solicitud.fechaEntrevistaConfirmada ?? solicitud.fechaRespuestaFamilia,
-        dateLabel: confirmedDateLabel,
+        date:
+          confirmedDateValue ??
+          solicitud.fechaRespuestaFamilia ??
+          selectedProposal?.fecha ??
+          null,
+        dateLabel: confirmedDateDisplay,
       },
       {
         key: "interview",
@@ -706,7 +783,14 @@ export default function SolicitudAdmisionDetailPage() {
         status,
       };
     });
-  }, [solicitud]);
+  }, [
+    solicitud,
+    confirmedByDireccion,
+    confirmedDateDisplay,
+    confirmedDateValue,
+    familyConfirmed,
+    selectedProposal,
+  ]);
 
   const cantidadPropuestas = solicitud?.cantidadPropuestasEnviadas ?? 0;
   const puedeDarDeAlta = solicitud
@@ -1143,10 +1227,7 @@ export default function SolicitudAdmisionDetailPage() {
                 Respuesta límite: {formatDate(solicitud.fechaLimiteRespuesta)}
               </p>
               <p className="text-sm text-muted-foreground">
-                Fecha confirmada: {formatDateWithTime(
-                  solicitud.fechaEntrevistaConfirmada,
-                  solicitud.horarioEntrevistaConfirmado,
-                )}
+                {confirmedDateLabelText}: {confirmedDateDisplay}
               </p>
               {solicitud.opcionEntrevistaSeleccionada && (
                 <p className="text-sm text-muted-foreground">
@@ -1162,10 +1243,17 @@ export default function SolicitudAdmisionDetailPage() {
                     {propuestasDetalladas.map((item, index) => (
                       <li key={`${item.fecha}-${index}`} className="flex items-start gap-2">
                         <CalendarDays className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
-                        <span>
-                          {formatDate(item.fecha)}
-                          {item.horario ? ` · ${item.horario}` : ""}
-                        </span>
+                        <div className="space-y-1">
+                          <span>
+                            {formatDate(item.fecha)}
+                            {item.horario ? ` · ${item.horario}` : ""}
+                          </span>
+                          {item.selected && (
+                            <span className="flex items-center gap-1 text-xs text-emerald-600">
+                              <CircleCheck className="h-3 w-3" /> Elegida por la familia
+                            </span>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>

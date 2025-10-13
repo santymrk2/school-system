@@ -619,8 +619,6 @@ public class SolicitudAdmisionService {
         String destinatario = correo.get();
         boolean notificationsEnabled = emailService.isNotificationsEnabled();
         if (!notificationsEnabled) {
-            // Se registra en los logs del backend para que el equipo de admisiones pueda ver el
-            // contenido completo del correo que no se envió por tener las notificaciones apagadas.
             log.info("[ADMISION][EMAIL-DISABLED] to={} subject={} body={}", destinatario, subject, body);
             return;
         }

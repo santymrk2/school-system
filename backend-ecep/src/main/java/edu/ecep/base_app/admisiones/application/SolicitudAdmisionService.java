@@ -620,6 +620,7 @@ public class SolicitudAdmisionService {
         boolean notificationsEnabled = emailService.isNotificationsEnabled();
         if (!notificationsEnabled) {
             log.info("[ADMISION][EMAIL-DISABLED] to={} subject={} body={}", destinatario, subject, body);
+            return;
         }
         try {
             if (html) {

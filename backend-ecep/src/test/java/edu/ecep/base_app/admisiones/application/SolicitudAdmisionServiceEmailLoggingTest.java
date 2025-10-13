@@ -61,7 +61,8 @@ class SolicitudAdmisionServiceEmailLoggingTest {
     }
 
     @Test
-    void shouldLogEmailContentWhenNotificationsAreDisabled(CapturedOutput output) {
+    void shouldLogEmailContentWhenNotificationsAreDisabled(CapturedOutput output) throws Exception {
+
         SolicitudAdmision solicitud = buildSolicitud();
 
         ReflectionTestUtils.invokeMethod(

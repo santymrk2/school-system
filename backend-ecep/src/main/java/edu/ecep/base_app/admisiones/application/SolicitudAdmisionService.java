@@ -613,13 +613,25 @@ public class SolicitudAdmisionService {
     private void enviarCorreo(SolicitudAdmision entity, String subject, String body, boolean html) {
         Optional<String> correo = obtenerCorreoContacto(entity);
         if (correo.isEmpty()) {
-            log.info("[ADMISION][EMAIL-MISSING] subject={} body={} ", subject, body);
+            Long solicitudId = entity != null ? entity.getId() : null;
+            log.info(
+                    "[ADMISION][EMAIL-MISSING] solicitud={} subject={} body={} ",
+                    solicitudId,
+                    subject,
+                    body);
             return;
         }
         String destinatario = correo.get();
         boolean notificationsEnabled = emailService.isNotificationsEnabled();
         if (!notificationsEnabled) {
-            log.info("[ADMISION][EMAIL-DISABLED] to={} subject={} body={}", destinatario, subject, body);
+            Long solicitudId = entity != null ? entity.getId() : null;
+            log.info(
+                    "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud={} to={} subject={} formato={} body={}",
+                    solicitudId,
+                    destinatario,
+                    subject,
+                    html ? "HTML" : "PLAIN",
+                    body);
             return;
         }
         try {
@@ -633,8 +645,15 @@ public class SolicitudAdmisionService {
                 repository.save(entity);
             }
         } catch (MessagingException | MailException ex) {
-            log.error("[ADMISION][EMAIL-ERROR] to={} subject={} body={} error={}",
-                    destinatario, subject, body, ex.getMessage(), ex);
+            Long solicitudId = entity != null ? entity.getId() : null;
+            log.error(
+                    "[ADMISION][EMAIL-ERROR] solicitud={} to={} subject={} body={} error={}",
+                    solicitudId,
+                    destinatario,
+                    subject,
+                    body,
+                    ex.getMessage(),
+                    ex);
         }
     }
 

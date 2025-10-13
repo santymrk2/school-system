@@ -619,6 +619,7 @@ public class SolicitudAdmisionService {
                     solicitudId,
                     sanitizeForLog(subject),
                     sanitizeForLog(body));
+
             return;
         }
         String destinatario = correo.get();

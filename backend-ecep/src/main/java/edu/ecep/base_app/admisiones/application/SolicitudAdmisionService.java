@@ -617,8 +617,9 @@ public class SolicitudAdmisionService {
             log.info(
                     "[ADMISION][EMAIL-MISSING] solicitud={} subject={} body={} ",
                     solicitudId,
-                    subject,
-                    body);
+                    sanitizeForLog(subject),
+                    sanitizeForLog(body));
+
             return;
         }
         String destinatario = correo.get();
@@ -629,9 +630,9 @@ public class SolicitudAdmisionService {
                     "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud={} to={} subject={} formato={} body={}",
                     solicitudId,
                     destinatario,
-                    subject,
+                    sanitizeForLog(subject),
                     html ? "HTML" : "PLAIN",
-                    body);
+                    sanitizeForLog(body));
             return;
         }
         try {
@@ -650,11 +651,19 @@ public class SolicitudAdmisionService {
                     "[ADMISION][EMAIL-ERROR] solicitud={} to={} subject={} body={} error={}",
                     solicitudId,
                     destinatario,
-                    subject,
-                    body,
+                    sanitizeForLog(subject),
+                    sanitizeForLog(body),
                     ex.getMessage(),
                     ex);
         }
+    }
+
+    private String sanitizeForLog(String text) {
+        if (text == null) {
+            return "";
+        }
+        String collapsedWhitespace = text.replaceAll("[\\r\\n]+", " ");
+        return collapsedWhitespace.replaceAll("\\s{2,}", " ").trim();
     }
 
     private void validarAccesoPortal(SolicitudAdmision entity, String email) {

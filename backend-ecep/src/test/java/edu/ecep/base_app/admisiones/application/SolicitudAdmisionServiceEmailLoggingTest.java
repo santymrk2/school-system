@@ -62,7 +62,6 @@ class SolicitudAdmisionServiceEmailLoggingTest {
 
     @Test
     void shouldLogEmailContentWhenNotificationsAreDisabled(CapturedOutput output) throws Exception {
-
         SolicitudAdmision solicitud = buildSolicitud();
 
         ReflectionTestUtils.invokeMethod(
@@ -70,14 +69,14 @@ class SolicitudAdmisionServiceEmailLoggingTest {
                 "enviarCorreo",
                 solicitud,
                 "Propuesta de entrevista",
-                "<p>Hola familia</p>",
+                "<p>Hola familia\nSeleccioná fecha</p>",
                 true);
 
         verify(emailService).isNotificationsEnabled();
         verify(emailService, never()).sendHtml(any(), any(), any());
         assertThat(output.getOut())
                 .contains(
-                        "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud=42 to=familia@example.com subject=Propuesta de entrevista formato=HTML body=<p>Hola familia</p>");
+                        "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud=42 to=familia@example.com subject=Propuesta de entrevista formato=HTML body=<p>Hola familia Seleccioná fecha</p>");
     }
 
     private SolicitudAdmision buildSolicitud() {

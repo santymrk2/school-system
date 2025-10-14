@@ -55,6 +55,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFamilyAlumnos } from "@/hooks/useFamilyAlumnos";
+import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import {
   finanzas,
   gestionAcademica,
@@ -192,6 +193,7 @@ export default function PagosPage() {
   const shouldLoadEmpleados = isAdmin || isTeacher;
 
   const { alumnos: hijos, loading: hijosLoading } = useFamilyAlumnos();
+  const { periodoEscolarId: activePeriodoId } = useActivePeriod();
 
   const [selectedTab, setSelectedTab] = useState("cuotas");
   const [cuotas, setCuotas] = useState<CuotaDTO[]>([]);
@@ -294,10 +296,28 @@ export default function PagosPage() {
     setSeccionesLoading(true);
     gestionAcademica.secciones
       .list()
-      .then((res) => setSecciones(res.data ?? []))
+      .then((res) => {
+        const fetched = res.data ?? [];
+        const resolvedPeriodoId =
+          typeof activePeriodoId === "number" ? activePeriodoId : null;
+        if (resolvedPeriodoId == null) {
+          setSecciones(fetched);
+          return;
+        }
+        const filtered = fetched.filter((seccion: any) => {
+          const periodoId =
+            seccion.periodoEscolarId ??
+            seccion.periodoId ??
+            seccion.periodoEscolar?.id ??
+            seccion.periodo?.id ??
+            null;
+          return periodoId === resolvedPeriodoId;
+        });
+        setSecciones(filtered);
+      })
       .catch(() => setSecciones([]))
       .finally(() => setSeccionesLoading(false));
-  }, [shouldLoadSecciones]);
+  }, [shouldLoadSecciones, activePeriodoId]);
 
   useEffect(() => {
     if (!shouldLoadMatriculas) return;

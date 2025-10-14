@@ -71,7 +71,6 @@ import type {
   CuotaDTO,
   EmpleadoDTO,
   EstadoCuota,
-  EstadoPago,
   MatriculaDTO,
   PagoCuotaCreateDTO,
   PagoCuotaDTO,
@@ -80,7 +79,7 @@ import type {
   ReciboSueldoDTO,
   SeccionDTO,
 } from "@/types/api-generated";
-import { UserRole, MedioPago } from "@/types/api-generated";
+import { EstadoPago, UserRole, MedioPago } from "@/types/api-generated";
 
 const MONTH_LABELS = [
   "enero",

@@ -42,27 +42,12 @@ import { formatTurnoLabel } from "@/lib/turno-label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-const TURNO_LABELS: Record<string, string> = {
-  MANANA: "Mañana",
-  TARDE: "Tarde",
-};
-
 function normalizeTurnoKey(turno: string) {
   return turno
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toUpperCase();
-}
-
-function formatTurnoLabel(turno?: string | null) {
-  if (!turno) return null;
-  const trimmed = turno.trim();
-  const normalized = normalizeTurnoKey(trimmed);
-  if (normalized in TURNO_LABELS) {
-    return TURNO_LABELS[normalized];
-  }
-  return trimmed;
 }
 
 function escapeRegExp(value: string) {

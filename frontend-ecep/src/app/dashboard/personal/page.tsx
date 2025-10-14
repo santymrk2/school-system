@@ -387,9 +387,23 @@ const nivelLabel: Record<string, string> = {
   PRIMARIO: "Primario",
 };
 
+const turnoLabels: Record<string, string> = {
+  MANANA: "Mañana",
+  TARDE: "Tarde",
+};
+
 function formatNivel(value?: string | null) {
   if (!value) return "";
   return nivelLabel[value] ?? value.charAt(0) + value.slice(1).toLowerCase();
+}
+
+function formatTurnoLabel(turno?: string | null) {
+  if (!turno) return "";
+  const normalized = turno.toUpperCase();
+  if (normalized in turnoLabels) {
+    return turnoLabels[normalized];
+  }
+  return turno.charAt(0).toUpperCase() + turno.slice(1).toLowerCase();
 }
 
 function formatRol(rol?: RolEmpleado | null) {
@@ -419,9 +433,10 @@ function formatSeccionLabel(seccion?: Partial<SeccionDTO> | null) {
   if (!seccion) return "";
   const grado = seccion.gradoSala ?? "";
   const division = seccion.division ? ` ${seccion.division}` : "";
-  const turno = seccion.turno ? ` (${seccion.turno.toLowerCase()})` : "";
+  const turno = formatTurnoLabel(seccion.turno);
+  const turnoDisplay = turno ? ` (${turno})` : "";
   const composed = `${grado}${division}`.trim();
-  return composed ? `${composed}${turno}` : `Sección #${seccion.id ?? ""}`;
+  return composed ? `${composed}${turnoDisplay}` : `Sección #${seccion.id ?? ""}`;
 }
 
 function getSeccionDisplayName(label?: string | null) {

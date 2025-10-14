@@ -2595,17 +2595,40 @@ export default function PersonalPage() {
 
   const licenciasConNombre = useMemo(() => {
     return allLicencias.map((licencia) => {
-      const empleadoId = licencia.empleadoId ?? 0;
+      const empleadoFromDto = licencia.empleado ?? null;
+      const empleadoId =
+        typeof licencia.empleadoId === "number"
+          ? licencia.empleadoId
+          : typeof empleadoFromDto?.id === "number"
+            ? empleadoFromDto.id
+            : 0;
       const info = empleadoNameMap.get(empleadoId);
       const personalInfo = personalById.get(empleadoId) ?? null;
+      const nombreDesdeEmpleado = (() => {
+        if (!empleadoFromDto) return "";
+        if (empleadoFromDto.nombreCompleto?.trim()) {
+          return empleadoFromDto.nombreCompleto.trim();
+        }
+        const partes = [empleadoFromDto.nombre, empleadoFromDto.apellido]
+          .map((part) => (typeof part === "string" ? part.trim() : ""))
+          .filter((part) => part.length > 0);
+        return partes.join(" ");
+      })();
+      const fallbackNombre =
+        empleadoId > 0 ? `Empleado #${empleadoId}` : "Empleado sin identificar";
       return {
         licencia,
         empleadoId,
         empleadoNombre:
+          (nombreDesdeEmpleado || undefined) ||
           info?.name ||
           buildFullName(personalInfo?.persona) ||
-          `Empleado #${empleadoId}`,
-        empleadoCargo: info?.cargo ?? personalInfo?.empleado.cargo ?? null,
+          fallbackNombre,
+        empleadoCargo:
+          empleadoFromDto?.cargo ??
+          info?.cargo ??
+          personalInfo?.empleado.cargo ??
+          null,
         empleadoSituacionVisible:
           personalInfo?.situacionVisible ??
           personalInfo?.empleado.situacionActual ??

@@ -8,7 +8,6 @@ import edu.ecep.base_app.shared.exception.NotFoundException;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import edu.ecep.base_app.identidad.presentation.dto.LicenciaCreateDTO;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,7 @@ public class LicenciaService {
     public List<LicenciaDTO> findAll(Long empleadoId) {
         List<Licencia> entities = empleadoId != null
                 ? repository.findByEmpleadoId(empleadoId)
-                : repository.findAll(Sort.by("fechaInicio").descending());
+                : repository.findAllWithEmpleado();
 
         Comparator<Licencia> comparator = Comparator
                 .comparing(Licencia::getFechaInicio, Comparator.nullsLast(LocalDate::compareTo))

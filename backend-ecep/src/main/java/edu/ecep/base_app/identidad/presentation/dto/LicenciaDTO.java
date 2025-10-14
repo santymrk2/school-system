@@ -15,6 +15,7 @@ public class LicenciaDTO {
     private Long id;
     @NotNull
     private Long empleadoId;
+    private EmpleadoResumenDTO empleado;
     @NotBlank
     private String tipoLicencia;
     @NotNull

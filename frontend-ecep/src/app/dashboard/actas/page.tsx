@@ -38,6 +38,7 @@ import {
 } from "@/services/api/modules";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
+import { formatTurnoLabel } from "@/lib/turno-label";
 import { toast } from "sonner";
 import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import { pageContent } from "@/lib/page-response";
@@ -314,7 +315,7 @@ export default function AccidentesIndexPage() {
         );
         const nombreSeccion = (s: SeccionDTO) => {
           const base = `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim();
-          const turno = String(s.turno ?? "").trim();
+          const turno = formatTurnoLabel(s.turno) ?? String(s.turno ?? "").trim();
           if (base && turno) return `${base} (${turno})`;
           if (base) return base;
           return `Sección #${s.id}`;

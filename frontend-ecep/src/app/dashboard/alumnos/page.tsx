@@ -38,6 +38,7 @@ import { useScopedIndex } from "@/hooks/scope/useScopedIndex";
 import FamilyView from "./_components/FamilyView";
 import AspirantesTab from "./_components/AspirantesTabs";
 import { identidad, vidaEscolar } from "@/services/api/modules";
+import { formatTurnoLabel } from "@/lib/turno-label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -773,12 +774,15 @@ export default function AlumnosIndexPage() {
 
   const seccionOptions = useMemo(() => {
     if (secciones.length) {
-      return secciones.map((s) => ({
-        id: String(s.id),
-        label:
-          `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() +
-          (s.turno ? ` (${s.turno})` : ""),
-      }));
+      return secciones.map((s) => {
+        const turno = formatTurnoLabel(s.turno);
+        return {
+          id: String(s.id),
+          label:
+            `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() +
+            (turno ? ` (${turno})` : ""),
+        };
+      });
     }
     const map = new Map<string, string>();
     alumnos.forEach((a) => {

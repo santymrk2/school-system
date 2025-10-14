@@ -38,6 +38,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { logger } from "@/lib/logger";
+import { formatTurnoLabel } from "@/lib/turno-label";
 import { Step3 as HogarForm } from "@/app/postulacion/Step3";
 import { Step4 as SaludForm } from "@/app/postulacion/Step4";
 import type { PostulacionFormData } from "@/app/postulacion/types";
@@ -765,11 +766,15 @@ export default function AltaAlumnoPage() {
                   <SelectValue placeholder="Seleccioná la sección" />
                 </SelectTrigger>
                 <SelectContent>
-                  {secciones.map((sec) => (
-                    <SelectItem key={sec.id} value={String(sec.id)}>
-                      {sec.nivel} — {sec.gradoSala} {sec.division} ({sec.turno})
-                    </SelectItem>
-                  ))}
+                  {secciones.map((sec) => {
+                    const turno = formatTurnoLabel(sec.turno);
+                    return (
+                      <SelectItem key={sec.id} value={String(sec.id)}>
+                        {sec.nivel} — {sec.gradoSala} {sec.division}
+                        {turno ? ` (${turno})` : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {!secciones.length && (

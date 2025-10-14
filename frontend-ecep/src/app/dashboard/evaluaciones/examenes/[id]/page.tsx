@@ -38,6 +38,7 @@ import { School, Clock3 } from "lucide-react";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { toast } from "sonner";
 import { UserRole } from "@/types/api-generated";
+import { formatTurnoLabelOrFallback } from "@/lib/turno-label";
 import {
   getTrimestreEstado,
   isFechaDentroDeTrimestre,
@@ -466,7 +467,7 @@ export default function ExamenDetailPage() {
   const seccionEtiqueta = seccion
     ? `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim() || `Sección #${seccion.id}`
     : "Sección";
-  const turnoEtiqueta = seccion?.turno ?? "—";
+  const turnoEtiqueta = formatTurnoLabelOrFallback(seccion?.turno);
 
   if (loading) {
     return (

@@ -79,6 +79,19 @@ function vigente(
   return okD && okH;
 }
 
+const formatTurno = (turno: unknown) => {
+  const raw = String(turno ?? "").trim();
+  if (!raw) return "";
+  switch (raw.toUpperCase()) {
+    case "MANANA":
+      return "Mañana";
+    case "TARDE":
+      return "Tarde";
+    default:
+      return raw;
+  }
+};
+
 export default function AccidentesSeccionPage() {
   const params = useParams<{ id: string }>();
   const seccionId = Number(params.id);
@@ -317,7 +330,7 @@ export default function AccidentesSeccionPage() {
   const seccionDisplayName = useMemo(() => {
     if (!seccion) return null;
     const base = `${seccion.gradoSala ?? ""} ${seccion.division ?? ""}`.trim();
-    const turno = String(seccion.turno ?? "").trim();
+    const turno = formatTurno(seccion.turno);
     if (base && turno) return `${base} (${turno})`;
     return base || null;
   }, [seccion]);
@@ -637,7 +650,7 @@ export default function AccidentesSeccionPage() {
                 : `#${seccionId}`}
             </h2>
             <p className="text-muted-foreground text-sm">
-              Turno {seccion?.turno ?? "—"}{" "}
+              Turno {formatTurno(seccion?.turno) || "—"}{" "}
               {titular ? (
                 <>
                   — Titular: <span className="font-medium">{titular}</span>

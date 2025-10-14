@@ -281,7 +281,7 @@ export function AttendanceReport({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px] text-sm">
+                    <table className="w-full min-w-[480px] text-sm">
                       <thead className="bg-muted text-xs uppercase">
                         <tr>
                           <th className="px-3 py-2 text-left">Alumno</th>
@@ -290,10 +290,6 @@ export function AttendanceReport({
                           </th>
                           <th className="px-3 py-2 text-left">Asistidos</th>
                           <th className="px-3 py-2 text-left">Ausentes</th>
-                          <th className="px-3 py-2 text-left">
-                            Llegadas tarde
-                          </th>
-                          <th className="px-3 py-2 text-left">Retiros ant.</th>
                           <th className="px-3 py-2 text-left">% Asistencia</th>
                         </tr>
                       </thead>
@@ -307,10 +303,6 @@ export function AttendanceReport({
                             <td className="px-3 py-2">{student.total}</td>
                             <td className="px-3 py-2">{student.presentes}</td>
                             <td className="px-3 py-2">{student.ausentes}</td>
-                            <td className="px-3 py-2">{student.tarde}</td>
-                            <td className="px-3 py-2">
-                              {student.retiroAnticipado}
-                            </td>
                             <td className="px-3 py-2 font-semibold">
                               {formatPercent(student.attendance, 1)}
                             </td>

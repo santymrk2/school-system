@@ -973,8 +973,6 @@ export default function ReportesPage() {
             const total = (dto as any).total ?? dto.totalClases ?? 0;
             const presentes = dto.presentes ?? 0;
             const ausentes = dto.ausentes ?? 0;
-            const tarde = dto.tarde ?? 0;
-            const retiroAnticipado = dto.retiroAnticipado ?? 0;
             const attendanceRatio =
               total > 0
                 ? dto.porcentaje != null
@@ -989,8 +987,6 @@ export default function ReportesPage() {
               total,
               presentes,
               ausentes,
-              tarde,
-              retiroAnticipado,
               attendance: attendanceRatio,
             } satisfies AttendanceSummaryStudent;
           });

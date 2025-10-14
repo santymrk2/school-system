@@ -3,11 +3,19 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -17,8 +25,9 @@ import {
 } from "@/components/ui/select";
 import { downloadPdfDocument, suggestPdfFileName } from "@/lib/pdf";
 import { renderAccidentActPdf } from "@/lib/pdf/accident-act";
+import { cn } from "@/lib/utils";
 import { Printer, Pencil, Trash2, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 type ActaVM = {
@@ -106,6 +115,19 @@ export default function ViewActaDialog({
     ? `${acta.informante}${acta.informanteDni ? ` (DNI ${acta.informanteDni})` : ""}`
     : "Pendiente de asignación";
   const firmanteSelectEnabled = Boolean(canManageFirmante && !isBorrador);
+  const statusMessage = (() => {
+    if (isFirmada) return "El acta se encuentra firmada y lista para archivar.";
+    if (isCerrada) return "El acta está cerrada y pendiente de firma directiva.";
+    if (isBorrador)
+      return "El acta continúa abierta para edición y requiere completar la información restante.";
+    return "Estado actualizado según la información registrada.";
+  })();
+  const descripcionTexto =
+    acta.descripcion && acta.descripcion.trim().length > 0
+      ? acta.descripcion
+      : "No se registró una descripción.";
+  const accionesTexto =
+    acta.acciones && acta.acciones.trim().length > 0 ? acta.acciones : null;
 
   const handleDownload = async () => {
     if (downloading) return;
@@ -140,111 +162,156 @@ export default function ViewActaDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader className="space-y-2">
           <DialogTitle>Acta de Accidente #{acta.id}</DialogTitle>
+          <DialogDescription>
+            Revisá la información registrada y realizá acciones administrativas desde este
+            panel.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={badgeVariant}>{estadoLabel}</Badge>
+        <div className="space-y-6">
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant={badgeVariant}>{estadoLabel}</Badge>
+              <span className="text-sm text-muted-foreground">{statusMessage}</span>
+            </div>
+            {acta.creadoPor && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Registrado por {acta.creadoPor}.
+              </p>
+            )}
           </div>
 
-          <div className="grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <b>Alumno:</b> {acta.alumno}
-            </div>
-            <div>
-              <b>DNI del alumno:</b> {acta.alumnoDni ?? "—"}
-            </div>
-            <div>
-              <b>Sección:</b> {acta.seccion ?? "—"}
-            </div>
-            <div>
-              <b>Familiar responsable:</b> {acta.familiar ?? "—"}
-            </div>
-            <div>
-              <b>DNI del familiar:</b> {acta.familiarDni ?? "—"}
-            </div>
-            <div className="sm:col-span-2">
-              <b>Fecha y horario:</b> {acta.fecha} • {acta.hora ?? "—"}
-            </div>
-            <div>
-              <b>Lugar:</b> {acta.lugar ?? "—"}
-            </div>
-            <div>
-              <b>Estado:</b> {String(acta.estado)}
-            </div>
-            <div className="sm:col-span-2">
-              <b>Docente informante:</b> {informanteLabel}
-            </div>
-            <div className="sm:col-span-2">
-              <b>Dirección firmante:</b>
-              {firmanteSelectEnabled ? (
-                <div className="mt-1 max-w-sm">
-                  <Select
-                    value={
-                      acta.firmanteId != null
-                        ? String(acta.firmanteId)
-                        : UNASSIGNED_FIRMANTE_VALUE
-                    }
-                    onValueChange={(value) =>
-                      onFirmanteChange?.(
-                        value === UNASSIGNED_FIRMANTE_VALUE
-                          ? null
-                          : Number(value)
-                      )
-                    }
-                    disabled={firmanteUpdating}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccioná directivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={UNASSIGNED_FIRMANTE_VALUE}>
-                        Sin asignar
-                      </SelectItem>
-                      {(firmanteOptions ?? []).map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="ml-1 flex flex-col">
-                  <span>{direccionFirmante}</span>
-                  {canManageFirmante && isBorrador && (
-                    <span className="text-xs text-muted-foreground">
-                      Cerrá el acta para asignar una dirección firmante.
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Información del alumno</CardTitle>
+                <CardDescription>Datos personales y de contacto familiar.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 p-6 pt-0 sm:grid-cols-2">
+                <InfoTile label="Alumno" value={acta.alumno} className="sm:col-span-2" />
+                <InfoTile label="DNI del alumno" value={acta.alumnoDni ?? "—"} />
+                <InfoTile label="Sección" value={acta.seccion ?? "—"} />
+                <InfoTile label="Familiar responsable" value={acta.familiar ?? "—"} />
+                <InfoTile label="DNI del familiar" value={acta.familiarDni ?? "—"} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Detalle del suceso</CardTitle>
+                <CardDescription>Fechas, horarios y ubicación del incidente.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 p-6 pt-0 sm:grid-cols-2">
+                <InfoTile
+                  label="Fecha y horario"
+                  value={
+                    <span>
+                      {acta.fecha} • {acta.hora ?? "—"}
                     </span>
-                  )}
-                </div>
+                  }
+                  className="sm:col-span-2"
+                />
+                <InfoTile label="Lugar" value={acta.lugar ?? "—"} />
+                <InfoTile label="Estado actual" value={String(acta.estado || "Sin estado")}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Seguimiento institucional</CardTitle>
+              <CardDescription>
+                Referentes asignados y controles administrativos del acta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 p-6 pt-0 sm:grid-cols-2">
+              <InfoTile label="Docente informante" value={informanteLabel} className="sm:col-span-2" />
+              <InfoTile
+                label="Dirección firmante"
+                value={
+                  firmanteSelectEnabled ? (
+                    <div className="max-w-sm">
+                      <Select
+                        value={
+                          acta.firmanteId != null
+                            ? String(acta.firmanteId)
+                            : UNASSIGNED_FIRMANTE_VALUE
+                        }
+                        onValueChange={(value) =>
+                          onFirmanteChange?.(
+                            value === UNASSIGNED_FIRMANTE_VALUE
+                              ? null
+                              : Number(value)
+                          )
+                        }
+                        disabled={firmanteUpdating}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccioná directivo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={UNASSIGNED_FIRMANTE_VALUE}>
+                            Sin asignar
+                          </SelectItem>
+                          {(firmanteOptions ?? []).map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <span className="font-medium">{direccionFirmante}</span>
+                      {canManageFirmante && isBorrador && (
+                        <span className="text-xs text-muted-foreground">
+                          Cerrá el acta para asignar una dirección firmante.
+                        </span>
+                      )}
+                    </div>
+                  )
+                }
+                className="sm:col-span-2"
+              />
+              {acta.creadoPor && (
+                <InfoTile label="Registrado por" value={acta.creadoPor} />
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div>
-            <b>Descripción del suceso</b>
-            <pre className="mt-1 whitespace-pre-wrap text-sm">
-              {acta.descripcion}
-            </pre>
-          </div>
-
-          {acta.acciones && (
-            <div>
-              <b>Acciones realizadas</b>
-              <pre className="mt-1 whitespace-pre-wrap text-sm">
-                {acta.acciones}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Descripción del suceso</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <pre className="whitespace-pre-wrap rounded-md border border-border/40 bg-background/70 p-4 text-sm">
+                {descripcionTexto}
               </pre>
-            </div>
+            </CardContent>
+          </Card>
+
+          {accionesTexto && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Acciones realizadas</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-0">
+                <pre className="whitespace-pre-wrap rounded-md border border-border/40 bg-background/70 p-4 text-sm">
+                  {accionesTexto}
+                </pre>
+              </CardContent>
+            </Card>
           )}
 
           <div className="flex flex-wrap justify-end gap-2">
             {canCloseActa && isBorrador && (
               <Button onClick={() => onCloseActa?.()} disabled={closing}>
-                <Check className="h-4 w-4 mr-2" />
+                <Check className="mr-2 h-4 w-4" />
                 {closing ? "Cerrando…" : "Cerrar acta"}
               </Button>
             )}
@@ -253,13 +320,13 @@ export default function ViewActaDialog({
                 onClick={() => onMarkFirmada?.()}
                 disabled={markingFirmada || !acta.firmanteId}
               >
-                <Check className="h-4 w-4 mr-2" />
-                {markingFirmada ? "Actualizando…" : "Firmado"}
+                <Check className="mr-2 h-4 w-4" />
+                {markingFirmada ? "Actualizando…" : "Firmar acta"}
               </Button>
             )}
             {canEdit && (
               <Button variant="outline" onClick={() => onEdit?.()}>
-                <Pencil className="h-4 w-4 mr-2" /> Editar
+                <Pencil className="mr-2 h-4 w-4" /> Editar
               </Button>
             )}
             {canDelete && (
@@ -268,12 +335,12 @@ export default function ViewActaDialog({
                 onClick={() => onDelete?.()}
                 disabled={deleting}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 {deleting ? "Eliminando…" : "Eliminar"}
               </Button>
             )}
             <Button variant="outline" onClick={handleDownload} disabled={downloading}>
-              <Printer className="h-4 w-4 mr-2" />
+              <Printer className="mr-2 h-4 w-4" />
               {downloading ? "Generando…" : "Imprimir"}
             </Button>
             <Button variant="outline" onClick={onClose}>
@@ -283,5 +350,29 @@ export default function ViewActaDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InfoTile({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border border-border/40 bg-muted/20 p-4",
+        className,
+      )}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <div className="mt-2 text-sm text-foreground">{value}</div>
+    </div>
   );
 }

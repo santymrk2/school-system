@@ -28,6 +28,10 @@ import * as DTO from "@/types/api-generated";
 import { admisiones, gestionAcademica, identidad } from "@/services/api/modules";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { logger } from "@/lib/logger";
+import {
+  formatTurnoLabel as formatTurnoLabelLib,
+  normalizeTurnoKey,
+} from "@/lib/turno-label";
 
 const aspirantesLogger = logger.child({ module: "dashboard-aspirantes-tabs" });
 
@@ -621,6 +625,9 @@ function AltaModal({
     }
 
     const initialTurno = turnoPreferido ? String(turnoPreferido) : "";
+    const initialTurnoKey = initialTurno
+      ? normalizeTurnoKey(initialTurno)
+      : "";
     setSelectedSeccionId("");
     setSeccionesLoading(true);
     setSeccionesError(null);
@@ -631,12 +638,10 @@ function AltaModal({
         const data = res.data ?? [];
         setSecciones(data);
         let preselectedSeccion: string | null = null;
-        if (initialTurno) {
+        if (initialTurnoKey) {
           const matching = data.find(
             (sec) =>
-              String(sec.turno ?? "")
-                .trim()
-                .toUpperCase() === initialTurno,
+              normalizeTurnoKey(String(sec.turno ?? "")) === initialTurnoKey,
           );
           if (matching?.id != null) {
             preselectedSeccion = String(matching.id);
@@ -700,13 +705,8 @@ function AltaModal({
     }
   }, [open, selectedPeriodoValue, secciones, selectedSeccionId]);
 
-  const formatTurnoLabel = (value?: string | null) => {
-    if (!value) return "";
-    const normalized = String(value).trim().toUpperCase();
-    if (normalized === DTO.Turno.MANANA) return "Mañana";
-    if (normalized === DTO.Turno.TARDE) return "Tarde";
-    return normalized;
-  };
+  const formatTurnoLabel = (value?: string | null) =>
+    formatTurnoLabelLib(value) ?? "";
 
   const formatSeccionLabel = (seccion: DTO.SeccionDTO) => {
     const parts = [seccion.nivel, seccion.gradoSala, seccion.division]

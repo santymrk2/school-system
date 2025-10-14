@@ -8,6 +8,7 @@ import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoRepository;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaRepository;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaSeccionHistorialRepository;
 import edu.ecep.base_app.gestionacademica.application.SeccionService;
+import edu.ecep.base_app.shared.domain.enums.Turno;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -73,7 +74,7 @@ public class SeccionController {
                 Optional.ofNullable(seccion.getDivision()).orElse(""))
                 .trim();
         if (base.isEmpty()) base = "Sección";
-        var turno = Optional.ofNullable(seccion.getTurno()).map(Enum::name).orElse("");
+        var turno = Optional.ofNullable(seccion.getTurno()).map(Turno::getDisplayName).orElse("");
         return turno.isEmpty() ? base : base + " (" + turno + ")";
     }
 }

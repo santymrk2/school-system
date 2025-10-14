@@ -8,6 +8,7 @@ import edu.ecep.base_app.identidad.infrastructure.persistence.AlumnoFamiliarRepo
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaRepository;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.MatriculaSeccionHistorialRepository;
 import edu.ecep.base_app.identidad.application.FamiliarService;
+import edu.ecep.base_app.shared.domain.enums.Turno;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -84,7 +85,7 @@ public class FamiliarController {
         if (seccion == null) return null;
         var grado = Optional.ofNullable(seccion.getGradoSala()).orElse("");
         var division = Optional.ofNullable(seccion.getDivision()).orElse("");
-        var turno = Optional.ofNullable(seccion.getTurno()).map(Enum::name).orElse("");
+        var turno = Optional.ofNullable(seccion.getTurno()).map(Turno::getDisplayName).orElse("");
         String base = (grado + " " + division).trim();
         if (base.isEmpty()) base = "Sección";
         return turno.isEmpty() ? base : base + " (" + turno + ")";

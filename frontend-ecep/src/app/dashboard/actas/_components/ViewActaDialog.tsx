@@ -162,7 +162,7 @@ export default function ViewActaDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[calc(100vh-4rem)] overflow-y-auto">
         <DialogHeader className="space-y-2">
           <DialogTitle>Acta de Accidente #{acta.id}</DialogTitle>
           <DialogDescription>
@@ -289,9 +289,9 @@ export default function ViewActaDialog({
               <CardTitle className="text-base">Descripción del suceso</CardTitle>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <pre className="whitespace-pre-wrap rounded-md border border-border/40 bg-background/70 p-4 text-sm">
+              <div className="whitespace-pre-wrap rounded-md border border-border/40 bg-background/70 p-4 text-sm">
                 {descripcionTexto}
-              </pre>
+              </div>
             </CardContent>
           </Card>
 
@@ -301,9 +301,9 @@ export default function ViewActaDialog({
                 <CardTitle className="text-base">Acciones realizadas</CardTitle>
               </CardHeader>
               <CardContent className="p-6 pt-0">
-                <pre className="whitespace-pre-wrap rounded-md border border-border/40 bg-background/70 p-4 text-sm">
+                <div className="whitespace-pre-wrap rounded-md border border-border/40 bg-background/70 p-4 text-sm">
                   {accionesTexto}
-                </pre>
+                </div>
               </CardContent>
             </Card>
           )}

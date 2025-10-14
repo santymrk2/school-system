@@ -28,7 +28,7 @@ public class PersonaAccountController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','DIRECTOR','SECRETARY','COORDINATOR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PersonaResumenDTO>> search(@RequestParam(required = false) String q) {
         Persona current = null;
         try {

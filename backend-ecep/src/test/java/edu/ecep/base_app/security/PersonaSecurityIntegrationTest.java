@@ -235,22 +235,13 @@ class PersonaSecurityIntegrationTest {
     }
 
     @Test
-    void shouldRejectPersonaSearchForUnauthorizedRole() throws Exception {
+    void shouldAllowPersonaSearchForAnyAuthenticatedRole() throws Exception {
+        Persona persona = persistPersona(UserRole.STUDENT);
         String familyToken = issueToken(UserRole.FAMILY);
 
         mockMvc.perform(get("/api/personas/credenciales/search")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + familyToken))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void shouldAllowPersonaSearchForAdmin() throws Exception {
-        Persona persona = persistPersona(UserRole.STUDENT);
-        String adminToken = issueToken(UserRole.ADMIN);
-
-        mockMvc.perform(get("/api/personas/credenciales/search")
                         .param("q", persona.getEmail())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + familyToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].email").value(persona.getEmail()));

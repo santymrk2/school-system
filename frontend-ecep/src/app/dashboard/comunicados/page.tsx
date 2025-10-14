@@ -46,6 +46,7 @@ import {
   isAdminLikeRole,
   isTeacherRole,
 } from "@/lib/comunicados/visibility";
+import { formatTurnoLabel } from "@/lib/turno-label";
 
 const alcanceFilterOptions = [
   { value: "ALL", label: "Todos los alcances" },
@@ -114,7 +115,8 @@ export default function ComunicadosPage() {
         `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() ||
         s.nombre ||
         `Sección #${s.id}`;
-      m.set(s.id, `${label}${s.turno ? ` (${s.turno})` : ""}`);
+      const turno = formatTurnoLabel(s.turno);
+      m.set(s.id, `${label}${turno ? ` (${turno})` : ""}`);
     }
     return m;
   }, [allSecciones]);

@@ -21,6 +21,7 @@ import {
   getTrimestreFin,
   getTrimestreInicio,
 } from "@/lib/trimestres";
+import { formatTurnoLabelOrFallback } from "@/lib/turno-label";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
@@ -209,7 +210,10 @@ export default function SeccionEvaluacionesPage() {
     return nombre || `Sección #${seccion.id}`;
   }, [seccion, seccionId]);
 
-  const turnoNombre = useMemo(() => seccion?.turno ?? "—", [seccion]);
+  const turnoNombre = useMemo(
+    () => formatTurnoLabelOrFallback(seccion?.turno),
+    [seccion?.turno],
+  );
 
   const filteredEvals = useMemo(() => {
     if (filterMateriaId === "all") return evaluaciones;

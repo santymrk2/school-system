@@ -37,6 +37,7 @@ import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 import { toast } from "sonner";
 import { UserRole } from "@/types/api-generated";
+import { formatTurnoLabel } from "@/lib/turno-label";
 
 type Props = {
   open?: boolean;
@@ -103,13 +104,17 @@ export default function NewComunicadoDialog({
   const [submitting, setSubmitting] = useState(false);
 
   const seccionOptions = useMemo(() => {
-    return (secciones ?? []).map((s: SeccionLite) => ({
-      id: s.id,
-      label:
-        (`${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() ||
-          s.nombre ||
-          `Sección #${s.id}`) + (s.turno ? ` (${s.turno})` : ""),
-    }));
+    return (secciones ?? []).map((s: SeccionLite) => {
+      const base =
+        `${s.gradoSala ?? ""} ${s.division ?? ""}`.trim() ||
+        s.nombre ||
+        `Sección #${s.id}`;
+      const turno = formatTurnoLabel(s.turno);
+      return {
+        id: s.id,
+        label: base + (turno ? ` (${turno})` : ""),
+      };
+    });
   }, [secciones]);
 
   useEffect(() => {

@@ -43,6 +43,7 @@ import {
   getTrimestreInicio,
   TRIMESTRE_ESTADO_LABEL,
 } from "@/lib/trimestres";
+import { formatTurnoLabel, formatTurnoLabelOrFallback } from "@/lib/turno-label";
 import { useViewerScope } from "@/hooks/scope/useViewerScope";
 import { useScopedSecciones } from "@/hooks/scope/useScopedSecciones";
 import { UserRole } from "@/types/api-generated";
@@ -522,7 +523,9 @@ export default function SeccionHistorialPage() {
                   ? "Sección cargando…"
                   : `Sección #${seccionId}`}
             </Badge>
-            <Badge variant="secondary">Turno {seccion?.turno ?? "—"}</Badge>
+            <Badge variant="secondary">
+              Turno {formatTurnoLabelOrFallback(seccion?.turno)}
+            </Badge>
           </div>
           {secErr && <p className="text-sm text-red-600">{secErr}</p>}
           <ActiveTrimestreBadge className="mt-3" />

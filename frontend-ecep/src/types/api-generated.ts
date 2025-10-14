@@ -501,6 +501,16 @@ export interface EmpleadoDTO {
   observacionesGenerales?: string;
 }
 
+export interface EmpleadoResumenDTO {
+  id: number;
+  personaId?: number;
+  nombre?: string;
+  apellido?: string;
+  nombreCompleto?: string;
+  cargo?: string;
+  legajo?: string;
+}
+
 export interface EmpleadoUpdateDTO {
   id?: number;
   personaId?: number;
@@ -558,6 +568,7 @@ export interface LicenciaCreateDTO {
 export interface LicenciaDTO {
   id: number;
   empleadoId?: number;
+  empleado?: EmpleadoResumenDTO;
   tipoLicencia?: string;
   fechaInicio?: ISODate;
   fechaFin?: ISODate;

@@ -86,8 +86,6 @@ export type AttendanceSummaryStudent = {
   total: number;
   presentes: number;
   ausentes: number;
-  tarde: number;
-  retiroAnticipado: number;
   attendance: number;
 };
 

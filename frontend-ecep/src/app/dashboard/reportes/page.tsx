@@ -973,8 +973,6 @@ export default function ReportesPage() {
             const total = (dto as any).total ?? dto.totalClases ?? 0;
             const presentes = dto.presentes ?? 0;
             const ausentes = dto.ausentes ?? 0;
-            const tarde = dto.tarde ?? 0;
-            const retiroAnticipado = dto.retiroAnticipado ?? 0;
             const attendanceRatio =
               total > 0
                 ? dto.porcentaje != null
@@ -989,8 +987,6 @@ export default function ReportesPage() {
               total,
               presentes,
               ausentes,
-              tarde,
-              retiroAnticipado,
               attendance: attendanceRatio,
             } satisfies AttendanceSummaryStudent;
           });
@@ -1087,12 +1083,32 @@ export default function ReportesPage() {
     const todayMs = startOfDay(new Date()).getTime();
     return licenses
       .map((licencia) => {
+        const empleadoFromDto = licencia.empleado ?? null;
         const teacherId =
-          typeof licencia.empleadoId === "number" ? licencia.empleadoId : null;
+          typeof licencia.empleadoId === "number"
+            ? licencia.empleadoId
+            : typeof empleadoFromDto?.id === "number"
+              ? empleadoFromDto.id
+              : null;
         const teacherInfo = teacherId != null ? empleadoMap[teacherId] : undefined;
+        const nombreDesdeDto = (() => {
+          if (!empleadoFromDto) return "";
+          if (empleadoFromDto.nombreCompleto?.trim()) {
+            return empleadoFromDto.nombreCompleto.trim();
+          }
+          const partes = [empleadoFromDto.nombre, empleadoFromDto.apellido]
+            .map((part) => (typeof part === "string" ? part.trim() : ""))
+            .filter((part) => part.length > 0);
+          return partes.join(" ");
+        })();
+        const fallbackTeacherName =
+          teacherId != null && teacherId > 0
+            ? `Empleado #${teacherId}`
+            : "Sin docente asignado";
         const teacherName =
-          teacherInfo?.name ??
-          (teacherId != null ? `Empleado #${teacherId}` : "Sin docente asignado");
+          nombreDesdeDto ||
+          teacherInfo?.name ||
+          fallbackTeacherName;
         const start = licencia.fechaInicio ?? "";
         const end = licencia.fechaFin ?? null;
         const startDate = toDateOrNull(start);
@@ -1117,7 +1133,7 @@ export default function ReportesPage() {
           id: String(licencia.id ?? `${start}-${teacherId ?? "s/d"}`),
           teacherId,
           teacherName,
-          cargo: teacherInfo?.cargo,
+          cargo: empleadoFromDto?.cargo ?? teacherInfo?.cargo,
           situacion: teacherInfo?.situacion,
           tipo: licencia.tipoLicencia ?? "",
           tipoLabel: formatTipoLicencia(licencia.tipoLicencia),

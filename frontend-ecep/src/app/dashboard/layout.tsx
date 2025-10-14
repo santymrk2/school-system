@@ -240,7 +240,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               isNavCollapsed ? "px-2 lg:px-2" : "px-4 lg:px-4",
             )}
           >
-            <div className="flex h-full flex-col justify-center overflow-y-auto">
+            <div
+              className={cn(
+                "flex h-full flex-col justify-start overflow-y-auto",
+                "lg:justify-center",
+              )}
+            >
               <nav className="space-y-1 py-2 pl-1">
                 {groupedMenu.map(([groupKey, items], groupIndex) => (
                   <div key={groupKey} className="space-y-1">
@@ -397,7 +402,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
         <div className="flex-1 p-4 pl-1">
           <div className="rounded-xl bg-card text-card-foreground ring-1 ring-border overflow-hidden">
-            <main className="scrollarea  h-[calc(100vh-6rem)] lg:h-[calc(107vh-6rem)] overflow-y-auto">
+            <main className="scrollarea  h-[calc(100vh-6rem)] overflow-y-auto">
               {children}
             </main>
           </div>

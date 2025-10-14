@@ -38,6 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { formatTurnoLabel } from "@/lib/turno-label";
 import { Loader2, UserMinus, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
@@ -235,7 +236,7 @@ export default function AlumnoPerfilPage() {
     if (!s) return `Sección #${sid}`;
     const grado = (s as any).gradoSala ?? (s as any).grado ?? "";
     const div = (s as any).division ?? "";
-    const turno = (s as any).turno ?? "";
+    const turno = formatTurnoLabel((s as any).turno ?? "") ?? (s as any).turno ?? "";
     return `${grado} ${div} ${turno}`.trim();
   };
 

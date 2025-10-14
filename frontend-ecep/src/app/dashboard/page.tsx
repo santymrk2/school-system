@@ -41,6 +41,7 @@ import {
   seccionIdFrom,
   splitComunicadosPorAlcance,
 } from "@/lib/comunicados/visibility";
+import { formatTurnoLabel } from "@/lib/turno-label";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "short",
@@ -83,9 +84,10 @@ function seccionLabelFrom(item: any): string | null {
     base;
   const turno =
     item?.turno ?? item?.seccionActual?.turno ?? item?.seccion?.turno ?? "";
+  const turnoLabel = formatTurnoLabel(turno) ?? turno;
   const label = (nombre || base || null) as string | null;
   if (!label) return null;
-  return turno ? `${label} (${turno})` : label;
+  return turnoLabel ? `${label} (${turnoLabel})` : label;
 }
 
 // y usás: stats?.alumnosActivos, stats?.docentesActivos, etc.

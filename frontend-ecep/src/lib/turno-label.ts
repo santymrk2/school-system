@@ -3,7 +3,7 @@ const TURNO_LABELS: Record<string, string> = {
   TARDE: "Tarde",
 };
 
-const normalizeTurnoKey = (value: string) =>
+export const normalizeTurnoKey = (value: string) =>
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

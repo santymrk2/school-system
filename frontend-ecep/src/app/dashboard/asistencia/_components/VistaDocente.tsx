@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import { useAsistenciasData } from "@/hooks/useAsistenciasData";
 import { useAuth } from "@/hooks/useAuth";
 import NuevaAsistenciaDialog from "./NuevaAsistenciaDialog";
 import DetalleDiaDialog from "./DetalleDiaDialog";
-import type { JornadaAsistenciaDTO, SeccionDTO } from "@/types/api-generated";
+import type { AsistenciaDiaDTO, SeccionDTO } from "@/types/api-generated";
 import {
   Dialog,
   DialogContent,
@@ -27,12 +27,21 @@ import {
 } from "@/components/ui/dialog";
 import {
   getTrimestreEstado,
+  getTrimestreFin,
+  getTrimestreInicio,
   isFechaDentroDeTrimestre,
 } from "@/lib/trimestres";
 import { logger } from "@/lib/logger";
+import { asistencias } from "@/services/api/modules";
 
 const DBG = !!process.env.NEXT_PUBLIC_DEBUG;
 const vistaLogger = logger.child({ module: "VistaDocente" });
+
+type SectionSummary = {
+  porcentaje: number;
+  ultimaFecha: string | null;
+  historial: AsistenciaDiaDTO[];
+};
 
 const dlog = (...args: any[]) => {
   if (!DBG) return;
@@ -83,8 +92,6 @@ export default function VistaDocente() {
     trimestres,
     secciones,
     asignaciones,
-    searchJornadas,
-    loadDetallesByJornada,
     loadAlumnosSeccion,
   } = useAsistenciasData();
 
@@ -141,44 +148,201 @@ export default function VistaDocente() {
 
   const [openNuevaFor, setOpenNuevaFor] = useState<number | null>(null);
   const [selected, setSelected] = useState<{
-    jornada: JornadaAsistenciaDTO;
+    jornadaId: number;
     seccionId: number;
+    fecha: string;
   } | null>(null);
-  const [historial, setHistorial] = useState<
-    Record<number, JornadaAsistenciaDTO[]>
-  >({}); // seccionId -> jornadas
+  const [sectionSummaries, setSectionSummaries] = useState<
+    Record<number, SectionSummary>
+  >({});
+  const [summariesLoading, setSummariesLoading] = useState(false);
+  const [summariesError, setSummariesError] = useState<string | null>(null);
+  const [historialStatus, setHistorialStatus] = useState<
+    Record<number, { loading: boolean; error: string | null }>
+  >({});
 
-  const openHistorial = async (seccionId: number) => {
-    dgrp("openHistorial()");
-    dlog("params", { seccionId });
+  const rangeInfo = useMemo(() => {
+    const today = new Date();
+    const todayISO = fmt(today.toISOString());
+    const fallbackStartDate = new Date(today);
+    fallbackStartDate.setDate(fallbackStartDate.getDate() - 30);
+    const fallbackStart = fmt(fallbackStartDate.toISOString());
 
-    try {
-      const js = await searchJornadas({ seccionId });
-      dlog("searchJornadas() response", js);
+    let from = fallbackStart;
+    let to = todayISO;
+    let label = "de los últimos 30 días";
 
-      setHistorial((h) => {
-        const sorted = js.sort((a, b) =>
-          (b.fecha ?? "").localeCompare(a.fecha ?? ""),
-        );
-        const next = { ...h, [seccionId]: sorted };
-        dlog("historial(new state)[seccionId]", next[seccionId]);
-        return next;
-      });
-    } catch (err) {
-      vistaLogger.error({ err }, "openHistorial error");
-    } finally {
-      dgrpEnd();
+    if (trimestreHoy) {
+      const inicio = getTrimestreInicio(trimestreHoy) || fallbackStart;
+      const fin = getTrimestreFin(trimestreHoy) || todayISO;
+      from = inicio || fallbackStart;
+      to = fin || todayISO;
+      label = "del trimestre activo";
     }
-  };
 
-  if (loading) return <LoadingState label="Cargando información…" />;
+    if (from > to) {
+      from = fallbackStart;
+      to = todayISO;
+    }
+
+    return { from, to, label } as const;
+  }, [trimestreHoy]);
+
+  const fetchSectionSummary = useCallback(
+    async (seccion: SeccionDTO) => {
+      const seccionId = seccion.id;
+      const [historialRes, acumuladoRes] = await Promise.all([
+        asistencias.secciones.historialSeccion(
+          seccionId,
+          rangeInfo.from,
+          rangeInfo.to,
+        ),
+        asistencias.secciones.acumuladoSeccion(
+          seccionId,
+          rangeInfo.from,
+          rangeInfo.to,
+        ),
+      ]);
+
+      const historial = (historialRes.data ?? []).sort((a, b) =>
+        (b.fecha ?? "").localeCompare(a.fecha ?? ""),
+      );
+      const porcentaje = Math.round(acumuladoRes.data?.porcentaje ?? 0);
+      const ultimaFecha = historial[0]?.fecha ?? null;
+
+      return {
+        seccionId,
+        resumen: {
+          porcentaje,
+          ultimaFecha,
+          historial,
+        } satisfies SectionSummary,
+      };
+    },
+    [rangeInfo.from, rangeInfo.to],
+  );
+
+  useEffect(() => {
+    let alive = true;
+    if (!seccionesDocente.length) {
+      setSectionSummaries({});
+      setSummariesError(null);
+      setSummariesLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        setSummariesLoading(true);
+        setSummariesError(null);
+        const results = await Promise.allSettled(
+          seccionesDocente.map((sec) => fetchSectionSummary(sec)),
+        );
+
+        if (!alive) return;
+
+        const next: Record<number, SectionSummary> = {};
+        const failed: string[] = [];
+
+        results.forEach((result, index) => {
+          const seccion = seccionesDocente[index];
+          if (result.status === "fulfilled") {
+            next[result.value.seccionId] = result.value.resumen;
+          } else {
+            const label = `${seccion.gradoSala ?? ""} ${
+              seccion.division ?? ""
+            }`.trim();
+            failed.push(label || `Sección #${seccion.id}`);
+          }
+        });
+
+        setSectionSummaries(next);
+        setSummariesError(
+          failed.length
+            ? `No se pudo cargar información de ${failed.join(", ")}.`
+            : null,
+        );
+      } catch (error) {
+        if (!alive) return;
+        const message =
+          (error as any)?.response?.data?.message ??
+          (error as Error | undefined)?.message ??
+          "No se pudo cargar el resumen de asistencia.";
+        setSummariesError(message);
+      } finally {
+        if (alive) setSummariesLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [fetchSectionSummary, seccionesDocente]);
+
+  const refreshSectionSummary = useCallback(
+    async (seccionId: number) => {
+      const seccion = seccionesDocente.find((s) => s.id === seccionId);
+      if (!seccion) return;
+
+      setHistorialStatus((prev) => ({
+        ...prev,
+        [seccionId]: { loading: true, error: null },
+      }));
+
+      try {
+        const result = await fetchSectionSummary(seccion);
+        setSectionSummaries((prev) => ({
+          ...prev,
+          [seccionId]: result.resumen,
+        }));
+        setHistorialStatus((prev) => ({
+          ...prev,
+          [seccionId]: { loading: false, error: null },
+        }));
+      } catch (error) {
+        vistaLogger.error(
+          { error, seccionId },
+          "refreshSectionSummary error",
+        );
+        const message =
+          (error as any)?.response?.data?.message ??
+          (error as Error | undefined)?.message ??
+          "No se pudo cargar el historial.";
+        setHistorialStatus((prev) => ({
+          ...prev,
+          [seccionId]: { loading: false, error: message },
+        }));
+      }
+    },
+    [fetchSectionSummary, seccionesDocente],
+  );
+
+  const openHistorial = useCallback(
+    async (seccionId: number) => {
+      dgrp("openHistorial()");
+      dlog("params", { seccionId });
+      await refreshSectionSummary(seccionId);
+      dgrpEnd();
+    },
+    [refreshSectionSummary],
+  );
+
+  if (loading || (summariesLoading && !Object.keys(sectionSummaries).length))
+    return <LoadingState label="Cargando información…" />;
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {summariesError && (
+          <div className="md:col-span-2 lg:col-span-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {summariesError}
+          </div>
+        )}
         {seccionesDocente.map((sec) => {
-          const jornadasSec = historial[sec.id] ?? [];
-          const promedio = 100; // placeholder si no abriste historial
+          const summary = sectionSummaries[sec.id];
+          const promedio = summary?.porcentaje ?? 0;
+          const ultimaFecha = summary?.ultimaFecha ?? null;
+          const status = historialStatus[sec.id];
 
           return (
             <Card key={sec.id} className="transition-colors hover:border-primary">
@@ -189,8 +353,12 @@ export default function VistaDocente() {
                   </CardTitle>
                 </div>
                 <CardDescription>
-                  Promedio aprox: {promedio}% — Última:{" "}
-                  {jornadasSec[0]?.fecha ? fmt(jornadasSec[0].fecha) : "—"}
+                  Promedio {rangeInfo.label}: {summary
+                    ? `${promedio}%`
+                    : summariesLoading
+                      ? "cargando…"
+                      : "—"}
+                  {" "}— Última jornada: {ultimaFecha ? fmt(ultimaFecha) : "—"}
                 </CardDescription>
               </CardHeader>
 
@@ -198,9 +366,9 @@ export default function VistaDocente() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Asistencia Promedio</span>
-                    <span>{promedio}%</span>
+                    <span>{summary ? `${promedio}%` : "—"}</span>
                   </div>
-                  <Progress value={promedio} className="h-2" />
+                  <Progress value={summary ? promedio : 0} className="h-2" />
                 </div>
 
                 <div className="flex gap-2">
@@ -233,46 +401,54 @@ export default function VistaDocente() {
                           Historial — {sec.gradoSala} {sec.division}
                         </DialogTitle>
                         <DialogDescription>
-                          Asistencias diarias
+                          Asistencias registradas {rangeInfo.label}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-2">
-                        {(historial[sec.id] ?? []).map((j) => (
-                          <div
-                            key={j.id}
-                            className="flex items-center justify-between border rounded p-2"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline">{fmt(j.fecha)}</Badge>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  dgrp("Ver/Editar día");
-                                  dlog("jornada", j);
-                                  try {
-                                    await loadDetallesByJornada(j.id);
-                                    setSelected({
-                                      jornada: j,
-                                      seccionId: sec.id,
-                                    });
-                                  } catch (e) {
-                                    vistaLogger.error(
-                                      { err: e, jornadaId: j.id },
-                                      "loadDetallesByJornada error",
-                                    );
-                                  } finally {
-                                    dgrpEnd();
-                                  }
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" /> Ver / Editar
-                              </Button>
-                            </div>
+                        {status?.loading ? (
+                          <LoadingState label="Cargando historial…" />
+                        ) : status?.error ? (
+                          <div className="text-sm text-red-600">
+                            {status.error}
                           </div>
-                        ))}
+                        ) : (summary?.historial.length ?? 0) > 0 ? (
+                          summary?.historial.map((dia) => (
+                            <div
+                              key={dia.id}
+                              className="flex items-center justify-between border rounded p-2"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline">{fmt(dia.fecha)}</Badge>
+                                <div className="text-sm text-muted-foreground">
+                                  {dia.presentes ?? 0}/{dia.total ?? 0} presentes (
+                                  {Math.round(dia.porcentaje ?? 0)}%)
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    dgrp("Ver/Editar día");
+                                    dlog("jornada", dia);
+                                    setSelected({
+                                      jornadaId: dia.id,
+                                      seccionId: sec.id,
+                                      fecha: dia.fecha ?? rangeInfo.to,
+                                    });
+                                    dgrpEnd();
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" /> Ver / Editar
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            No hay jornadas registradas en el período seleccionado.
+                          </div>
+                        )}
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -289,7 +465,7 @@ export default function VistaDocente() {
                       dlog("Nueva asistencia creada → refresco historial", {
                         seccionId: sec.id,
                       });
-                      openHistorial(sec.id);
+                      refreshSectionSummary(sec.id);
                     }}
                     // (opcional) ejemplo de carga de alumnos con logging
                     loadAlumnos={async () => {
@@ -320,15 +496,14 @@ export default function VistaDocente() {
         <DetalleDiaDialog
           open
           onOpenChange={() => setSelected(null)}
-          jornada={selected.jornada}
-          detalles={[]}
-          alumnos={[]}
-          editable={true}
+          seccionId={selected.seccionId}
+          jornadaId={selected.jornadaId}
+          fecha={selected.fecha}
           onUpdated={() => {
             dlog("Detalles actualizados → refresco historial", {
               seccionId: selected.seccionId,
             });
-            openHistorial(selected.seccionId);
+            refreshSectionSummary(selected.seccionId);
           }}
         />
       )}

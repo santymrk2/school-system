@@ -55,6 +55,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.log.LogMessage;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -611,14 +612,18 @@ public class SolicitudAdmisionService {
     }
 
     private void enviarCorreo(SolicitudAdmision entity, String subject, String body, boolean html) {
+        String sanitizedSubject = sanitizeForLog(subject);
+        String sanitizedBody = sanitizeForLog(body);
+
         Optional<String> correo = obtenerCorreoContacto(entity);
         if (correo.isEmpty()) {
             Long solicitudId = entity != null ? entity.getId() : null;
             log.info(
-                    "[ADMISION][EMAIL-MISSING] solicitud={} subject={} body={} ",
-                    solicitudId,
-                    sanitizeForLog(subject),
-                    sanitizeForLog(body));
+                    LogMessage.format(
+                            "[ADMISION][EMAIL-MISSING] solicitud=%s subject=%s body=%s",
+                            solicitudId,
+                            sanitizedSubject,
+                            sanitizedBody));
 
             return;
         }
@@ -627,12 +632,13 @@ public class SolicitudAdmisionService {
         if (!notificationsEnabled) {
             Long solicitudId = entity != null ? entity.getId() : null;
             log.info(
-                    "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud={} to={} subject={} formato={} body={}",
-                    solicitudId,
-                    destinatario,
-                    sanitizeForLog(subject),
-                    html ? "HTML" : "PLAIN",
-                    sanitizeForLog(body));
+                    LogMessage.format(
+                            "[ADMISION][EMAIL-DISABLED] Simulando envío de correo solicitud=%s to=%s subject=%s formato=%s body=%s",
+                            solicitudId,
+                            destinatario,
+                            sanitizedSubject,
+                            html ? "HTML" : "PLAIN",
+                            sanitizedBody));
             return;
         }
         try {
@@ -648,12 +654,13 @@ public class SolicitudAdmisionService {
         } catch (MessagingException | MailException ex) {
             Long solicitudId = entity != null ? entity.getId() : null;
             log.error(
-                    "[ADMISION][EMAIL-ERROR] solicitud={} to={} subject={} body={} error={}",
-                    solicitudId,
-                    destinatario,
-                    sanitizeForLog(subject),
-                    sanitizeForLog(body),
-                    ex.getMessage(),
+                    LogMessage.format(
+                            "[ADMISION][EMAIL-ERROR] solicitud=%s to=%s subject=%s body=%s error=%s",
+                            solicitudId,
+                            destinatario,
+                            sanitizedSubject,
+                            sanitizedBody,
+                            ex.getMessage()),
                     ex);
         }
     }

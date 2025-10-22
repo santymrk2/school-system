@@ -196,6 +196,9 @@ const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
     return false;
   }
   const estadoActual = normalizeEstado(solicitud.estado);
+  if (estadoActual === ESTADOS.RECHAZADA) {
+    return false;
+  }
   return (
     Boolean(solicitud.entrevistaRealizada) ||
     estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||

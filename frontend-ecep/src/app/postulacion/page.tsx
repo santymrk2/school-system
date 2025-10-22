@@ -131,9 +131,7 @@ type PostulacionDraft = {
 };
 
 const DNI_DUPLICADO_ERROR =
-  "Ya existe una solicitud de admisión registrada para este DNI.";
-
-const RESUBMISSION_ALLOWED_STATES = new Set(["RECHAZADA", "RECHAZADO"]);
+  "El DNI ingresado es incorrecto o ya fue registrado previamente.";
 
 const buildSolicitudObservaciones = (
   data: PostulacionFormData,
@@ -855,75 +853,7 @@ export default function PostulacionPage() {
         return normalized;
       }
 
-      const personaId = Number(personaIdRaw);
-      if (!Number.isFinite(personaId)) {
-        return normalized;
-      }
-
-      const rolesRes = await identidad.personasCore
-        .getRoles(personaId)
-        .catch((error: any) => {
-          if (error?.response?.status === 404) {
-            return { data: null };
-          }
-          throw error;
-        });
-
-      const personaRoles = rolesRes?.data;
-      if (personaRoles?.esAlumno) {
-        throwDuplicate();
-      }
-
-      let aspiranteId: number | null = null;
-      try {
-        const aspiranteRes = await admisiones.aspirantes.byPersonaId(personaId);
-        aspiranteId = aspiranteRes?.data?.id ?? null;
-      } catch (error: any) {
-        if (error?.response?.status !== 404) {
-          throw error;
-        }
-      }
-
-      if (aspiranteId != null) {
-        const solicitudesRes = await admisiones.solicitudesAdmision
-          .byAspiranteId(aspiranteId)
-          .catch((error: any) => {
-            if (error?.response?.status === 404) {
-              return { data: [] };
-            }
-            throw error;
-          });
-
-        const solicitudes = Array.isArray(solicitudesRes?.data)
-          ? solicitudesRes.data
-          : [];
-
-        if (solicitudes.length > 0) {
-          const hasActiveSolicitud = solicitudes.some((solicitud) => {
-            const estado = (solicitud?.estado ?? "")
-              .toString()
-              .trim()
-              .toUpperCase();
-            if (
-              Boolean(solicitud?.altaGenerada) ||
-              solicitud?.alumnoId != null ||
-              solicitud?.matriculaId != null
-            ) {
-              return true;
-            }
-            if (!estado) {
-              return true;
-            }
-            return !RESUBMISSION_ALLOWED_STATES.has(estado);
-          });
-
-          if (hasActiveSolicitud) {
-            throwDuplicate();
-          }
-        }
-      }
-
-      return normalized;
+      throwDuplicate();
     } catch (error: any) {
       if (error?.response?.status === 404) {
         return normalized;

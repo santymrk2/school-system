@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingState from "@/components/common/LoadingState";
 import { BackButton } from "@/components/common/BackButton";
 import { useParams, useRouter } from "next/navigation";
@@ -113,6 +113,11 @@ export default function FamiliarPerfilPage() {
     const current = persona?.roles ?? [];
     return normalizeRoles([...base, ...current]);
   }, [persona?.roles]);
+  const resolveExclusiveRoles = useCallback((role: UserRole) => {
+    if (role === UserRole.FAMILY) return [UserRole.STUDENT];
+    if (role === UserRole.STUDENT) return [UserRole.FAMILY];
+    return [] as UserRole[];
+  }, []);
 
   const formatRol = (value?: string | null) => {
     if (!value) return "Sin vínculo";
@@ -721,9 +726,19 @@ export default function FamiliarPerfilPage() {
                                         onCheckedChange={(value) =>
                                           setCredentialsForm((prev) => {
                                             const isChecked = value === true;
-                                            const nextRoles = isChecked
+                                            let nextRoles = isChecked
                                               ? [...prev.roles, role]
                                               : prev.roles.filter((r) => r !== role);
+                                            if (isChecked) {
+                                              const exclusiveRoles = resolveExclusiveRoles(role);
+                                              if (exclusiveRoles.length) {
+                                                nextRoles = nextRoles.filter(
+                                                  (r) =>
+                                                    r === role ||
+                                                    !exclusiveRoles.includes(r),
+                                                );
+                                              }
+                                            }
                                             return {
                                               ...prev,
                                               roles: normalizeRoles(nextRoles),

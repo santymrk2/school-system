@@ -20,6 +20,17 @@ import { formatDni } from "@/lib/form-utils";
 
 import { maxBirthDate } from "@/lib/form-utils";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 interface Props {
@@ -90,14 +101,32 @@ export function Step1({
           <Label htmlFor="dni" className="flex items-center justify-between gap-2">
             <span>DNI</span>
             {onRequestDniChange && (
-              <Button
-                type="button"
-                variant="link"
-                className="h-auto p-0 text-xs font-normal"
-                onClick={onRequestDniChange}
-              >
-                Cambiar DNI
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs font-normal"
+                  >
+                    Cambiar DNI
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Cambiar DNI?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cambiar el DNI reiniciará la postulación en curso. ¿Querés
+                      continuar?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={onRequestDniChange}>
+                      Cambiar DNI
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </Label>
           <Input

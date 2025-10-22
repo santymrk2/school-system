@@ -209,7 +209,7 @@ export default function PostulacionPage() {
   const [dniGateOpen, setDniGateOpen] = useState(false);
   const [dniGateCompleted, setDniGateCompleted] = useState(false);
   const [dniGateValue, setDniGateValue] = useState<string>("");
-  const [dniGateError, setDniGateError] = useState<string | null>(null);
+  const [, setDniGateError] = useState<string | null>(null);
   const [dniGateLoading, setDniGateLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [communicationsAuthorized, setCommunicationsAuthorized] =
@@ -238,6 +238,14 @@ export default function PostulacionPage() {
       logPostulacionError(error, "No se pudo limpiar el borrador almacenado.");
     }
   }, []);
+
+  const showDniGateError = useCallback(
+    (message: string) => {
+      setDniGateError(message);
+      toast.error(message);
+    },
+    [setDniGateError],
+  );
 
   const resetFormState = useCallback(
     (options?: { openGate?: boolean }) => {
@@ -1295,7 +1303,7 @@ export default function PostulacionPage() {
     event.preventDefault();
     const sanitized = formatDni(dniGateValue ?? "");
     if (!sanitized || sanitized.length < 7 || sanitized.length > 10) {
-      setDniGateError("Ingresá un DNI válido de 7 a 10 dígitos.");
+      showDniGateError("Ingresá un DNI válido de 7 a 10 dígitos.");
       return;
     }
 
@@ -1315,28 +1323,21 @@ export default function PostulacionPage() {
         error?.message === "duplicate-solicitud"
       ) {
         setDniDuplicate(true);
-        setDniGateError(DNI_DUPLICADO_ERROR);
+        showDniGateError(DNI_DUPLICADO_ERROR);
         return;
       }
       if (error?.name === "InvalidDniError" || error?.message === "invalid-dni") {
-        setDniGateError("Ingresá un DNI válido de 7 a 10 dígitos.");
+        showDniGateError("Ingresá un DNI válido de 7 a 10 dígitos.");
         return;
       }
       logPostulacionError(error, "No se pudo verificar el DNI del aspirante");
-      setDniGateError("No se pudo verificar el DNI. Intentá nuevamente.");
+      showDniGateError("No se pudo verificar el DNI. Intentá nuevamente.");
     } finally {
       setDniGateLoading(false);
     }
   };
 
   const handleRequestDniChange = () => {
-    const confirmed =
-      typeof window === "undefined" ||
-      window.confirm(
-        "Cambiar el DNI reiniciará la postulación en curso. ¿Querés continuar?",
-      );
-    if (!confirmed) return;
-
     clearDraft();
     resetFormState();
     restartDraftTracking();
@@ -1563,16 +1564,9 @@ export default function PostulacionPage() {
                   setDniDuplicate(false);
                 }}
               />
-              {dniGateError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{dniGateError}</AlertDescription>
-                </Alert>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Ingresá el DNI sin puntos para continuar con la solicitud.
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Ingresá el DNI sin puntos para continuar con la solicitud.
+              </p>
             </div>
             <DialogFooter>
               <Button type="submit" disabled={dniGateLoading} className="min-w-[160px]">

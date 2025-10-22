@@ -92,7 +92,6 @@ import {
   onlyDigits,
 } from "@/lib/form-utils";
 import { gestionAcademica, identidad } from "@/services/api/modules";
-import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import { syncRangeOnEndChange, syncRangeOnStartChange } from "@/lib/date-range";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {

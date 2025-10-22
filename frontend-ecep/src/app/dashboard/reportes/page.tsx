@@ -902,7 +902,7 @@ export default function ReportesPage() {
     ];
 
     return { section, sorted, chartData };
-  }, [approvalSort, selectedApprovalSection]);
+  }, [approvalData.sections, approvalSort, selectedApprovalSection]);
 
   // Asistencias ---------------------------------------------------------------
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);

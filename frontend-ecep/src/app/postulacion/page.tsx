@@ -1455,6 +1455,7 @@ export default function PostulacionPage() {
       >
         <DialogContent
           className="sm:max-w-md"
+          hideCloseButton
           onInteractOutside={(event) => {
             if (!dniGateCompleted) event.preventDefault();
           }}
@@ -1487,7 +1488,10 @@ export default function PostulacionPage() {
                 }}
               />
               {dniGateError ? (
-                <p className="text-sm text-destructive">{dniGateError}</p>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{dniGateError}</AlertDescription>
+                </Alert>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Ingresá el DNI sin puntos para continuar con la solicitud.

@@ -707,8 +707,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         // ADMIN
         Persona directoraP = ensurePersona("Nancy", "Carbone", "9999999");
         directoraP = ensurePersonaCredentials(directoraP,
-                "admin@example.com",
-                "admin123",
+                "nancyc@email.com",
+                "123",
                 Set.of(UserRole.TEACHER, UserRole.ALTERNATE, UserRole.FAMILY, UserRole.DIRECTOR));
         ensureEmpleado(directoraP, per -> {
             per.setCuil("20123456789");
@@ -726,9 +726,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         administradoraP.setTelefono("1145678900");
         administradoraP.setCelular("1198765432");
         administradoraP = ensurePersonaCredentials(administradoraP,
-                "debora.roman@example.com",
-                "admin456",
-                Set.of(UserRole.ADMIN, UserRole.DIRECTOR));
+                "deborar@email.com",
+                "123",
+                Set.of(UserRole.ADMIN));
         ensureEmpleado(administradoraP, per -> {
             per.setCuil("27234567891");
             per.setCargo("Administradora General");
@@ -747,8 +747,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         josefinaP.setTelefono("12344321");
         josefinaP.setCelular("1231434321");
         josefinaP = ensurePersonaCredentials(josefinaP,
-                "user@example.com",
-                "user123",
+                "joseb@email.com",
+                "123",
                 Set.of(UserRole.SECRETARY));
 
         ensureEmpleado(josefinaP, per -> {

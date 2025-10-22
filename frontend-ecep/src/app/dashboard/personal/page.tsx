@@ -1130,6 +1130,19 @@ export default function PersonalPage() {
   const [newEmpleadoCuilSuffix, setNewEmpleadoCuilSuffix] = useState("");
   const [newSeccionIds, setNewSeccionIds] = useState<number[]>([]);
   const [newMateriaIds, setNewMateriaIds] = useState<number[]>([]);
+  const [pendingNewSeccionReplace, setPendingNewSeccionReplace] = useState<{
+    seccionId: number;
+    seccionLabel: string;
+    titular: TitularInfo;
+    targetIds: number[];
+  } | null>(null);
+  const [pendingNewMateriaReplace, setPendingNewMateriaReplace] = useState<{
+    seccionMateriaId: number;
+    materiaNombre: string;
+    seccionLabel: string;
+    titular: TitularInfo;
+    targetIds: number[];
+  } | null>(null);
   const [newFormaciones, setNewFormaciones] = useState<NewFormacionEntry[]>([
     { ...initialFormacionEntry },
   ]);
@@ -1233,6 +1246,8 @@ export default function PersonalPage() {
     setNewEmpleadoCuilSuffix("");
     setNewSeccionIds([]);
     setNewMateriaIds([]);
+    setPendingNewSeccionReplace(null);
+    setPendingNewMateriaReplace(null);
   }, []);
 
   const resetEditForm = useCallback(() => {
@@ -1939,6 +1954,12 @@ export default function PersonalPage() {
         if (metadata.nivel) {
           descriptionParts.push(formatNivel(metadata.nivel));
         }
+        const titular = titularSeccionMap.get(id) ?? null;
+        descriptionParts.push(
+          titular
+            ? `Titular actual: ${titular.nombre}`
+            : "Sin titular asignado",
+        );
         return {
           id,
           label: metadata.label,
@@ -1953,7 +1974,7 @@ export default function PersonalPage() {
     );
   }, [seccionMetadataById, titularSeccionMap]);
 
-  const materiaMultiOptions = useMemo(() => {
+  const materiaInfoById = useMemo(() => {
     const materiaNombreMap = new Map<number, string>();
     availableMaterias.forEach((materia) => {
       if (typeof materia.id === "number") {
@@ -1964,22 +1985,51 @@ export default function PersonalPage() {
       }
     });
 
-    return availableSeccionMaterias
-      .filter(
-        (sm): sm is SeccionMateriaDTO & { id: number } =>
-          typeof sm.id === "number" &&
-          typeof sm.seccionId === "number" &&
-          typeof sm.materiaId === "number",
-      )
-      .map((sm) => {
-        const seccionMeta = seccionMetadataById.get(sm.seccionId!);
-        const materiaNombre =
-          materiaNombreMap.get(sm.materiaId!) ?? `Materia #${sm.materiaId}`;
-        const seccionLabel = seccionMeta?.label ?? "Sección";
+    const map = new Map<
+      number,
+      { materiaNombre: string; seccionLabel: string; titular: TitularInfo | null }
+    >();
+
+    availableSeccionMaterias.forEach((sm) => {
+      if (
+        typeof sm.id !== "number" ||
+        typeof sm.seccionId !== "number" ||
+        typeof sm.materiaId !== "number"
+      ) {
+        return;
+      }
+      const seccionMeta = seccionMetadataById.get(sm.seccionId);
+      const seccionLabel = seccionMeta?.label ?? `Sección #${sm.seccionId}`;
+      const materiaNombre =
+        materiaNombreMap.get(sm.materiaId) ?? `Materia #${sm.materiaId}`;
+      map.set(sm.id, {
+        materiaNombre,
+        seccionLabel,
+        titular: titularMateriaMap.get(sm.id) ?? null,
+      });
+    });
+
+    return map;
+  }, [
+    availableMaterias,
+    availableSeccionMaterias,
+    seccionMetadataById,
+    titularMateriaMap,
+  ]);
+
+  const materiaMultiOptions = useMemo(() => {
+    return Array.from(materiaInfoById.entries())
+      .map(([id, info]) => {
+        const descriptionParts = [info.seccionLabel];
+        descriptionParts.push(
+          info.titular
+            ? `Titular actual: ${info.titular.nombre}`
+            : "Sin titular asignado",
+        );
         return {
-          id: sm.id!,
-          label: materiaNombre,
-          description: seccionLabel,
+          id,
+          label: info.materiaNombre,
+          description: descriptionParts.join(" • "),
         };
       })
       .sort((a, b) => {
@@ -1993,7 +2043,7 @@ export default function PersonalPage() {
         const descB = b.description ?? "";
         return descA.localeCompare(descB, "es", { sensitivity: "base" });
       });
-  }, [availableMaterias, availableSeccionMaterias, seccionMetadataById]);
+  }, [materiaInfoById]);
 
   const materiaSelectionGroups = useMemo(() => {
     const materiaNombreMap = new Map<number, string>();
@@ -2059,6 +2109,88 @@ export default function PersonalPage() {
     titularMateriaMap,
     titularSeccionMap,
   ]);
+
+  const handleNewSeccionesChange = useCallback(
+    (ids: number[]) => {
+      if (ids.length > 2) {
+        toast.error("Podés asignar hasta dos secciones como titulares.");
+      }
+      const trimmed = ids.slice(0, 2);
+      const normalized = Array.from(new Set(trimmed));
+      const newSelection = normalized.find((id) => !newSeccionIds.includes(id));
+      if (typeof newSelection === "number") {
+        const titular = titularSeccionMap.get(newSelection);
+        if (titular) {
+          const seccionLabel =
+            seccionMetadataById.get(newSelection)?.label ??
+            `Sección #${newSelection}`;
+          setPendingNewSeccionReplace({
+            seccionId: newSelection,
+            seccionLabel,
+            titular,
+            targetIds: normalized,
+          });
+          return;
+        }
+      }
+      setNewSeccionIds(normalized);
+    },
+    [
+      newSeccionIds,
+      seccionMetadataById,
+      setNewSeccionIds,
+      setPendingNewSeccionReplace,
+      titularSeccionMap,
+    ],
+  );
+
+  const handleConfirmNewSeccionReplace = useCallback(() => {
+    if (!pendingNewSeccionReplace) {
+      return;
+    }
+    setNewSeccionIds(pendingNewSeccionReplace.targetIds);
+    setPendingNewSeccionReplace(null);
+  }, [pendingNewSeccionReplace, setNewSeccionIds]);
+
+  const handleNewMateriasChange = useCallback(
+    (ids: number[]) => {
+      const normalized = Array.from(new Set(ids));
+      const newSelection = normalized.find((id) => !newMateriaIds.includes(id));
+      if (typeof newSelection === "number") {
+        const titular = titularMateriaMap.get(newSelection);
+        if (titular) {
+          const materiaInfo = materiaInfoById.get(newSelection);
+          const materiaNombre =
+            materiaInfo?.materiaNombre ?? `Materia #${newSelection}`;
+          const seccionLabel = materiaInfo?.seccionLabel ?? "Sección";
+          setPendingNewMateriaReplace({
+            seccionMateriaId: newSelection,
+            materiaNombre,
+            seccionLabel,
+            titular,
+            targetIds: normalized,
+          });
+          return;
+        }
+      }
+      setNewMateriaIds(normalized);
+    },
+    [
+      materiaInfoById,
+      newMateriaIds,
+      setNewMateriaIds,
+      setPendingNewMateriaReplace,
+      titularMateriaMap,
+    ],
+  );
+
+  const handleConfirmNewMateriaReplace = useCallback(() => {
+    if (!pendingNewMateriaReplace) {
+      return;
+    }
+    setNewMateriaIds(pendingNewMateriaReplace.targetIds);
+    setPendingNewMateriaReplace(null);
+  }, [pendingNewMateriaReplace, setNewMateriaIds]);
 
   const syncEmployeeAssignments = useCallback(
     async ({
@@ -6346,14 +6478,7 @@ export default function PersonalPage() {
                     placeholder="Seleccioná las secciones"
                     options={seccionMultiOptions}
                     selectedIds={newSeccionIds}
-                    onChange={(ids) => {
-                      if (ids.length > 2) {
-                        toast.error(
-                          "Podés asignar hasta dos secciones como titulares.",
-                        );
-                      }
-                      setNewSeccionIds(ids.slice(0, 2));
-                    }}
+                    onChange={handleNewSeccionesChange}
                     summaryEmptyText="Seleccioná las secciones correspondientes o dejalo vacío."
                   />
                   <MultiSelectControl
@@ -6361,11 +6486,69 @@ export default function PersonalPage() {
                     placeholder="Seleccioná las materias"
                     options={materiaMultiOptions}
                     selectedIds={newMateriaIds}
-                    onChange={(ids) => setNewMateriaIds(ids)}
+                    onChange={handleNewMateriasChange}
                     badgeVariant="outline"
                     summaryEmptyText="Seleccioná las materias correspondientes o dejalo vacío."
                   />
                 </div>
+                <AlertDialog
+                  open={pendingNewSeccionReplace !== null}
+                  onOpenChange={(next) => {
+                    if (!next) {
+                      setPendingNewSeccionReplace(null);
+                    }
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Reemplazar titular?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {pendingNewSeccionReplace
+                          ? `La sección ${pendingNewSeccionReplace.seccionLabel} ya tiene un titular asignado (${pendingNewSeccionReplace.titular.nombre}). ¿Querés reemplazarlo?`
+                          : null}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        onClick={() => setPendingNewSeccionReplace(null)}
+                      >
+                        Cancelar
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmNewSeccionReplace}>
+                        Reemplazar titular
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog
+                  open={pendingNewMateriaReplace !== null}
+                  onOpenChange={(next) => {
+                    if (!next) {
+                      setPendingNewMateriaReplace(null);
+                    }
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Reemplazar titular?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {pendingNewMateriaReplace
+                          ? `La materia ${pendingNewMateriaReplace.materiaNombre} de ${pendingNewMateriaReplace.seccionLabel} ya tiene un titular asignado (${pendingNewMateriaReplace.titular.nombre}). ¿Querés reemplazarlo?`
+                          : null}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        onClick={() => setPendingNewMateriaReplace(null)}
+                      >
+                        Cancelar
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmNewMateriaReplace}>
+                        Reemplazar titular
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </section>
 
               <section className="space-y-4">

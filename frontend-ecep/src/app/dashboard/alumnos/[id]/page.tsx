@@ -61,7 +61,12 @@ const logAlumnoError = (error: unknown, message?: string) => {
   }
 };
 import { useAuth } from "@/hooks/useAuth";
-import { formatDni } from "@/lib/form-utils";
+import {
+  formatDni,
+  isBirthDateValid,
+  maxBirthDate,
+  onlyDigits,
+} from "@/lib/form-utils";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {
   DEFAULT_GENERO_VALUE,
@@ -73,7 +78,6 @@ import {
   identidad,
   vidaEscolar,
 } from "@/services/api/modules";
-import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import type {
   AlumnoDTO,
   FamiliarDTO,
@@ -887,7 +891,7 @@ export default function AlumnoPerfilPage() {
       genero: normalizeGenero(persona?.genero) || DEFAULT_GENERO_VALUE,
       nacionalidad: persona?.nacionalidad ?? "",
       domicilio: persona?.domicilio ?? "",
-      celular: persona?.celular ?? "",
+      celular: persona?.celular ? onlyDigits(persona.celular) : "",
       email: persona?.email ?? "",
     });
     setAlumnoDraft({
@@ -1013,8 +1017,12 @@ export default function AlumnoPerfilPage() {
               apellido: personaData.apellido ?? "",
               dni: formatDni(personaData.dni ?? dni),
               email: personaData.email ?? "",
-              telefono: personaData.telefono ?? "",
-              celular: personaData.celular ?? "",
+              telefono: personaData.telefono
+                ? onlyDigits(personaData.telefono)
+                : "",
+              celular: personaData.celular
+                ? onlyDigits(personaData.celular)
+                : "",
             }));
           }
           setAddPersonaId(Number(personaId));
@@ -1098,7 +1106,7 @@ export default function AlumnoPerfilPage() {
         genero: personaDraft.genero || undefined,
         nacionalidad: personaDraft.nacionalidad || undefined,
         domicilio: personaDraft.domicilio || undefined,
-        celular: personaDraft.celular.trim() || undefined,
+        celular: onlyDigits(personaDraft.celular) || undefined,
         email: personaDraft.email || undefined,
       };
       const personaUpdatePayload: PersonaUpdateDTO = {
@@ -1465,8 +1473,8 @@ export default function AlumnoPerfilPage() {
         apellido: addPersonaDraft.apellido.trim(),
         dni: addDniValue,
         email: addPersonaDraft.email.trim() || undefined,
-        telefono: addPersonaDraft.telefono.trim() || undefined,
-        celular: addPersonaDraft.celular.trim() || undefined,
+        telefono: onlyDigits(addPersonaDraft.telefono) || undefined,
+        celular: onlyDigits(addPersonaDraft.celular) || undefined,
       };
 
       if (personaId) {
@@ -1789,11 +1797,14 @@ export default function AlumnoPerfilPage() {
                       <div className="space-y-2">
                         <Label>Celular</Label>
                         <Input
+                          type="tel"
+                          inputMode="numeric"
+                          pattern="\\d*"
                           value={personaDraft.celular}
                           onChange={(e) =>
                             setPersonaDraft((prev) => ({
                               ...prev,
-                              celular: e.target.value,
+                              celular: onlyDigits(e.target.value),
                             }))
                           }
                         />
@@ -2754,11 +2765,14 @@ export default function AlumnoPerfilPage() {
                             <div className="space-y-2">
                               <Label>Teléfono</Label>
                               <Input
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="\\d*"
                                 value={addPersonaDraft.telefono}
                                 onChange={(e) =>
                                   setAddPersonaDraft((prev) => ({
                                     ...prev,
-                                    telefono: e.target.value,
+                                    telefono: onlyDigits(e.target.value),
                                   }))
                                 }
                                 disabled={savingFamily}
@@ -2767,11 +2781,14 @@ export default function AlumnoPerfilPage() {
                             <div className="space-y-2">
                               <Label>Celular</Label>
                               <Input
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="\\d*"
                                 value={addPersonaDraft.celular}
                                 onChange={(e) =>
                                   setAddPersonaDraft((prev) => ({
                                     ...prev,
-                                    celular: e.target.value,
+                                    celular: onlyDigits(e.target.value),
                                   }))
                                 }
                                 disabled={savingFamily}

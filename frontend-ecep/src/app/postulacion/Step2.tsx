@@ -16,8 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { formatDni } from "@/lib/form-utils";
-import { maxBirthDate } from "@/lib/form-utils";
+import { formatDni, maxBirthDate, onlyDigits } from "@/lib/form-utils";
 import { RolVinculo } from "@/types/api-generated";
 import type { FamiliarForm, PostulacionFormData } from "./types";
 
@@ -274,14 +273,18 @@ export function Step2({
                 <Label htmlFor={`familiar-telefono-${i}`}>Teléfono</Label>
                 <Input
                   id={`familiar-telefono-${i}`}
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="\\d*"
                   value={f.familiar?.telefono ?? ""}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const telefono = onlyDigits(event.target.value);
                     updateFamiliarPersona(
                       i,
-                      { telefono: event.target.value },
+                      { telefono },
                       `familiares.${i}.familiar.telefono`,
-                    )
-                  }
+                    );
+                  }}
                   placeholder="11-1234-5678"
                   aria-invalid={telefonoError || undefined}
                   className={cn(telefonoError && "border-destructive")}
@@ -294,14 +297,18 @@ export function Step2({
                 <Label htmlFor={`familiar-celular-${i}`}>Celular</Label>
                 <Input
                   id={`familiar-celular-${i}`}
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="\\d*"
                   value={f.familiar?.celular ?? ""}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const celular = onlyDigits(event.target.value);
                     updateFamiliarPersona(
                       i,
-                      { celular: event.target.value },
+                      { celular },
                       `familiares.${i}.familiar.celular`,
-                    )
-                  }
+                    );
+                  }}
                   placeholder="11-1234-5678"
                   aria-invalid={celularError || undefined}
                   className={cn(celularError && "border-destructive")}

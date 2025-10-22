@@ -1336,11 +1336,11 @@ export default function PostulacionPage() {
     toast.info("Ingresá el nuevo DNI para iniciar otra solicitud.");
   };
 
-  const handleStartNewSubmission = () => {
+  function handleStartNewSubmission() {
     clearDraft();
     resetFormState();
     restartDraftTracking();
-  };
+  }
 
   const renderStep = () => {
     switch (currentStep) {

@@ -92,6 +92,8 @@ import {
   onlyDigits,
 } from "@/lib/form-utils";
 import { gestionAcademica, identidad } from "@/services/api/modules";
+import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
+import { syncRangeOnEndChange, syncRangeOnStartChange } from "@/lib/date-range";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {
   DEFAULT_GENERO_VALUE,
@@ -6855,11 +6857,15 @@ export default function PersonalPage() {
                         if (!value) {
                           return { ...prev, fechaInicio: "" };
                         }
-                        const next = { ...prev, fechaInicio: value };
-                        if (prev.fechaFin && prev.fechaFin < value) {
-                          next.fechaFin = value;
-                        }
-                        return next;
+                        const { start, end } = syncRangeOnStartChange(
+                          value,
+                          prev.fechaFin,
+                        );
+                        return {
+                          ...prev,
+                          fechaInicio: start,
+                          fechaFin: end,
+                        };
                       });
                     }}
                     required
@@ -6876,10 +6882,15 @@ export default function PersonalPage() {
                         if (!value) {
                           return { ...prev, fechaFin: "" };
                         }
-                        if (prev.fechaInicio && value < prev.fechaInicio) {
-                          return { ...prev, fechaFin: prev.fechaInicio };
-                        }
-                        return { ...prev, fechaFin: value };
+                        const { start, end } = syncRangeOnEndChange(
+                          prev.fechaInicio,
+                          value,
+                        );
+                        return {
+                          ...prev,
+                          fechaInicio: start,
+                          fechaFin: end,
+                        };
                       });
                     }}
                   />

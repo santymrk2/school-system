@@ -44,6 +44,7 @@ import { Users, Search } from "lucide-react";
 import type { AttendanceSummarySection } from "../types";
 import { formatPercent } from "../utils";
 import { PIE_COLORS } from "../constants";
+import { syncRangeOnEndChange, syncRangeOnStartChange } from "@/lib/date-range";
 
 export type AttendanceSectionOption = {
   id: string;
@@ -109,9 +110,13 @@ export function AttendanceReport({
                   setAttendanceFrom("");
                   return;
                 }
-                if (attendanceTo && value > attendanceTo) {
-                  setAttendanceFrom(attendanceTo);
-                  return;
+                const { start, end } = syncRangeOnStartChange(
+                  value,
+                  attendanceTo || null,
+                );
+                setAttendanceFrom(start);
+                if ((attendanceTo || "") !== end) {
+                  setAttendanceTo(end);
                 }
                 setAttendanceFrom(value);
               }}
@@ -125,11 +130,14 @@ export function AttendanceReport({
                   setAttendanceTo("");
                   return;
                 }
-                if (attendanceFrom && value < attendanceFrom) {
-                  setAttendanceTo(attendanceFrom);
-                  return;
+                const { start, end } = syncRangeOnEndChange(
+                  attendanceFrom || null,
+                  value,
+                );
+                if ((attendanceFrom || "") !== start) {
+                  setAttendanceFrom(start);
                 }
-                setAttendanceTo(value);
+                setAttendanceTo(end);
               }}
             />
             <div className="md:col-span-2">

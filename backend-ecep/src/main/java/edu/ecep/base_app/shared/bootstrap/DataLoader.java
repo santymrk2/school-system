@@ -11,6 +11,7 @@ import edu.ecep.base_app.calendario.infrastructure.persistence.*;
 import edu.ecep.base_app.comunicacion.domain.*;
 import edu.ecep.base_app.comunicacion.infrastructure.persistence.*;
 import edu.ecep.base_app.finanzas.domain.*;
+import edu.ecep.base_app.finanzas.domain.enums.*;
 import edu.ecep.base_app.finanzas.infrastructure.persistence.*;
 import edu.ecep.base_app.gestionacademica.domain.*;
 import edu.ecep.base_app.gestionacademica.domain.enums.*;
@@ -22,6 +23,7 @@ import edu.ecep.base_app.shared.domain.enums.*;
 import edu.ecep.base_app.vidaescolar.domain.*;
 import edu.ecep.base_app.vidaescolar.domain.enums.*;
 import edu.ecep.base_app.vidaescolar.infrastructure.persistence.*;
+import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
@@ -81,6 +83,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
     private final SolicitudAdmisionRepository solicitudAdmisionRepository;
     private final LicenciaRepository licenciaRepository;
     private final ActaAccidenteRepository actaAccidenteRepository;
+
+    private final CuotaRepository cuotaRepository;
+    private final InformeInicialRepository informeInicialRepository;
 
     @Override
     @Transactional
@@ -457,6 +462,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             ));
 
         }
+
+        enriquecerDatosEspecificos2025(docentes, datosSecciones2025, t1_2025, t2_2025);
 
         for (SeccionData data : datosSecciones2024) {
             if (data.seccion().getNivel() != NivelAcademico.PRIMARIO) {
@@ -1199,6 +1206,258 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             h.setDesde(desde);
             matSecHistRepository.save(h);
         }
+    }
+
+    private void enriquecerDatosEspecificos2025(Map<String, Empleado> docentes,
+                                                List<SeccionData> datosSecciones,
+                                                Trimestre trimestre1,
+                                                Trimestre trimestre2) {
+        if (datosSecciones == null || datosSecciones.isEmpty()) {
+            return;
+        }
+
+        SeccionData primaria1A = buscarSeccionData(datosSecciones, NivelAcademico.PRIMARIO, "1°", "A");
+        SeccionData inicial2A = buscarSeccionData(datosSecciones, NivelAcademico.INICIAL, "2 Seccion", "A");
+
+        if (primaria1A != null) {
+            if (trimestre1 != null) {
+                generarAsistenciasRango(List.of(primaria1A.seccion()), trimestre1.getInicio(), trimestre1.getFin(), trimestre1);
+                crearEvaluacionConResultados(primaria1A, trimestre1, "Ciencias Sociales", LocalDate.of(2025, 5, 20), 0.30);
+            }
+            if (trimestre2 != null) {
+                LocalDate limiteT2 = trimestre2.getInicio().plusWeeks(4);
+                if (trimestre2.getFin() != null && limiteT2.isAfter(trimestre2.getFin())) {
+                    limiteT2 = trimestre2.getFin();
+                }
+                generarAsistenciasRango(List.of(primaria1A.seccion()), trimestre2.getInicio(), limiteT2, trimestre2);
+                crearEvaluacionConResultados(primaria1A, trimestre2, "Ciencias Naturales", LocalDate.of(2025, 7, 3), 0.30);
+                crearEvaluacionConResultados(primaria1A, trimestre2, "Inglés", LocalDate.of(2025, 7, 17), 0.20);
+                crearEvaluacionConResultados(primaria1A, trimestre2, "Matemática", LocalDate.of(2025, 8, 7), 0.30);
+                asignarCalificaciones(primaria1A, trimestre2, List.of(
+                        calificacion("Ciencias Naturales", 8.9, CalificacionConceptual.MUY_BUENO,
+                                "Integra observaciones en experiencias de laboratorio."),
+                        calificacion("Inglés", 8.2, CalificacionConceptual.MUY_BUENO,
+                                "Comprende consignas orales y responde con vocabulario específico."),
+                        calificacion("Matemática", 8.6, CalificacionConceptual.MUY_BUENO,
+                                "Resuelve operaciones con y sin material concreto.")
+                ));
+            }
+            crearCuotasPrimaria1A(primaria1A);
+            crearActasPrimaria1A(primaria1A, docentes);
+        }
+
+        if (inicial2A != null) {
+            if (trimestre1 != null) {
+                generarAsistenciasRango(List.of(inicial2A.seccion()), trimestre1.getInicio(), trimestre1.getFin(), trimestre1);
+                crearInformesIniciales(inicial2A, trimestre1, false);
+            }
+            if (trimestre2 != null) {
+                LocalDate limiteT2 = trimestre2.getInicio().plusWeeks(4);
+                if (trimestre2.getFin() != null && limiteT2.isAfter(trimestre2.getFin())) {
+                    limiteT2 = trimestre2.getFin();
+                }
+                generarAsistenciasRango(List.of(inicial2A.seccion()), trimestre2.getInicio(), limiteT2, trimestre2);
+                crearInformesIniciales(inicial2A, trimestre2, true);
+            }
+            crearActasInicial2A(inicial2A, docentes);
+            crearCuotasInicial2A(inicial2A);
+        }
+    }
+
+    private SeccionData buscarSeccionData(List<SeccionData> datos, NivelAcademico nivel, String grado, String division) {
+        if (datos == null) {
+            return null;
+        }
+        return datos.stream()
+                .filter(data -> data != null
+                        && data.seccion() != null
+                        && data.seccion().getNivel() == nivel
+                        && grado.equals(data.seccion().getGradoSala())
+                        && division.equals(data.seccion().getDivision()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void crearCuotasPrimaria1A(SeccionData data) {
+        if (data == null || data.matriculas().isEmpty()) {
+            return;
+        }
+        Matricula titular = data.matriculas().get(0);
+        crearCuotaDemo(titular, ConceptoCuota.MENSUALIDAD, 2025, 3,
+                new BigDecimal("45000"), LocalDate.of(2025, 3, 10), BigDecimal.ZERO, EstadoCuota.PAGADA,
+                String.format("PRI1A-2025-03-%d", titular.getId()),
+                "Cuota de marzo abonada en ventanilla.");
+        crearCuotaDemo(titular, ConceptoCuota.MENSUALIDAD, 2025, 4,
+                new BigDecimal("45000"), LocalDate.of(2025, 4, 10), new BigDecimal("5"), EstadoCuota.PENDIENTE,
+                String.format("PRI1A-2025-04-%d", titular.getId()),
+                "Pendiente de pago antes del cierre del trimestre.");
+
+        if (data.matriculas().size() > 1) {
+            Matricula segunda = data.matriculas().get(1);
+            crearCuotaDemo(segunda, ConceptoCuota.MATERIALES, 2025, null,
+                    new BigDecimal("18500"), LocalDate.of(2025, 5, 5), BigDecimal.ZERO, EstadoCuota.PAGADA,
+                    String.format("PRI1A-MAT-2025-%d", segunda.getId()),
+                    "Materiales complementarios para proyecto de ciencias.");
+        }
+    }
+
+    private void crearCuotasInicial2A(SeccionData data) {
+        if (data == null || data.matriculas().isEmpty()) {
+            return;
+        }
+        Matricula titular = data.matriculas().get(0);
+        crearCuotaDemo(titular, ConceptoCuota.MENSUALIDAD, 2025, 3,
+                new BigDecimal("42000"), LocalDate.of(2025, 3, 5), new BigDecimal("5"), EstadoCuota.PAGADA,
+                String.format("INI2A-2025-03-%d", titular.getId()),
+                "Mensualidad de marzo abonada con descuento por pronto pago.");
+
+        if (data.matriculas().size() > 2) {
+            Matricula excursion = data.matriculas().get(2);
+            crearCuotaDemo(excursion, ConceptoCuota.OTROS, 2025, null,
+                    new BigDecimal("9500"), LocalDate.of(2025, 6, 15), BigDecimal.ZERO, EstadoCuota.PENDIENTE,
+                    String.format("INI2A-EXC-2025-%d", excursion.getId()),
+                    "Salida educativa al teatro programada para el segundo trimestre.");
+        }
+    }
+
+    private void crearActasPrimaria1A(SeccionData data, Map<String, Empleado> docentes) {
+        if (data == null || data.matriculas().isEmpty() || docentes == null || docentes.isEmpty()) {
+            return;
+        }
+        Empleado titular1A = docentes.get("DOC_PRI_1A");
+        if (titular1A != null) {
+            Alumno alumnoTrimestre1 = data.matriculas().get(0).getAlumno();
+            if (alumnoTrimestre1 != null) {
+                crearActaAccidenteDemo(alumnoTrimestre1, titular1A, docentes.get("DOC_TUTOR"),
+                        LocalDate.of(2025, 3, 25), LocalTime.of(8, 40),
+                        "Aula 1A",
+                        "Durante una actividad artística se pinchó el dedo con un escarbadientes.",
+                        "Se desinfectó la zona, se colocó curita y se notificó a la familia por cuaderno digital.",
+                        EstadoActaAccidente.CERRADA, "soporte@ecep.demo");
+            }
+        }
+
+        if (data.matriculas().size() > 5) {
+            Alumno alumnoTrimestre2 = data.matriculas().get(5).getAlumno();
+            Empleado edFis = docentes.get("DOC_EDFIS");
+            if (alumnoTrimestre2 != null && edFis != null && titular1A != null) {
+                crearActaAccidenteDemo(alumnoTrimestre2, edFis, titular1A,
+                        LocalDate.of(2025, 6, 5), LocalTime.of(11, 5),
+                        "Gimnasio cubierto",
+                        "Al finalizar la clase resbaló y se torció levemente el tobillo derecho.",
+                        "Se aplicó hielo, se recomendó control médico preventivo y se informó a la dirección.",
+                        EstadoActaAccidente.BORRADOR, "soporte@ecep.demo");
+            }
+        }
+    }
+
+    private void crearActasInicial2A(SeccionData data, Map<String, Empleado> docentes) {
+        if (data == null || data.matriculas().isEmpty() || docentes == null || docentes.isEmpty()) {
+            return;
+        }
+
+        Empleado titular = docentes.get("DOC_INI_2A");
+        if (titular != null) {
+            Alumno alumnoTrimestre1 = data.matriculas().get(0).getAlumno();
+            if (alumnoTrimestre1 != null) {
+                crearActaAccidenteDemo(alumnoTrimestre1, titular, docentes.get("DOC_PSICOMOTRICIDAD"),
+                        LocalDate.of(2025, 4, 9), LocalTime.of(9, 20),
+                        "Sala 2A",
+                        "Se resbaló en el sector de construcción y se golpeó la rodilla izquierda.",
+                        "Se higienizó la zona, se contuvo al alumno y se comunicó la novedad por la app institucional.",
+                        EstadoActaAccidente.CERRADA, "inicial@ecep.demo");
+            }
+        }
+
+        if (data.matriculas().size() > 3 && titular != null) {
+            Alumno alumnoTrimestre2 = data.matriculas().get(3).getAlumno();
+            if (alumnoTrimestre2 != null) {
+                crearActaAccidenteDemo(alumnoTrimestre2, titular, null,
+                        LocalDate.of(2025, 7, 2), LocalTime.of(10, 5),
+                        "Patio de juegos",
+                        "Tropezó al subir al tobogán y presentó un raspón superficial en el codo.",
+                        "Se limpió con solución antiséptica y se sugirió controlarlo en casa.",
+                        EstadoActaAccidente.BORRADOR, "inicial@ecep.demo");
+            }
+        }
+    }
+
+    private void crearInformesIniciales(SeccionData data, Trimestre trimestre, boolean publicar) {
+        if (data == null || trimestre == null) {
+            return;
+        }
+        String ordinal = trimestre.getOrden() != null ? trimestre.getOrden() + "°" : "";
+        String[] observaciones = {
+                "construye vínculos positivos con sus compañeros y respeta los tiempos de espera",
+                "explora materiales plásticos con creatividad y comparte sus producciones",
+                "participa con entusiasmo en las rondas de canciones y relatos"
+        };
+
+        for (int i = 0; i < data.matriculas().size(); i++) {
+            Matricula matricula = data.matriculas().get(i);
+            if (matricula == null || matricula.getId() == null) {
+                continue;
+            }
+            if (informeInicialRepository.existsByTrimestreIdAndMatriculaId(trimestre.getId(), matricula.getId())) {
+                continue;
+            }
+
+            Alumno alumno = matricula.getAlumno();
+            Persona persona = alumno != null ? alumno.getPersona() : null;
+            String nombre = persona != null ? persona.getNombre() : null;
+            String apellido = persona != null ? persona.getApellido() : null;
+            String nombreCompleto = Stream.of(nombre, apellido)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.joining(" "));
+            if (nombreCompleto.isEmpty()) {
+                nombreCompleto = "El estudiante";
+            }
+
+            String comentario = observaciones[i % observaciones.length];
+            String seguimiento = publicar
+                    ? "Se envió el informe a la familia con sugerencias de continuidad."
+                    : "El equipo docente revisará el informe antes de compartirlo con la familia.";
+            String descripcion = String.format("%s en el %s trimestre %s. %s",
+                    nombreCompleto, ordinal, comentario, seguimiento);
+
+            InformeInicial informe = new InformeInicial();
+            informe.setTrimestre(trimestre);
+            informe.setMatricula(matricula);
+            informe.setDescripcion(descripcion);
+            informe.setPublicado(publicar);
+            informeInicialRepository.save(informe);
+        }
+    }
+
+    private void crearCuotaDemo(Matricula matricula, ConceptoCuota concepto, int anio, Integer mes,
+                                BigDecimal importe, LocalDate vencimiento, BigDecimal recargo,
+                                EstadoCuota estado, String codigoPago, String observaciones) {
+        if (matricula == null || matricula.getId() == null || concepto == null || importe == null
+                || vencimiento == null || codigoPago == null) {
+            return;
+        }
+
+        boolean existe = mes != null
+                ? cuotaRepository.existsByMatriculaIdAndAnioAndMesAndConcepto(matricula.getId(), anio, mes, concepto)
+                : cuotaRepository.existsByMatriculaIdAndAnioAndConcepto(matricula.getId(), anio, concepto);
+        if (existe || cuotaRepository.existsByCodigoPago(codigoPago)) {
+            return;
+        }
+
+        Cuota cuota = new Cuota();
+        cuota.setMatricula(matricula);
+        cuota.setConcepto(concepto);
+        cuota.setAnio(anio);
+        cuota.setMes(mes);
+        cuota.setImporte(importe);
+        cuota.setFechaVencimiento(vencimiento);
+        cuota.setPorcentajeRecargo(recargo != null ? recargo : BigDecimal.ZERO);
+        cuota.setEstado(estado != null ? estado : EstadoCuota.PENDIENTE);
+        cuota.setCodigoPago(codigoPago);
+        cuota.setObservaciones(observaciones);
+        cuotaRepository.save(cuota);
     }
 
     private void cerrarHistorialPeriodo(List<SeccionData> datos, LocalDate hasta) {

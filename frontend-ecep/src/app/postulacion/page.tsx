@@ -730,17 +730,48 @@ export default function PostulacionPage() {
     }
   };
 
-  const addFamiliar = () => {
-    setFormData((prev) => ({
-      ...prev,
-      familiares: [...(prev.familiares ?? []), createEmptyFamiliar()],
-    }));
+  const addFamiliar = (dni: string): boolean => {
+    const normalizedDni = formatDni(dni);
+    if (!normalizedDni) {
+      return false;
+    }
+
+    const familiares = formData.familiares ?? [];
+    const dniExists = familiares.some((entry) => {
+      const current = formatDni(entry.familiar?.dni ?? "");
+      return current === normalizedDni;
+    });
+
+    if (dniExists) {
+      toast.error("Ya agregaste un familiar con este DNI.");
+      return false;
+    }
+
+    setFormData((prev) => {
+      const previousFamiliares = prev.familiares ?? [];
+      const base = createEmptyFamiliar();
+      const familiarWithDni: FamiliarForm = {
+        ...base,
+        familiar: {
+          ...base.familiar,
+          dni: normalizedDni,
+        },
+      };
+
+      return {
+        ...prev,
+        familiares: [...previousFamiliares, familiarWithDni],
+      };
+    });
+
     setErrors((prev) => {
       if (!prev.familiares) return prev;
       const next = { ...prev };
       delete next.familiares;
       return next;
     });
+
+    return true;
   };
 
   const isValidRolVinculo = (value?: string | null): value is DTO.RolVinculo => {

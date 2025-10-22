@@ -1,8 +1,8 @@
 // components/Step2.tsx
 "use client";
 
-import React from "react";
-import { Users, Plus } from "lucide-react";
+import React, { useState } from "react";
+import { Loader2, Plus, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,14 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatDni } from "@/lib/form-utils";
 import { maxBirthDate } from "@/lib/form-utils";
@@ -28,7 +36,7 @@ interface Step2Props {
     value: any,
     options?: { errorKeys?: string | string[] },
   ) => void;
-  addFamiliar: () => void;
+  addFamiliar: (dni: string) => boolean | Promise<boolean>;
   errors?: Record<string, boolean>;
 }
 
@@ -39,6 +47,11 @@ export function Step2({
   errors = {},
 }: Step2Props) {
   const familiares = formData.familiares ?? [];
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [dniValue, setDniValue] = useState("");
+  const [dniError, setDniError] = useState<string | null>(null);
+  const [dialogSubmitting, setDialogSubmitting] = useState(false);
+
   const updateFamiliares = (
     index: number,
     producer: (current: FamiliarForm) => FamiliarForm,
@@ -75,6 +88,57 @@ export function Step2({
 
   const hasError = (key: string) => Boolean(errors?.[key]);
 
+  const openAddDialog = () => {
+    setDniValue("");
+    setDniError(null);
+    setAddDialogOpen(true);
+  };
+
+  const closeAddDialog = () => {
+    if (dialogSubmitting) return;
+    setAddDialogOpen(false);
+    setDniError(null);
+  };
+
+  const handleDialogSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    if (dialogSubmitting) return;
+
+    const normalizedDni = formatDni(dniValue);
+    if (!normalizedDni || normalizedDni.length < 7) {
+      setDniError("Ingresá un DNI válido de 7 a 10 dígitos.");
+      return;
+    }
+
+    const dniExists = familiares.some((entry) => {
+      const current = formatDni(entry.familiar?.dni ?? "");
+      return current === normalizedDni;
+    });
+
+    if (dniExists) {
+      setDniError("Ya agregaste un familiar con este DNI.");
+      return;
+    }
+
+    setDialogSubmitting(true);
+    try {
+      const success = await Promise.resolve(addFamiliar(normalizedDni));
+      if (success) {
+        setAddDialogOpen(false);
+        setDniValue("");
+        setDniError(null);
+      } else {
+        setDniError("Ya agregaste un familiar con este DNI.");
+      }
+    } catch (error) {
+      setDniError("No se pudo agregar el familiar. Intentá nuevamente.");
+    } finally {
+      setDialogSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ——— Título + Botón ——— */}
@@ -84,13 +148,78 @@ export function Step2({
         <Button
           variant="outline"
           size="sm"
-          onClick={addFamiliar}
+          onClick={openAddDialog}
           className="ml-auto"
         >
           <Plus className="h-4 w-4 mr-2" />
           Agregar Familiar
         </Button>
       </div>
+
+      <Dialog
+        open={addDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeAddDialog();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar familiar</DialogTitle>
+            <DialogDescription>
+              Ingresá el DNI del familiar que querés añadir a la solicitud.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleDialogSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nuevo-familiar-dni">DNI</Label>
+              <Input
+                id="nuevo-familiar-dni"
+                value={dniValue}
+                onChange={(event) => {
+                  setDniValue(formatDni(event.target.value));
+                  if (dniError) {
+                    setDniError(null);
+                  }
+                }}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="12345678"
+                aria-invalid={dniError ? true : undefined}
+                required
+                autoFocus
+                disabled={dialogSubmitting}
+              />
+              {dniError ? (
+                <p className="text-sm text-destructive">{dniError}</p>
+              ) : null}
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeAddDialog}
+                disabled={dialogSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={dialogSubmitting}>
+                {dialogSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Agregando
+                  </>
+                ) : (
+                  "Continuar"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ——— Feedback si no hay ninguno ——— */}
       {familiares.length === 0 && (

@@ -5,6 +5,12 @@ import type * as DTO from "@/types/api-generated";
 export const personasCore = {
   findIdByDni: (dni: string) => http.get<number>(`/api/personas/dni/${dni}`),
   create: (body: DTO.PersonaCreateDTO) => http.post<number>(`/api/personas`, body),
+  getRoles: (id: number) => http.get<{
+    esAlumno: boolean;
+    esEmpleado: boolean;
+    esFamiliar: boolean;
+    esAspirante: boolean;
+  }>(`/api/personas/${id}/roles`),
   uploadPhoto: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

@@ -31,6 +31,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Download, Search, TimerReset, UserPlus } from "lucide-react";
@@ -148,6 +158,21 @@ export default function AlumnosIndexPage() {
   >([]);
   const [matriculasLoading, setMatriculasLoading] = useState(false);
   const [matriculasError, setMatriculasError] = useState<string | null>(null);
+  const [approveDialogSolicitud, setApproveDialogSolicitud] = useState<
+    DTO.SolicitudBajaAlumnoDTO | null
+  >(null);
+  const [rejectDialogSolicitud, setRejectDialogSolicitud] = useState<
+    DTO.SolicitudBajaAlumnoDTO | null
+  >(null);
+  const [rejectMotivo, setRejectMotivo] = useState("");
+  const [
+    revisionDialog,
+    setRevisionDialog,
+  ] = useState<{
+    solicitud: DTO.SolicitudBajaAlumnoDTO;
+    estado: DTO.EstadoRevisionAdministrativa;
+  } | null>(null);
+  const [revisionObservacion, setRevisionObservacion] = useState("");
 
   const { scope, loading, error, secciones, hijos, periodoNombre } =
     useScopedIndex({ includeTitularSec: true });
@@ -197,6 +222,65 @@ export default function AlumnosIndexPage() {
   const personaActualId = useMemo(
     () => user?.personaId ?? user?.id ?? null,
     [user],
+  );
+
+  const validateDecision = useCallback(
+    (
+      sol: DTO.SolicitudBajaAlumnoDTO,
+      type: "approve" | "reject",
+      showToast = true,
+    ) => {
+      const revisionMessage =
+        type === "approve"
+          ? "Administración debe completar la revisión antes de aprobar la baja"
+          : "Administración debe completar la revisión antes de rechazar la baja";
+      const personaMessage =
+        type === "approve"
+          ? "No pudimos identificar a la persona que aprueba la solicitud"
+          : "No pudimos identificar a la persona que rechaza la solicitud";
+      if (
+        sol.estadoRevisionAdministrativa ===
+        DTO.EstadoRevisionAdministrativa.PENDIENTE
+      ) {
+        if (showToast) {
+          toast.error(revisionMessage);
+        }
+        return false;
+      }
+      if (!personaActualId) {
+        if (showToast) {
+          toast.error(personaMessage);
+        }
+        return false;
+      }
+      return true;
+    },
+    [personaActualId],
+  );
+
+  const validateRevision = useCallback(
+    (sol: DTO.SolicitudBajaAlumnoDTO, showToast = true) => {
+      if (
+        sol.estadoRevisionAdministrativa &&
+        sol.estadoRevisionAdministrativa !==
+          DTO.EstadoRevisionAdministrativa.PENDIENTE
+      ) {
+        if (showToast) {
+          toast.error("La solicitud ya cuenta con la revisión administrativa");
+        }
+        return false;
+      }
+      if (!personaActualId) {
+        if (showToast) {
+          toast.error(
+            "No pudimos identificar a la persona que revisa la solicitud",
+          );
+        }
+        return false;
+      }
+      return true;
+    },
+    [personaActualId],
   );
 
   const fetchSolicitudesBaja = useCallback(async () => {
@@ -419,36 +503,31 @@ export default function AlumnosIndexPage() {
     URL.revokeObjectURL(url);
   };
 
-  const ensurePersonaActual = (message: string) => {
-    if (!personaActualId) {
-      toast.error(message);
-      return false;
-    }
-    return true;
-  };
-
   const handleApproveSolicitud = async (sol: DTO.SolicitudBajaAlumnoDTO) => {
-    if (
-      sol.estadoRevisionAdministrativa ===
-      DTO.EstadoRevisionAdministrativa.PENDIENTE
-    ) {
-      toast.error(
-        "Administración debe completar la revisión antes de aprobar la baja",
-      );
+    if (!validateDecision(sol, "approve", false)) {
+      validateDecision(sol, "approve", true);
+      setApproveDialogSolicitud(null);
       return;
     }
-    if (
-      !ensurePersonaActual(
-        "No pudimos identificar a la persona que aprueba la solicitud",
-      )
-    )
-      return;
-    if (!window.confirm("¿Confirmás aceptar la baja del alumno?")) return;
 
-    setProcessingSolicitudId(sol.id);
+    const solicitudId = sol.id;
+    if (solicitudId == null) {
+      toast.error("No se pudo identificar la solicitud de baja");
+      setApproveDialogSolicitud(null);
+      return;
+    }
+
+    const personaId = personaActualId;
+    if (personaId == null) {
+      validateDecision(sol, "approve", true);
+      setApproveDialogSolicitud(null);
+      return;
+    }
+
+    setProcessingSolicitudId(solicitudId);
     try {
-      await vidaEscolar.solicitudesBaja.approve(sol.id, {
-        decididoPorPersonaId: personaActualId!,
+      await vidaEscolar.solicitudesBaja.approve(solicitudId, {
+        decididoPorPersonaId: personaId,
       });
       toast.success("Baja aceptada correctamente");
       await Promise.all([fetchSolicitudesBaja(), fetchHistorialAlumnos()]);
@@ -457,37 +536,44 @@ export default function AlumnosIndexPage() {
       toast.error("No se pudo aceptar la baja");
     } finally {
       setProcessingSolicitudId(null);
+      setApproveDialogSolicitud(null);
     }
   };
 
-  const handleRejectSolicitud = async (sol: DTO.SolicitudBajaAlumnoDTO) => {
-    if (
-      sol.estadoRevisionAdministrativa ===
-      DTO.EstadoRevisionAdministrativa.PENDIENTE
-    ) {
-      toast.error(
-        "Administración debe completar la revisión antes de rechazar la baja",
-      );
+  const handleRejectSolicitud = async (
+    sol: DTO.SolicitudBajaAlumnoDTO,
+    reason: string,
+  ) => {
+    if (!validateDecision(sol, "reject", false)) {
+      validateDecision(sol, "reject", true);
+      setRejectDialogSolicitud(null);
       return;
     }
-    if (
-      !ensurePersonaActual(
-        "No pudimos identificar a la persona que rechaza la solicitud",
-      )
-    )
-      return;
-    const reason = window.prompt("Motivo del rechazo", sol.motivoRechazo ?? "");
-    if (reason == null) return;
+
     const normalized = reason.trim();
     if (!normalized) {
       toast.error("El motivo de rechazo es obligatorio");
       return;
     }
 
-    setProcessingSolicitudId(sol.id);
+    const solicitudId = sol.id;
+    if (solicitudId == null) {
+      toast.error("No se pudo identificar la solicitud de baja");
+      setRejectDialogSolicitud(null);
+      return;
+    }
+
+    const personaId = personaActualId;
+    if (personaId == null) {
+      validateDecision(sol, "reject", true);
+      setRejectDialogSolicitud(null);
+      return;
+    }
+
+    setProcessingSolicitudId(solicitudId);
     try {
-      await vidaEscolar.solicitudesBaja.reject(sol.id, {
-        decididoPorPersonaId: personaActualId!,
+      await vidaEscolar.solicitudesBaja.reject(solicitudId, {
+        decididoPorPersonaId: personaId,
         motivoRechazo: normalized,
       });
       toast.success("Solicitud rechazada");
@@ -497,51 +583,57 @@ export default function AlumnosIndexPage() {
       toast.error("No se pudo rechazar la solicitud");
     } finally {
       setProcessingSolicitudId(null);
+      setRejectDialogSolicitud(null);
+      setRejectMotivo("");
     }
   };
 
   const handleAdministracionRevision = async (
     sol: DTO.SolicitudBajaAlumnoDTO,
     estado: DTO.EstadoRevisionAdministrativa,
+    observacionInput?: string,
   ) => {
+    if (!validateRevision(sol, false)) {
+      validateRevision(sol, true);
+      setRevisionDialog(null);
+      setRevisionObservacion("");
+      return;
+    }
+
+    const solicitudId = sol.id;
+    if (solicitudId == null) {
+      toast.error("No se pudo identificar la solicitud de baja");
+      setRevisionDialog(null);
+      setRevisionObservacion("");
+      return;
+    }
+
+    const personaId = personaActualId;
+    if (personaId == null) {
+      validateRevision(sol, true);
+      setRevisionDialog(null);
+      setRevisionObservacion("");
+      return;
+    }
+
+    const observacion =
+      observacionInput?.trim() ||
+      sol.observacionRevisionAdministrativa?.trim() ||
+      undefined;
+
     if (
-      sol.estadoRevisionAdministrativa &&
-      sol.estadoRevisionAdministrativa !==
-        DTO.EstadoRevisionAdministrativa.PENDIENTE
+      estado === DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS &&
+      !observacion
     ) {
-      toast.error("La solicitud ya cuenta con la revisión administrativa");
+      toast.error("Debés indicar el detalle de las deudas informadas");
       return;
     }
 
-    if (
-      !ensurePersonaActual(
-        "No pudimos identificar a la persona que revisa la solicitud",
-      )
-    )
-      return;
-
-    let observacion: string | undefined =
-      sol.observacionRevisionAdministrativa?.trim() || undefined;
-
-    if (estado === DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS) {
-      const detalle = window.prompt(
-        "Detalle de las deudas informadas",
-        observacion ?? "",
-      );
-      if (detalle == null) return;
-      const normalized = detalle.trim();
-      if (!normalized) {
-        toast.error("Debés indicar el detalle de las deudas informadas");
-        return;
-      }
-      observacion = normalized;
-    }
-
-    setProcessingRevisionId(sol.id ?? null);
+    setProcessingRevisionId(solicitudId);
     try {
-      await vidaEscolar.solicitudesBaja.review(sol.id, {
+      await vidaEscolar.solicitudesBaja.review(solicitudId, {
         estadoRevisionAdministrativa: estado,
-        revisadoPorPersonaId: personaActualId!,
+        revisadoPorPersonaId: personaId,
         observacionRevisionAdministrativa: observacion,
       });
       toast.success(
@@ -555,7 +647,49 @@ export default function AlumnosIndexPage() {
       toast.error("No se pudo registrar la revisión administrativa");
     } finally {
       setProcessingRevisionId(null);
+      setRevisionDialog(null);
+      setRevisionObservacion("");
     }
+  };
+
+  const requestApproveSolicitud = (sol: DTO.SolicitudBajaAlumnoDTO) => {
+    if (!validateDecision(sol, "approve")) return;
+    setApproveDialogSolicitud(sol);
+  };
+
+  const requestRejectSolicitud = (sol: DTO.SolicitudBajaAlumnoDTO) => {
+    if (!validateDecision(sol, "reject")) return;
+    setRejectMotivo(sol.motivoRechazo?.trim() ?? "");
+    setRejectDialogSolicitud(sol);
+  };
+
+  const requestAdministracionRevision = (
+    sol: DTO.SolicitudBajaAlumnoDTO,
+    estado: DTO.EstadoRevisionAdministrativa,
+  ) => {
+    if (!validateRevision(sol)) return;
+    if (estado === DTO.EstadoRevisionAdministrativa.DEUDAS_INFORMADAS) {
+      setRevisionDialog({ solicitud: sol, estado });
+      setRevisionObservacion(sol.observacionRevisionAdministrativa?.trim() ?? "");
+      return;
+    }
+
+    void handleAdministracionRevision(
+      sol,
+      estado,
+      sol.observacionRevisionAdministrativa ?? undefined,
+    );
+  };
+
+  const getSolicitudAlumnoNombre = (
+    sol?: DTO.SolicitudBajaAlumnoDTO | null,
+  ) => {
+    if (!sol) return "Alumno sin datos";
+    const nombre = [sol.alumnoApellido, sol.alumnoNombre]
+      .filter(Boolean)
+      .join(", ")
+      .trim();
+    return nombre || "Alumno sin datos";
   };
 
   const resetCrearBajaForm = useCallback(() => {
@@ -1261,7 +1395,7 @@ export default function AlumnosIndexPage() {
                                             <Button
                                               size="sm"
                                               onClick={() =>
-                                                handleAdministracionRevision(
+                                                requestAdministracionRevision(
                                                   sol,
                                                   DTO
                                                     .EstadoRevisionAdministrativa
@@ -1278,7 +1412,7 @@ export default function AlumnosIndexPage() {
                                               size="sm"
                                               variant="destructive"
                                               onClick={() =>
-                                                handleAdministracionRevision(
+                                                requestAdministracionRevision(
                                                   sol,
                                                   DTO
                                                     .EstadoRevisionAdministrativa
@@ -1298,7 +1432,7 @@ export default function AlumnosIndexPage() {
                                             <Button
                                               size="sm"
                                               onClick={() =>
-                                                handleApproveSolicitud(sol)
+                                                requestApproveSolicitud(sol)
                                               }
                                               disabled={
                                                 processingSolicitudId === sol.id
@@ -1310,7 +1444,7 @@ export default function AlumnosIndexPage() {
                                               size="sm"
                                               variant="destructive"
                                               onClick={() =>
-                                                handleRejectSolicitud(sol)
+                                                requestRejectSolicitud(sol)
                                               }
                                               disabled={
                                                 processingSolicitudId === sol.id
@@ -1476,6 +1610,188 @@ export default function AlumnosIndexPage() {
           )}
         </Tabs>
       )}
+      <AlertDialog
+        open={approveDialogSolicitud != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setApproveDialogSolicitud(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar baja</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Confirmás aceptar la baja del alumno {" "}
+              {getSolicitudAlumnoNombre(approveDialogSolicitud)}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={
+                approveDialogSolicitud != null &&
+                processingSolicitudId === approveDialogSolicitud.id
+              }
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const sol = approveDialogSolicitud;
+                if (sol) {
+                  void handleApproveSolicitud(sol);
+                }
+              }}
+              disabled={
+                approveDialogSolicitud == null ||
+                processingSolicitudId === approveDialogSolicitud.id
+              }
+            >
+              {approveDialogSolicitud != null &&
+              processingSolicitudId === approveDialogSolicitud.id
+                ? "Procesando…"
+                : "Aceptar baja"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog
+        open={rejectDialogSolicitud != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectDialogSolicitud(null);
+            setRejectMotivo("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Rechazar solicitud de baja</DialogTitle>
+            <DialogDescription>
+              Indicá el motivo del rechazo para {" "}
+              {getSolicitudAlumnoNombre(rejectDialogSolicitud)}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rechazo-motivo">Motivo</Label>
+              <Textarea
+                id="rechazo-motivo"
+                value={rejectMotivo}
+                onChange={(event) => setRejectMotivo(event.target.value)}
+                rows={4}
+                disabled={
+                  rejectDialogSolicitud != null &&
+                  processingSolicitudId === rejectDialogSolicitud.id
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectDialogSolicitud(null);
+                setRejectMotivo("");
+              }}
+              disabled={
+                rejectDialogSolicitud != null &&
+                processingSolicitudId === rejectDialogSolicitud.id
+              }
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const sol = rejectDialogSolicitud;
+                if (sol) {
+                  void handleRejectSolicitud(sol, rejectMotivo);
+                }
+              }}
+              disabled={
+                rejectDialogSolicitud == null ||
+                processingSolicitudId === rejectDialogSolicitud.id
+              }
+            >
+              {rejectDialogSolicitud != null &&
+              processingSolicitudId === rejectDialogSolicitud.id
+                ? "Procesando…"
+                : "Rechazar solicitud"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={revisionDialog != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRevisionDialog(null);
+            setRevisionObservacion("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Informar deudas</DialogTitle>
+            <DialogDescription>
+              Detallá las deudas para {" "}
+              {getSolicitudAlumnoNombre(revisionDialog?.solicitud)}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="revision-deudas-detalle">Detalle</Label>
+              <Textarea
+                id="revision-deudas-detalle"
+                value={revisionObservacion}
+                onChange={(event) => setRevisionObservacion(event.target.value)}
+                rows={4}
+                disabled={
+                  revisionDialog != null &&
+                  processingRevisionId === revisionDialog.solicitud.id
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRevisionDialog(null);
+                setRevisionObservacion("");
+              }}
+              disabled={
+                revisionDialog != null &&
+                processingRevisionId === revisionDialog.solicitud.id
+              }
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                const data = revisionDialog;
+                if (data) {
+                  void handleAdministracionRevision(
+                    data.solicitud,
+                    data.estado,
+                    revisionObservacion,
+                  );
+                }
+              }}
+              disabled={
+                revisionDialog == null ||
+                processingRevisionId === revisionDialog.solicitud.id
+              }
+            >
+              {revisionDialog != null &&
+              processingRevisionId === revisionDialog.solicitud.id
+                ? "Procesando…"
+                : "Informar deudas"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {canManageBajas && (
         <Dialog open={crearBajaOpen} onOpenChange={handleCrearBajaOpenChange}>
           <DialogContent className="max-w-lg">

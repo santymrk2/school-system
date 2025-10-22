@@ -362,7 +362,7 @@ export function Step2({
                   <Input
                     id={`familiar-dni-${i}`}
                     inputMode="numeric"
-                    pattern="\d*"
+                    pattern="[0-9]*"
                     minLength={7}
                     maxLength={10}
                     value={f.familiar?.dni ?? ""}
@@ -439,7 +439,7 @@ export function Step2({
                   id={`familiar-telefono-${i}`}
                   type="tel"
                   inputMode="numeric"
-                  pattern="\\d*"
+                  pattern="[0-9]*"
                   value={f.familiar?.telefono ?? ""}
                   onChange={(event) => {
                     const telefono = onlyDigits(event.target.value);
@@ -463,7 +463,7 @@ export function Step2({
                   id={`familiar-celular-${i}`}
                   type="tel"
                   inputMode="numeric"
-                  pattern="\\d*"
+                  pattern="[0-9]*"
                   value={f.familiar?.celular ?? ""}
                   onChange={(event) => {
                     const celular = onlyDigits(event.target.value);

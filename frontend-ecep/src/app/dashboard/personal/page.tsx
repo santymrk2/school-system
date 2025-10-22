@@ -5377,7 +5377,7 @@ export default function PersonalPage() {
                         }))
                       }
                       inputMode="numeric"
-                      pattern="\d*"
+                      pattern="[0-9]*"
                       minLength={7}
                       maxLength={10}
                       required
@@ -5495,7 +5495,7 @@ export default function PersonalPage() {
                       id="editar-telefono"
                       type="tel"
                       inputMode="numeric"
-                      pattern="\\d*"
+                      pattern="[0-9]*"
                       value={editPersona.telefono}
                       onChange={(event) => {
                         const telefono = onlyDigits(event.target.value);
@@ -5512,7 +5512,7 @@ export default function PersonalPage() {
                       id="editar-celular"
                       type="tel"
                       inputMode="numeric"
-                      pattern="\\d*"
+                      pattern="[0-9]*"
                       value={editPersona.celular}
                       onChange={(event) => {
                         const celular = onlyDigits(event.target.value);
@@ -6104,7 +6104,7 @@ export default function PersonalPage() {
                       }
                       placeholder="Documento"
                       inputMode="numeric"
-                      pattern="\d*"
+                      pattern="[0-9]*"
                       minLength={7}
                       maxLength={10}
                       required
@@ -6285,7 +6285,7 @@ export default function PersonalPage() {
                       id="nuevo-telefono"
                       type="tel"
                       inputMode="numeric"
-                      pattern="\\d*"
+                      pattern="[0-9]*"
                       value={newPersona.telefono}
                       onChange={(event) => {
                         const telefono = onlyDigits(event.target.value);
@@ -6303,7 +6303,7 @@ export default function PersonalPage() {
                       id="nuevo-celular"
                       type="tel"
                       inputMode="numeric"
-                      pattern="\\d*"
+                      pattern="[0-9]*"
                       value={newPersona.celular}
                       onChange={(event) => {
                         const celular = onlyDigits(event.target.value);

@@ -103,21 +103,33 @@ export function AttendanceReport({
             <DateField
               label="Desde"
               value={attendanceFrom}
+              max={attendanceTo || undefined}
               onChange={(value) => {
-                setAttendanceFrom(value);
-                if (value && attendanceTo && value > attendanceTo) {
-                  setAttendanceTo(value);
+                if (!value) {
+                  setAttendanceFrom("");
+                  return;
                 }
+                if (attendanceTo && value > attendanceTo) {
+                  setAttendanceFrom(attendanceTo);
+                  return;
+                }
+                setAttendanceFrom(value);
               }}
             />
             <DateField
               label="Hasta"
               value={attendanceTo}
+              min={attendanceFrom || undefined}
               onChange={(value) => {
-                setAttendanceTo(value);
-                if (value && attendanceFrom && value < attendanceFrom) {
-                  setAttendanceFrom(value);
+                if (!value) {
+                  setAttendanceTo("");
+                  return;
                 }
+                if (attendanceFrom && value < attendanceFrom) {
+                  setAttendanceTo(attendanceFrom);
+                  return;
+                }
+                setAttendanceTo(value);
               }}
             />
             <div className="md:col-span-2">
@@ -363,16 +375,22 @@ function DateField({
   label,
   value,
   onChange,
+  min,
+  max,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  min?: string;
+  max?: string;
 }) {
   return (
     <div>
       <Label className="mb-1 block">{label}</Label>
       <DatePicker
         value={value || undefined}
+        min={min}
+        max={max}
         onChange={(next) => onChange(next ?? "")}
       />
     </div>

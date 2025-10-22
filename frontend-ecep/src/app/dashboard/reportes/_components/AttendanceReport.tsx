@@ -44,6 +44,7 @@ import { Users, Search } from "lucide-react";
 import type { AttendanceSummarySection } from "../types";
 import { formatPercent } from "../utils";
 import { PIE_COLORS } from "../constants";
+import { syncRangeOnEndChange, syncRangeOnStartChange } from "@/lib/date-range";
 
 export type AttendanceSectionOption = {
   id: string;
@@ -103,21 +104,39 @@ export function AttendanceReport({
             <DateField
               label="Desde"
               value={attendanceFrom}
+              max={attendanceTo || undefined}
               onChange={(value) => {
-                setAttendanceFrom(value);
-                if (value && attendanceTo && value > attendanceTo) {
-                  setAttendanceTo(value);
+                if (!value) {
+                  setAttendanceFrom("");
+                  return;
+                }
+                const { start, end } = syncRangeOnStartChange(
+                  value,
+                  attendanceTo || null,
+                );
+                setAttendanceFrom(start);
+                if ((attendanceTo || "") !== end) {
+                  setAttendanceTo(end);
                 }
               }}
             />
             <DateField
               label="Hasta"
               value={attendanceTo}
+              min={attendanceFrom || undefined}
               onChange={(value) => {
-                setAttendanceTo(value);
-                if (value && attendanceFrom && value < attendanceFrom) {
-                  setAttendanceFrom(value);
+                if (!value) {
+                  setAttendanceTo("");
+                  return;
                 }
+                const { start, end } = syncRangeOnEndChange(
+                  attendanceFrom || null,
+                  value,
+                );
+                if ((attendanceFrom || "") !== start) {
+                  setAttendanceFrom(start);
+                }
+                setAttendanceTo(end);
               }}
             />
             <div className="md:col-span-2">
@@ -363,16 +382,22 @@ function DateField({
   label,
   value,
   onChange,
+  min,
+  max,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  min?: string;
+  max?: string;
 }) {
   return (
     <div>
       <Label className="mb-1 block">{label}</Label>
       <DatePicker
         value={value || undefined}
+        min={min}
+        max={max}
         onChange={(next) => onChange(next ?? "")}
       />
     </div>

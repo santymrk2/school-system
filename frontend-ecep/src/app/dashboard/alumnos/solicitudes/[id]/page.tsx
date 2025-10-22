@@ -320,11 +320,7 @@ const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
     return false;
   }
   const estadoActual = normalizeEstado(solicitud.estado);
-  return (
-    Boolean(solicitud.entrevistaRealizada) ||
-    estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
-    estadoActual === ESTADOS.ACEPTADA
-  );
+  return estadoActual === ESTADOS.ACEPTADA;
 };
 
 type ScheduleFormState = {

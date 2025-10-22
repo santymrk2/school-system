@@ -467,26 +467,19 @@ export default function CierrePrimarioView({
                 ? presents + absents
                 : 0;
           const rawPercentage =
-            item.porcentaje != null
-              ? Number(item.porcentaje)
-              : computedTotal > 0
-                ? (presents / computedTotal) * 100
+            computedTotal > 0
+              ? ((computedTotal - absents) / computedTotal) * 100
+              : item.porcentaje != null
+                ? Number(item.porcentaje)
                 : null;
-          const percentage =
-            rawPercentage != null
-              ? Math.max(0, Math.min(100, Number(rawPercentage.toFixed(2))))
-              : null;
+          const percentage = toPercent(rawPercentage);
 
           map[rawMatriculaId] = {
             percentage,
             presents,
             absents,
             total: computedTotal,
-            hasData:
-              computedTotal > 0 ||
-              presents > 0 ||
-              absents > 0 ||
-              percentage != null,
+            hasData: computedTotal > 0 || presents > 0 || absents > 0,
           };
         }
 
@@ -583,11 +576,7 @@ export default function CierrePrimarioView({
         const attendancePercent = toPercent(attendance?.percentage ?? null);
         const absencePercent =
           attendance && attendance.total > 0
-            ? toPercent(
-                ((attendance.total - attendance.presents) /
-                  (attendance.total || 1)) *
-                  100,
-              )
+            ? toPercent((attendance.absents / attendance.total) * 100)
             : attendancePercent != null
               ? toPercent(100 - attendancePercent)
               : null;

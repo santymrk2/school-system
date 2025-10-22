@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, Plus, Users } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { formatDni, maxBirthDate, onlyDigits } from "@/lib/form-utils";
 import { RolVinculo } from "@/types/api-generated";
@@ -192,7 +193,10 @@ export function Step2({
                 disabled={dialogSubmitting}
               />
               {dniError ? (
-                <p className="text-sm text-destructive">{dniError}</p>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{dniError}</AlertDescription>
+                </Alert>
               ) : null}
             </div>
 
@@ -229,9 +233,12 @@ export function Step2({
       )}
 
       {errors.familiares && (
-        <p className="text-sm text-destructive">
-          Agregá al menos un familiar con sus datos completos.
-        </p>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Agregá al menos un familiar con sus datos completos.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* ——— Lista de Formularios de cada Familiar ——— */}

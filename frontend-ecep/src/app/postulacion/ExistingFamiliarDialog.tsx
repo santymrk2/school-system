@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2 } from "lucide-react";
 import type * as DTO from "@/types/api-generated";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Props {
   open: boolean;
@@ -107,10 +108,10 @@ export function ExistingFamiliarDialog({
           ) : null}
 
           {error ? (
-            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4" />
-              <span>{error}</span>
-            </div>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : null}
 
           <DialogFooter className="pt-2">

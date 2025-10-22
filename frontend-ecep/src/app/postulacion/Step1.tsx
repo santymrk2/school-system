@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { formatDni } from "@/lib/form-utils";
 
 import { maxBirthDate } from "@/lib/form-utils";
+import { Button } from "@/components/ui/button";
 
 
 interface Props {
@@ -29,20 +30,24 @@ interface Props {
     options?: { errorKeys?: string | string[] },
   ) => void;
   errors: Record<string, boolean>;
-  dniRegistrado?: boolean;
+  dniDuplicado?: boolean;
   dniLookupLoading?: boolean;
+  dniBloqueado?: boolean;
+  onRequestDniChange?: () => void;
 }
 
 export function Step1({
   formData,
   handleInputChange,
   errors,
-  dniRegistrado,
+  dniDuplicado,
   dniLookupLoading,
+  dniBloqueado,
+  onRequestDniChange,
 }: Props) {
   const helperTextClassName = cn(
     "mt-1 text-xs min-h-[16px]",
-    dniLookupLoading || !dniRegistrado ? "text-muted-foreground" : "text-destructive",
+    dniLookupLoading || !dniDuplicado ? "text-muted-foreground" : "text-destructive",
   );
 
   return (
@@ -82,7 +87,19 @@ export function Step1({
 
         {/* DNI */}
         <div>
-          <Label htmlFor="dni">DNI</Label>
+          <Label htmlFor="dni" className="flex items-center justify-between gap-2">
+            <span>DNI</span>
+            {onRequestDniChange && (
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-xs font-normal"
+                onClick={onRequestDniChange}
+              >
+                Cambiar DNI
+              </Button>
+            )}
+          </Label>
           <Input
             id="dni"
             type="text"
@@ -94,13 +111,17 @@ export function Step1({
             onChange={(e) => handleInputChange("dni", formatDni(e.target.value))}
             placeholder="12345678"
             aria-invalid={errors.dni || undefined}
+            aria-readonly={dniBloqueado || undefined}
+            readOnly={dniBloqueado}
             className={cn(errors.dni && "border-destructive")}
           />
           <div className={helperTextClassName}>
             {dniLookupLoading
               ? "Verificando DNI…"
-              : dniRegistrado
-                ? "DNI no válido."
+              : dniDuplicado
+                ? "Ya existe una solicitud de admisión registrada con este DNI."
+                : dniBloqueado
+                  ? "DNI verificado."
                 : ""}
           </div>
         </div>

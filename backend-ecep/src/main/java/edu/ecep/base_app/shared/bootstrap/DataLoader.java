@@ -709,11 +709,31 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         directoraP = ensurePersonaCredentials(directoraP,
                 "admin@example.com",
                 "admin123",
-                Set.of(UserRole.ADMIN, UserRole.TEACHER, UserRole.ALTERNATE, UserRole.FAMILY, UserRole.DIRECTOR));
+                Set.of(UserRole.TEACHER, UserRole.ALTERNATE, UserRole.FAMILY, UserRole.DIRECTOR));
         ensureEmpleado(directoraP, per -> {
             per.setCuil("20123456789");
             per.setCargo("Directora");
             per.setFechaIngreso(LocalDate.now());
+            per.setRolEmpleado(RolEmpleado.DIRECCION);
+        });
+
+        Persona administradoraP = ensurePersona("Debora", "Roman", "77777777");
+        administradoraP.setFechaNacimiento(LocalDate.of(1985, 4, 12));
+        administradoraP.setGenero("Femenino");
+        administradoraP.setEstadoCivil("Casada");
+        administradoraP.setNacionalidad("Argentina");
+        administradoraP.setDomicilio("Av. Principal 456");
+        administradoraP.setTelefono("1145678900");
+        administradoraP.setCelular("1198765432");
+        administradoraP = ensurePersonaCredentials(administradoraP,
+                "debora.roman@example.com",
+                "admin456",
+                Set.of(UserRole.ADMIN, UserRole.DIRECTOR));
+        ensureEmpleado(administradoraP, per -> {
+            per.setCuil("27234567891");
+            per.setCargo("Administradora General");
+            per.setFechaIngreso(LocalDate.now());
+            per.setObservacionesGenerales("Responsable de la administración institucional");
             per.setRolEmpleado(RolEmpleado.DIRECCION);
         });
 

@@ -12,6 +12,14 @@ export function formatDni(s: string) {
   return s.replace(/\D/g, "").slice(0, 10);
 }
 
+export function onlyDigits(value: string, maxLength?: number) {
+  const digits = value.replace(/\D/g, "");
+  if (typeof maxLength === "number") {
+    return digits.slice(0, maxLength);
+  }
+  return digits;
+}
+
 const MIN_BIRTH_AGE_YEARS = 2;
 
 export function getBirthDateLimitIso(reference: Date = new Date()) {

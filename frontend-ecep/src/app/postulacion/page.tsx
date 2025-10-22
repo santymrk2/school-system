@@ -7,11 +7,10 @@ import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { formatDni } from "@/lib/form-utils";
+import { formatDni, isBirthDateValid, onlyDigits } from "@/lib/form-utils";
 import { admisiones, identidad } from "@/services/api/modules"; // ← módulos API
 import { BASE } from "@/services/api/http";
 import * as DTO from "@/types/api-generated";
-import { isBirthDateValid } from "@/lib/form-utils";
 import { logger } from "@/lib/logger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BackButton } from "@/components/common/BackButton";
@@ -330,7 +329,13 @@ export default function PostulacionPage() {
     options?: { errorKeys?: string | string[] },
   ) => {
     const sanitizedValue =
-      field === "dni" && typeof value === "string" ? formatDni(value) : value;
+      typeof value === "string"
+        ? field === "dni"
+          ? formatDni(value)
+          : field === "telefono" || field === "celular"
+            ? onlyDigits(value)
+            : value
+        : value;
     setFormData((prev) => ({
       ...prev,
       [field]: sanitizedValue,
@@ -507,8 +512,8 @@ export default function PostulacionPage() {
           estadoCivil: persona.estadoCivil ?? basePersona.estadoCivil ?? "",
           nacionalidad: persona.nacionalidad ?? basePersona.nacionalidad ?? "",
           domicilio: persona.domicilio ?? basePersona.domicilio ?? "",
-          telefono: persona.telefono ?? basePersona.telefono ?? "",
-          celular: persona.celular ?? basePersona.celular ?? "",
+          telefono: onlyDigits(persona.telefono ?? basePersona.telefono ?? ""),
+          celular: onlyDigits(persona.celular ?? basePersona.celular ?? ""),
           email: persona.email ?? basePersona.email ?? "",
           emailContacto: persona.email ?? basePersona.emailContacto ?? "",
           lugarTrabajo:
@@ -615,8 +620,8 @@ export default function PostulacionPage() {
       estadoCivil: input.estadoCivil || undefined,
       nacionalidad: input.nacionalidad || undefined,
       domicilio: input.domicilio || undefined,
-      telefono: input.telefono || undefined,
-      celular: input.celular || undefined,
+      telefono: input.telefono ? onlyDigits(input.telefono) : undefined,
+      celular: input.celular ? onlyDigits(input.celular) : undefined,
       email: input.email || undefined,
     };
   };

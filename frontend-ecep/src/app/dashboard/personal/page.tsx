@@ -85,9 +85,13 @@ const personalLogger = logger.child({ module: "dashboard-personal" });
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
-import { formatDni } from "@/lib/form-utils";
+import {
+  formatDni,
+  isBirthDateValid,
+  maxBirthDate,
+  onlyDigits,
+} from "@/lib/form-utils";
 import { gestionAcademica, identidad } from "@/services/api/modules";
-import { isBirthDateValid, maxBirthDate } from "@/lib/form-utils";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import {
   DEFAULT_GENERO_VALUE,
@@ -3165,8 +3169,8 @@ export default function PersonalPage() {
       const estadoCivil = newPersona.estadoCivil;
       const nacionalidad = newPersona.nacionalidad.trim();
       const domicilio = newPersona.domicilio.trim();
-      const telefono = newPersona.telefono.trim();
-      const celular = newPersona.celular.trim();
+      const telefono = onlyDigits(newPersona.telefono);
+      const celular = onlyDigits(newPersona.celular);
       const email = newPersona.email.trim();
       const fotoPerfilUrl = newPersona.fotoPerfilUrl.trim();
 
@@ -3487,8 +3491,8 @@ export default function PersonalPage() {
       const estadoCivil = editPersona.estadoCivil;
       const nacionalidad = editPersona.nacionalidad.trim();
       const domicilio = editPersona.domicilio.trim();
-      const telefono = editPersona.telefono.trim();
-      const celular = editPersona.celular.trim();
+      const telefono = onlyDigits(editPersona.telefono);
+      const celular = onlyDigits(editPersona.celular);
       const email = editPersona.email.trim();
       const fotoPerfilUrl = editPersona.fotoPerfilUrl.trim();
 
@@ -5489,13 +5493,16 @@ export default function PersonalPage() {
                     <Input
                       id="editar-telefono"
                       type="tel"
+                      inputMode="numeric"
+                      pattern="\\d*"
                       value={editPersona.telefono}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const telefono = onlyDigits(event.target.value);
                         setEditPersona((prev) => ({
                           ...prev,
-                          telefono: event.target.value,
-                        }))
-                      }
+                          telefono,
+                        }));
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
@@ -5503,13 +5510,16 @@ export default function PersonalPage() {
                     <Input
                       id="editar-celular"
                       type="tel"
+                      inputMode="numeric"
+                      pattern="\\d*"
                       value={editPersona.celular}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const celular = onlyDigits(event.target.value);
                         setEditPersona((prev) => ({
                           ...prev,
-                          celular: event.target.value,
-                        }))
-                      }
+                          celular,
+                        }));
+                      }}
                       required
                     />
                   </div>
@@ -6273,13 +6283,16 @@ export default function PersonalPage() {
                     <Input
                       id="nuevo-telefono"
                       type="tel"
+                      inputMode="numeric"
+                      pattern="\\d*"
                       value={newPersona.telefono}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const telefono = onlyDigits(event.target.value);
                         setNewPersona((prev) => ({
                           ...prev,
-                          telefono: event.target.value,
-                        }))
-                      }
+                          telefono,
+                        }));
+                      }}
                       placeholder="Teléfono fijo"
                     />
                   </div>
@@ -6288,13 +6301,16 @@ export default function PersonalPage() {
                     <Input
                       id="nuevo-celular"
                       type="tel"
+                      inputMode="numeric"
+                      pattern="\\d*"
                       value={newPersona.celular}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const celular = onlyDigits(event.target.value);
                         setNewPersona((prev) => ({
                           ...prev,
-                          celular: event.target.value,
-                        }))
-                      }
+                          celular,
+                        }));
+                      }}
                       placeholder="Número de contacto"
                       required
                     />

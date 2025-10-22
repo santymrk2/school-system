@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -15,6 +15,16 @@ import { isBirthDateValid } from "@/lib/form-utils";
 import { logger } from "@/lib/logger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BackButton } from "@/components/common/BackButton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const postulacionLogger = logger.child({ module: "postulacion" });
 
@@ -119,6 +129,9 @@ type PostulacionDraft = {
   updatedAt?: string;
 };
 
+const DNI_DUPLICADO_ERROR =
+  "Ya existe una solicitud de admisión registrada para este DNI.";
+
 const buildSolicitudObservaciones = (
   data: PostulacionFormData,
 ): string | undefined => {
@@ -189,6 +202,12 @@ export default function PostulacionPage() {
     useState<DTO.PersonaDTO | null>(null);
   const [dniLookupLoading, setDniLookupLoading] = useState(false);
   const [lastLookupDni, setLastLookupDni] = useState<string>("");
+  const [dniDuplicate, setDniDuplicate] = useState(false);
+  const [dniGateOpen, setDniGateOpen] = useState(false);
+  const [dniGateCompleted, setDniGateCompleted] = useState(false);
+  const [dniGateValue, setDniGateValue] = useState<string>("");
+  const [dniGateError, setDniGateError] = useState<string | null>(null);
+  const [dniGateLoading, setDniGateLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [communicationsAuthorized, setCommunicationsAuthorized] =
     useState(false);
@@ -217,9 +236,49 @@ export default function PostulacionPage() {
     }
   }, []);
 
+  const resetFormState = useCallback(
+    (options?: { openGate?: boolean }) => {
+      setFormData({ ...initialFormData, familiares: [] });
+      setAspirantePersonaPreview(null);
+      setLastLookupDni("");
+      setCommunicationsAuthorized(false);
+      setErrors({});
+      setCurrentStep(1);
+      setSubmissionCompleted(false);
+      setExistingFamiliarPrompt(null);
+      setFamiliarAuthError(null);
+      setFamiliarAuthLoading(false);
+      familiarLookupState.current = {};
+      familiarPromptQueue.current = [];
+      activePromptRef.current = null;
+      setPendingDraft(null);
+      setDraftPromptVisible(false);
+      setDniGateCompleted(false);
+      setDniGateValue("");
+      setDniGateError(null);
+      setDniDuplicate(false);
+      setDniGateLoading(false);
+      setDniGateOpen(options?.openGate === false ? false : true);
+    },
+    [],
+  );
+
+  const restartDraftTracking = useCallback(() => {
+    setDraftReady(false);
+    setTimeout(() => setDraftReady(true), 0);
+  }, []);
+
   useEffect(() => {
     activePromptRef.current = existingFamiliarPrompt;
   }, [existingFamiliarPrompt]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    if (draftPromptVisible) return;
+    if (submissionCompleted) return;
+    if (dniGateCompleted) return;
+    setDniGateOpen(true);
+  }, [draftReady, draftPromptVisible, submissionCompleted, dniGateCompleted]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -730,6 +789,66 @@ export default function PostulacionPage() {
     }
   };
 
+  const verifyDniAvailability = useCallback(async (dni: string): Promise<string> => {
+    const normalized = formatDni(dni);
+    if (!normalized) {
+      const invalid = new Error("invalid-dni");
+      invalid.name = "InvalidDniError";
+      throw invalid;
+    }
+
+    try {
+      const personaRes = await identidad.personasCore.findIdByDni(normalized);
+      const personaIdRaw = personaRes?.data;
+      if (!personaIdRaw) {
+        return normalized;
+      }
+
+      const personaId = Number(personaIdRaw);
+      if (!Number.isFinite(personaId)) {
+        return normalized;
+      }
+
+      let aspiranteId: number | null = null;
+      try {
+        const aspiranteRes = await admisiones.aspirantes.byPersonaId(personaId);
+        aspiranteId = aspiranteRes?.data?.id ?? null;
+      } catch (error: any) {
+        if (error?.response?.status !== 404) {
+          throw error;
+        }
+      }
+
+      if (aspiranteId != null) {
+        const solicitudesRes = await admisiones.solicitudesAdmision
+          .byAspiranteId(aspiranteId)
+          .catch((error: any) => {
+            if (error?.response?.status === 404) {
+              return { data: [] };
+            }
+            throw error;
+          });
+
+        const solicitudes = Array.isArray(solicitudesRes?.data)
+          ? solicitudesRes.data
+          : [];
+
+        if (solicitudes.length > 0) {
+          const duplicate = new Error("duplicate-solicitud");
+          duplicate.name = "DuplicateSolicitudError";
+          throw duplicate;
+        }
+      }
+
+      return normalized;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return normalized;
+      }
+      throw error;
+    }
+  }, []);
+
   const addFamiliar = () => {
     setFormData((prev) => ({
       ...prev,
@@ -761,7 +880,7 @@ export default function PostulacionPage() {
     let ok = true;
     let missingRequired = false;
     let invalidBirthDate = false;
-    const dniRegistrado = Boolean(aspirantePersonaPreview?.id);
+    const dniRegistrado = dniDuplicate;
     for (const f of fields) {
       if (!formData[f as keyof typeof formData]) {
         newErrors[f] = true;
@@ -796,7 +915,7 @@ export default function PostulacionPage() {
           : null,
         dniInvalid ? "El DNI debe tener entre 7 y 10 dígitos." : null,
         dniRegistrado
-          ? "El DNI ingresado ya se encuentra registrado en el sistema."
+          ? DNI_DUPLICADO_ERROR
           : null,
       ]
         .filter(Boolean)
@@ -1076,13 +1195,7 @@ export default function PostulacionPage() {
                 <Button asChild>
                   <Link href="/">Ir al inicio</Link>
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSubmissionCompleted(false);
-                    setCurrentStep(1);
-                  }}
-                >
+                <Button variant="outline" onClick={handleStartNewSubmission}>
                   Enviar una nueva postulación
                 </Button>
               </div>
@@ -1093,6 +1206,66 @@ export default function PostulacionPage() {
     );
   }
 
+  const handleDniGateSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    const sanitized = formatDni(dniGateValue ?? "");
+    if (!sanitized || sanitized.length < 7 || sanitized.length > 10) {
+      setDniGateError("Ingresá un DNI válido de 7 a 10 dígitos.");
+      return;
+    }
+
+    setDniGateLoading(true);
+    setDniGateError(null);
+    setDniDuplicate(false);
+
+    try {
+      const verifiedDni = await verifyDniAvailability(sanitized);
+      setDniGateValue(verifiedDni);
+      handleInputChange("dni", verifiedDni);
+      setDniGateCompleted(true);
+      setDniGateOpen(false);
+    } catch (error: any) {
+      if (
+        error?.name === "DuplicateSolicitudError" ||
+        error?.message === "duplicate-solicitud"
+      ) {
+        setDniDuplicate(true);
+        setDniGateError(DNI_DUPLICADO_ERROR);
+        return;
+      }
+      if (error?.name === "InvalidDniError" || error?.message === "invalid-dni") {
+        setDniGateError("Ingresá un DNI válido de 7 a 10 dígitos.");
+        return;
+      }
+      logPostulacionError(error, "No se pudo verificar el DNI del aspirante");
+      setDniGateError("No se pudo verificar el DNI. Intentá nuevamente.");
+    } finally {
+      setDniGateLoading(false);
+    }
+  };
+
+  const handleRequestDniChange = () => {
+    const confirmed =
+      typeof window === "undefined" ||
+      window.confirm(
+        "Cambiar el DNI reiniciará la postulación en curso. ¿Querés continuar?",
+      );
+    if (!confirmed) return;
+
+    clearDraft();
+    resetFormState();
+    restartDraftTracking();
+    toast.info("Ingresá el nuevo DNI para iniciar otra solicitud.");
+  };
+
+  const handleStartNewSubmission = () => {
+    clearDraft();
+    resetFormState();
+    restartDraftTracking();
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -1101,8 +1274,10 @@ export default function PostulacionPage() {
             formData={formData}
             handleInputChange={handleInputChange}
             errors={errors}
-            dniRegistrado={Boolean(aspirantePersonaPreview?.id)}
+            dniDuplicado={dniDuplicate}
             dniLookupLoading={dniLookupLoading}
+            dniBloqueado={dniGateCompleted}
+            onRequestDniChange={handleRequestDniChange}
           />
         );
       case 2:
@@ -1153,14 +1328,25 @@ export default function PostulacionPage() {
     setDraftPromptVisible(false);
     setPendingDraft(null);
     setDraftReady(true);
+    const draftDni = formatDni(pendingDraft.formData?.dni ?? "");
+    if (draftDni) {
+      setDniGateValue(draftDni);
+      setDniGateCompleted(true);
+      setDniGateOpen(false);
+      setDniDuplicate(false);
+      setDniGateError(null);
+    } else {
+      setDniGateValue("");
+      setDniGateCompleted(false);
+      setDniGateOpen(true);
+    }
     toast.success("Borrador recuperado correctamente.");
   };
 
   const handleDiscardDraft = () => {
     clearDraft();
-    setPendingDraft(null);
-    setDraftPromptVisible(false);
-    setDraftReady(true);
+    resetFormState();
+    restartDraftTracking();
     toast.info("Se descartó el borrador almacenado.");
   };
 
@@ -1173,15 +1359,9 @@ export default function PostulacionPage() {
     if (!confirmed) return;
 
     clearDraft();
-    setDraftReady(false);
-    setFormData({ ...initialFormData, familiares: [] });
-    setAspirantePersonaPreview(null);
-    setLastLookupDni("");
-    setCommunicationsAuthorized(false);
-    setErrors({});
-    setCurrentStep(1);
+    resetFormState();
     toast.info("Se canceló la postulación. Podés comenzar una nueva cuando quieras.");
-    setTimeout(() => setDraftReady(true), 0);
+    restartDraftTracking();
   };
 
   return (
@@ -1258,6 +1438,64 @@ export default function PostulacionPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={dniGateOpen}
+        onOpenChange={(open) => {
+          if (!open && !dniGateCompleted) return;
+          setDniGateOpen(open);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          onInteractOutside={(event) => {
+            if (!dniGateCompleted) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (!dniGateCompleted) event.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Verificá el DNI del aspirante</DialogTitle>
+            <DialogDescription>
+              Ingresá el documento para asegurarnos de que no exista otra solicitud registrada.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleDniGateSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dni-gate">DNI del aspirante</Label>
+              <Input
+                id="dni-gate"
+                autoFocus
+                inputMode="numeric"
+                pattern="\d*"
+                minLength={7}
+                maxLength={10}
+                value={dniGateValue}
+                onChange={(event) => {
+                  const value = formatDni(event.target.value);
+                  setDniGateValue(value);
+                  setDniGateError(null);
+                  setDniDuplicate(false);
+                }}
+              />
+              {dniGateError ? (
+                <p className="text-sm text-destructive">{dniGateError}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Ingresá el DNI sin puntos para continuar con la solicitud.
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={dniGateLoading} className="min-w-[160px]">
+                {dniGateLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Continuar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <ExistingFamiliarDialog
         open={!!existingFamiliarPrompt}

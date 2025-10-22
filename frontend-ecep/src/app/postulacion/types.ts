@@ -21,6 +21,7 @@ export type FamiliarForm = {
   tipoRelacion: string;
   viveConAlumno: boolean;
   familiar: FamiliarPersonaForm;
+  dniLocked?: boolean;
 };
 
 export type PostulacionFormData = {

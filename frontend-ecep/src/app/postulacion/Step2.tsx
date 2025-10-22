@@ -250,6 +250,7 @@ export function Step2({
           const nombreError = hasError(`${familiarKey}.nombre`);
           const apellidoError = hasError(`${familiarKey}.apellido`);
           const dniError = hasError(`${familiarKey}.dni`);
+          const dniLocked = Boolean(f.dniLocked);
           const fechaNacimientoError = hasError(`${familiarKey}.fechaNacimiento`);
           const emailError = hasError(`${familiarKey}.emailContacto`);
           const telefonoError = hasError(`${familiarKey}.telefono`);
@@ -346,18 +347,26 @@ export function Step2({
                     minLength={7}
                     maxLength={10}
                     value={f.familiar?.dni ?? ""}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      if (dniLocked) return;
                       updateFamiliarPersona(
                         i,
                         { dni: formatDni(event.target.value) },
                         `familiares.${i}.familiar.dni`,
-                      )
-                    }
+                      );
+                    }}
                     placeholder="12345678"
                     aria-invalid={dniError || undefined}
+                    readOnly={dniLocked}
+                    aria-readonly={dniLocked || undefined}
                     className={cn(dniError && "border-destructive")}
                     required
                   />
+                  {dniLocked ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      El DNI se completa automáticamente y no puede editarse.
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Fecha de Nacimiento */}

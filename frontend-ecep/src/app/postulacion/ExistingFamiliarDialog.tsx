@@ -148,8 +148,8 @@ export function ExistingFamiliarDialog({
         ) : (
           <div className="space-y-4">
             <DialogDescription>
-              La persona no tiene credenciales activas. Podés continuar y
-              completar los datos restantes manualmente.
+              La persona no tiene credenciales activas. Se agregará solo su
+              nombre y apellido para que completes el resto manualmente.
             </DialogDescription>
             <div className="rounded-md border bg-muted/40 p-3 text-sm">
               <p>
@@ -158,11 +158,6 @@ export function ExistingFamiliarDialog({
               <p>
                 <span className="font-medium">Apellido:</span> {persona?.apellido ?? "-"}
               </p>
-              {dni ? (
-                <p>
-                  <span className="font-medium">DNI:</span> {dni}
-                </p>
-              ) : null}
             </div>
             <DialogFooter className="pt-2">
               <Button

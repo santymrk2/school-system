@@ -422,10 +422,13 @@ public class SolicitudAdmisionService {
             AlumnoDTO alumnoDTO = new AlumnoDTO();
             alumnoDTO.setPersonaId(personaId);
             alumnoDTO.setFechaInscripcion(LocalDate.now());
+            copiarDatosSaludYRedes(aspirante, alumnoDTO);
             alumnoId = alumnoService.create(alumnoDTO);
             alumno = alumnoRepository.findById(alumnoId)
                     .orElseThrow(() -> new NotFoundException("Alumno no creado"));
         } else {
+            copiarDatosSaludYRedes(aspirante, alumno);
+            alumnoRepository.save(alumno);
             alumnoId = alumno.getId();
         }
 
@@ -475,6 +478,38 @@ public class SolicitudAdmisionService {
         repository.save(solicitud);
 
         return new SolicitudAdmisionAltaResultDTO(alumnoId, matriculaId, seccionId);
+    }
+
+    private void copiarDatosSaludYRedes(Aspirante aspirante, AlumnoDTO alumnoDTO) {
+        if (aspirante == null || alumnoDTO == null) {
+            return;
+        }
+        alumnoDTO.setConectividadInternet(aspirante.getConectividadInternet());
+        alumnoDTO.setDispositivosDisponibles(aspirante.getDispositivosDisponibles());
+        alumnoDTO.setIdiomasHabladosHogar(aspirante.getIdiomasHabladosHogar());
+        alumnoDTO.setEnfermedadesAlergias(aspirante.getEnfermedadesAlergias());
+        alumnoDTO.setMedicacionHabitual(aspirante.getMedicacionHabitual());
+        alumnoDTO.setLimitacionesFisicas(aspirante.getLimitacionesFisicas());
+        alumnoDTO.setTratamientosTerapeuticos(aspirante.getTratamientosTerapeuticos());
+        alumnoDTO.setUsoAyudasMovilidad(aspirante.getUsoAyudasMovilidad());
+        alumnoDTO.setCoberturaMedica(aspirante.getCoberturaMedica());
+        alumnoDTO.setObservacionesSalud(aspirante.getObservacionesSalud());
+    }
+
+    private void copiarDatosSaludYRedes(Aspirante aspirante, Alumno alumno) {
+        if (aspirante == null || alumno == null) {
+            return;
+        }
+        alumno.setConectividadInternet(aspirante.getConectividadInternet());
+        alumno.setDispositivosDisponibles(aspirante.getDispositivosDisponibles());
+        alumno.setIdiomasHabladosHogar(aspirante.getIdiomasHabladosHogar());
+        alumno.setEnfermedadesAlergias(aspirante.getEnfermedadesAlergias());
+        alumno.setMedicacionHabitual(aspirante.getMedicacionHabitual());
+        alumno.setLimitacionesFisicas(aspirante.getLimitacionesFisicas());
+        alumno.setTratamientosTerapeuticos(aspirante.getTratamientosTerapeuticos());
+        alumno.setUsoAyudasMovilidad(aspirante.getUsoAyudasMovilidad());
+        alumno.setCoberturaMedica(aspirante.getCoberturaMedica());
+        alumno.setObservacionesSalud(aspirante.getObservacionesSalud());
     }
 
     private void migrarFamiliaresAspirante(Aspirante aspirante, Alumno alumno) {

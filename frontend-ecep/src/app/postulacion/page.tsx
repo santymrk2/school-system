@@ -860,6 +860,8 @@ export default function PostulacionPage() {
       delete next.familiares;
       return next;
     });
+
+    return true;
   };
 
   const isValidRolVinculo = (value?: string | null): value is DTO.RolVinculo => {

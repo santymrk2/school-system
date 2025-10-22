@@ -25,6 +25,17 @@ public class Alumno {
     String observacionesGenerales;
     String motivoRechazoBaja;
 
+    String conectividadInternet;
+    String dispositivosDisponibles;
+    String idiomasHabladosHogar;
+    String enfermedadesAlergias;
+    String medicacionHabitual;
+    String limitacionesFisicas;
+    String tratamientosTerapeuticos;
+    Boolean usoAyudasMovilidad;
+    String coberturaMedica;
+    String observacionesSalud;
+
     @OneToMany(mappedBy="alumno") Set<Matricula> matriculas = new HashSet<>();
     @OneToMany(mappedBy="alumno") Set<AlumnoFamiliar> familiares = new HashSet<>();
 }

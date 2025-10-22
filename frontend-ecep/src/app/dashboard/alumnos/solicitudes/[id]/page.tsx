@@ -320,6 +320,9 @@ const puedeDarDeAltaSolicitud = (solicitud: SolicitudAdmisionItem) => {
     return false;
   }
   const estadoActual = normalizeEstado(solicitud.estado);
+  if (estadoActual === ESTADOS.RECHAZADA) {
+    return false;
+  }
   return (
     Boolean(solicitud.entrevistaRealizada) ||
     estadoActual === ESTADOS.ENTREVISTA_REALIZADA ||
@@ -745,8 +748,10 @@ export default function SolicitudAdmisionDetailPage() {
   const puedeMostrarComentariosEntrevista = Boolean(
     solicitud?.fechaEntrevistaConfirmada,
   );
+  const esRechazada = estado === ESTADOS.RECHAZADA;
   const puedeProgramar =
-    estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA;
+    !esRechazada &&
+    (estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA);
   const tieneEntrevistaConfirmada = Boolean(solicitud?.fechaEntrevistaConfirmada);
   const puedeDecidir =
     tieneEntrevistaConfirmada &&
@@ -755,9 +760,21 @@ export default function SolicitudAdmisionDetailPage() {
   const puedeRechazar =
     !altaRegistrada &&
     !puedeDecidir &&
+    !esRechazada &&
     (estado === ESTADOS.PENDIENTE ||
       estado === ESTADOS.PROPUESTA ||
       estado === ESTADOS.PROGRAMADA);
+
+  useEffect(() => {
+    if (!esRechazada) {
+      return;
+    }
+    setScheduleOpen(false);
+    setRejectOpen(false);
+    setDecisionOpen(null);
+    setPromptInterviewOpen(false);
+    setAltaOpen(false);
+  }, [esRechazada]);
 
   const handleRechazo = async (motivo: string) => {
     if (!solicitud) return;
@@ -1331,6 +1348,7 @@ export default function SolicitudAdmisionDetailPage() {
         onOpenChange={setRejectOpen}
         loading={actionLoading}
         onSubmit={handleRechazo}
+        disabled={esRechazada}
       />
 
       <ScheduleModal
@@ -1339,6 +1357,7 @@ export default function SolicitudAdmisionDetailPage() {
         loading={actionLoading}
         solicitud={solicitud}
         onSubmit={handleProgramar}
+        disabled={esRechazada}
       />
 
       <DecisionModal
@@ -1347,6 +1366,7 @@ export default function SolicitudAdmisionDetailPage() {
         aceptar={decisionOpen === "aceptar"}
         loading={actionLoading}
         onSubmit={handleDecision}
+        disabled={esRechazada}
       />
 
       <InterviewPromptDialog
@@ -1354,6 +1374,7 @@ export default function SolicitudAdmisionDetailPage() {
         onOpenChange={setPromptInterviewOpen}
         loading={actionLoading}
         onSubmit={handleResultadoEntrevista}
+        disabled={esRechazada}
       />
 
       <AltaModal
@@ -1468,12 +1489,14 @@ function ScheduleModal({
   loading,
   onSubmit,
   solicitud,
+  disabled = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loading: boolean;
   onSubmit: (values: ScheduleFormState) => void;
   solicitud: DTO.SolicitudAdmisionDTO;
+  disabled?: boolean;
 }) {
   const [fechas, setFechas] = useState<string[]>(createEmptySlots());
   const [documentos, setDocumentos] = useState(solicitud.documentosRequeridos ?? "");
@@ -1544,6 +1567,7 @@ function ScheduleModal({
                 <DatePicker
                   value={value}
                   min={today}
+                  disabled={disabled}
                   onChange={(nextValue) => {
                     const next = [...fechas];
                     next[idx] = nextValue ?? "";
@@ -1556,6 +1580,7 @@ function ScheduleModal({
                 <Input
                   type="time"
                   value={horarios[idx]}
+                  disabled={disabled}
                   onChange={(e) => {
                     const next = [...horarios];
                     next[idx] = e.target.value;
@@ -1572,6 +1597,7 @@ function ScheduleModal({
             </label>
             <Textarea
               value={documentos}
+              disabled={disabled}
               onChange={(e) => setDocumentos(e.target.value)}
               rows={4}
             />
@@ -1583,6 +1609,7 @@ function ScheduleModal({
             </label>
             <Textarea
               value={adjuntos.join("\n")}
+              disabled={disabled}
               onChange={(e) => handleAdjuntosChange(e.target.value)}
               rows={3}
             />
@@ -1594,6 +1621,7 @@ function ScheduleModal({
             </label>
             <Textarea
               value={aclaraciones}
+              disabled={disabled}
               onChange={(e) => setAclaraciones(e.target.value)}
               rows={3}
               placeholder="Ej: Traer libreta sanitaria, ingresar por secretaría, etc."
@@ -1618,7 +1646,7 @@ function ScheduleModal({
                   aclaraciones,
                 })
               }
-              disabled={loading}
+              disabled={loading || disabled}
             >
               Guardar propuesta
             </Button>
@@ -1634,11 +1662,13 @@ function RejectModal({
   onOpenChange,
   loading,
   onSubmit,
+  disabled = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loading: boolean;
   onSubmit: (motivo: string) => void;
+  disabled?: boolean;
 }) {
   const [motivo, setMotivo] = useState("");
 
@@ -1661,6 +1691,7 @@ function RejectModal({
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             rows={4}
+            disabled={disabled}
           />
           <div className="flex justify-end gap-2">
             <Button
@@ -1673,7 +1704,7 @@ function RejectModal({
             <Button
               variant="destructive"
               onClick={() => onSubmit(motivo)}
-              disabled={loading}
+              disabled={loading || disabled}
             >
               Rechazar
             </Button>
@@ -1690,12 +1721,14 @@ function DecisionModal({
   aceptar,
   loading,
   onSubmit,
+  disabled = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   aceptar: boolean;
   loading: boolean;
   onSubmit: (aceptar: boolean, mensaje: string) => void;
+  disabled?: boolean;
 }) {
   const [mensaje, setMensaje] = useState("");
 
@@ -1724,6 +1757,7 @@ function DecisionModal({
               value={mensaje}
               onChange={(e) => setMensaje(e.target.value)}
               rows={4}
+              disabled={disabled}
             />
           )}
           <div className="flex justify-end gap-2">
@@ -1736,7 +1770,7 @@ function DecisionModal({
             </Button>
             <Button
               onClick={() => onSubmit(aceptar, aceptar ? "" : mensaje)}
-              disabled={loading}
+              disabled={loading || disabled}
             >
               {actionLabel}
             </Button>
@@ -1752,11 +1786,13 @@ function InterviewPromptDialog({
   onOpenChange,
   loading,
   onSubmit,
+  disabled = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loading: boolean;
   onSubmit: (realizada: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -1770,6 +1806,10 @@ function InterviewPromptDialog({
         <AlertDialogFooter>
           <AlertDialogCancel
             onClick={() => {
+              if (disabled) {
+                onOpenChange(false);
+                return;
+              }
               onSubmit(false);
             }}
           >
@@ -1779,7 +1819,7 @@ function InterviewPromptDialog({
             onClick={() => {
               onSubmit(true);
             }}
-            disabled={loading}
+            disabled={loading || disabled}
           >
             Sí, se realizó
           </AlertDialogAction>

@@ -22,6 +22,7 @@ interface Props {
   dni?: string;
   loading?: boolean;
   error?: string | null;
+  requiresCredentials?: boolean;
   onConfirm: (email: string, password: string) => void | Promise<void>;
   onCancel: () => void;
 }
@@ -32,6 +33,7 @@ export function ExistingFamiliarDialog({
   dni,
   loading,
   error,
+  requiresCredentials = false,
   onConfirm,
   onCancel,
 }: Props) {
@@ -51,6 +53,11 @@ export function ExistingFamiliarDialog({
     await onConfirm(email.trim(), password);
   };
 
+  const handleLimitedConfirm = async () => {
+    if (loading) return;
+    await onConfirm("", "");
+  };
+
   const cancel = () => {
     if (loading) return;
     onCancel();
@@ -66,69 +73,112 @@ export function ExistingFamiliarDialog({
           <DialogDescription>
             {fullName
               ? `Encontramos un familiar registrado como ${fullName}.`
-              : "Encontramos un familiar registrado."}{" "}
-            Ingresá el usuario y la contraseña asociados para completar los datos
-            automáticamente.
+              : "Encontramos un familiar registrado."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="existing-familiar-email">Usuario (email)</Label>
-            <Input
-              id="existing-familiar-email"
-              type="email"
-              required
-              value={email}
-              autoComplete="email"
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="correo@ejemplo.com"
-              disabled={loading}
-            />
+        {requiresCredentials ? (
+          <form onSubmit={submit} className="space-y-4">
+            <DialogDescription>
+              Ingresá el usuario y la contraseña asociados para completar los
+              datos automáticamente.
+            </DialogDescription>
+
+            <div className="space-y-2">
+              <Label htmlFor="existing-familiar-email">Usuario (email)</Label>
+              <Input
+                id="existing-familiar-email"
+                type="email"
+                required
+                value={email}
+                autoComplete="email"
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="existing-familiar-password">Contraseña</Label>
+              <Input
+                id="existing-familiar-password"
+                type="password"
+                required
+                value={password}
+                autoComplete="current-password"
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
+
+            {dni ? (
+              <p className="text-xs text-muted-foreground">
+                DNI detectado: <span className="font-medium">{dni}</span>
+              </p>
+            ) : null}
+
+            {error ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={cancel}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando
+                  </>
+                ) : (
+                  "Confirmar"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <DialogDescription>
+              La persona no tiene credenciales activas. Podés continuar y
+              completar los datos restantes manualmente.
+            </DialogDescription>
+            <div className="rounded-md border bg-muted/40 p-3 text-sm">
+              <p>
+                <span className="font-medium">Nombre:</span> {persona?.nombre ?? "-"}
+              </p>
+              <p>
+                <span className="font-medium">Apellido:</span> {persona?.apellido ?? "-"}
+              </p>
+              {dni ? (
+                <p>
+                  <span className="font-medium">DNI:</span> {dni}
+                </p>
+              ) : null}
+            </div>
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={cancel}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleLimitedConfirm} disabled={loading}>
+                Continuar sin credenciales
+              </Button>
+            </DialogFooter>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="existing-familiar-password">Contraseña</Label>
-            <Input
-              id="existing-familiar-password"
-              type="password"
-              required
-              value={password}
-              autoComplete="current-password"
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              disabled={loading}
-            />
-          </div>
-
-          {dni ? (
-            <p className="text-xs text-muted-foreground">
-              DNI detectado: <span className="font-medium">{dni}</span>
-            </p>
-          ) : null}
-
-          {error ? (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={cancel} disabled={loading}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando
-                </>
-              ) : (
-                "Confirmar"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );

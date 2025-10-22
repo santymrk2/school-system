@@ -734,7 +734,7 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             per.setCargo("Administradora General");
             per.setFechaIngreso(LocalDate.now());
             per.setObservacionesGenerales("Responsable de la administración institucional");
-            per.setRolEmpleado(RolEmpleado.DIRECCION);
+            per.setRolEmpleado(RolEmpleado.ADMINISTRACION);
         });
 
         // USER

@@ -71,9 +71,13 @@ const logReportesError = (error: unknown, message?: string) => {
 
 export default function ReportesPage() {
   const { hasRole, loading, user } = useAuth();
-  const { periodoEscolarId } = useActivePeriod();
+  const { periodoEscolarId, periodoEscolar } = useActivePeriod();
   const router = useRouter();
   const calendarVersion = useCalendarRefresh("trimestres");
+
+  const periodoFechaInicio = periodoEscolar?.fechaInicio ?? null;
+  const periodoFechaFin = periodoEscolar?.fechaFin ?? null;
+  const periodoAnio = periodoEscolar?.anio ?? null;
 
   useEffect(() => {
     if (loading) return;
@@ -226,6 +230,91 @@ export default function ReportesPage() {
           return !periodoSec || periodoSec === periodoEscolarId;
         });
 
+        type AttendanceSnapshot = {
+          ratio: number | null;
+          total: number;
+          presentes: number;
+          ausentes: number;
+        };
+
+        const attendanceBySection = new Map<number, Map<string, AttendanceSnapshot>>();
+        const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const fallbackYear = periodoAnio ?? new Date().getFullYear();
+        const fallbackFrom = `${String(fallbackYear).padStart(4, "0")}-01-01`;
+        const fallbackTo = todayISO;
+        const attendanceFrom =
+          periodoFechaInicio && isoDateRegex.test(periodoFechaInicio)
+            ? periodoFechaInicio
+            : fallbackFrom;
+        let attendanceTo =
+          periodoFechaFin && isoDateRegex.test(periodoFechaFin)
+            ? periodoFechaFin
+            : fallbackTo;
+        if (attendanceTo < attendanceFrom) {
+          attendanceTo = attendanceFrom;
+        }
+
+        await Promise.all(
+          seccionesFiltradas.map(async (sec: any) => {
+            try {
+              const { data } = await asistencias.secciones.resumenPorAlumno(
+                Number(sec.id),
+                attendanceFrom,
+                attendanceTo,
+              );
+              if (!alive) return;
+
+              const sectionAttendance = new Map<string, AttendanceSnapshot>();
+              (data ?? []).forEach((dto: any) => {
+                const total = Number(dto.total ?? dto.totalClases ?? 0);
+                const presentes = Number(dto.presentes ?? 0);
+                const ausentes = Number(dto.ausentes ?? 0);
+                const porcentaje =
+                  typeof dto.porcentaje === "number" ? dto.porcentaje : null;
+                const ratioValue =
+                  porcentaje != null
+                    ? porcentaje / 100
+                    : total > 0
+                      ? presentes / total
+                      : null;
+                const ratio =
+                  ratioValue != null && Number.isFinite(ratioValue)
+                    ? Math.max(0, Math.min(1, ratioValue))
+                    : null;
+
+                const snapshot: AttendanceSnapshot = {
+                  ratio,
+                  total,
+                  presentes,
+                  ausentes,
+                };
+
+                const matriculaId =
+                  dto.matriculaId ??
+                  dto.matricula_id ??
+                  dto.matricula?.id ??
+                  null;
+                const alumnoId =
+                  dto.alumnoId ?? dto.alumno_id ?? dto.alumno?.id ?? null;
+
+                if (matriculaId != null) {
+                  sectionAttendance.set(`m:${matriculaId}`, snapshot);
+                }
+                if (alumnoId != null) {
+                  sectionAttendance.set(`a:${alumnoId}`, snapshot);
+                }
+              });
+
+              attendanceBySection.set(sec.id, sectionAttendance);
+            } catch (error) {
+              logReportesError(
+                error,
+                `No se pudo cargar la asistencia de la sección ${sec.id}`,
+              );
+            }
+          }),
+        );
+
         const alumnosBySeccion = new Map<number, any[]>();
         await Promise.all(
           seccionesFiltradas.map(async (sec: any) => {
@@ -254,6 +343,8 @@ export default function ReportesPage() {
           const studentsLite = alumnosBySeccion.get(sec.id) ?? [];
           const sectionMateriasList = seccionMateriasBySeccion.get(sec.id) ?? [];
 
+          const attendanceMap = attendanceBySection.get(sec.id);
+
           const students: BoletinStudent[] = studentsLite.map((student: any) => {
             const matriculaId = student.matriculaId ?? student.id ?? null;
             const alumnoId = student.alumnoId ?? null;
@@ -261,6 +352,16 @@ export default function ReportesPage() {
               student.nombreCompleto ??
               student.nombre ??
               `Alumno #${alumnoId ?? matriculaId ?? ""}`.trim();
+
+            const attendanceSnapshot =
+              attendanceMap?.get(`m:${matriculaId}`) ??
+              (alumnoId != null
+                ? attendanceMap?.get(`a:${alumnoId}`)
+                : undefined);
+            const attendancePercentage =
+              attendanceSnapshot?.ratio != null ? attendanceSnapshot.ratio : null;
+            const absencePercentage =
+              attendancePercentage != null ? 1 - attendancePercentage : null;
 
             if (level === "Primario") {
               const subjectEntries = sectionMateriasList
@@ -341,8 +442,8 @@ export default function ReportesPage() {
                 sectionId: sec.id,
                 level,
                 average,
-                attendancePercentage: null,
-                absencePercentage: null,
+                attendancePercentage,
+                absencePercentage,
                 attendanceDetail: null,
                 status,
                 subjects: subjectEntries,
@@ -372,8 +473,8 @@ export default function ReportesPage() {
               informes: informesAlumno,
               average: null,
               attendanceDetail: null,
-              attendancePercentage: null,
-              absencePercentage: null,
+              attendancePercentage,
+              absencePercentage,
               status: informesAlumno.length ? "Con informes" : "Sin informes",
             };
           });
@@ -412,7 +513,13 @@ export default function ReportesPage() {
     return () => {
       alive = false;
     };
-  }, [periodoEscolarId, calendarVersion]);
+  }, [
+    periodoEscolarId,
+    periodoFechaInicio,
+    periodoFechaFin,
+    periodoAnio,
+    calendarVersion,
+  ]);
 
   // Boletines state -----------------------------------------------------------
   useEffect(() => {
@@ -428,6 +535,18 @@ export default function ReportesPage() {
       return String(boletinSections[0].id);
     });
   }, [loadingBoletines, boletinSections]);
+
+  useEffect(() => {
+    setActiveBoletin((prev) => {
+      if (!prev) return prev;
+      const section = boletinSections.find((s) => s.id === prev.sectionId);
+      const nextStudent = section?.students.find((student) => student.id === prev.id);
+      if (!nextStudent || nextStudent === prev) {
+        return prev;
+      }
+      return nextStudent;
+    });
+  }, [boletinSections]);
 
   const approvalData = useMemo(() => {
     if (!boletinSections.length) return APPROVAL_DATA;
@@ -902,7 +1021,7 @@ export default function ReportesPage() {
     ];
 
     return { section, sorted, chartData };
-  }, [approvalSort, selectedApprovalSection]);
+  }, [approvalData.sections, approvalSort, selectedApprovalSection]);
 
   // Asistencias ---------------------------------------------------------------
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);

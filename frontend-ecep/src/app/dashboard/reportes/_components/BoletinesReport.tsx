@@ -167,12 +167,20 @@ export function BoletinesReport({
                 </div>
               </SheetHeader>
 
-              <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
-                <SummaryCard label="Promedio general">
-                  {typeof activeStudent.average === "number"
-                    ? activeStudent.average.toFixed(1)
-                    : "—"}
-                </SummaryCard>
+              <div
+                className={`mt-6 grid gap-3 text-sm ${
+                  activeStudent.level === "Primario"
+                    ? "sm:grid-cols-2"
+                    : "sm:grid-cols-1"
+                }`}
+              >
+                {activeStudent.level === "Primario" && (
+                  <SummaryCard label="Promedio general">
+                    {typeof activeStudent.average === "number"
+                      ? activeStudent.average.toFixed(1)
+                      : "—"}
+                  </SummaryCard>
+                )}
                 <SummaryCard label="Asistencia">
                   {typeof activeStudent.attendancePercentage === "number"
                     ? formatPercent(activeStudent.attendancePercentage, 1)

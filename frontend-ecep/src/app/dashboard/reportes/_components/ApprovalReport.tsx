@@ -61,9 +61,9 @@ export function ApprovalReport({
   approvalOverview,
 }: ApprovalReportProps) {
   return (
-    <TabsContent value="aprobacion" ref={reportRef} className="space-y-4">
+    <TabsContent value="aprobacion" ref={reportRef} className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5" /> Reporte de Aprobación
           </CardTitle>
@@ -71,7 +71,7 @@ export function ApprovalReport({
             Indicadores generales del nivel primario. Nivel inicial se encuentra deshabilitado por no contar con evaluación por materia.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-8">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <Label>Nivel</Label>
@@ -89,7 +89,7 @@ export function ApprovalReport({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card className="border shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Materias aprobadas vs desaprobadas</CardTitle>
@@ -160,7 +160,7 @@ export function ApprovalReport({
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {approvalSections.map((section) => {
               const isActive = selectedApprovalSection === section.id;
               return (
@@ -197,7 +197,7 @@ export function ApprovalReport({
           )}
 
           {approvalOverview ? (
-            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
               <Card className="border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -226,15 +226,15 @@ export function ApprovalReport({
               </Card>
 
               <Card className="border">
-                <CardHeader className="flex flex-wrap items-center justify-between gap-3 pb-2">
-                  <div>
+                <CardHeader className="flex flex-wrap items-center justify-between gap-4 pb-2">
+                  <div className="space-y-1">
                     <CardTitle className="text-sm font-medium">Detalle por alumno</CardTitle>
                     <CardDescription>Ordená la vista según tu necesidad de análisis</CardDescription>
                     <p className="text-xs text-muted-foreground">
                       Promedio de materias aprobadas por alumno: {approvalOverview.section.stats.averageApprovedPerStudent.toFixed(1)}
                     </p>
                   </div>
-                  <div className="w-[200px]">
+                  <div className="w-full min-w-[200px] max-w-[260px] sm:w-[200px]">
                     <Select value={approvalSort} onValueChange={onChangeApprovalSort}>
                       <SelectTrigger>
                         <SelectValue placeholder="Ordenar por" />

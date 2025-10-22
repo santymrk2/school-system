@@ -112,6 +112,7 @@ type FamiliarPromptInfo = {
   dni: string;
   persona: DTO.PersonaDTO;
   familiar?: FamiliarRecordDTO | null;
+  requiresCredentials: boolean;
 };
 
 type FamiliarLookupState = {
@@ -130,6 +131,8 @@ type PostulacionDraft = {
 
 const DNI_DUPLICADO_ERROR =
   "Ya existe una solicitud de admisión registrada para este DNI.";
+
+const RESUBMISSION_ALLOWED_STATES = new Set(["RECHAZADA", "RECHAZADO"]);
 
 const buildSolicitudObservaciones = (
   data: PostulacionFormData,
@@ -517,12 +520,14 @@ export default function PostulacionPage() {
           ]);
           if (cancelled) return;
 
+          const personaDto = personaRes.data;
           const info: FamiliarPromptInfo = {
             index,
             dni,
-            persona: personaRes.data,
+            persona: personaDto,
             familiar:
               (familiarRes?.data as FamiliarRecordDTO | undefined) ?? null,
+            requiresCredentials: Boolean(personaDto?.credencialesActivas),
           };
           familiarLookupState.current[index] = { dni, status: "prompted" };
           if (activePromptRef.current) {
@@ -551,34 +556,44 @@ export default function PostulacionPage() {
     index: number,
     persona: DTO.PersonaDTO,
     familiar?: FamiliarRecordDTO | null,
+    options?: { limited?: boolean },
   ) => {
     setFormData((prev) => {
       const familiares = [...(prev.familiares ?? [])];
       if (!familiares[index]) return prev;
       const current = familiares[index];
       const basePersona = current.familiar ?? { ...emptyFamiliarPersona };
+      const minimalPersona = {
+        ...basePersona,
+        personaId: persona.id ?? basePersona.personaId ?? null,
+        nombre: persona.nombre ?? basePersona.nombre ?? "",
+        apellido: persona.apellido ?? basePersona.apellido ?? "",
+        dni: formatDni(persona.dni ?? basePersona.dni ?? ""),
+      };
+
+      const fullPersona = options?.limited
+        ? minimalPersona
+        : {
+            ...minimalPersona,
+            fechaNacimiento:
+              persona.fechaNacimiento ?? basePersona.fechaNacimiento ?? "",
+            genero: persona.genero ?? basePersona.genero ?? "",
+            estadoCivil: persona.estadoCivil ?? basePersona.estadoCivil ?? "",
+            nacionalidad: persona.nacionalidad ?? basePersona.nacionalidad ?? "",
+            domicilio: persona.domicilio ?? basePersona.domicilio ?? "",
+            telefono: onlyDigits(persona.telefono ?? basePersona.telefono ?? ""),
+            celular: onlyDigits(persona.celular ?? basePersona.celular ?? ""),
+            email: persona.email ?? basePersona.email ?? "",
+            emailContacto: persona.email ?? basePersona.emailContacto ?? "",
+            lugarTrabajo:
+              familiar?.lugarTrabajo ?? basePersona.lugarTrabajo ?? "",
+            ocupacion: familiar?.ocupacion ?? basePersona.ocupacion ?? "",
+          };
+
       const updated = {
         ...current,
         id: familiar?.id ?? current.id,
-        familiar: {
-          ...basePersona,
-          personaId: persona.id ?? basePersona.personaId ?? null,
-          nombre: persona.nombre ?? "",
-          apellido: persona.apellido ?? "",
-          dni: formatDni(persona.dni ?? basePersona.dni ?? ""),
-          fechaNacimiento: persona.fechaNacimiento ?? basePersona.fechaNacimiento ?? "",
-          genero: persona.genero ?? basePersona.genero ?? "",
-          estadoCivil: persona.estadoCivil ?? basePersona.estadoCivil ?? "",
-          nacionalidad: persona.nacionalidad ?? basePersona.nacionalidad ?? "",
-          domicilio: persona.domicilio ?? basePersona.domicilio ?? "",
-          telefono: onlyDigits(persona.telefono ?? basePersona.telefono ?? ""),
-          celular: onlyDigits(persona.celular ?? basePersona.celular ?? ""),
-          email: persona.email ?? basePersona.email ?? "",
-          emailContacto: persona.email ?? basePersona.emailContacto ?? "",
-          lugarTrabajo:
-            familiar?.lugarTrabajo ?? basePersona.lugarTrabajo ?? "",
-          ocupacion: familiar?.ocupacion ?? basePersona.ocupacion ?? "",
-        },
+        familiar: fullPersona,
       };
       familiares[index] = updated;
       return {
@@ -634,6 +649,22 @@ export default function PostulacionPage() {
     setFamiliarAuthLoading(true);
     setFamiliarAuthError(null);
     try {
+      if (!active.requiresCredentials) {
+        applyFamiliarData(active.index, active.persona, active.familiar ?? null, {
+          limited: true,
+        });
+        toast.success(
+          "Datos básicos del familiar cargados. Completá el resto manualmente.",
+        );
+        familiarLookupState.current[active.index] = {
+          dni: active.dni,
+          status: "completed",
+        };
+        setExistingFamiliarPrompt(null);
+        showNextPrompt();
+        return;
+      }
+
       const response = await fetch(`${BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -803,6 +834,12 @@ export default function PostulacionPage() {
     }
 
     try {
+      const throwDuplicate = () => {
+        const duplicate = new Error("duplicate-solicitud");
+        duplicate.name = "DuplicateSolicitudError";
+        throw duplicate;
+      };
+
       const personaRes = await identidad.personasCore.findIdByDni(normalized);
       const personaIdRaw = personaRes?.data;
       if (!personaIdRaw) {
@@ -812,6 +849,20 @@ export default function PostulacionPage() {
       const personaId = Number(personaIdRaw);
       if (!Number.isFinite(personaId)) {
         return normalized;
+      }
+
+      const rolesRes = await identidad.personasCore
+        .getRoles(personaId)
+        .catch((error: any) => {
+          if (error?.response?.status === 404) {
+            return { data: null };
+          }
+          throw error;
+        });
+
+      const personaRoles = rolesRes?.data;
+      if (personaRoles?.esAlumno) {
+        throwDuplicate();
       }
 
       let aspiranteId: number | null = null;
@@ -839,9 +890,27 @@ export default function PostulacionPage() {
           : [];
 
         if (solicitudes.length > 0) {
-          const duplicate = new Error("duplicate-solicitud");
-          duplicate.name = "DuplicateSolicitudError";
-          throw duplicate;
+          const hasActiveSolicitud = solicitudes.some((solicitud) => {
+            const estado = (solicitud?.estado ?? "")
+              .toString()
+              .trim()
+              .toUpperCase();
+            if (
+              Boolean(solicitud?.altaGenerada) ||
+              solicitud?.alumnoId != null ||
+              solicitud?.matriculaId != null
+            ) {
+              return true;
+            }
+            if (!estado) {
+              return true;
+            }
+            return !RESUBMISSION_ALLOWED_STATES.has(estado);
+          });
+
+          if (hasActiveSolicitud) {
+            throwDuplicate();
+          }
         }
       }
 
@@ -1514,6 +1583,9 @@ export default function PostulacionPage() {
         dni={existingFamiliarPrompt?.dni}
         loading={familiarAuthLoading}
         error={familiarAuthError}
+        requiresCredentials={
+          existingFamiliarPrompt?.requiresCredentials ?? false
+        }
         onConfirm={handleExistingFamiliarConfirm}
         onCancel={handleExistingFamiliarCancel}
       />

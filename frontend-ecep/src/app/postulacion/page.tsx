@@ -1483,7 +1483,7 @@ export default function PostulacionPage() {
                 id="dni-gate"
                 autoFocus
                 inputMode="numeric"
-                pattern="\d*"
+                pattern="[0-9]*"
                 minLength={7}
                 maxLength={10}
                 value={dniGateValue}

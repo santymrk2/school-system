@@ -1824,7 +1824,7 @@ export default function AlumnoPerfilPage() {
                             }))
                           }
                           inputMode="numeric"
-                          pattern="\d*"
+                          pattern="[0-9]*"
                           minLength={7}
                           maxLength={10}
                         />
@@ -1885,7 +1885,7 @@ export default function AlumnoPerfilPage() {
                         <Input
                           type="tel"
                           inputMode="numeric"
-                          pattern="\\d*"
+                          pattern="[0-9]*"
                           value={personaDraft.celular}
                           onChange={(e) =>
                             setPersonaDraft((prev) => ({
@@ -2748,7 +2748,7 @@ export default function AlumnoPerfilPage() {
                             placeholder="Documento del familiar"
                             disabled={savingFamily}
                             inputMode="numeric"
-                            pattern="\d*"
+                            pattern="[0-9]*"
                             minLength={7}
                             maxLength={10}
                           />
@@ -2864,7 +2864,7 @@ export default function AlumnoPerfilPage() {
                               <Input
                                 type="tel"
                                 inputMode="numeric"
-                                pattern="\\d*"
+                                pattern="[0-9]*"
                                 value={addPersonaDraft.telefono}
                                 onChange={(e) =>
                                   setAddPersonaDraft((prev) => ({
@@ -2880,7 +2880,7 @@ export default function AlumnoPerfilPage() {
                               <Input
                                 type="tel"
                                 inputMode="numeric"
-                                pattern="\\d*"
+                                pattern="[0-9]*"
                                 value={addPersonaDraft.celular}
                                 onChange={(e) =>
                                   setAddPersonaDraft((prev) => ({

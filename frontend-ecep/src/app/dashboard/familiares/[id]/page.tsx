@@ -413,7 +413,7 @@ export default function FamiliarPerfilPage() {
                         }))
                       }
                       inputMode="numeric"
-                      pattern="\d*"
+                      pattern="[0-9]*"
                       minLength={7}
                       maxLength={10}
                     />
@@ -436,7 +436,7 @@ export default function FamiliarPerfilPage() {
                     <Input
                       type="tel"
                       inputMode="numeric"
-                      pattern="\\d*"
+                      pattern="[0-9]*"
                       value={personaDraft.telefono}
                       onChange={(e) =>
                         setPersonaDraft((prev) => ({
@@ -451,7 +451,7 @@ export default function FamiliarPerfilPage() {
                     <Input
                       type="tel"
                       inputMode="numeric"
-                      pattern="\\d*"
+                      pattern="[0-9]*"
                       value={personaDraft.celular}
                       onChange={(e) =>
                         setPersonaDraft((prev) => ({

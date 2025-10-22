@@ -953,7 +953,7 @@ export default function AltaAlumnoPage() {
                 placeholder="Documento del tutor"
                 disabled={savingTutorDraft}
                 inputMode="numeric"
-                pattern="\d*"
+                pattern="[0-9]*"
                 minLength={7}
                 maxLength={10}
               />
@@ -1018,7 +1018,7 @@ export default function AltaAlumnoPage() {
                 <Input
                   type="tel"
                   inputMode="numeric"
-                  pattern="\\d*"
+                  pattern="[0-9]*"
                   value={tutorDraft.telefono}
                   onChange={(e) => {
                     const telefono = onlyDigits(e.target.value);
@@ -1035,7 +1035,7 @@ export default function AltaAlumnoPage() {
                 <Input
                   type="tel"
                   inputMode="numeric"
-                  pattern="\\d*"
+                  pattern="[0-9]*"
                   value={tutorDraft.celular}
                   onChange={(e) => {
                     const celular = onlyDigits(e.target.value);
@@ -1152,7 +1152,7 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
             <Input
               value={values.dni}
               inputMode="numeric"
-              pattern="\d*"
+              pattern="[0-9]*"
               minLength={7}
               maxLength={10}
               onChange={(e) => onChange("dni", formatDni(e.target.value))}
@@ -1239,7 +1239,7 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
             <Input
               type="tel"
               inputMode="numeric"
-              pattern="\\d*"
+              pattern="[0-9]*"
               value={values.telefono}
               onChange={(e) => onChange("telefono", onlyDigits(e.target.value))}
               placeholder="Teléfono fijo"
@@ -1252,7 +1252,7 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
             <Input
               type="tel"
               inputMode="numeric"
-              pattern="\\d*"
+              pattern="[0-9]*"
               value={values.celular}
               onChange={(e) => onChange("celular", onlyDigits(e.target.value))}
               placeholder="Número móvil"

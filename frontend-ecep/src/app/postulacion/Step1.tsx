@@ -133,7 +133,7 @@ export function Step1({
             id="dni"
             type="text"
             inputMode="numeric"
-            pattern="\d*"
+            pattern="[0-9]*"
             minLength={7}
             maxLength={10}
             value={formData.dni || ""}

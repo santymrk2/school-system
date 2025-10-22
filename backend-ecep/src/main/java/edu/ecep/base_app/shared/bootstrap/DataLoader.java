@@ -499,10 +499,197 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         generarAsistenciasRango(datosSecciones2023.stream().map(SeccionData::seccion).toList(),
                 LocalDate.of(2023, 3, 6), LocalDate.of(2023, 11, 15), t1_2023, t2_2023, t3_2023);
 
-        Aspirante aspirante1 = crearAspiranteConFamiliar(new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001", RolVinculo.MADRE, false));
-        Aspirante aspirante2 = crearAspiranteConFamiliar(new PersonaSeed("Camila", "Vega", "47000002", "Eliana", "Vega", "33000002", RolVinculo.MADRE, false));
-        Aspirante aspirante3 = crearAspiranteConFamiliar(new PersonaSeed("Lola", "Ferreyra", "47000003", "Gonzalo", "Ferreyra", "33000003", RolVinculo.PADRE, true));
-        crearSolicitudesDemostracion(aspirante1, aspirante2, aspirante3);
+        Aspirante aspirantePendiente = crearAspiranteConFamiliar(
+                new PersonaSeed("Agustín", "Pereyra", "47000001", "Mónica", "Pereyra", "33000001", RolVinculo.MADRE, false));
+        Aspirante aspirantePropuesta = crearAspiranteConFamiliar(
+                new PersonaSeed("Camila", "Vega", "47000002", "Eliana", "Vega", "33000002", RolVinculo.MADRE, false));
+        Aspirante aspiranteReprogramacion = crearAspiranteConFamiliar(
+                new PersonaSeed("Diego", "Ledesma", "47000007", "Silvina", "Ledesma", "33000007", RolVinculo.MADRE, true));
+        Aspirante aspiranteProgramada = crearAspiranteConFamiliar(
+                new PersonaSeed("Lola", "Ferreyra", "47000003", "Gonzalo", "Ferreyra", "33000003", RolVinculo.PADRE, true));
+        Aspirante aspiranteEntrevistada = crearAspiranteConFamiliar(
+                new PersonaSeed("Mateo", "Sánchez", "47000004", "Laura", "Sánchez", "33000004", RolVinculo.MADRE, true));
+        Aspirante aspiranteAceptada = crearAspiranteConFamiliar(
+                new PersonaSeed("Olivia", "Torres", "47000005", "Javier", "Torres", "33000005", RolVinculo.PADRE, false));
+        Aspirante aspiranteRechazada = crearAspiranteConFamiliar(
+                new PersonaSeed("Pedro", "Benítez", "47000006", "María", "Benítez", "33000006", RolVinculo.MADRE, true));
+
+        crearSolicitudesDemostracion(
+                new SolicitudDemo(aspirantePendiente, solicitud -> {
+                    solicitud.setEstado("PENDIENTE");
+                    solicitud.setCupoDisponible(null);
+                    solicitud.setDisponibilidadCurso("En evaluación de cupo");
+                    solicitud.setDocumentosRequeridos("Formulario de solicitud completo\nDocumento de identidad del aspirante");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/brochure.pdf");
+                    solicitud.setNotasDireccion("Se revisarán antecedentes académicos enviados por la familia.");
+                    solicitud.setEmailConfirmacionEnviado(false);
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                    solicitud.setPuedeSolicitarReprogramacion(false);
+                    solicitud.setReprogramacionSolicitada(false);
+                    solicitud.setCantidadPropuestasEnviadas(0);
+                }),
+                new SolicitudDemo(aspirantePropuesta, solicitud -> {
+                    LocalDate hoy = LocalDate.now();
+                    solicitud.setEstado("PROPUESTA_ENVIADA");
+                    solicitud.setPropuestaFecha1(hoy.plusDays(5));
+                    solicitud.setPropuestaFecha2(hoy.plusDays(7));
+                    solicitud.setPropuestaFecha3(hoy.plusDays(9));
+                    solicitud.setPropuestaHorario1("08:30 - 09:15");
+                    solicitud.setPropuestaHorario2("10:15 - 11:00");
+                    solicitud.setPropuestaHorario3("14:00 - 14:45");
+                    solicitud.setFechaLimiteRespuesta(hoy.plusDays(12));
+                    solicitud.setCupoDisponible(true);
+                    solicitud.setDisponibilidadCurso("Vacante disponible");
+                    solicitud.setDocumentosRequeridos("DNI del aspirante\nConstancia de alumno regular");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/plan.pdf||https://institucion.example/normativa.pdf");
+                    solicitud.setPropuestaNotas("Traer documentación original para la entrevista.");
+                    solicitud.setNotasDireccion("Preferencia por turno mañana.");
+                    solicitud.setEmailConfirmacionEnviado(true);
+                    solicitud.setCantidadPropuestasEnviadas(1);
+                    solicitud.setPuedeSolicitarReprogramacion(true);
+                    solicitud.setReprogramacionSolicitada(false);
+                    solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                }),
+                new SolicitudDemo(aspiranteReprogramacion, solicitud -> {
+                    LocalDate hoy = LocalDate.now();
+                    solicitud.setEstado("PROPUESTA_ENVIADA");
+                    solicitud.setPropuestaFecha1(hoy.plusDays(3));
+                    solicitud.setPropuestaFecha2(hoy.plusDays(4));
+                    solicitud.setPropuestaFecha3(hoy.plusDays(6));
+                    solicitud.setPropuestaHorario1("09:00 - 09:45");
+                    solicitud.setPropuestaHorario2("11:30 - 12:15");
+                    solicitud.setPropuestaHorario3("16:00 - 16:45");
+                    solicitud.setFechaLimiteRespuesta(hoy.plusDays(8));
+                    solicitud.setFechaRespuestaFamilia(hoy.plusDays(1));
+                    solicitud.setCupoDisponible(true);
+                    solicitud.setDisponibilidadCurso("Esperando nueva disponibilidad");
+                    solicitud.setDocumentosRequeridos("Copia de partida de nacimiento");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/entrevista.pdf");
+                    solicitud.setPropuestaNotas("Familia solicitó opciones vespertinas.");
+                    solicitud.setNotasDireccion("Se evaluará agenda para nueva propuesta.");
+                    solicitud.setEmailConfirmacionEnviado(true);
+                    solicitud.setCantidadPropuestasEnviadas(2);
+                    solicitud.setPuedeSolicitarReprogramacion(false);
+                    solicitud.setReprogramacionSolicitada(true);
+                    solicitud.setComentarioReprogramacion("La familia pidió nuevas fechas posteriores a las 15 h.");
+                    solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                }),
+                new SolicitudDemo(aspiranteProgramada, solicitud -> {
+                    LocalDate hoy = LocalDate.now();
+                    solicitud.setEstado("ENTREVISTA_PROGRAMADA");
+                    solicitud.setPropuestaFecha1(hoy.minusDays(2));
+                    solicitud.setPropuestaFecha2(hoy.minusDays(1));
+                    solicitud.setPropuestaFecha3(hoy.plusDays(1));
+                    solicitud.setPropuestaHorario1("08:45 - 09:15");
+                    solicitud.setPropuestaHorario2("11:00 - 11:30");
+                    solicitud.setPropuestaHorario3("15:30 - 16:00");
+                    solicitud.setFechaLimiteRespuesta(hoy.minusDays(3));
+                    solicitud.setFechaRespuestaFamilia(hoy.minusDays(2));
+                    solicitud.setFechaEntrevista(hoy.plusDays(2));
+                    solicitud.setHorarioEntrevistaConfirmado("11:00 - 11:30");
+                    solicitud.setOpcionEntrevistaSeleccionada(2);
+                    solicitud.setCupoDisponible(true);
+                    solicitud.setDisponibilidadCurso("Entrevista confirmada");
+                    solicitud.setDocumentosRequeridos("Informe psicopedagógico actualizado");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/proyecto.pdf");
+                    solicitud.setPropuestaNotas("Familia confirmó asistencia a la segunda opción.");
+                    solicitud.setNotasDireccion("Dirección prepara informe socioemocional.");
+                    solicitud.setEmailConfirmacionEnviado(true);
+                    solicitud.setCantidadPropuestasEnviadas(1);
+                    solicitud.setPuedeSolicitarReprogramacion(false);
+                    solicitud.setReprogramacionSolicitada(false);
+                    solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                }),
+                new SolicitudDemo(aspiranteEntrevistada, solicitud -> {
+                    LocalDate hoy = LocalDate.now();
+                    solicitud.setEstado("ENTREVISTA_REALIZADA");
+                    solicitud.setPropuestaFecha1(hoy.minusDays(20));
+                    solicitud.setPropuestaFecha2(hoy.minusDays(18));
+                    solicitud.setPropuestaFecha3(hoy.minusDays(16));
+                    solicitud.setPropuestaHorario1("08:30 - 09:00");
+                    solicitud.setPropuestaHorario2("10:30 - 11:00");
+                    solicitud.setPropuestaHorario3("14:30 - 15:00");
+                    solicitud.setFechaLimiteRespuesta(hoy.minusDays(17));
+                    solicitud.setFechaRespuestaFamilia(hoy.minusDays(16));
+                    solicitud.setFechaEntrevista(hoy.minusDays(10));
+                    solicitud.setHorarioEntrevistaConfirmado("09:30 - 10:00");
+                    solicitud.setOpcionEntrevistaSeleccionada(1);
+                    solicitud.setEntrevistaRealizada(true);
+                    solicitud.setCupoDisponible(true);
+                    solicitud.setDisponibilidadCurso("Evaluación por comité");
+                    solicitud.setDocumentosRequeridos("Carpeta médica presentada");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/protocolo.pdf");
+                    solicitud.setPropuestaNotas("Entrevista realizada con ambos referentes.");
+                    solicitud.setNotasDireccion("Requiere seguimiento por equipo de orientación.");
+                    solicitud.setComentariosEntrevista("Se observan fortalezas en comunicación y empatía.");
+                    solicitud.setEmailConfirmacionEnviado(true);
+                    solicitud.setCantidadPropuestasEnviadas(1);
+                    solicitud.setPuedeSolicitarReprogramacion(false);
+                    solicitud.setReprogramacionSolicitada(false);
+                    solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                }),
+                new SolicitudDemo(aspiranteAceptada, solicitud -> {
+                    LocalDate hoy = LocalDate.now();
+                    solicitud.setEstado("ACEPTADA");
+                    solicitud.setPropuestaFecha1(hoy.minusDays(45));
+                    solicitud.setPropuestaFecha2(hoy.minusDays(42));
+                    solicitud.setPropuestaFecha3(hoy.minusDays(40));
+                    solicitud.setPropuestaHorario1("08:45 - 09:15");
+                    solicitud.setPropuestaHorario2("10:15 - 10:45");
+                    solicitud.setPropuestaHorario3("13:30 - 14:00");
+                    solicitud.setFechaLimiteRespuesta(hoy.minusDays(35));
+                    solicitud.setFechaRespuestaFamilia(hoy.minusDays(34));
+                    solicitud.setFechaEntrevista(hoy.minusDays(32));
+                    solicitud.setHorarioEntrevistaConfirmado("10:15 - 10:45");
+                    solicitud.setOpcionEntrevistaSeleccionada(2);
+                    solicitud.setEntrevistaRealizada(true);
+                    solicitud.setCupoDisponible(false);
+                    solicitud.setDisponibilidadCurso("Vacante asignada");
+                    solicitud.setDocumentosRequeridos("Documentación presentada");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/bienvenida.pdf");
+                    solicitud.setPropuestaNotas("Familia confirmó participación en jornada de integración.");
+                    solicitud.setNotasDireccion("Familia aceptada y matriculación en proceso.");
+                    solicitud.setComentariosEntrevista("Se observan fortalezas socioemocionales destacadas.");
+                    solicitud.setEmailConfirmacionEnviado(true);
+                    solicitud.setCantidadPropuestasEnviadas(2);
+                    solicitud.setPuedeSolicitarReprogramacion(false);
+                    solicitud.setReprogramacionSolicitada(false);
+                    solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                }),
+                new SolicitudDemo(aspiranteRechazada, solicitud -> {
+                    LocalDate hoy = LocalDate.now();
+                    solicitud.setEstado("RECHAZADA");
+                    solicitud.setPropuestaFecha1(hoy.minusDays(50));
+                    solicitud.setPropuestaFecha2(hoy.minusDays(48));
+                    solicitud.setPropuestaFecha3(hoy.minusDays(45));
+                    solicitud.setPropuestaHorario1("09:00 - 09:30");
+                    solicitud.setPropuestaHorario2("11:30 - 12:00");
+                    solicitud.setPropuestaHorario3("15:00 - 15:30");
+                    solicitud.setFechaLimiteRespuesta(hoy.minusDays(43));
+                    solicitud.setFechaRespuestaFamilia(hoy.minusDays(42));
+                    solicitud.setFechaEntrevista(hoy.minusDays(40));
+                    solicitud.setHorarioEntrevistaConfirmado("15:00 - 15:30");
+                    solicitud.setOpcionEntrevistaSeleccionada(3);
+                    solicitud.setEntrevistaRealizada(true);
+                    solicitud.setCupoDisponible(false);
+                    solicitud.setDisponibilidadCurso("Lista de espera");
+                    solicitud.setMotivoRechazo("La vacante fue asignada a otro aspirante según criterios de prioridad.");
+                    solicitud.setDocumentosRequeridos("Documentación completa");
+                    solicitud.setAdjuntosInformativos("https://institucion.example/comunicado.pdf");
+                    solicitud.setPropuestaNotas("Se ofreció acompañamiento para futuras postulaciones.");
+                    solicitud.setNotasDireccion("Se notificó a la familia sobre la decisión.");
+                    solicitud.setComentariosEntrevista("Se recomendó volver a postular el próximo ciclo.");
+                    solicitud.setEmailConfirmacionEnviado(true);
+                    solicitud.setCantidadPropuestasEnviadas(1);
+                    solicitud.setPuedeSolicitarReprogramacion(false);
+                    solicitud.setReprogramacionSolicitada(false);
+                    solicitud.setAutorizadoComunicacionesEmail(true);
+                }));
 
         crearActasAccidenteDemostracion(docentes, datosSecciones2025, datosSecciones2024);
 
@@ -1213,93 +1400,22 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         ensureVinculoAspiranteFamiliar(a, f, rol, seed.convive());
         return a;
     }
-    private void crearSolicitudesDemostracion(Aspirante aspirantePendiente, Aspirante aspiranteProgramado, Aspirante aspiranteAceptado) {
-        if (aspirantePendiente != null) {
-            crearSolicitudAdmision(aspirantePendiente, solicitud -> {
-                LocalDate hoy = LocalDate.now();
-                solicitud.setEstado("PROPUESTA_ENVIADA");
-                solicitud.setPropuestaFecha1(hoy.plusDays(7));
-                solicitud.setPropuestaFecha2(hoy.plusDays(9));
-                solicitud.setPropuestaFecha3(hoy.plusDays(11));
-                solicitud.setPropuestaHorario1("08:30 - 09:15");
-                solicitud.setPropuestaHorario2("10:00 - 10:45");
-                solicitud.setPropuestaHorario3("14:00 - 14:45");
-                solicitud.setFechaLimiteRespuesta(hoy.plusDays(15));
-                solicitud.setCupoDisponible(true);
-                solicitud.setDisponibilidadCurso("Vacante disponible");
-                solicitud.setDocumentosRequeridos("DNI del alumno y familia\nCertificado de nacimiento");
-                solicitud.setAdjuntosInformativos("https://institucion.example/plan.pdf||https://institucion.example/normativa.pdf");
-                solicitud.setPropuestaNotas("Se sugiere asistir con ambos referentes familiares.");
-                solicitud.setEmailConfirmacionEnviado(true);
-                solicitud.setCantidadPropuestasEnviadas(1);
-                solicitud.setPuedeSolicitarReprogramacion(true);
-                solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
-                solicitud.setAutorizadoComunicacionesEmail(true);
-            });
+    private void crearSolicitudesDemostracion(SolicitudDemo... demos) {
+        if (demos == null || demos.length == 0) {
+            return;
         }
-
-        if (aspiranteProgramado != null) {
-            crearSolicitudAdmision(aspiranteProgramado, solicitud -> {
-                LocalDate hoy = LocalDate.now();
-                solicitud.setEstado("ENTREVISTA_PROGRAMADA");
-                solicitud.setPropuestaFecha1(hoy.plusDays(-5));
-                solicitud.setPropuestaFecha2(hoy.plusDays(-3));
-                solicitud.setPropuestaFecha3(hoy.plusDays(-1));
-                solicitud.setPropuestaHorario1("09:00 - 09:30");
-                solicitud.setPropuestaHorario2("11:00 - 11:30");
-                solicitud.setPropuestaHorario3("16:00 - 16:30");
-                solicitud.setFechaLimiteRespuesta(hoy.minusDays(10));
-                solicitud.setFechaRespuestaFamilia(hoy.minusDays(9));
-                solicitud.setFechaEntrevista(hoy.plusDays(2));
-                solicitud.setHorarioEntrevistaConfirmado("11:00 - 11:30");
-                solicitud.setOpcionEntrevistaSeleccionada(2);
-                solicitud.setCupoDisponible(true);
-                solicitud.setDisponibilidadCurso("Entrevista programada");
-                solicitud.setDocumentosRequeridos("Carpeta médica\nBoletín escolar");
-                solicitud.setAdjuntosInformativos("https://institucion.example/proyecto.pdf");
-                solicitud.setPropuestaNotas("Familia confirmó asistencia a la opción 2.");
-                solicitud.setNotasDireccion("Familia solicitó entrevista vespertina.");
-                solicitud.setEmailConfirmacionEnviado(true);
-                solicitud.setCantidadPropuestasEnviadas(1);
-                solicitud.setPuedeSolicitarReprogramacion(false);
-                solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
-                solicitud.setAutorizadoComunicacionesEmail(true);
-            });
-        }
-
-        if (aspiranteAceptado != null) {
-            crearSolicitudAdmision(aspiranteAceptado, solicitud -> {
-                LocalDate hoy = LocalDate.now();
-                solicitud.setEstado("ACEPTADA");
-                solicitud.setPropuestaFecha1(hoy.minusDays(40));
-                solicitud.setPropuestaFecha2(hoy.minusDays(38));
-                solicitud.setPropuestaFecha3(hoy.minusDays(35));
-                solicitud.setPropuestaHorario1("08:45 - 09:15");
-                solicitud.setPropuestaHorario2("10:15 - 10:45");
-                solicitud.setPropuestaHorario3("13:30 - 14:00");
-                solicitud.setFechaLimiteRespuesta(hoy.minusDays(32));
-                solicitud.setFechaRespuestaFamilia(hoy.minusDays(31));
-                solicitud.setFechaEntrevista(hoy.minusDays(28));
-                solicitud.setHorarioEntrevistaConfirmado("10:15 - 10:45");
-                solicitud.setOpcionEntrevistaSeleccionada(2);
-                solicitud.setEntrevistaRealizada(true);
-                solicitud.setCupoDisponible(false);
-                solicitud.setDisponibilidadCurso("Vacante asignada");
-                solicitud.setDocumentosRequeridos("Documentación presentada");
-                solicitud.setAdjuntosInformativos("https://institucion.example/bienvenida.pdf");
-                solicitud.setNotasDireccion("Familia aceptada y matriculación en proceso.");
-                solicitud.setComentariosEntrevista("Se observan fortalezas socioemocionales destacadas.");
-                solicitud.setEmailConfirmacionEnviado(true);
-                solicitud.setCantidadPropuestasEnviadas(2);
-                solicitud.setPuedeSolicitarReprogramacion(false);
-                solicitud.setReprogramacionSolicitada(false);
-                solicitud.setPortalTokenSeleccion(UUID.randomUUID().toString());
-                solicitud.setAutorizadoComunicacionesEmail(true);
-            });
+        for (SolicitudDemo demo : demos) {
+            if (demo == null || demo.aspirante() == null || demo.patch() == null) {
+                continue;
+            }
+            crearSolicitudAdmision(demo.aspirante(), demo.patch());
         }
     }
 
     private void crearSolicitudAdmision(Aspirante aspirante, java.util.function.Consumer<SolicitudAdmision> patch) {
+        if (aspirante == null) {
+            return;
+        }
         if (solicitudAdmisionRepository.existsByAspiranteId(aspirante.getId())) {
             return;
         }
@@ -1307,7 +1423,9 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
         solicitud.setAspirante(aspirante);
         solicitud.setEstado("PENDIENTE");
         solicitud.setCupoDisponible(Boolean.FALSE);
-        patch.accept(solicitud);
+        if (patch != null) {
+            patch.accept(solicitud);
+        }
         solicitudAdmisionRepository.save(solicitud);
     }
 
@@ -1475,6 +1593,8 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             this(nombre, apellido, dni, famNombre, famApellido, famDni, RolVinculo.MADRE, true);
         }
     }
+
+    private record SolicitudDemo(Aspirante aspirante, Consumer<SolicitudAdmision> patch) {}
 
     private record MateriaAssignment(String materia, String docenteKey, RolMateria rol) {}
 

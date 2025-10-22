@@ -148,7 +148,7 @@ export function Step1({
             {dniLookupLoading
               ? "Verificando DNI…"
               : dniDuplicado
-                ? "Ya existe una solicitud de admisión registrada con este DNI."
+                ? "El DNI ingresado es incorrecto o ya fue registrado previamente."
                 : dniBloqueado
                   ? "DNI verificado."
                 : ""}

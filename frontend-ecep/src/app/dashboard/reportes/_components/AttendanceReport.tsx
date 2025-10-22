@@ -118,6 +118,7 @@ export function AttendanceReport({
                 if ((attendanceTo || "") !== end) {
                   setAttendanceTo(end);
                 }
+                setAttendanceFrom(value);
               }}
             />
             <DateField

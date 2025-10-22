@@ -8,7 +8,12 @@ import {
   identidad,
   vidaEscolar,
 } from "@/services/api/modules";
-import { isBirthDateValid, maxBirthDate, formatDni } from "@/lib/form-utils";
+import {
+  isBirthDateValid,
+  maxBirthDate,
+  formatDni,
+  onlyDigits,
+} from "@/lib/form-utils";
 import type * as DTO from "@/types/api-generated";
 import {
   Card,
@@ -249,8 +254,8 @@ export default function AltaAlumnoPage() {
         estadoCivil: data.estadoCivil ?? "",
         nacionalidad: data.nacionalidad ?? "",
         domicilio: data.domicilio ?? "",
-        telefono: data.telefono ?? "",
-        celular: data.celular ?? "",
+        telefono: data.telefono ? onlyDigits(data.telefono) : "",
+        celular: data.celular ? onlyDigits(data.celular) : "",
         email: data.email ?? "",
       });
     } catch (error: any) {
@@ -364,8 +369,12 @@ export default function AltaAlumnoPage() {
             apellido: personaData?.apellido ?? prev.apellido,
             dni,
             email: personaData?.email ?? prev.email,
-            telefono: personaData?.telefono ?? prev.telefono,
-            celular: personaData?.celular ?? prev.celular,
+            telefono: personaData?.telefono
+              ? onlyDigits(personaData.telefono)
+              : prev.telefono,
+            celular: personaData?.celular
+              ? onlyDigits(personaData.celular)
+              : prev.celular,
           }));
           setTutorPersonaExists(true);
         } else {
@@ -419,8 +428,8 @@ export default function AltaAlumnoPage() {
       estadoCivil: personaForm.estadoCivil || undefined,
       nacionalidad: personaForm.nacionalidad || undefined,
       domicilio: personaForm.domicilio || undefined,
-      telefono: personaForm.telefono || undefined,
-      celular: personaForm.celular || undefined,
+      telefono: onlyDigits(personaForm.telefono) || undefined,
+      celular: onlyDigits(personaForm.celular) || undefined,
       email: personaForm.email || undefined,
     };
     if (personaId) {
@@ -446,13 +455,15 @@ export default function AltaAlumnoPage() {
         }
 
         let personaId = tutor.personaId ?? null;
+        const telefono = onlyDigits(tutor.telefono);
+        const celular = onlyDigits(tutor.celular);
         const personaPayload: DTO.PersonaCreateDTO = {
           nombre: tutor.nombre.trim(),
           apellido: tutor.apellido.trim(),
           dni: dniValue,
           email: tutor.email.trim() || undefined,
-          telefono: tutor.telefono.trim() || undefined,
-          celular: tutor.celular.trim() || undefined,
+          telefono: telefono || undefined,
+          celular: celular || undefined,
         };
 
         if (personaId) {
@@ -649,6 +660,8 @@ export default function AltaAlumnoPage() {
       toast.error("Ya agregaste un tutor con este DNI y rol");
       return;
     }
+    const telefono = onlyDigits(tutorDraft.telefono);
+    const celular = onlyDigits(tutorDraft.celular);
     setSavingTutorDraft(true);
     setTutores((prev) => [
       ...prev,
@@ -659,8 +672,8 @@ export default function AltaAlumnoPage() {
         apellido: tutorDraft.apellido.trim(),
         dni: dniValue,
         email: tutorDraft.email.trim(),
-        telefono: tutorDraft.telefono.trim(),
-        celular: tutorDraft.celular.trim(),
+        telefono,
+        celular,
         rolVinculo: tutorDraft.rolVinculo,
         convive: tutorDraft.convive,
       },
@@ -1003,26 +1016,34 @@ export default function AltaAlumnoPage() {
               <div className="space-y-2">
                 <Label>Teléfono</Label>
                 <Input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="\\d*"
                   value={tutorDraft.telefono}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const telefono = onlyDigits(e.target.value);
                     setTutorDraft((prev) => ({
                       ...prev,
-                      telefono: e.target.value,
-                    }))
-                  }
+                      telefono,
+                    }));
+                  }}
                   disabled={savingTutorDraft}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Celular</Label>
                 <Input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="\\d*"
                   value={tutorDraft.celular}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const celular = onlyDigits(e.target.value);
                     setTutorDraft((prev) => ({
                       ...prev,
-                      celular: e.target.value,
-                    }))
-                  }
+                      celular,
+                    }));
+                  }}
                   disabled={savingTutorDraft}
                 />
               </div>
@@ -1216,8 +1237,11 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
               Teléfono
             </label>
             <Input
+              type="tel"
+              inputMode="numeric"
+              pattern="\\d*"
               value={values.telefono}
-              onChange={(e) => onChange("telefono", e.target.value)}
+              onChange={(e) => onChange("telefono", onlyDigits(e.target.value))}
               placeholder="Teléfono fijo"
             />
           </div>
@@ -1226,8 +1250,11 @@ function PersonaFormFields({ values, onChange }: PersonaFormFieldsProps) {
               Celular
             </label>
             <Input
+              type="tel"
+              inputMode="numeric"
+              pattern="\\d*"
               value={values.celular}
-              onChange={(e) => onChange("celular", e.target.value)}
+              onChange={(e) => onChange("celular", onlyDigits(e.target.value))}
               placeholder="Número móvil"
             />
           </div>

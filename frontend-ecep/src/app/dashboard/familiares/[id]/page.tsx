@@ -30,7 +30,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { formatDni } from "@/lib/form-utils";
+import { formatDni, onlyDigits } from "@/lib/form-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { displayRole, normalizeRoles } from "@/lib/auth-roles";
 import { identidad } from "@/services/api/modules";
@@ -219,8 +219,8 @@ export default function FamiliarPerfilPage() {
       apellido: persona?.apellido ?? "",
       dni: formatDni(persona?.dni ?? ""),
       email: persona?.email ?? "",
-      telefono: persona?.telefono ?? "",
-      celular: persona?.celular ?? "",
+      telefono: persona?.telefono ? onlyDigits(persona.telefono) : "",
+      celular: persona?.celular ? onlyDigits(persona.celular) : "",
       observaciones: (persona as any)?.observacionesGenerales ?? "",
     });
     setOcupacion((familiar as any)?.ocupacion ?? "");
@@ -251,8 +251,8 @@ export default function FamiliarPerfilPage() {
         apellido: personaDraft.apellido.trim(),
         dni: dniValue,
         email: personaDraft.email.trim() || undefined,
-        telefono: personaDraft.telefono.trim() || undefined,
-        celular: personaDraft.celular.trim() || undefined,
+        telefono: onlyDigits(personaDraft.telefono) || undefined,
+        celular: onlyDigits(personaDraft.celular) || undefined,
         observacionesGenerales: personaDraft.observaciones?.trim() || undefined,
       });
 
@@ -429,11 +429,14 @@ export default function FamiliarPerfilPage() {
                   <div className="space-y-2">
                     <Label>Teléfono</Label>
                     <Input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\\d*"
                       value={personaDraft.telefono}
                       onChange={(e) =>
                         setPersonaDraft((prev) => ({
                           ...prev,
-                          telefono: e.target.value,
+                          telefono: onlyDigits(e.target.value),
                         }))
                       }
                     />
@@ -441,11 +444,14 @@ export default function FamiliarPerfilPage() {
                   <div className="space-y-2">
                     <Label>Celular</Label>
                     <Input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\\d*"
                       value={personaDraft.celular}
                       onChange={(e) =>
                         setPersonaDraft((prev) => ({
                           ...prev,
-                          celular: e.target.value,
+                          celular: onlyDigits(e.target.value),
                         }))
                       }
                     />

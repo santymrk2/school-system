@@ -14,14 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +57,6 @@ import { format, parse, parseISO } from "date-fns";
 import { admisiones, identidad } from "@/services/api/modules";
 import { AltaModal } from "../../_components/AspirantesTabs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useActivePeriod } from "@/hooks/scope/useActivePeriod";
 
 const ESTADOS = {
   PENDIENTE: "PENDIENTE",
@@ -221,20 +213,6 @@ const estadoBadge = (estado?: string | null) => {
     );
   }
   return <Badge variant="secondary">{estado?.trim() || "—"}</Badge>;
-};
-
-const getPeriodoOrderValue = (periodo?: DTO.PeriodoEscolarDTO | null) => {
-  if (!periodo) return 0;
-  if (typeof periodo.anio === "number") return periodo.anio;
-  if (periodo.fechaInicio) {
-    const year = Number(String(periodo.fechaInicio).slice(0, 4));
-    if (!Number.isNaN(year)) return year;
-  }
-  if (periodo.fechaFin) {
-    const year = Number(String(periodo.fechaFin).slice(0, 4));
-    if (!Number.isNaN(year)) return year;
-  }
-  return typeof periodo.id === "number" ? periodo.id : 0;
 };
 
 type SolicitudAspirante = DTO.AspiranteDTO & {
@@ -397,14 +375,6 @@ export default function SolicitudAdmisionDetailPage() {
   const [familiares, setFamiliares] = useState<SolicitudFamiliarItem[]>([]);
   const [familiaresLoading, setFamiliaresLoading] = useState(false);
   const [familiaresError, setFamiliaresError] = useState<string | null>(null);
-  const { periodos: periodosEscolares } = useActivePeriod({ tickMidnight: false });
-  const [altaPromptOpen, setAltaPromptOpen] = useState(false);
-  const [pendingAutoAlta, setPendingAutoAlta] = useState({
-    active: false,
-    observedMaxOrder: 0,
-  });
-  const [altaDefaultPeriodoId, setAltaDefaultPeriodoId] = useState<number | null>(null);
-  const [altaDefaultAutoNext, setAltaDefaultAutoNext] = useState(false);
 
   const loadFamiliares = useCallback(async (aspiranteId: number) => {
     setFamiliaresLoading(true);
@@ -575,31 +545,6 @@ export default function SolicitudAdmisionDetailPage() {
       }
     }
   }, [solicitud]);
-
-  useEffect(() => {
-    if (!pendingAutoAlta.active) return;
-    if (!periodosEscolares || !periodosEscolares.length) return;
-    if (altaOpen) return;
-    const currentMaxOrder = periodosEscolares.reduce(
-      (max, periodo) => Math.max(max, getPeriodoOrderValue(periodo)),
-      0,
-    );
-    if (currentMaxOrder > pendingAutoAlta.observedMaxOrder) {
-      const sorted = [...periodosEscolares].sort(
-        (a, b) => getPeriodoOrderValue(a) - getPeriodoOrderValue(b),
-      );
-      const newest = sorted[sorted.length - 1];
-      if (newest?.id != null) {
-        setPendingAutoAlta({ active: false, observedMaxOrder: currentMaxOrder });
-        setAltaDefaultPeriodoId(newest.id);
-        setAltaDefaultAutoNext(false);
-        toast.info(
-          "Se creó un nuevo período lectivo. Completá el alta pendiente de esta solicitud.",
-        );
-        setAltaOpen(true);
-      }
-    }
-  }, [altaOpen, pendingAutoAlta, periodosEscolares]);
 
   const selectedOptionIndex = useMemo(() => {
     const option = solicitud?.opcionEntrevistaSeleccionada;
@@ -1330,16 +1275,6 @@ export default function SolicitudAdmisionDetailPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          {pendingAutoAlta.active && (
-            <Alert>
-              <AlertTitle>Alta pendiente para el próximo período</AlertTitle>
-              <AlertDescription>
-                Te avisaremos cuando se cree un nuevo período lectivo para completar la
-                asignación.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <div className="flex flex-wrap gap-2">
           {estado === ESTADOS.PROGRAMADA && (
             <Button
@@ -1421,48 +1356,15 @@ export default function SolicitudAdmisionDetailPage() {
         onSubmit={handleResultadoEntrevista}
       />
 
-      <AltaPromptDialog
-        open={altaPromptOpen}
-        onCancel={() => setAltaPromptOpen(false)}
-        onConfirm={() => {
-          setAltaPromptOpen(false);
-          setAltaDefaultPeriodoId(null);
-          setAltaDefaultAutoNext(false);
-          setAltaOpen(true);
-        }}
-      />
-
       <AltaModal
         open={altaOpen}
         solicitud={solicitud}
-        defaultPeriodoId={altaDefaultPeriodoId ?? undefined}
-        defaultAutoNext={altaDefaultAutoNext}
         onOpenChange={(open) => {
           setAltaOpen(open);
-          if (!open) {
-            setAltaDefaultPeriodoId(null);
-            setAltaDefaultAutoNext(false);
-          }
-        }}
-        onAutoAssignNextRequest={({ currentMaxOrder }) => {
-          setPendingAutoAlta({ active: true, observedMaxOrder: currentMaxOrder });
-          setAltaDefaultPeriodoId(null);
-          setAltaDefaultAutoNext(true);
-          setAltaOpen(false);
-          setAltaPromptOpen(false);
-        }}
-        onAutoAssignNextCancelled={() => {
-          setPendingAutoAlta((prev) =>
-            prev.active ? { active: false, observedMaxOrder: prev.observedMaxOrder } : prev,
-          );
-          setAltaDefaultAutoNext(false);
         }}
         onSuccess={(result) => {
           setAltaOpen(false);
           setAltaRegistrada(true);
-          setPendingAutoAlta({ active: false, observedMaxOrder: 0 });
-          setAltaDefaultPeriodoId(null);
-          setAltaDefaultAutoNext(false);
           setSolicitud((prev) =>
             prev
               ? {
@@ -1884,44 +1786,5 @@ function InterviewPromptDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-}
-
-function AltaPromptDialog({
-  open,
-  onConfirm,
-  onCancel,
-}: {
-  open: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(value) => {
-        if (!value) {
-          onCancel();
-        }
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>¿Querés dar de alta ahora?</DialogTitle>
-          <DialogDescription>
-            Podés asignar la solicitud a una sección y período lectivo inmediatamente o hacerlo más
-            tarde desde este mismo detalle.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Más tarde
-          </Button>
-          <Button type="button" onClick={onConfirm}>
-            Elegir período y sección
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

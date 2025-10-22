@@ -24,6 +24,6 @@ public class InformeInicialController {
     @GetMapping public List<InformeInicialDTO> list(){ return service.findAll(); }
     @GetMapping("/{id}") public InformeInicialDTO get(@PathVariable Long id){ return service.get(id); }
     @PostMapping public ResponseEntity<Long> create(@RequestBody @Valid InformeInicialCreateDTO dto){ return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED); }
-    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid InformeInicialDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
+    @PutMapping("/{id}") public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody @Valid InformeInicialUpdateDTO dto){ service.update(id, dto); return ResponseEntity.noContent().build(); }
     @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id){ service.delete(id); return ResponseEntity.noContent().build(); }
 }

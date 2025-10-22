@@ -4,6 +4,7 @@ import edu.ecep.base_app.gestionacademica.domain.InformeInicial;
 import edu.ecep.base_app.gestionacademica.domain.TrimestreEstado;
 import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialCreateDTO;
 import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialDTO;
+import edu.ecep.base_app.gestionacademica.presentation.dto.InformeInicialUpdateDTO;
 import edu.ecep.base_app.gestionacademica.infrastructure.mapper.InformeInicialMapper;
 import edu.ecep.base_app.gestionacademica.infrastructure.persistence.InformeInicialRepository;
 import edu.ecep.base_app.identidad.application.PersonaAccountService;
@@ -34,9 +35,13 @@ public class InformeInicialService {
     public Long create(InformeInicialCreateDTO dto) {
         return repo.save(mapper.toEntity(dto)).getId();
     }
-    public void update(Long id, InformeInicialDTO dto) {
+    public void update(Long id, InformeInicialUpdateDTO dto) {
         InformeInicial e = repo.findById(id).orElseThrow(NotFoundException::new);
-        mapper.update(e, dto);
+        String descripcion = dto.getDescripcion() == null ? null : dto.getDescripcion().trim();
+        e.setDescripcion(descripcion);
+        if(dto.getPublicado() != null) {
+            e.setPublicado(dto.getPublicado());
+        }
         repo.save(e);
     }
     public void delete(Long id){

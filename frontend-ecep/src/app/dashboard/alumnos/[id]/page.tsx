@@ -38,6 +38,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatTurnoLabel } from "@/lib/turno-label";
 import { Loader2, UserMinus, Info } from "lucide-react";
 import { toast } from "sonner";
@@ -173,6 +183,13 @@ export default function AlumnoPerfilPage() {
     useState<string | null>(null);
   const [processingDecisionSolicitudId, setProcessingDecisionSolicitudId] =
     useState<number | null>(null);
+  const [approveDialogSolicitud, setApproveDialogSolicitud] = useState<
+    SolicitudBajaAlumnoDTO | null
+  >(null);
+  const [rejectDialogSolicitud, setRejectDialogSolicitud] = useState<
+    SolicitudBajaAlumnoDTO | null
+  >(null);
+  const [rejectMotivo, setRejectMotivo] = useState("");
 
   const [familiares, setFamiliares] = useState<FamiliarConVinculo[]>([]);
 
@@ -777,10 +794,34 @@ export default function AlumnoPerfilPage() {
     resetCrearBajaForm,
   ]);
 
-  const ensurePersonaActual = useCallback(
-    (message: string) => {
+  const validateDecision = useCallback(
+    (
+      sol: SolicitudBajaAlumnoDTO,
+      type: "approve" | "reject",
+      showToast = true,
+    ) => {
+      const revisionMessage =
+        type === "approve"
+          ? "Administración debe completar la revisión antes de aceptar la baja"
+          : "Administración debe completar la revisión antes de rechazar la baja";
+      const personaMessage =
+        type === "approve"
+          ? "No pudimos identificar a la persona que acepta la baja"
+          : "No pudimos identificar a la persona que rechaza la baja";
+      if (
+        (sol.estadoRevisionAdministrativa ??
+          EstadoRevisionAdministrativa.PENDIENTE) ===
+        EstadoRevisionAdministrativa.PENDIENTE
+      ) {
+        if (showToast) {
+          toast.error(revisionMessage);
+        }
+        return false;
+      }
       if (!personaActualId) {
-        toast.error(message);
+        if (showToast) {
+          toast.error(personaMessage);
+        }
         return false;
       }
       return true;
@@ -790,24 +831,30 @@ export default function AlumnoPerfilPage() {
 
   const handleAceptarSolicitud = useCallback(
     async (sol: SolicitudBajaAlumnoDTO) => {
-      if (
-        (sol.estadoRevisionAdministrativa ??
-          EstadoRevisionAdministrativa.PENDIENTE) ===
-        EstadoRevisionAdministrativa.PENDIENTE
-      ) {
-        toast.error(
-          "Administración debe completar la revisión antes de aceptar la baja",
-        );
+      if (!validateDecision(sol, "approve", false)) {
+        validateDecision(sol, "approve", true);
+        setApproveDialogSolicitud(null);
         return;
       }
-      if (!ensurePersonaActual("No pudimos identificar a la persona que acepta la baja"))
-        return;
-      if (!window.confirm("¿Confirmás aceptar la baja del alumno?")) return;
 
-      setProcessingDecisionSolicitudId(sol.id ?? null);
+      const solicitudId = sol.id;
+      if (solicitudId == null) {
+        toast.error("No se pudo identificar la solicitud de baja");
+        setApproveDialogSolicitud(null);
+        return;
+      }
+
+      const personaId = personaActualId;
+      if (personaId == null) {
+        validateDecision(sol, "approve", true);
+        setApproveDialogSolicitud(null);
+        return;
+      }
+
+      setProcessingDecisionSolicitudId(solicitudId);
       try {
-        await vidaEscolar.solicitudesBaja.approve(sol.id!, {
-          decididoPorPersonaId: personaActualId!,
+        await vidaEscolar.solicitudesBaja.approve(solicitudId, {
+          decididoPorPersonaId: personaId,
         });
         toast.success("Baja aceptada correctamente");
         await fetchSolicitudesBaja();
@@ -817,46 +864,49 @@ export default function AlumnoPerfilPage() {
         toast.error("No se pudo aceptar la baja");
       } finally {
         setProcessingDecisionSolicitudId(null);
+        setApproveDialogSolicitud(null);
       }
     },
     [
-      ensurePersonaActual,
-      fetchSolicitudesBaja,
+      validateDecision,
       personaActualId,
+      fetchSolicitudesBaja,
       setReloadKey,
     ],
   );
 
   const handleRechazarSolicitud = useCallback(
-    async (sol: SolicitudBajaAlumnoDTO) => {
-      if (
-        (sol.estadoRevisionAdministrativa ??
-          EstadoRevisionAdministrativa.PENDIENTE) ===
-        EstadoRevisionAdministrativa.PENDIENTE
-      ) {
-        toast.error(
-          "Administración debe completar la revisión antes de rechazar la baja",
-        );
+    async (sol: SolicitudBajaAlumnoDTO, reason: string) => {
+      if (!validateDecision(sol, "reject", false)) {
+        validateDecision(sol, "reject", true);
+        setRejectDialogSolicitud(null);
         return;
       }
-      if (!ensurePersonaActual("No pudimos identificar a la persona que rechaza la baja"))
-        return;
 
-      const reason = window.prompt(
-        "Motivo del rechazo",
-        sol.motivoRechazo ?? "",
-      );
-      if (reason == null) return;
       const normalized = reason.trim();
       if (!normalized) {
         toast.error("El motivo de rechazo es obligatorio");
         return;
       }
 
-      setProcessingDecisionSolicitudId(sol.id ?? null);
+      const solicitudId = sol.id;
+      if (solicitudId == null) {
+        toast.error("No se pudo identificar la solicitud de baja");
+        setRejectDialogSolicitud(null);
+        return;
+      }
+
+      const personaId = personaActualId;
+      if (personaId == null) {
+        validateDecision(sol, "reject", true);
+        setRejectDialogSolicitud(null);
+        return;
+      }
+
+      setProcessingDecisionSolicitudId(solicitudId);
       try {
-        await vidaEscolar.solicitudesBaja.reject(sol.id!, {
-          decididoPorPersonaId: personaActualId!,
+        await vidaEscolar.solicitudesBaja.reject(solicitudId, {
+          decididoPorPersonaId: personaId,
           motivoRechazo: normalized,
         });
         toast.success("Solicitud rechazada");
@@ -867,14 +917,45 @@ export default function AlumnoPerfilPage() {
         toast.error("No se pudo rechazar la baja");
       } finally {
         setProcessingDecisionSolicitudId(null);
+        setRejectDialogSolicitud(null);
+        setRejectMotivo("");
       }
     },
     [
-      ensurePersonaActual,
-      fetchSolicitudesBaja,
+      validateDecision,
       personaActualId,
+      fetchSolicitudesBaja,
       setReloadKey,
     ],
+  );
+
+  const requestAceptarSolicitud = useCallback(
+    (sol: SolicitudBajaAlumnoDTO) => {
+      if (!validateDecision(sol, "approve")) return;
+      setApproveDialogSolicitud(sol);
+    },
+    [validateDecision],
+  );
+
+  const requestRechazarSolicitud = useCallback(
+    (sol: SolicitudBajaAlumnoDTO) => {
+      if (!validateDecision(sol, "reject")) return;
+      setRejectMotivo(sol.motivoRechazo?.trim() ?? "");
+      setRejectDialogSolicitud(sol);
+    },
+    [validateDecision],
+  );
+
+  const getSolicitudAlumnoNombre = useCallback(
+    (sol?: SolicitudBajaAlumnoDTO | null) => {
+      if (!sol) return "Alumno sin datos";
+      const nombre = [sol.alumnoApellido, sol.alumnoNombre]
+        .filter(Boolean)
+        .join(", ")
+        .trim();
+      return nombre || "Alumno sin datos";
+    },
+    [],
   );
 
   useEffect(() => {
@@ -2578,7 +2659,7 @@ export default function AlumnoPerfilPage() {
                             <div className="mt-4 flex flex-wrap gap-2">
                               <Button
                                 size="sm"
-                                onClick={() => handleAceptarSolicitud(sol)}
+                                onClick={() => requestAceptarSolicitud(sol)}
                                 disabled={
                                   processingDecisionSolicitudId === sol.id
                                 }
@@ -2588,7 +2669,7 @@ export default function AlumnoPerfilPage() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleRechazarSolicitud(sol)}
+                                onClick={() => requestRechazarSolicitud(sol)}
                                 disabled={
                                   processingDecisionSolicitudId === sol.id
                                 }
@@ -2902,7 +2983,119 @@ export default function AlumnoPerfilPage() {
 
           </div>
         )}
+        <AlertDialog
+          open={approveDialogSolicitud != null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setApproveDialogSolicitud(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar baja</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Confirmás aceptar la baja del alumno {" "}
+                {getSolicitudAlumnoNombre(approveDialogSolicitud)}?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={
+                  approveDialogSolicitud != null &&
+                  processingDecisionSolicitudId === approveDialogSolicitud.id
+                }
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const sol = approveDialogSolicitud;
+                  if (sol) {
+                    void handleAceptarSolicitud(sol);
+                  }
+                }}
+                disabled={
+                  approveDialogSolicitud == null ||
+                  processingDecisionSolicitudId === approveDialogSolicitud.id
+                }
+              >
+                {approveDialogSolicitud != null &&
+                processingDecisionSolicitudId === approveDialogSolicitud.id
+                  ? "Procesando…"
+                  : "Aceptar baja"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Dialog
+          open={rejectDialogSolicitud != null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRejectDialogSolicitud(null);
+              setRejectMotivo("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Rechazar solicitud de baja</DialogTitle>
+              <DialogDescription>
+                Indicá el motivo del rechazo para {" "}
+                {getSolicitudAlumnoNombre(rejectDialogSolicitud)}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="motivo-rechazo-detalle">Motivo</Label>
+                <Textarea
+                  id="motivo-rechazo-detalle"
+                  value={rejectMotivo}
+                  onChange={(event) => setRejectMotivo(event.target.value)}
+                  rows={4}
+                  disabled={
+                    rejectDialogSolicitud != null &&
+                    processingDecisionSolicitudId === rejectDialogSolicitud.id
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRejectDialogSolicitud(null);
+                  setRejectMotivo("");
+                }}
+                disabled={
+                  rejectDialogSolicitud != null &&
+                  processingDecisionSolicitudId === rejectDialogSolicitud.id
+                }
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const sol = rejectDialogSolicitud;
+                  if (sol) {
+                    void handleRechazarSolicitud(sol, rejectMotivo);
+                  }
+                }}
+                disabled={
+                  rejectDialogSolicitud == null ||
+                  processingDecisionSolicitudId === rejectDialogSolicitud.id
+                }
+              >
+                {rejectDialogSolicitud != null &&
+                processingDecisionSolicitudId === rejectDialogSolicitud.id
+                  ? "Procesando…"
+                  : "Rechazar solicitud"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-    
+
   );
 }

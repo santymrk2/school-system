@@ -70,6 +70,7 @@ const createEmptyFamiliar = (): FamiliarForm => ({
   tipoRelacion: DTO.RolVinculo.PADRE,
   viveConAlumno: true,
   familiar: { ...emptyFamiliarPersona },
+  dniLocked: false,
 });
 
 const initialFormData: PostulacionFormData = {
@@ -923,11 +924,17 @@ export default function PostulacionPage() {
     }
   }, []);
 
-  const addFamiliar = () => {
-    setFormData((prev) => ({
-      ...prev,
-      familiares: [...(prev.familiares ?? []), createEmptyFamiliar()],
-    }));
+  const addFamiliar = (dni: string) => {
+    setFormData((prev) => {
+      const familiarEntry = createEmptyFamiliar();
+      familiarEntry.familiar.dni = dni;
+      familiarEntry.dniLocked = true;
+
+      return {
+        ...prev,
+        familiares: [...(prev.familiares ?? []), familiarEntry],
+      };
+    });
     setErrors((prev) => {
       if (!prev.familiares) return prev;
       const next = { ...prev };

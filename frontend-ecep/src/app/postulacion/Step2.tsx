@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertCircle, Loader2, Plus, Users } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,14 @@ export function Step2({
   ];
 
   const hasError = (key: string) => Boolean(errors?.[key]);
+
+  const removeFamiliar = (index: number) => {
+    const next = familiares.filter((_, position) => position !== index);
+    const familialErrorKeys = Object.keys(errors).filter(
+      (key) => key === "familiares" || key.startsWith("familiares."),
+    );
+    handleInputChange("familiares", next, { errorKeys: familialErrorKeys });
+  };
 
   const openAddDialog = () => {
     setDniValue("");
@@ -260,8 +268,19 @@ export function Step2({
           const domicilioError = hasError(`${familiarKey}.domicilio`);
 
           return (
-            <div key={i} className="border rounded-lg p-4">
-              <h4 className="font-medium mb-4">Familiar {i + 1}</h4>
+            <div key={i} className="border rounded-lg p-4 space-y-4">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="font-medium">Familiar {i + 1}</h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeFamiliar(i)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Relación */}
                 <div>

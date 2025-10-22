@@ -58,6 +58,10 @@ const createConsoleLogger = (
 
   const call = (method: "debug" | "info" | "warn" | "error", args: unknown[]) => {
     const fn = consoleMethods[method] ?? consoleMethods.log;
+    if (typeof fn !== "function") {
+      return;
+    }
+
     if (prefix) {
       fn(prefix, ...args);
     } else {

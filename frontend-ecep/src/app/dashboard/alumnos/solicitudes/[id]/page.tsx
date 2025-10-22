@@ -746,13 +746,16 @@ export default function SolicitudAdmisionDetailPage() {
     !esRechazada &&
     (estado === ESTADOS.PENDIENTE || estado === ESTADOS.PROPUESTA);
   const tieneEntrevistaConfirmada = Boolean(solicitud?.fechaEntrevistaConfirmada);
-  const puedeDecidir =
+  const entrevistaRealizada =
+    Boolean(solicitud?.entrevistaRealizada) || estado === ESTADOS.ENTREVISTA_REALIZADA;
+  const puedeTomarDecision =
     tieneEntrevistaConfirmada &&
     estado !== ESTADOS.RECHAZADA &&
     estado !== ESTADOS.ACEPTADA;
+  const puedeAceptar = puedeTomarDecision && entrevistaRealizada;
   const puedeRechazar =
     !altaRegistrada &&
-    !puedeDecidir &&
+    !puedeTomarDecision &&
     !esRechazada &&
     (estado === ESTADOS.PENDIENTE ||
       estado === ESTADOS.PROPUESTA ||
@@ -1196,19 +1199,22 @@ export default function SolicitudAdmisionDetailPage() {
                 {propuestasDetalladas.length ? (
                   <ul className="space-y-1 text-sm text-muted-foreground">
                     {propuestasDetalladas.map((item, index) => (
-                      <li key={`${item.fecha}-${index}`} className="flex items-start gap-2">
-                        <CalendarDays className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
-                        <div className="space-y-1">
+                      <li
+                        key={`${item.fecha}-${index}`}
+                        className="flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <span className="flex min-w-0 items-center gap-2 text-left">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>
                             {formatDate(item.fecha)}
                             {item.horario ? ` · ${item.horario}` : ""}
                           </span>
-                          {item.selected && (
-                            <span className="flex items-center gap-1 text-xs text-emerald-600">
-                              <CircleCheck className="h-3 w-3" /> Elegida por la familia
-                            </span>
-                          )}
-                        </div>
+                        </span>
+                        {item.selected && (
+                          <span className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-emerald-600">
+                            <CircleCheck className="h-3 w-3" /> Elegida por la familia
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1318,18 +1324,33 @@ export default function SolicitudAdmisionDetailPage() {
               Rechazar solicitud
             </Button>
           )}
-          {puedeDecidir && (
-            <div className="flex gap-2">
-              <Button onClick={() => setDecisionOpen("aceptar")} disabled={actionLoading}>
-                Aceptar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setDecisionOpen("rechazar")}
-                disabled={actionLoading}
-              >
-                Rechazar
-              </Button>
+          {puedeTomarDecision && (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setDecisionOpen("aceptar")}
+                  disabled={actionLoading || !puedeAceptar}
+                  title={
+                    !puedeAceptar
+                      ? "Marcá la entrevista como realizada para habilitar la aceptación"
+                      : undefined
+                  }
+                >
+                  Aceptar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setDecisionOpen("rechazar")}
+                  disabled={actionLoading}
+                >
+                  Rechazar
+                </Button>
+              </div>
+              {!puedeAceptar && (
+                <p className="text-xs text-muted-foreground">
+                  Marcá la entrevista como realizada para habilitar la aceptación.
+                </p>
+              )}
             </div>
           )}
           </div>

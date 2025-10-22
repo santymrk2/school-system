@@ -382,6 +382,25 @@ public class DataLoader implements org.springframework.boot.CommandLineRunner {
             datosSecciones2025.add(ensureSeccionCompleta(periodo2025, setup, docentes, materiasCatalogo));
         }
 
+        // Credenciales de ejemplo para acceso familiar y estudiantil
+        Persona marcosCabrera = ensurePersona("Marcos", "Cabrera", "41010001");
+        ensurePersonaCredentials(marcosCabrera,
+                "marcos.cabrera@example.com",
+                "familia123",
+                Set.of(UserRole.USER, UserRole.FAMILY));
+
+        Persona brendaLemos = ensurePersona("Brenda", "Lemos", "32020001");
+        ensurePersonaCredentials(brendaLemos,
+                "brenda.lemos@example.com",
+                "familia123",
+                Set.of(UserRole.USER, UserRole.FAMILY));
+
+        Persona agustinaCabrera = ensurePersona("Agustina", "Cabrera", "61010001");
+        ensurePersonaCredentials(agustinaCabrera,
+                "agustina.cabrera@example.com",
+                "alumno123",
+                Set.of(UserRole.USER, UserRole.STUDENT));
+
         LocalDate titularDesde2024 = LocalDate.of(2024, 3, 1);
         LocalDate matriculaDesde2024 = LocalDate.of(2024, 3, 4);
         List<SeccionSetup> secciones2024 = List.of(

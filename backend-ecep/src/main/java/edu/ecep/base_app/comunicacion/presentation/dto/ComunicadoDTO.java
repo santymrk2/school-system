@@ -17,7 +17,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ComunicadoDTO {
-    Long id;
+    String id;
     @NotNull
     AlcanceComunicado alcance;
     Long seccionId;

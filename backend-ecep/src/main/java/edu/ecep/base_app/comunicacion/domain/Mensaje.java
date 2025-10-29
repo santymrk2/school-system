@@ -1,41 +1,47 @@
 package edu.ecep.base_app.comunicacion.domain;
 
-import edu.ecep.base_app.identidad.domain.Persona;
-import edu.ecep.base_app.shared.domain.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import java.time.OffsetDateTime;
+import edu.ecep.base_app.shared.domain.BaseDocument;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.SQLDelete;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "mensajes")
-@SQLDelete(sql = "UPDATE mensajes SET activo = false, fecha_eliminacion = now() WHERE id = ?")
+import java.time.OffsetDateTime;
+
+/**
+ * Documento Mongo que representa un mensaje del chat institucional.
+ */
 @Getter
 @Setter
-public class Mensaje extends BaseEntity {
-    @Column(nullable = false)
+@Document(collection = "mensajes")
+@CompoundIndexes({
+        @CompoundIndex(name = "chat_historial_idx", def = "{ 'emisor_id': 1, 'receptor_id': 1, 'fecha_envio': 1 }"),
+        @CompoundIndex(name = "chat_unread_idx", def = "{ 'receptor_id': 1, 'leido': 1, 'activo': 1 }"),
+        @CompoundIndex(name = "chat_unread_pair_idx", def = "{ 'emisor_id': 1, 'receptor_id': 1, 'leido': 1 }")
+})
+public class Mensaje extends BaseDocument {
+
+    @Field("fecha_envio")
     private OffsetDateTime fechaEnvio;
 
-    @Column
+    @Field("asunto")
     private String asunto;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Field("contenido")
     private String contenido;
 
-    @Column(nullable = false)
+    @Field("leido")
+    @Indexed
     private Boolean leido;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "emisor_id", nullable = false)
-    private Persona emisor;
+    @Field("emisor_id")
+    @Indexed
+    private Long emisorId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receptor_id", nullable = false)
-    private Persona receptor;
+    @Field("receptor_id")
+    @Indexed
+    private Long receptorId;
 }

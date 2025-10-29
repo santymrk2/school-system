@@ -7,17 +7,14 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import edu.ecep.base_app.shared.mapper.ModelMapperConfig;
-import edu.ecep.base_app.shared.mapper.RefMapper;
 
-@Mapper(config = ModelMapperConfig.class, uses = RefMapper.class)
+@Mapper(config = ModelMapperConfig.class)
 public interface ComunicadoMapper {
-    @Mapping(target = "seccionId", source = "seccion.id")
     @Mapping(target = "fechaCreacion", source = "dateCreated")
     ComunicadoDTO toDto(Comunicado e);
 
-    @Mapping(target = "seccion", source = "seccionId")
     Comunicado toEntity(ComunicadoCreateDTO dto);
 
-    @Mapping(target = "seccion", source = "seccionId")
+    @Mapping(target = "id", ignore = true)
     void update(@MappingTarget Comunicado e, ComunicadoDTO dto);
 }

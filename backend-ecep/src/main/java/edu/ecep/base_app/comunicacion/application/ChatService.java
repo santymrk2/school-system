@@ -1,17 +1,17 @@
 package edu.ecep.base_app.comunicacion.application;
 
 import edu.ecep.base_app.comunicacion.domain.Mensaje;
-import edu.ecep.base_app.identidad.domain.Persona;
+import edu.ecep.base_app.comunicacion.infrastructure.persistence.MensajeRepository;
 import edu.ecep.base_app.comunicacion.presentation.dto.ChatMessageDTO;
 import edu.ecep.base_app.comunicacion.presentation.dto.SendMessageRequest;
-import edu.ecep.base_app.comunicacion.infrastructure.persistence.MensajeRepository;
+import edu.ecep.base_app.identidad.domain.Persona;
 import edu.ecep.base_app.identidad.infrastructure.persistence.PersonaRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Comparator;
@@ -34,11 +34,7 @@ public class ChatService {
     private static final String ONLINE_USERS_KEY = "chat:online_users";
     private static final String USER_LAST_SEEN_KEY = "chat:last_seen:";
 
-    /**
-     * Guarda el mensaje en la BD y lo publica por Redis para su diseminación.
-     */
     public Mensaje saveAndSend(SendMessageRequest request, Persona emisor) {
-        // Validaciones
         if (request.getContenido() == null || request.getContenido().trim().isEmpty()) {
             throw new IllegalArgumentException("El mensaje no puede estar vacío");
         }
@@ -46,19 +42,18 @@ public class ChatService {
             throw new IllegalArgumentException("El mensaje es demasiado largo");
         }
 
-        // Creación de entidad
+        personaRepository.findById(request.getReceptorId())
+                .orElseThrow(() -> new IllegalArgumentException("Persona receptora no encontrada"));
+
         Mensaje mensaje = new Mensaje();
-        mensaje.setEmisor(emisor);
-        mensaje.setReceptor(personaRepository.findById(request.getReceptorId())
-                .orElseThrow(() -> new IllegalArgumentException("Persona receptora no encontrada")));
+        mensaje.setEmisorId(emisor.getId());
+        mensaje.setReceptorId(request.getReceptorId());
         mensaje.setContenido(request.getContenido().trim());
         mensaje.setFechaEnvio(OffsetDateTime.now());
         mensaje.setLeido(false);
 
-        // Persistir en BD
         Mensaje saved = mensajeRepository.save(mensaje);
 
-        // Convertir a DTO y publicar en Redis
         ChatMessageDTO dto = toDto(saved);
         publishMessage(dto);
 
@@ -87,16 +82,18 @@ public class ChatService {
     }
 
     public Map<Long, Long> getUnreadCounts(Long userId) {
-        return mensajeRepository.getUnreadCounts(userId)
+        return mensajeRepository.aggregateUnreadCounts(userId)
                 .stream()
                 .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]
+                        MensajeRepository.UnreadCountProjection::getEmisorId,
+                        MensajeRepository.UnreadCountProjection::getCount
                 ));
     }
 
     public List<Persona> getActiveChatUsers(Long userId) {
-        List<Long> activeUserIds = mensajeRepository.getActiveChatUserIds(userId);
+        List<Long> activeUserIds = mensajeRepository.aggregateContactIds(userId).stream()
+                .map(MensajeRepository.ContactProjection::getPersonaId)
+                .toList();
         return personaRepository.findAllById(activeUserIds);
     }
 
@@ -132,18 +129,19 @@ public class ChatService {
     }
 
     public List<Long> getUserContacts(Long userId) {
-        return mensajeRepository.getUserContacts(userId);
+        return mensajeRepository.aggregateContactIds(userId).stream()
+                .map(MensajeRepository.ContactProjection::getPersonaId)
+                .toList();
     }
 
-    /** Convierte la entidad Mensaje a ChatMessageDTO */
     public ChatMessageDTO toDto(Mensaje mensaje) {
         ChatMessageDTO dto = new ChatMessageDTO();
         dto.setId(mensaje.getId());
-        dto.setEmisorId(mensaje.getEmisor().getId());
-        dto.setReceptorId(mensaje.getReceptor().getId());
+        dto.setEmisorId(mensaje.getEmisorId());
+        dto.setReceptorId(mensaje.getReceptorId());
         dto.setContenido(mensaje.getContenido());
         dto.setFechaEnvio(mensaje.getFechaEnvio());
-        dto.setLeido(mensaje.getLeido());
+        dto.setLeido(Boolean.TRUE.equals(mensaje.getLeido()));
         return dto;
     }
 

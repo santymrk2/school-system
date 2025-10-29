@@ -1,109 +1,67 @@
 package edu.ecep.base_app.comunicacion.infrastructure.persistence;
 
 import edu.ecep.base_app.comunicacion.domain.Mensaje;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.Aggregation;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.mongodb.repository.Update;
 
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
+public interface MensajeRepository extends MongoRepository<Mensaje, String> {
 
-public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
+    @Query(value = "{ 'activo': true, '$or': [ { 'emisor_id': ?0, 'receptor_id': ?1 }, { 'emisor_id': ?1, 'receptor_id': ?0 } ] }", sort = "{ 'fecha_envio': 1 }")
+    List<Mensaje> findConversation(Long userId, Long otherUserId);
 
-    // Obtener conversación entre dos usuarios ordenada por fecha
-    @Query("""
-        SELECT m FROM Mensaje m 
-        WHERE (m.emisor.id = :userId AND m.receptor.id = :otherUserId) 
-           OR (m.emisor.id = :otherUserId AND m.receptor.id = :userId)
-        ORDER BY m.fechaEnvio ASC
-        """)
-    List<Mensaje> findConversation(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+    @Query(value = "{ 'activo': true, 'emisor_id': ?1, 'receptor_id': ?0, 'leido': false }")
+    @Update("{ '$set': { 'leido': true } }")
+    void markAsRead(Long userId, Long otherUserId);
 
-    // Marcar mensajes como leídos
-    @Modifying
-    @Query("""
-        UPDATE Mensaje m 
-        SET m.leido = true 
-        WHERE m.emisor.id = :otherUserId 
-          AND m.receptor.id = :userId 
-          AND m.leido = false
-        """)
-    void markAsRead(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+    @Aggregation(pipeline = {
+            "{ '$match': { 'activo': true, 'receptor_id': ?0, 'leido': false } }",
+            "{ '$group': { '_id': '$emisor_id', 'count': { '$sum': 1 } } }"
+    })
+    List<UnreadCountProjection> aggregateUnreadCounts(Long userId);
 
-    // Obtener conteo de mensajes no leídos por emisor
-    @Query("""
-        SELECT m.emisor.id, COUNT(m) 
-        FROM Mensaje m 
-        WHERE m.receptor.id = :userId 
-          AND m.leido = false 
-        GROUP BY m.emisor.id
-        """)
-    List<Object[]> getUnreadCounts(@Param("userId") Long userId);
+    @Aggregation(pipeline = {
+            "{ '$match': { 'activo': true, '$or': [ { 'emisor_id': ?0 }, { 'receptor_id': ?0 } ] } }",
+            "{ '$project': { 'contactId': { '$cond': [ { '$eq': ['$emisor_id', ?0] }, '$receptor_id', '$emisor_id' ] } } }",
+            "{ '$group': { '_id': '$contactId' } }"
+    })
+    List<ContactProjection> aggregateContactIds(Long userId);
 
-    // Obtener usuarios con los que se ha tenido conversación
-    @Query("""
-        SELECT DISTINCT 
-        CASE 
-            WHEN m.emisor.id = :userId THEN m.receptor.id 
-            ELSE m.emisor.id 
-        END
-        FROM Mensaje m 
-        WHERE m.emisor.id = :userId OR m.receptor.id = :userId
-        """)
-    List<Long> getActiveChatUserIds(@Param("userId") Long userId);
+    @Query(value = "{ 'activo': true, '$or': [ { 'emisor_id': ?0, 'receptor_id': ?1 }, { 'emisor_id': ?1, 'receptor_id': ?0 } ] }", sort = "{ 'fecha_envio': -1 }")
+    List<Mensaje> findLastMessage(Long userId, Long otherUserId, Pageable pageable);
 
-    // Obtener contactos de un usuario (redundante con el anterior)
-    @Query("""
-        SELECT DISTINCT 
-        CASE 
-            WHEN m.emisor.id = :userId THEN m.receptor.id 
-            ELSE m.emisor.id 
-        END
-        FROM Mensaje m 
-        WHERE m.emisor.id = :userId OR m.receptor.id = :userId
-        """)
-    List<Long> getUserContacts(@Param("userId") Long userId);
+    @Query(value = "{ 'activo': true, 'emisor_id': ?1, 'receptor_id': ?0, 'leido': false }", sort = "{ 'fecha_envio': 1 }")
+    List<Mensaje> findUnreadMessages(Long userId, Long otherUserId);
 
-    // Obtener último mensaje entre dos usuarios
-    @Query("""
-        SELECT m FROM Mensaje m 
-        WHERE (m.emisor.id = :userId AND m.receptor.id = :otherUserId) 
-           OR (m.emisor.id = :otherUserId AND m.receptor.id = :userId)
-        ORDER BY m.fechaEnvio DESC
-        """)
-    List<Mensaje> findLastMessage(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId, Pageable pageable);
+    boolean existsByActivoTrueAndEmisorIdAndReceptorIdAndLeidoFalse(Long emisorId, Long receptorId);
 
+    @Aggregation(pipeline = {
+            "{ '$match': { 'activo': true, '$or': [ { 'emisor_id': ?0 }, { 'receptor_id': ?0 } ] } }",
+            "{ '$group': { '_id': null, 'total': { '$sum': 1 }, 'unread': { '$sum': { '$cond': [ { '$and': [ { '$eq': ['$leido', false] }, { '$eq': ['$receptor_id', ?0] } ] }, 1, 0 ] } }, 'lastSent': { '$max': '$fecha_envio' } } }"
+    })
+    Optional<MessageStatsProjection> aggregateStats(Long userId);
 
-    // Obtener mensajes no leídos de una conversación específica
-    @Query("""
-        SELECT m FROM Mensaje m 
-        WHERE m.emisor.id = :otherUserId 
-          AND m.receptor.id = :userId 
-          AND m.leido = false
-        ORDER BY m.fechaEnvio ASC
-        """)
-    List<Mensaje> findUnreadMessages(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+    interface UnreadCountProjection {
+        @Value("#{target._id}")
+        Long getEmisorId();
+        Long getCount();
+    }
 
-    // Verificar si hay mensajes no leídos entre dos usuarios
-    @Query("""
-        SELECT COUNT(m) > 0 
-        FROM Mensaje m 
-        WHERE m.emisor.id = :otherUserId 
-          AND m.receptor.id = :userId 
-          AND m.leido = false
-        """)
-    boolean hasUnreadMessagesFrom(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+    interface ContactProjection {
+        @Value("#{target._id}")
+        Long getPersonaId();
+    }
 
-    // Obtener estadísticas de mensajes
-    @Query("""
-        SELECT 
-            COUNT(m),
-            SUM(CASE WHEN m.leido = false AND m.receptor.id = :userId THEN 1 ELSE 0 END),
-            MAX(m.fechaEnvio)
-        FROM Mensaje m 
-        WHERE m.emisor.id = :userId OR m.receptor.id = :userId
-        """)
-    Object[] getMessageStats(@Param("userId") Long userId);
+    interface MessageStatsProjection {
+        Long getTotal();
+        Long getUnread();
+        OffsetDateTime getLastSent();
+    }
 }

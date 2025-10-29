@@ -1,5 +1,6 @@
 package edu.ecep.base_app.shared.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
@@ -20,7 +21,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 @Configuration
 @EnableMongoAuditing
-@EnableTransactionManagement
 @EnableMongoRepositories(basePackages = "edu.ecep.base_app.comunicacion.infrastructure.persistence")
 public class MongoConfig {
 
@@ -39,8 +39,14 @@ public class MongoConfig {
         return new MongoTemplate(mongoDbFactory, mappingMongoConverter);
     }
 
-    @Bean
-    public MongoTransactionManager mongoTransactionManager(MongoDatabaseFactory mongoDbFactory) {
-        return new MongoTransactionManager(mongoDbFactory);
+    @Configuration
+    @EnableTransactionManagement
+    @ConditionalOnProperty(prefix = "spring.data.mongodb.transactions", name = "enabled", havingValue = "true")
+    static class MongoTransactionsConfig {
+
+        @Bean
+        public MongoTransactionManager mongoTransactionManager(MongoDatabaseFactory mongoDbFactory) {
+            return new MongoTransactionManager(mongoDbFactory);
+        }
     }
 }

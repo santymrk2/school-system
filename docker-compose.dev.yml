@@ -16,6 +16,21 @@ services:
       timeout: 5s
       retries: 5
 
+  mongo:
+    image: mongo:6.0
+    container_name: mongo-dev
+    environment:
+      MONGO_INITDB_DATABASE: comunicacion
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7.2
     container_name: redis-dev
@@ -42,6 +57,8 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: P4ssword!
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/school-system
+      SPRING_DATA_MONGODB_DATABASE: comunicacion
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_PROFILES_ACTIVE: dev
@@ -50,6 +67,8 @@ services:
       - ./backend-ecep:/app
     depends_on:
       postgres:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -93,3 +112,4 @@ services:
 volumes:
   pgdata:
   redis_data:
+  mongo_data:

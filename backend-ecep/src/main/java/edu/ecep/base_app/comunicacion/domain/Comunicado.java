@@ -1,36 +1,49 @@
 package edu.ecep.base_app.comunicacion.domain;
 
 import edu.ecep.base_app.comunicacion.domain.enums.AlcanceComunicado;
-import edu.ecep.base_app.gestionacademica.domain.Seccion;
-import edu.ecep.base_app.shared.domain.BaseEntity;
+import edu.ecep.base_app.shared.domain.BaseDocument;
 import edu.ecep.base_app.shared.domain.enums.NivelAcademico;
-import jakarta.persistence.*;
-
-import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
-import org.hibernate.annotations.SQLDelete;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.OffsetDateTime;
 
-@Entity
-@Table(name = "comunicados")
-@SQLDelete(sql = "UPDATE comunicados SET activo = false, fecha_eliminacion = now() WHERE id = ?")
-@Getter @Setter
-public class Comunicado extends BaseEntity {
-    @Enumerated(EnumType.STRING) @Column(nullable=false)
+/**
+ * Documento Mongo que representa un comunicado institucional.
+ */
+@Getter
+@Setter
+@Document(collection = "comunicados")
+@CompoundIndexes({
+        @CompoundIndex(name = "alcance_activo_idx", def = "{ 'alcance': 1, 'activo': 1 }"),
+        @CompoundIndex(name = "seccion_activo_idx", def = "{ 'seccion_id': 1, 'activo': 1 }", sparse = true)
+})
+public class Comunicado extends BaseDocument {
+
+    @Field("alcance")
     private AlcanceComunicado alcance;
 
-    @ManyToOne(fetch=FetchType.LAZY) private Seccion seccion; // solo si POR_SECCION
-    @Enumerated(EnumType.STRING) private NivelAcademico nivel; // solo si POR_NIVEL
+    @Field("seccion_id")
+    private Long seccionId;
 
-    @Column(nullable=false) private String titulo;
-    @Column(nullable=false, length=5000) private String cuerpo;
+    @Field("nivel")
+    private NivelAcademico nivel;
+
+    @Field("titulo")
+    @Indexed
+    private String titulo;
+
+    @Field("cuerpo")
+    private String cuerpo;
+
+    @Field("fecha_prog_publicacion")
     private OffsetDateTime fechaProgPublicacion;
-    @Column(nullable=false) private boolean publicado = false;
+
+    @Field("publicado")
+    private boolean publicado = false;
 }

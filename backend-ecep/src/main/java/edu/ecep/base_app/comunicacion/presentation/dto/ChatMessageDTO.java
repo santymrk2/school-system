@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChatMessageDTO {
-    private Long id;
+    private String id;
     private Long emisorId;
     private Long receptorId;
     private String contenido;

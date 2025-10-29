@@ -23,6 +23,9 @@ spring:
       enabled: false
 
   data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/school-system}
+      database: ${SPRING_DATA_MONGODB_DATABASE:comunicacion}
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.List;
 
 /**
  * Configuración base para MongoDB.
@@ -43,6 +44,14 @@ public class MongoConfig {
         converter.setTypeMapper(new DefaultMongoTypeMapper(null));
         converter.afterPropertiesSet();
         return converter;
+    }
+
+    @Bean
+    public MongoCustomConversions mongoCustomConversions() {
+        return new MongoCustomConversions(List.of(
+                OffsetDateTimeReadConverter.INSTANCE,
+                OffsetDateTimeWriteConverter.INSTANCE
+        ));
     }
 
     @Bean

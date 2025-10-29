@@ -3,6 +3,7 @@ package edu.ecep.base_app.shared.config;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.auditing.DateTimeProvider;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
@@ -15,15 +16,23 @@ import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
 /**
  * Configuración base para MongoDB.
  * Habilita auditoría, transacciones multi-documento y elimina el atributo _class
  * de los documentos persistidos para mantenerlos limpios.
  */
 @Configuration
-@EnableMongoAuditing
+@EnableMongoAuditing(dateTimeProviderRef = "mongoAuditingDateTimeProvider")
 @EnableMongoRepositories(basePackages = "edu.ecep.base_app.comunicacion.infrastructure.persistence")
 public class MongoConfig {
+
+    @Bean(name = "mongoAuditingDateTimeProvider")
+    public DateTimeProvider mongoAuditingDateTimeProvider() {
+        return () -> Optional.of(OffsetDateTime.now());
+    }
 
     @Bean
     public MappingMongoConverter mappingMongoConverter(MongoDatabaseFactory mongoDbFactory,

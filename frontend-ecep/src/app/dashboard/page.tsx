@@ -314,17 +314,17 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {visibleQuickActions.map((action, index) => (
                   <Link
                     key={index}
                     href={action.href}
-                    className="flex flex-col items-center rounded-lg border border-border p-4 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="flex flex-col items-center rounded-lg p-4 group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   >
-                    <div className={`mb-2 rounded-full bg-primary p-2 text-primary-foreground`}>
+                    <div className={`mb-2 rounded-full bg-primary group-hover:bg-primary/80 transition-colors p-2 text-primary-foreground`}>
                       <action.icon className="h-5 w-5" />
                     </div>
-                    <span className="text-sm font-medium text-center">
+                    <span className="text-sm font-medium text-center group-hover:text-gray-400 transition-colors">
                       {action.label}
                     </span>
                   </Link>

@@ -400,9 +400,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Button>
           </div>
         </div>
-        <div className="flex-1 p-4 pl-1">
+        <div className="flex-1 p-4 lg:pl-1">
           <div className="rounded-xl bg-card text-card-foreground ring-1 ring-border overflow-hidden">
-            <main className="scrollarea  h-[calc(100vh-6rem)] overflow-y-auto">
+            <main className="scrollarea h-[calc(100vh-6rem)] xl:h-[calc(100vh-2rem)] overflow-y-auto">
               {children}
             </main>
           </div>

@@ -331,7 +331,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuContent
                 side="top"
                 align="end"
-                className="w-60 p-3"
+                className="w-60 p-3 ml-2"
                 aria-labelledby="dashboard-user-menu-trigger"
               >
                 <DropdownMenuLabel className="truncate">
